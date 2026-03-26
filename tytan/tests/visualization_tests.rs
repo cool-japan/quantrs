@@ -321,7 +321,7 @@ fn example_complete_visualization_workflow() {
         let mut iter_samples = create_test_results(50);
         // Simulate improvement over iterations
         for sample in &mut iter_samples {
-            sample.energy -= f64::from(i) * 0.5;
+            sample.energy = f64::from(i).mul_add(-0.5, sample.energy);
         }
         iteration_results.push(iter_samples);
     }

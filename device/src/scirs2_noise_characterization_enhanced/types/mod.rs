@@ -5,6 +5,7 @@ pub mod enhancednoiseconfig_traits;
 pub mod functions;
 pub mod noisecharacterizationconfig_traits;
 pub mod reportingoptions_traits;
+#[allow(clippy::module_inception)]
 pub mod types;
 
 // Re-export all types

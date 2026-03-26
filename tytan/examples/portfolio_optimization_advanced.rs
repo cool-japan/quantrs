@@ -329,7 +329,7 @@ fn calculate_portfolio_metrics(
     let mut variance = 0.0;
     for i in 0..n {
         for j in 0..n {
-            variance += weights[i] * weights[j] * covariance[[i, j]];
+            variance = (weights[i] * weights[j]).mul_add(covariance[[i, j]], variance);
         }
     }
 

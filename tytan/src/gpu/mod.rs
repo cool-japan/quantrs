@@ -3,7 +3,7 @@
 //! This module provides GPU-accelerated implementations for
 //! solving QUBO and HOBO problems, using SciRS2 when available.
 
-use scirs2_core::ndarray::{Array, ArrayD, Ix2};
+use scirs2_core::ndarray::{Array, ArrayD, Dimension, Ix2};
 use scirs2_core::random::{thread_rng, Rng};
 use std::collections::HashMap;
 use thiserror::Error;
@@ -371,8 +371,8 @@ pub fn gpu_solve_hobo(
             if coeff.abs() < 1e-14 {
                 continue;
             }
-            let contrib: f64 = idx
-                .slice()
+            let index_slice = idx.slice();
+            let contrib: f64 = index_slice
                 .iter()
                 .map(|&i| if i < x.len() { x[i] as f64 } else { 0.0 })
                 .product();

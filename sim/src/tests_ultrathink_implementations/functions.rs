@@ -1001,8 +1001,10 @@ mod tests {
         }
         #[test]
         fn test_telemetry_export() -> TestResult {
-            let mut config = TelemetryConfig::default();
-            config.export_format = TelemetryExportFormat::JSON;
+            let config = TelemetryConfig {
+                export_format: TelemetryExportFormat::JSON,
+                ..Default::default()
+            };
             let collector = TelemetryCollector::new(config);
             let test_metric = TelemetryMetric::Gauge {
                 name: "test_metric".to_string(),

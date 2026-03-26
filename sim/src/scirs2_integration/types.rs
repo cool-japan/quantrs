@@ -4,6 +4,8 @@
 
 // ndrustfft replaced by scirs2-fft (COOLJAPAN Pure Rust Policy)
 use crate::error::{Result, SimulatorError};
+#[cfg(feature = "advanced_math")]
+use scirs2_core::ndarray::ndarray_linalg::Norm;
 use scirs2_core::ndarray::{
     s, Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2,
 };
@@ -24,6 +26,28 @@ pub enum OptimizationLevel {
     Aggressive,
     /// Maximum optimization with custom kernels
     Maximum,
+}
+#[cfg(feature = "advanced_math")]
+#[derive(Debug, Clone)]
+pub struct Matrix {
+    pub data: Array2<Complex64>,
+}
+#[cfg(feature = "advanced_math")]
+impl Matrix {
+    pub fn from_array2(array: &ArrayView2<Complex64>, _pool: &MemoryPool) -> Result<Self> {
+        Ok(Self {
+            data: array.to_owned(),
+        })
+    }
+    pub fn zeros(shape: (usize, usize), _pool: &MemoryPool) -> Result<Self> {
+        Ok(Self {
+            data: Array2::zeros(shape),
+        })
+    }
+    pub fn to_array2(&self, result: &mut Array2<Complex64>) -> Result<()> {
+        result.assign(&self.data);
+        Ok(())
+    }
 }
 #[cfg(not(feature = "advanced_math"))]
 #[derive(Debug)]
@@ -46,19 +70,74 @@ impl Matrix {
         ))
     }
 }
-/// Sparse matrix backed by scirs2_sparse CsrMatrix (advanced_math feature)
+/// Sparse matrix using raw CSR storage (advanced_math feature)
 #[cfg(feature = "advanced_math")]
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SparseMatrix {
-    /// Underlying CSR matrix
-    pub csr_matrix: scirs2_sparse::csr::CsrMatrix<Complex64>,
+    /// Row pointers (size rows+1)
+    pub indptr: Vec<usize>,
+    /// Column indices
+    pub indices: Vec<usize>,
+    /// Data values
+    pub data: Vec<Complex64>,
+    /// Number of rows
+    rows: usize,
+    /// Number of columns
+    cols: usize,
+}
+
+#[cfg(feature = "advanced_math")]
+impl std::fmt::Debug for SparseMatrix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SparseMatrix")
+            .field("rows", &self.rows)
+            .field("cols", &self.cols)
+            .field("nnz", &self.data.len())
+            .finish()
+    }
 }
 
 #[cfg(feature = "advanced_math")]
 impl SparseMatrix {
-    /// Create from a scirs2_sparse CsrMatrix
-    pub fn from_scirs_csr(csr: scirs2_sparse::csr::CsrMatrix<Complex64>) -> Self {
-        Self { csr_matrix: csr }
+    /// Create from triplet format (row_indices, col_indices, values)
+    pub fn from_triplets(
+        values: Vec<Complex64>,
+        row_indices: Vec<usize>,
+        col_indices: Vec<usize>,
+        shape: (usize, usize),
+    ) -> Result<Self> {
+        let (num_rows, num_cols) = shape;
+        // Build CSR from triplets
+        let mut indptr = vec![0usize; num_rows + 1];
+        for &r in &row_indices {
+            if r >= num_rows {
+                return Err(SimulatorError::ComputationError(format!(
+                    "Row index {r} out of bounds for matrix with {num_rows} rows"
+                )));
+            }
+            indptr[r + 1] += 1;
+        }
+        // Cumulative sum
+        for i in 1..=num_rows {
+            indptr[i] += indptr[i - 1];
+        }
+        let nnz = values.len();
+        let mut indices = vec![0usize; nnz];
+        let mut data = vec![Complex64::new(0.0, 0.0); nnz];
+        let mut offset = indptr.clone();
+        for (idx, (&r, &c)) in row_indices.iter().zip(col_indices.iter()).enumerate() {
+            let pos = offset[r];
+            indices[pos] = c;
+            data[pos] = values[idx];
+            offset[r] += 1;
+        }
+        Ok(Self {
+            indptr,
+            indices,
+            data,
+            rows: num_rows,
+            cols: num_cols,
+        })
     }
 
     /// Create from raw CSR data
@@ -70,46 +149,45 @@ impl SparseMatrix {
         num_cols: usize,
         _pool: &MemoryPool,
     ) -> Result<Self> {
-        // Convert from CSR raw format (row_ptr is indptr, col_indices are column indices)
-        // We need to expand to triplets for scirs2_sparse::CsrMatrix::new
-        let mut row_indices = Vec::with_capacity(values.len());
-        for (row, window) in row_ptr.windows(2).enumerate() {
-            let count = window[1] - window[0];
-            for _ in 0..count {
-                row_indices.push(row);
-            }
-        }
-        let csr = scirs2_sparse::csr::CsrMatrix::new(
-            values.to_vec(),
-            row_indices,
-            col_indices.to_vec(),
-            (num_rows, num_cols),
-        )
-        .map_err(|e| {
-            SimulatorError::ComputationError(format!("Failed to create sparse matrix: {e}"))
-        })?;
-        Ok(Self { csr_matrix: csr })
+        Ok(Self {
+            indptr: row_ptr.to_vec(),
+            indices: col_indices.to_vec(),
+            data: values.to_vec(),
+            rows: num_rows,
+            cols: num_cols,
+        })
+    }
+
+    /// Get number of rows
+    #[must_use]
+    pub fn rows(&self) -> usize {
+        self.rows
+    }
+
+    /// Get number of columns
+    #[must_use]
+    pub fn cols(&self) -> usize {
+        self.cols
     }
 
     /// Sparse matrix-vector multiply: result = self * vector
     pub fn matvec(&self, vector: &Vector, result: &mut Vector) -> Result<()> {
         let x = vector.to_array1()?;
-        let (nrows, ncols) = (self.csr_matrix.rows(), self.csr_matrix.cols());
-        if x.len() != ncols {
+        if x.len() != self.cols {
             return Err(SimulatorError::DimensionMismatch(format!(
                 "Vector length {} does not match matrix columns {}",
                 x.len(),
-                ncols
+                self.cols
             )));
         }
-        let mut y = Array1::zeros(nrows);
-        for row in 0..nrows {
-            let start = self.csr_matrix.indptr[row];
-            let end = self.csr_matrix.indptr[row + 1];
+        let mut y = Array1::zeros(self.rows);
+        for row in 0..self.rows {
+            let start = self.indptr[row];
+            let end = self.indptr[row + 1];
             let mut sum = Complex64::new(0.0, 0.0);
             for j in start..end {
-                let col = self.csr_matrix.indices[j];
-                sum += self.csr_matrix.data[j] * x[col];
+                let col = self.indices[j];
+                sum += self.data[j] * x[col];
             }
             y[row] = sum;
         }
@@ -150,6 +228,21 @@ impl SparseMatrix {
         Err(SimulatorError::UnsupportedOperation(
             "SciRS2 integration requires 'advanced_math' feature".to_string(),
         ))
+    }
+}
+#[cfg(feature = "advanced_math")]
+#[derive(Debug, Clone)]
+pub struct EigResult {
+    pub values: Vector,
+    pub vectors: Matrix,
+}
+#[cfg(feature = "advanced_math")]
+impl EigResult {
+    pub fn to_array1(&self) -> Result<Array1<Complex64>> {
+        self.values.to_array1()
+    }
+    pub fn eigenvectors(&self) -> Array2<Complex64> {
+        self.vectors.data.clone()
     }
 }
 #[cfg(not(feature = "advanced_math"))]
@@ -222,6 +315,19 @@ impl SciRS2Vector {
         Ok(self.data.clone())
     }
 }
+#[cfg(feature = "advanced_math")]
+#[derive(Debug, Clone)]
+pub struct SvdResult {
+    pub u: Matrix,
+    pub s: Vector,
+    pub vt: Matrix,
+}
+#[cfg(feature = "advanced_math")]
+impl SvdResult {
+    pub fn to_array2(&self) -> Result<Array2<Complex64>> {
+        Ok(self.u.data.clone())
+    }
+}
 #[cfg(not(feature = "advanced_math"))]
 #[derive(Debug)]
 pub struct SvdResult;
@@ -246,7 +352,7 @@ impl AdvancedEigensolvers {
         max_iterations: usize,
         tolerance: f64,
     ) -> Result<EigResult> {
-        let n = matrix.csr_matrix.rows();
+        let n = matrix.rows();
         let m = num_eigenvalues.min(max_iterations);
         let mut q = Array1::from_vec(
             (0..n)
@@ -322,7 +428,7 @@ impl AdvancedEigensolvers {
         max_iterations: usize,
         tolerance: f64,
     ) -> Result<EigResult> {
-        let n = matrix.csr_matrix.rows();
+        let n = matrix.rows();
         let m = num_eigenvalues.min(max_iterations);
         let mut q = Array1::from_vec(
             (0..n)
@@ -604,6 +710,16 @@ pub struct BackendStats {
     /// Cache hit rate for `SciRS2` operations
     pub cache_hit_rate: f64,
 }
+#[cfg(feature = "advanced_math")]
+#[derive(Debug)]
+pub struct MemoryPool;
+#[cfg(feature = "advanced_math")]
+impl MemoryPool {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self
+    }
+}
 #[cfg(not(feature = "advanced_math"))]
 #[derive(Debug)]
 pub struct MemoryPool;
@@ -612,6 +728,31 @@ impl MemoryPool {
     #[must_use]
     pub const fn new() -> Self {
         Self
+    }
+}
+#[cfg(feature = "advanced_math")]
+#[derive(Debug, Clone)]
+pub struct Vector {
+    pub data: Array1<Complex64>,
+}
+#[cfg(feature = "advanced_math")]
+impl Vector {
+    pub fn from_array1(array: &ArrayView1<Complex64>, _pool: &MemoryPool) -> Result<Self> {
+        Ok(Self {
+            data: array.to_owned(),
+        })
+    }
+    pub fn zeros(len: usize, _pool: &MemoryPool) -> Result<Self> {
+        Ok(Self {
+            data: Array1::zeros(len),
+        })
+    }
+    pub fn to_array1(&self) -> Result<Array1<Complex64>> {
+        Ok(self.data.clone())
+    }
+    pub fn to_array1_mut(&self, result: &mut Array1<Complex64>) -> Result<()> {
+        result.assign(&self.data);
+        Ok(())
     }
 }
 #[cfg(not(feature = "advanced_math"))]
@@ -648,6 +789,34 @@ pub struct FFTPlan {
     pub twiddle_factors: Vec<Complex64>,
     /// Optimal vectorization strategy
     pub vectorization_strategy: VectorizationStrategy,
+}
+#[cfg(feature = "advanced_math")]
+#[derive(Debug)]
+pub struct BLAS;
+#[cfg(feature = "advanced_math")]
+impl BLAS {
+    pub fn gemm(
+        alpha: Complex64,
+        a: &Matrix,
+        b: &Matrix,
+        beta: Complex64,
+        c: &mut Matrix,
+    ) -> Result<()> {
+        let result = a.data.dot(&b.data);
+        c.data = c.data.mapv(|x| x * beta) + result.mapv(|x| x * alpha);
+        Ok(())
+    }
+    pub fn gemv(
+        alpha: Complex64,
+        a: &Matrix,
+        x: &Vector,
+        beta: Complex64,
+        y: &mut Vector,
+    ) -> Result<()> {
+        let result = a.data.dot(&x.data);
+        y.data = y.data.mapv(|v| v * beta) + result.mapv(|v| v * alpha);
+        Ok(())
+    }
 }
 #[cfg(not(feature = "advanced_math"))]
 #[derive(Debug)]
@@ -711,7 +880,7 @@ impl AdvancedLinearAlgebra {
         for k in 1..20 {
             term = term.dot(&scaled_matrix) / Complex64::new(k as f64, 0.0);
             result += &term;
-            if term.norm_l2().unwrap_or(f64::INFINITY) < 1e-12 {
+            if term.norm_l2().unwrap_or_default() < 1e-12 {
                 break;
             }
         }
@@ -1165,6 +1334,37 @@ pub struct SciRS2ParallelContext {
     /// NUMA topology awareness
     pub numa_aware: bool,
 }
+#[cfg(feature = "advanced_math")]
+#[derive(Debug)]
+pub struct LAPACK;
+#[cfg(feature = "advanced_math")]
+impl LAPACK {
+    pub fn svd(matrix: &Matrix) -> Result<SvdResult> {
+        use scirs2_core::ndarray::ndarray_linalg::SVD;
+        let (u, s_raw, vt) = matrix
+            .data
+            .svd(true, true)
+            .map_err(|e| SimulatorError::ComputationError(format!("SVD failed: {e}")))?;
+        let s_complex = s_raw.mapv(|v| Complex64::new(v, 0.0));
+        let pool = MemoryPool::new();
+        Ok(SvdResult {
+            u: Matrix::from_array2(&u.view(), &pool)?,
+            s: Vector::from_array1(&s_complex.view(), &pool)?,
+            vt: Matrix::from_array2(&vt.view(), &pool)?,
+        })
+    }
+    pub fn eig(matrix: &Matrix) -> Result<EigResult> {
+        use scirs2_core::ndarray::ndarray_linalg::Eig;
+        let (eigenvalues, eigenvectors) = matrix.data.eig().map_err(|e| {
+            SimulatorError::ComputationError(format!("Eigendecomposition failed: {e}"))
+        })?;
+        let pool = MemoryPool::new();
+        Ok(EigResult {
+            values: Vector::from_array1(&eigenvalues.view(), &pool)?,
+            vectors: Matrix::from_array2(&eigenvectors.view(), &pool)?,
+        })
+    }
+}
 #[cfg(not(feature = "advanced_math"))]
 #[derive(Debug)]
 pub struct LAPACK;
@@ -1227,6 +1427,34 @@ impl SciRS2Matrix {
     /// Get mutable view of the data
     pub fn data_view_mut(&mut self) -> ArrayViewMut2<'_, Complex64> {
         self.data.view_mut()
+    }
+}
+#[cfg(feature = "advanced_math")]
+#[derive(Debug)]
+pub struct FftEngine;
+#[cfg(feature = "advanced_math")]
+impl FftEngine {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self
+    }
+    pub fn forward(&self, input: &Vector) -> Result<Vector> {
+        use scirs2_fft::fft::fft;
+        let data_vec: Vec<Complex64> = input.data.iter().copied().collect();
+        let result = fft(&data_vec, None)
+            .map_err(|e| SimulatorError::ComputationError(format!("FFT forward error: {e}")))?;
+        Ok(Vector {
+            data: Array1::from_vec(result),
+        })
+    }
+    pub fn inverse(&self, input: &Vector) -> Result<Vector> {
+        use scirs2_fft::fft::ifft;
+        let data_vec: Vec<Complex64> = input.data.iter().copied().collect();
+        let result = ifft(&data_vec, None)
+            .map_err(|e| SimulatorError::ComputationError(format!("IFFT error: {e}")))?;
+        Ok(Vector {
+            data: Array1::from_vec(result),
+        })
     }
 }
 #[cfg(not(feature = "advanced_math"))]

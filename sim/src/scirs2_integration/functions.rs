@@ -33,7 +33,6 @@ pub fn benchmark_scirs2_integration() -> Result<HashMap<String, f64>> {
     }
     #[cfg(feature = "advanced_math")]
     {
-        use scirs2_sparse::csr::CsrMatrix as ScirsCsrMatrix;
         let start = std::time::Instant::now();
         let mut row_indices = vec![0usize; 1000];
         let mut col_indices = vec![0usize; 1000];
@@ -46,11 +45,8 @@ pub fn benchmark_scirs2_integration() -> Result<HashMap<String, f64>> {
                 values[idx] = Complex64::new(1.0, 0.0);
             }
         }
-        let csr =
-            ScirsCsrMatrix::new(values, row_indices, col_indices, (100, 100)).map_err(|e| {
-                SimulatorError::ComputationError(format!("Failed to create test matrix: {e}"))
-            })?;
-        let sparse_matrix = SparseMatrix::from_scirs_csr(csr);
+        let sparse_matrix =
+            SparseMatrix::from_triplets(values, row_indices, col_indices, (100, 100))?;
         let b = Vector::from_array1(&Array1::ones(100).view(), &MemoryPool::new())?;
         let _ = SparseSolvers::conjugate_gradient(&sparse_matrix, &b, None, 1e-6, 100)?;
         let sparse_solver_time = start.elapsed().as_millis() as f64;

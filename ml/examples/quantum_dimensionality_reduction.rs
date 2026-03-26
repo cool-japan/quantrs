@@ -435,7 +435,7 @@ fn generate_synthetic_data(
 
             // Add some correlation structure
             if j > 2 {
-                data[[i, j]] += 0.3 * data[[i, j % 3]];
+                data[[i, j]] = 0.3f64.mul_add(data[[i, j % 3]], data[[i, j]]);
             }
         }
     }

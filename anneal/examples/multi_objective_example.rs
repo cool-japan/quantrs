@@ -85,11 +85,8 @@ fn portfolio_optimization_example() -> Result<(), Box<dyn std::error::Error>> {
         let mut risk = 0.0;
         for i in 0..4 {
             for j in 0..4 {
-                risk += weights[i]
-                    * weights[j]
-                    * risks_clone[i]
-                    * risks_clone[j]
-                    * correlations_clone[i][j];
+                risk = (weights[i] * weights[j] * risks_clone[i] * risks_clone[j])
+                    .mul_add(correlations_clone[i][j], risk);
             }
         }
 

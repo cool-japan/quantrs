@@ -104,8 +104,8 @@ fn create_max_cut_problem() -> MaxCutProblem {
                 qubo[[i, i]] -= w;
                 qubo[[j, j]] -= w;
                 // Add quadratic term
-                qubo[[i, j]] += 2.0 * w;
-                qubo[[j, i]] += 2.0 * w;
+                qubo[[i, j]] = 2.0f64.mul_add(w, qubo[[i, j]]);
+                qubo[[j, i]] = 2.0f64.mul_add(w, qubo[[j, i]]);
             }
         }
     }

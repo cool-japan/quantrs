@@ -228,6 +228,7 @@ impl Sampler for AmazonBraketSampler {
                         None
                     }
                 })
+                .map(|(k, v)| (k, serde_json::Value::from(v)))
                 .collect::<serde_json::Map<_, _>>()
                 .into();
 

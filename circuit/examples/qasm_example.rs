@@ -324,10 +324,10 @@ measure q -> c;
 
             for stmt in &program.statements {
                 match stmt {
-                    quantrs2_circuit::qasm::ast::QasmStatement::Gate(gate) => {
-                        if gate.control.is_some() || gate.inverse || gate.power.is_some() {
-                            gates_with_modifiers += 1;
-                        }
+                    quantrs2_circuit::qasm::ast::QasmStatement::Gate(gate)
+                        if gate.control.is_some() || gate.inverse || gate.power.is_some() =>
+                    {
+                        gates_with_modifiers += 1;
                     }
                     quantrs2_circuit::qasm::ast::QasmStatement::If(_, _)
                     | quantrs2_circuit::qasm::ast::QasmStatement::For(_)

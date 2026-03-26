@@ -126,7 +126,7 @@ impl QuantumCreditRiskModel {
         // Compute logit
         let mut logit = self.bias;
         for i in 0..features.len() {
-            logit += features[i] * self.weights[[i, 0]];
+            logit = features[i].mul_add(self.weights[[i, 0]], logit);
         }
 
         // Add quantum noise
@@ -216,11 +216,11 @@ fn calculate_lending_value(
 
             if app.true_default {
                 // Customer defaults - lose money
-                total_value -= app.loan_amount * default_loss_rate;
+                total_value = app.loan_amount.mul_add(-default_loss_rate, total_value);
                 false_negatives += 1;
             } else {
                 // Customer repays - earn profit
-                total_value += app.loan_amount * profit_margin;
+                total_value = app.loan_amount.mul_add(profit_margin, total_value);
             }
         } else {
             // Reject loan
@@ -229,7 +229,7 @@ fn calculate_lending_value(
                 true_positives += 1;
             } else {
                 // Incorrectly rejected - missed profit opportunity
-                total_value -= app.loan_amount * profit_margin * 0.1; // Opportunity cost
+                total_value = app.loan_amount.mul_add(-profit_margin * 0.1, total_value); // Opportunity cost
                 false_positives += 1;
             }
         }
@@ -263,8 +263,8 @@ fn demonstrate_capital_impact(
         let exposure = applications[i].loan_amount;
         let lgd = 0.45; // Loss Given Default (regulatory assumption)
 
-        uncalib_el += uncalibrated_probs[i] * lgd * exposure;
-        calib_el += calibrated_probs[i] * lgd * exposure;
+        uncalib_el = uncalibrated_probs[i].mul_add(lgd * exposure, uncalib_el);
+        calib_el = calibrated_probs[i].mul_add(lgd * exposure, calib_el);
 
         if applications[i].true_default {
             true_el += lgd * exposure;

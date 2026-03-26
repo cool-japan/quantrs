@@ -213,7 +213,7 @@ impl QuantumChemistrySimulator {
             let eigenvectors = {
                 #[cfg(feature = "advanced_math")]
                 {
-                    let eigenvectors_complex_2d = eig_result.eigenvectors().view();
+                    let eigenvectors_complex_2d = eig_result.eigenvectors();
                     eigenvectors_complex_2d.mapv(|c| c.re)
                 }
                 #[cfg(not(feature = "advanced_math"))]

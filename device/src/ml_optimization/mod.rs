@@ -280,7 +280,7 @@ mod ml_optimizer_tests {
         assert!(result.is_ok(), "Optimization should succeed");
         let optimized = result.expect("Optimized circuit");
         assert!(
-            optimized.gates().len() > 0,
+            !optimized.gates().is_empty(),
             "Optimized circuit should have gates"
         );
     }

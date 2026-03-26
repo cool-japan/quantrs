@@ -98,7 +98,7 @@ impl TensorNetwork {
 pub(super) struct ContractionIndices {
     pub(super) tensor1_indices: Vec<String>,
     pub(super) tensor2_indices: Vec<String>,
-    common_indices: Vec<String>,
+    pub(super) common_indices: Vec<String>,
 }
 #[cfg(feature = "advanced_math")]
 /// Placeholder for contraction optimizer

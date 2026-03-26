@@ -732,7 +732,7 @@ fn quantum_classical_comparison_example() -> Result<(), Box<dyn std::error::Erro
 
             // Update weights (simplified)
             for (i, &feature) in sample.features.iter().enumerate() {
-                classical_weights[i] -= 0.01 * error * feature;
+                classical_weights[i] = (-0.01_f64).mul_add(error * feature, classical_weights[i]);
             }
         }
     }
@@ -850,7 +850,7 @@ fn classical_predict(features: &[f64], weights: &[f64]) -> f64 {
     let mut sum = 0.0;
     for (i, &feature) in features.iter().enumerate() {
         if i * 4 < weights.len() {
-            sum += feature * weights[i * 4];
+            sum = feature.mul_add(weights[i * 4], sum);
         }
     }
 

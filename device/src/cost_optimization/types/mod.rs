@@ -5,6 +5,7 @@ pub mod costoptimizationconfig_traits;
 pub mod derivedfeature_traits;
 pub mod functions;
 pub mod objectivefunction_traits;
+#[allow(clippy::module_inception)]
 pub mod types;
 
 // Re-export all types
