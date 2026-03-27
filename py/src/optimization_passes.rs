@@ -378,7 +378,11 @@ impl PyCircuitTranspiler {
     }
 
     /// Optimize a quantum circuit
-    fn optimize(&self, py: Python, circuit: &Bound<'_, PyList>) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
+    fn optimize(
+        &self,
+        py: Python,
+        circuit: &Bound<'_, PyList>,
+    ) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
         let mut context = OptimizationContext::new(10); // Default to 10 qubits
 
         // Parse input circuit
