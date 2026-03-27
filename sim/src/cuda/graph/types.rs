@@ -3,15 +3,13 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 #[cfg(feature = "advanced_math")]
-use super::streams::{CudaStream, CudaStreamHandle};
+use crate::cuda::streams::{CudaStream, CudaStreamHandle};
 use crate::error::{Result, SimulatorError};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 
 use super::functions::{CudaGraphExecHandle, CudaGraphHandle, CudaGraphNodeHandle};
-
-use std::collections::HashMap;
 
 /// Host function callback parameters
 #[derive(Debug, Clone)]
@@ -30,7 +28,7 @@ pub struct CudaGraph {
     /// Next node ID
     next_node_id: AtomicUsize,
     /// Graph name for debugging
-    name: Option<String>,
+    pub(crate) name: Option<String>,
     /// Whether the graph is finalized (no more nodes can be added)
     finalized: bool,
     /// Graph creation timestamp
@@ -315,19 +313,19 @@ impl CudaGraph {
     pub fn topological_order(&self) -> Result<Vec<usize>> {
         let mut result = Vec::new();
         let mut in_degree: HashMap<usize, usize> = HashMap::new();
-        for (&id, _) in &self.nodes {
+        for &id in self.nodes.keys() {
             in_degree.entry(id).or_insert(0);
         }
-        for (_, node) in &self.nodes {
+        for node in self.nodes.values() {
             for &dep_id in &node.dependencies {
                 *in_degree.entry(dep_id).or_insert(0) += 0;
             }
         }
         let mut in_degree: HashMap<usize, usize> = HashMap::new();
-        for (&id, _) in &self.nodes {
+        for &id in self.nodes.keys() {
             in_degree.insert(id, 0);
         }
-        for (_, node) in &self.nodes {}
+        for _node in self.nodes.values() {}
         let mut in_degree: HashMap<usize, usize> = HashMap::new();
         for (&id, node) in &self.nodes {
             in_degree.insert(id, node.dependencies.len());
@@ -449,7 +447,7 @@ impl CudaGraph {
 /// Graph execution scheduler for quantum circuits
 pub struct QuantumGraphScheduler {
     /// Pre-built graphs for common circuit patterns
-    cached_graphs: HashMap<String, CudaGraphExec>,
+    pub(crate) cached_graphs: HashMap<String, CudaGraphExec>,
     /// Maximum cache size
     max_cache_size: usize,
     /// Cache hits
@@ -977,7 +975,7 @@ impl CudaGraphExec {
     #[cfg(feature = "advanced_math")]
     pub fn launch_on_stream(&self, stream: Option<&CudaStream>) -> Result<()> {
         let start = std::time::Instant::now();
-        let stream_handle = stream.and_then(|s| s.get_handle_value());
+        let stream_handle = stream.and_then(|s: &CudaStream| s.get_handle_value());
         Self::cuda_graph_launch(self.handle, stream_handle)?;
         let elapsed_us = start.elapsed().as_micros() as f64;
         self.execution_count.fetch_add(1, Ordering::SeqCst);
