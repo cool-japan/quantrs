@@ -6,7 +6,7 @@
 
 QuantRS2-Device is the comprehensive quantum hardware abstraction layer of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing seamless connectivity to quantum computers from major cloud providers, with advanced transpilation, optimization, and characterization capabilities for production quantum computing applications.
 
-## Version 0.1.3 (2026-03-23)
+## Version 0.1.3 (2026-03-27)
 
 This release includes:
 - Stable APIs for IBM Quantum, Azure Quantum, and AWS Braket

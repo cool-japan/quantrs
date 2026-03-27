@@ -8,7 +8,7 @@ QuantRS2-Tytan is a comprehensive, high-performance quantum annealing library fo
 
 ## Version 0.1.3
 
-Released: 2026-03-23
+Released: 2026-03-27
 
 This release features refined integration with [SciRS2](https://github.com/cool-japan/scirs2) v0.1.3:
 - High-performance sparse matrix operations via SciRS2
@@ -17,7 +17,7 @@ This release features refined integration with [SciRS2](https://github.com/cool-
 - Memory-efficient large problem handling
 
 ### What's New in v0.1.3
-- **1,874 public items**: 0 stubs — all large files refactored into module directories, 0 `todo!/unimplemented!` stubs remaining
+- **2,482 public items**: 0 stubs — all large files refactored into module directories, 0 `todo!/unimplemented!` stubs remaining
 - Complete large-file refactoring: all modules split and reorganized for maintainability
 - Full TODO/FIXME resolution across the codebase
 

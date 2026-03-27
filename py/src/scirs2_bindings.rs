@@ -231,23 +231,26 @@ impl PySciRS2Optimizer {
     fn minimize_bfgs<'py>(
         &self,
         py: Python<'py>,
-        objective: PyObject,
+        objective: Py<PyAny>,
         initial: PyReadonlyArray1<'py, f64>,
-        gradient: Option<PyObject>,
+        gradient: Option<Py<PyAny>>,
     ) -> PyResult<Py<PyArray1<f64>>> {
         let x0 = initial.as_array().to_owned();
 
         // Create objective function wrapper
         let obj_fn = move |x: &Array1<f64>| -> f64 {
-            Python::with_gil(|py| {
-                let x_py = x.clone().into_pyarray(py);
-                let result = objective
-                    .call1(py, (x_py,))
-                    .ok()
-                    .and_then(|r| r.extract::<f64>(py).ok())
-                    .unwrap_or(f64::MAX);
-                result
-            })
+            // SAFETY: We are inside a #[pymethods] fn that already holds the GIL via `py`,
+            // but the closure is called within this same scope so the GIL is still held.
+            unsafe {
+                Python::attach_unchecked(|py| {
+                    let x_py = x.clone().into_pyarray(py);
+                    objective
+                        .call1(py, (x_py,))
+                        .ok()
+                        .and_then(|r| r.extract::<f64>(py).ok())
+                        .unwrap_or(f64::MAX)
+                })
+            }
         };
 
         let result = SciRS2Optimizer::minimize_bfgs(obj_fn, &x0, None);
@@ -259,7 +262,7 @@ impl PySciRS2Optimizer {
     fn minimize_adam<'py>(
         &self,
         py: Python<'py>,
-        objective: PyObject,
+        objective: Py<PyAny>,
         initial: PyReadonlyArray1<'py, f64>,
         learning_rate: Option<f64>,
     ) -> PyResult<Py<PyArray1<f64>>> {
@@ -268,15 +271,18 @@ impl PySciRS2Optimizer {
 
         // Create objective function wrapper
         let obj_fn = move |x: &Array1<f64>| -> f64 {
-            Python::with_gil(|py| {
-                let x_py = x.clone().into_pyarray(py);
-                let result = objective
-                    .call1(py, (x_py,))
-                    .ok()
-                    .and_then(|r| r.extract::<f64>(py).ok())
-                    .unwrap_or(f64::MAX);
-                result
-            })
+            // SAFETY: We are inside a #[pymethods] fn that already holds the GIL via `py`,
+            // but the closure is called within this same scope so the GIL is still held.
+            unsafe {
+                Python::attach_unchecked(|py| {
+                    let x_py = x.clone().into_pyarray(py);
+                    objective
+                        .call1(py, (x_py,))
+                        .ok()
+                        .and_then(|r| r.extract::<f64>(py).ok())
+                        .unwrap_or(f64::MAX)
+                })
+            }
         };
 
         let result = SciRS2Optimizer::minimize_adam(obj_fn, &x0, lr, self.max_iterations);

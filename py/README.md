@@ -8,12 +8,12 @@ QuantRS2-Py provides Python bindings for the [QuantRS2](https://github.com/cool-
 
 ## Version 0.1.3
 
-Released: 2026-03-23
+Released: 2026-03-27
 
 **Production-Ready Stable Release!** This release benefits from refined [SciRS2](https://github.com/cool-japan/scirs2) v0.1.3 integration and comprehensive platform support:
 
 ### What's New in v0.1.3
-- **108 public API items**: Complete Python bindings covering all core QuantRS2 capabilities
+- **169 public API items**: Complete Python bindings covering all core QuantRS2 capabilities
 - Aligned with QuantRS2 v0.1.3 workspace updates across all subcrates
 
 ### 🖥️ Platform Support

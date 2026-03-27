@@ -465,7 +465,7 @@ impl PyMultiGpuManager {
     ///
     /// Returns:
     ///     list: List of dictionaries containing GPU information
-    fn get_devices(&self, py: Python) -> PyResult<PyObject> {
+    fn get_devices(&self, py: Python) -> PyResult<Py<PyAny>> {
         let devices = {
             let manager = self.manager.lock().unwrap_or_else(|e| e.into_inner());
             manager.get_devices().to_vec()
@@ -563,7 +563,7 @@ impl PyMultiGpuManager {
     ///
     /// Returns:
     ///     dict: Performance metrics
-    fn get_metrics(&self, py: Python) -> PyResult<PyObject> {
+    fn get_metrics(&self, py: Python) -> PyResult<Py<PyAny>> {
         let metrics = self
             .manager
             .lock()

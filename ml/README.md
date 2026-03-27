@@ -7,7 +7,7 @@ QuantRS2-ML is the comprehensive quantum machine learning library of the [QuantR
 
 ## Version 0.1.3
 
-Released: 2026-03-23
+Released: 2026-03-27
 
 This release incorporates [SciRS2](https://github.com/cool-japan/scirs2) v0.1.3 with refined integration patterns for enhanced performance:
 - Automatic differentiation leveraging SciRS2's linear algebra operations
@@ -19,9 +19,9 @@ This release incorporates [SciRS2](https://github.com/cool-japan/scirs2) v0.1.3 
 - **QNN Tutorials**: Comprehensive quantum neural network tutorials with step-by-step examples
 - **SMO-based QSVM**: Sequential Minimal Optimization for quantum support vector machines with Cholesky fallback for robust kernel computation
 - **Simulator Backends**: Expanded simulator backends with Pauli expectation value support
-- **2,195 public items**: 0 stubs — full production-ready implementation
+- **4,218 public items**: 0 stubs — full production-ready implementation
 
-*Previous: 0 stubs, 2,195 public items*
+*Previous: 0 stubs, 4,218 public items*
 
 ## Comprehensive Features
 

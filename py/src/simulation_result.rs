@@ -17,7 +17,7 @@ pub struct PySimulationResult {
 #[pymethods]
 impl PySimulationResult {
     /// Get the state vector amplitudes
-    fn amplitudes(&self, py: Python) -> PyResult<PyObject> {
+    fn amplitudes(&self, py: Python) -> PyResult<Py<PyAny>> {
         let result = PyList::empty(py);
         for amp in &self.amplitudes {
             let complex = PyComplex::from_doubles(py, amp.re, amp.im);
@@ -27,7 +27,7 @@ impl PySimulationResult {
     }
 
     /// Get the probabilities for each basis state
-    fn probabilities(&self, py: Python) -> PyResult<PyObject> {
+    fn probabilities(&self, py: Python) -> PyResult<Py<PyAny>> {
         let result = PyList::empty(py);
         for amp in &self.amplitudes {
             let prob = amp.norm_sqr();
@@ -44,7 +44,7 @@ impl PySimulationResult {
     }
 
     /// Get a dictionary mapping basis states to probabilities
-    fn state_probabilities(&self, py: Python) -> PyResult<PyObject> {
+    fn state_probabilities(&self, py: Python) -> PyResult<Py<PyAny>> {
         let result = PyDict::new(py);
         for (i, amp) in self.amplitudes.iter().enumerate() {
             let basis_state = format!("{:0width$b}", i, width = self.n_qubits);

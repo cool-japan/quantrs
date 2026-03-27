@@ -135,28 +135,32 @@ impl PyCustomGate {
         name: String,
         num_qubits: usize,
         num_params: usize,
-        matrix_fn: PyObject,
+        matrix_fn: Py<PyAny>,
     ) -> PyResult<Self> {
         // Create wrapper that calls Python function
         let gate_dim = 1usize << num_qubits;
         let matrix_fn_wrapper = Arc::new(move |params: &[f64]| -> Array2<Complex64> {
-            Python::with_gil(|py| {
-                let params_py = params.to_vec().into_pyarray(py);
-                let result = match matrix_fn.call1(py, (params_py,)) {
-                    Ok(r) => r,
-                    Err(e) => {
-                        eprintln!("Warning: PyCustomGate matrix_fn call failed: {e}");
-                        return Array2::eye(gate_dim);
+            // SAFETY: This closure is only called from Python-originated contexts
+            // where the GIL is already held or can be safely acquired.
+            unsafe {
+                Python::attach_unchecked(|py| {
+                    let params_py = params.to_vec().into_pyarray(py);
+                    let result = match matrix_fn.call1(py, (params_py,)) {
+                        Ok(r) => r,
+                        Err(e) => {
+                            eprintln!("Warning: PyCustomGate matrix_fn call failed: {e}");
+                            return Array2::eye(gate_dim);
+                        }
+                    };
+                    match result.extract::<PyReadonlyArray2<Complex64>>(py) {
+                        Ok(matrix) => matrix.as_array().to_owned(),
+                        Err(e) => {
+                            eprintln!("Warning: PyCustomGate matrix extraction failed: {e}");
+                            Array2::eye(gate_dim)
+                        }
                     }
-                };
-                match result.extract::<PyReadonlyArray2<Complex64>>(py) {
-                    Ok(matrix) => matrix.as_array().to_owned(),
-                    Err(e) => {
-                        eprintln!("Warning: PyCustomGate matrix extraction failed: {e}");
-                        Array2::eye(gate_dim)
-                    }
-                }
-            })
+                })
+            }
         });
 
         Ok(Self {

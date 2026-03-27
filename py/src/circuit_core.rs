@@ -740,23 +740,21 @@ impl PyCircuit {
     /// Get a text-based visualization of the circuit
     #[allow(clippy::used_underscore_items)]
     pub(crate) fn draw(&self) -> PyResult<String> {
-        Python::with_gil(|py| {
-            let Some(circuit) = &self.circuit else {
-                return Err(PyValueError::new_err("Circuit not initialized"));
-            };
+        let Some(circuit) = &self.circuit else {
+            return Err(PyValueError::new_err("Circuit not initialized"));
+        };
 
-            // Create visualization directly
-            let mut visualizer = PyCircuitVisualizer::new(self.n_qubits);
+        // Create visualization directly
+        let mut visualizer = PyCircuitVisualizer::new(self.n_qubits);
 
-            // Add all gates from the circuit (simplified version)
-            let gate_names = circuit.get_gate_names();
-            for gate in &gate_names {
-                // For simplicity, assume they're all single-qubit gates on qubit 0
-                visualizer.add_gate(gate, vec![0], None)?;
-            }
+        // Add all gates from the circuit (simplified version)
+        let gate_names = circuit.get_gate_names();
+        for gate in &gate_names {
+            // For simplicity, assume they're all single-qubit gates on qubit 0
+            visualizer.add_gate(gate, vec![0], None)?;
+        }
 
-            Ok(visualizer._repr_html_())
-        })
+        Ok(visualizer._repr_html_())
     }
 
     /// Get an HTML representation of the circuit for Jupyter notebooks
@@ -785,86 +783,82 @@ impl PyCircuit {
     /// - Fredkin (CSWAP) → Toffoli decomposition + CNOT wrapper
     /// - SWAP → 3 CNOTs
     /// - Other gates pass through unchanged
-    pub(crate) fn decompose(&self) -> PyResult<Py<Self>> {
-        Python::with_gil(|py| {
-            if self.circuit.is_none() {
-                return Err(PyValueError::new_err("Circuit not initialized"));
-            }
+    pub(crate) fn decompose(&self, py: Python) -> PyResult<Py<Self>> {
+        if self.circuit.is_none() {
+            return Err(PyValueError::new_err("Circuit not initialized"));
+        }
 
-            let mut decomposed = Self::new(self.n_qubits)?;
+        let mut decomposed = Self::new(self.n_qubits)?;
 
-            for &op in &self.operations {
-                match op {
-                    // Decompose SWAP into 3 CNOTs
-                    CircuitOp::Swap(q1, q2) => {
-                        let idx1 = q1.0 as usize;
-                        let idx2 = q2.0 as usize;
-                        decomposed.cnot(idx1, idx2)?;
-                        decomposed.cnot(idx2, idx1)?;
-                        decomposed.cnot(idx1, idx2)?;
-                    }
-                    // Decompose Toffoli (CCX) into Clifford+T gates
-                    CircuitOp::Toffoli(c1, c2, t) => {
-                        let ctrl1 = c1.0 as usize;
-                        let ctrl2 = c2.0 as usize;
-                        let target = t.0 as usize;
-                        // Standard Toffoli decomposition
-                        decomposed.h(target)?;
-                        decomposed.cnot(ctrl2, target)?;
-                        decomposed.tdg(target)?;
-                        decomposed.cnot(ctrl1, target)?;
-                        decomposed.t(target)?;
-                        decomposed.cnot(ctrl2, target)?;
-                        decomposed.tdg(target)?;
-                        decomposed.cnot(ctrl1, target)?;
-                        decomposed.t(ctrl2)?;
-                        decomposed.t(target)?;
-                        decomposed.h(target)?;
-                        decomposed.cnot(ctrl1, ctrl2)?;
-                        decomposed.t(ctrl1)?;
-                        decomposed.tdg(ctrl2)?;
-                        decomposed.cnot(ctrl1, ctrl2)?;
-                    }
-                    // Decompose Fredkin (CSWAP) using Toffoli
-                    CircuitOp::Fredkin(c, t1, t2) => {
-                        let ctrl = c.0 as usize;
-                        let targ1 = t1.0 as usize;
-                        let targ2 = t2.0 as usize;
-                        // CSWAP = CNOT(t2,t1) + Toffoli(c,t1,t2) + CNOT(t2,t1)
-                        decomposed.cnot(targ2, targ1)?;
-                        decomposed.toffoli(ctrl, targ1, targ2)?;
-                        decomposed.cnot(targ2, targ1)?;
-                    }
-                    // Pass through all other gates unchanged
-                    _ => {
-                        decomposed.apply_op(op)?;
-                    }
+        for &op in &self.operations {
+            match op {
+                // Decompose SWAP into 3 CNOTs
+                CircuitOp::Swap(q1, q2) => {
+                    let idx1 = q1.0 as usize;
+                    let idx2 = q2.0 as usize;
+                    decomposed.cnot(idx1, idx2)?;
+                    decomposed.cnot(idx2, idx1)?;
+                    decomposed.cnot(idx1, idx2)?;
+                }
+                // Decompose Toffoli (CCX) into Clifford+T gates
+                CircuitOp::Toffoli(c1, c2, t) => {
+                    let ctrl1 = c1.0 as usize;
+                    let ctrl2 = c2.0 as usize;
+                    let target = t.0 as usize;
+                    // Standard Toffoli decomposition
+                    decomposed.h(target)?;
+                    decomposed.cnot(ctrl2, target)?;
+                    decomposed.tdg(target)?;
+                    decomposed.cnot(ctrl1, target)?;
+                    decomposed.t(target)?;
+                    decomposed.cnot(ctrl2, target)?;
+                    decomposed.tdg(target)?;
+                    decomposed.cnot(ctrl1, target)?;
+                    decomposed.t(ctrl2)?;
+                    decomposed.t(target)?;
+                    decomposed.h(target)?;
+                    decomposed.cnot(ctrl1, ctrl2)?;
+                    decomposed.t(ctrl1)?;
+                    decomposed.tdg(ctrl2)?;
+                    decomposed.cnot(ctrl1, ctrl2)?;
+                }
+                // Decompose Fredkin (CSWAP) using Toffoli
+                CircuitOp::Fredkin(c, t1, t2) => {
+                    let ctrl = c.0 as usize;
+                    let targ1 = t1.0 as usize;
+                    let targ2 = t2.0 as usize;
+                    // CSWAP = CNOT(t2,t1) + Toffoli(c,t1,t2) + CNOT(t2,t1)
+                    decomposed.cnot(targ2, targ1)?;
+                    decomposed.toffoli(ctrl, targ1, targ2)?;
+                    decomposed.cnot(targ2, targ1)?;
+                }
+                // Pass through all other gates unchanged
+                _ => {
+                    decomposed.apply_op(op)?;
                 }
             }
+        }
 
-            Py::new(py, decomposed)
-        })
+        Py::new(py, decomposed)
     }
 
     /// Copy the circuit (returns an identical circuit)
     ///
     /// Creates a new circuit with the same gates as this one.
     /// For optimization passes, use the circuit optimizer from quantrs2-circuit.
-    pub(crate) fn copy(&self) -> PyResult<Py<Self>> {
-        Python::with_gil(|py| {
-            if self.circuit.is_none() {
-                return Err(PyValueError::new_err("Circuit not initialized"));
-            }
+    pub(crate) fn copy(&self, py: Python) -> PyResult<Py<Self>> {
+        if self.circuit.is_none() {
+            return Err(PyValueError::new_err("Circuit not initialized"));
+        }
 
-            let mut new_circuit = Self::new(self.n_qubits)?;
+        let mut new_circuit = Self::new(self.n_qubits)?;
 
-            // Copy all operations
-            for &op in &self.operations {
-                new_circuit.apply_op(op)?;
-            }
+        // Copy all operations
+        for &op in &self.operations {
+            new_circuit.apply_op(op)?;
+        }
 
-            Py::new(py, new_circuit)
-        })
+        Py::new(py, new_circuit)
     }
 
     /// Compose this circuit with another circuit

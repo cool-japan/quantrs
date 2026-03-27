@@ -54,7 +54,7 @@ fn main() {
 /// Validate SciRS2 dependency versions
 fn validate_scirs2_dependencies() {
     // Expected SciRS2 version from workspace
-    const EXPECTED_SCIRS2_VERSION: &str = "0.1.2";
+    const EXPECTED_SCIRS2_VERSION: &str = "0.4.0";
 
     // This is a compile-time check that the expected version is documented
     println!("cargo:rustc-env=EXPECTED_SCIRS2_VERSION={EXPECTED_SCIRS2_VERSION}");

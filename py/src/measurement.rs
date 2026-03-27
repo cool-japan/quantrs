@@ -34,7 +34,7 @@ pub struct PyMeasurementResult {
 #[pymethods]
 impl PyMeasurementResult {
     /// Get the raw counts dictionary
-    fn get_counts(&self, py: Python) -> PyResult<PyObject> {
+    fn get_counts(&self, py: Python) -> PyResult<Py<PyAny>> {
         let dict = PyDict::new(py);
         for (bitstring, count) in &self.counts {
             dict.set_item(bitstring, count)?;
@@ -43,7 +43,7 @@ impl PyMeasurementResult {
     }
 
     /// Get the measurement probabilities
-    fn get_probabilities(&self, py: Python) -> PyResult<PyObject> {
+    fn get_probabilities(&self, py: Python) -> PyResult<Py<PyAny>> {
         let dict = PyDict::new(py);
         let total = self.shots as f64;
         for (bitstring, count) in &self.counts {
@@ -193,7 +193,7 @@ impl PyStateTomography {
     }
 
     /// Generate measurement circuits for state tomography
-    fn measurement_circuits(&self, py: Python) -> PyResult<PyObject> {
+    fn measurement_circuits(&self, py: Python) -> PyResult<Py<PyAny>> {
         let bases = ["X", "Y", "Z"];
         let n_bases = bases.len();
         let n_circuits = n_bases.pow(self.n_qubits as u32);
@@ -343,7 +343,7 @@ impl PyProcessTomography {
     }
 
     /// Generate input states for process tomography
-    fn input_states(&self, py: Python) -> PyResult<PyObject> {
+    fn input_states(&self, py: Python) -> PyResult<Py<PyAny>> {
         let states = PyList::empty(py);
 
         // Standard input states: |0>, |1>, |+>, |->, |+i>, |-i> per qubit

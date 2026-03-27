@@ -2,7 +2,7 @@
 
 ## Current Version: 0.1.3
 
-## Completed in v0.1.3 (2026-03-23)
+## Completed in v0.1.3 (2026-03-27)
 
 - [x] ZYZ decomposition fix (`core/src/synthesis.rs`)
 - [x] Holonomic gate synthesis fix (`core/src/holonomic.rs`)

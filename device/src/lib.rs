@@ -83,12 +83,12 @@
 //! Azure Quantum, and AWS Braket. It enables users to run quantum circuits on real
 //! quantum hardware or cloud-based simulators.
 //!
-//! ## Recent Updates (v0.1.2)
+//! ## Recent Updates (v0.1.3)
 //!
 //! - ✅ Re-enabled enhanced SciRS2 modules with full API compliance
 //! - ✅ `scirs2_hardware_benchmarks_enhanced`: ML-driven performance prediction and analysis
 //! - ✅ `scirs2_noise_characterization_enhanced`: Advanced noise modeling with SciRS2 stats
-//! - ✅ Enhanced transpilation using SciRS2 v0.1.2 Stable Release's graph algorithms
+//! - ✅ Enhanced transpilation using SciRS2 v0.1.3 Stable Release's graph algorithms
 //! - ✅ Stable APIs for IBM Quantum, Azure Quantum, and AWS Braket
 //! - ✅ All 406 tests passing with zero compilation warnings
 //! - ✅ Full SciRS2 Policy compliance for scientific computing operations
@@ -175,7 +175,7 @@ pub mod quantum_system_security;
 pub mod routing;
 pub mod routing_advanced;
 pub mod scirs2_calibration_enhanced;
-// Beta.3: Enhanced modules successfully re-enabled with full SciRS2 v0.1.2 Stable Release compliance
+// Beta.3: Enhanced modules successfully re-enabled with full SciRS2 v0.1.3 Stable Release compliance
 pub mod scirs2_hardware_benchmarks_enhanced;
 pub mod scirs2_noise_characterization_enhanced;
 pub mod security;

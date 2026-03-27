@@ -1,6 +1,6 @@
 # quantrs2-tytan Roadmap
 
-## v0.1.3 (2026-03-23)
+## v0.1.3 (2026-03-27)
 
 - [ ] Advanced optimization algorithms
 - [x] Large file refactoring — all modules split into directory structures; all files under 2000 lines

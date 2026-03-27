@@ -6,7 +6,7 @@
 
 QuantRS2-Core is the foundational library of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing a comprehensive suite of quantum computing primitives, algorithms, and optimizations that power the entire ecosystem.
 
-## Version 0.1.3 PRODUCTION READY (2026-03-23)
+## Version 0.1.3 PRODUCTION READY (2026-03-27)
 
 **Core Module - Algorithm Correctness & QML Enhancement Release**
 
@@ -32,7 +32,7 @@ This release focuses on algorithm correctness, new decomposition implementations
 - **GPU Acceleration**: Full GPU support with Metal backend (macOS) and cross-platform compatibility
 
 ### Production Features
-- 2,904 public items, 0 todo/unimplemented stubs, 0 unwrap() in production code
+- 4,794 public items, 0 todo/unimplemented stubs, 0 unwrap() in production code
 - 30+ qubit simulation capabilities
 - Comprehensive gate decomposition algorithms
 - Advanced error correction and fault-tolerance

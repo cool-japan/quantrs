@@ -162,7 +162,7 @@ impl PyZNEResult {
     }
 
     #[getter]
-    fn raw_data(&self, py: Python) -> PyResult<PyObject> {
+    fn raw_data(&self, py: Python) -> PyResult<Py<PyAny>> {
         let list = PyList::empty(py);
         for (scale, value) in &self.inner.raw_data {
             let tuple = (scale, value);

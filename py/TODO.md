@@ -1,6 +1,6 @@
 # quantrs2-py Roadmap
 
-## v0.1.3 (2026-03-23)
+## v0.1.3 (2026-03-27)
 - 108 public API items; aligned with QuantRS2 v0.1.3 workspace
 
 ## Future Enhancements

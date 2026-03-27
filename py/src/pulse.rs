@@ -298,7 +298,7 @@ impl PyPulseSchedule {
 
     /// Get metadata as dict
     #[getter]
-    fn metadata(&self, py: Python) -> PyResult<PyObject> {
+    fn metadata(&self, py: Python) -> PyResult<Py<PyAny>> {
         let dict = PyDict::new(py);
         for (key, value) in &self.inner.metadata {
             dict.set_item(key, value)?;

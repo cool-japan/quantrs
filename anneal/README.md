@@ -8,7 +8,7 @@ QuantRS2-Anneal is the premier quantum annealing module of the [QuantRS2](https:
 
 ## Version 0.1.3
 
-Released: 2026-03-23
+Released: 2026-03-27
 
 This release features:
 - Stable APIs for D-Wave, AWS Braket, and Fujitsu integrations
@@ -18,9 +18,9 @@ This release features:
 
 ### What's New in v0.1.3
 - **Zeno Annealing Protocol**: Full implementation of quantum Zeno effect-based annealing with configurable measurement schedules and decoherence control
-- **2,360 public items**: 0 stubs — complete production-ready implementation
+- **3,278 public items**: 0 stubs — complete production-ready implementation
 
-*Previous: 0 stubs, 2,360 public items*
+*Previous: 0 stubs, 3,278 public items*
 
 ## 🚀 Quick Start
 

@@ -6,7 +6,7 @@
 
 **Unified facade for QuantRS2: simplified quantum computing in Rust**
 
-**Version 0.1.3** — Released: 2026-03-23 — 58 public items
+**Version 0.1.3** — Released: 2026-03-27 — 132 public items
 
 The `quantrs2` facade crate provides a unified entry point to the entire QuantRS2 quantum computing framework. It offers hierarchical preludes, comprehensive system management, and developer utilities—all with zero runtime overhead.
 

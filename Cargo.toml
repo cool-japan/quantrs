@@ -144,8 +144,8 @@ approx = "0.5"                   # Test-only usage, acceptable
 
 # Essential SciRS2 dependencies for QuantRS2 - COMPREHENSIVE INTEGRATION
 # Status: Production Ready with SciRS2 foundation
-# Using scirs2 0.1.2+ from crates.io
-scirs2-core = { version = "0.3.4", default-features = false, features = [
+# Using scirs2 0.4.0 from crates.io
+scirs2-core = { version = "0.4.0", default-features = false, features = [
     "serialization",  # Complex<T> serde support
     "linalg",         # ndarray-linalg integration (solve, svd, eigh)
     "simd",           # SIMD acceleration
@@ -158,22 +158,22 @@ scirs2-core = { version = "0.3.4", default-features = false, features = [
 ] }
 
 # HIGHLY LIKELY REQUIRED SciRS2 crates
-scirs2-autograd = { version = "0.3.4", default-features = false }  # Primary source for ndarray types
-scirs2-linalg = { version = "0.3.4", default-features = false }
-scirs2-optimize = { version = "0.3.4", default-features = false }
-scirs2-special = { version = "0.3.4", default-features = false }
-scirs2-sparse = { version = "0.3.4", default-features = false }
-scirs2-fft = { version = "0.3.4", default-features = false }
+scirs2-autograd = { version = "0.4.0", default-features = false }  # Primary source for ndarray types
+scirs2-linalg = { version = "0.4.0", default-features = false }
+scirs2-optimize = { version = "0.4.0", default-features = false }
+scirs2-special = { version = "0.4.0", default-features = false }
+scirs2-sparse = { version = "0.4.0", default-features = false }
+scirs2-fft = { version = "0.4.0", default-features = false, features = ["oxifft"] }
 
 # CONDITIONALLY REQUIRED SciRS2 crates
-scirs2-neural = { version = "0.3.4", default-features = false }
-scirs2-metrics = { version = "0.3.4", default-features = false }
-scirs2-stats = { version = "0.3.4", default-features = false }
-scirs2-cluster = { version = "0.3.4", default-features = false }
-scirs2-graph = { version = "0.3.4", default-features = false }
+scirs2-neural = { version = "0.4.0", default-features = false }
+scirs2-metrics = { version = "0.4.0", default-features = false }
+scirs2-stats = { version = "0.4.0", default-features = false }
+scirs2-cluster = { version = "0.4.0", default-features = false }
+scirs2-graph = { version = "0.4.0", default-features = false }
 
 # OptiRS integration for advanced optimization (VQE, QAOA) 
-optirs-core = { version = "0.3.0", default-features = false }
+optirs-core = { version = "0.3.1", default-features = false }
 
 # Performance and parallel computing
 # rayon = "1.10.0"               # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
@@ -216,7 +216,7 @@ async-trait = "0.1"
 
 # Python bindings and FFI
 pyo3 = { version = "0.28.2", default-features = false, features = ["extension-module"] }
-scirs2-numpy = { version = "0.3.4", default-features = false }  # SciRS2-compatible numpy bindings
+scirs2-numpy = { version = "0.4.0", default-features = false }  # SciRS2-compatible numpy bindings
 
 # Utility libraries
 uuid = { version = "1.22.0", features = ["v4", "serde"] }

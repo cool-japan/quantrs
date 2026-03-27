@@ -5,9 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.3] - 2026-03-23
+## [0.1.3] - 2026-03-27
 
-### Further Enhancements (2026-03-23)
+### Further Enhancements (2026-03-27)
 
 #### Policy Compliance — Files Split Below 2000-Line Limit
 - `quantrs2/src/lib.rs` (2073→1680): removed duplicate inline test block, use external `feature_gate_tests.rs`
