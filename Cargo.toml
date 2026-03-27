@@ -104,7 +104,7 @@ authors = ["COOLJAPAN OU"]
 edition = "2021"
 rust-version = "1.86.0"
 repository = "https://github.com/cool-japan/quantrs"
-license = "MIT OR Apache-2.0"
+license = "Apache-2.0"
 keywords = ["quantum", "computing", "simulator", "annealing", "gate"]
 categories = ["science", "simulation"]
 
@@ -204,7 +204,7 @@ oxiarc-lz4 = "0.2.6"      # Pure Rust LZ4 (COOLJAPAN Policy: replaces lz4 crate)
 md5 = "0.8"
 
 # GPU computing support
-wgpu = { version = "29.0.0" }
+wgpu = { version = "29.0.1" }
 bytemuck = { version = "1.25.0", features = ["derive"] }
 ocl = "0.19.7"
 
@@ -219,7 +219,7 @@ pyo3 = { version = "0.28.2", default-features = false, features = ["extension-mo
 scirs2-numpy = { version = "0.4.0", default-features = false }  # SciRS2-compatible numpy bindings
 
 # Utility libraries
-uuid = { version = "1.22.0", features = ["v4", "serde"] }
+uuid = { version = "1.23.0", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1.12.3"
 colored = "3.1"
@@ -262,7 +262,7 @@ criterion = { version = "0.8", features = ["html_reports", "async_tokio"] }
 tempfile = "3.27"
 
 # NumRS2 ecosystem dependencies
-numrs2 = "0.3.1"
+numrs2 = "0.3.2"
 pandrs = "0.2.0"  # Latest available on crates.io
 
 [profile.dev]

@@ -9,6 +9,7 @@ license.workspace = true
 keywords = ["quantum", "computing", "device", "hardware", "connectivity"]
 categories = ["science", "simulation", "hardware-support"]
 description = "Quantum device connectors for the QuantRS2 framework"
+readme = "README.md"
 
 [dependencies]
 scirs2-fft = { workspace = true }

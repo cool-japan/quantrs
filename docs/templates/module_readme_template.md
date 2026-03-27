@@ -2,7 +2,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/quantrs2-[modulename].svg)](https://crates.io/crates/quantrs2-[modulename])
 [![Documentation](https://docs.rs/quantrs2-[modulename]/badge.svg)](https://docs.rs/quantrs2-[modulename])
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
 
 QuantRS2-[ModuleName] is part of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing [specific functionality].
 
@@ -77,9 +77,4 @@ This module is designed to work seamlessly with:
 
 ## License
 
-This project is licensed under either:
-
-- [Apache License, Version 2.0](../LICENSE-APACHE)
-- [MIT License](../LICENSE-MIT)
-
-at your option.
+This project is licensed under the [Apache License, Version 2.0](../LICENSE).

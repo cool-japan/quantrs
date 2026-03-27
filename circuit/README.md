@@ -2,11 +2,13 @@
 
 [![Crates.io](https://img.shields.io/crates/v/quantrs2-circuit.svg)](https://crates.io/crates/quantrs2-circuit)
 [![Documentation](https://docs.rs/quantrs2-circuit/badge.svg)](https://docs.rs/quantrs2-circuit)
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
 
 QuantRS2-Circuit is the comprehensive quantum circuit construction and optimization engine of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing advanced circuit representation, analysis, optimization, and compilation capabilities for quantum computing applications.
 
 ## Version 0.1.3 (2026-03-27)
+
+**2,004 public items, 0 stubs** — complete production-ready implementation.
 
 This release leverages [SciRS2](https://github.com/cool-japan/scirs2) v0.1.3 integration with refined patterns for enhanced performance in:
 - Graph-based circuit optimization algorithms
@@ -389,9 +391,4 @@ This module is designed to work seamlessly with:
 
 ## License
 
-This project is licensed under either:
-
-- [Apache License, Version 2.0](../LICENSE-APACHE)
-- [MIT License](../LICENSE-MIT)
-
-at your option.
+This project is licensed under the [Apache License, Version 2.0](../LICENSE).

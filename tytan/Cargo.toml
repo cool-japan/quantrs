@@ -9,6 +9,7 @@ license.workspace = true
 keywords = ["quantum", "computing", "annealing", "tytan", "optimization"]
 categories = ["science", "algorithms"]
 description = "High-level quantum annealing interface inspired by Tytan for the QuantRS2 framework"
+readme = "README.md"
 
 [dependencies]
 quantrs2-core.workspace = true

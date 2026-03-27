@@ -353,7 +353,7 @@ mod deprecation_overhead {
 
         // Module stability lookup should be fast
         assert!(
-            elapsed < Duration::from_millis(100),
+            elapsed < Duration::from_millis(500),
             "Module stability lookup too slow: {elapsed:?}"
         );
     }

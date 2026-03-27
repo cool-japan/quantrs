@@ -1,6 +1,6 @@
 # QuantRS2: Rust Quantum Computing Framework
 
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
 
 | Crate | Crate Version | Python Package | Documentation |
 |-------|--------------|---------------|---------------|
@@ -12,10 +12,29 @@
 | **quantrs2-anneal** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-anneal.svg)](https://crates.io/crates/quantrs2-anneal) | | [![Documentation](https://docs.rs/quantrs2-anneal/badge.svg)](https://docs.rs/quantrs2-anneal) |
 | **quantrs2-tytan** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-tytan.svg)](https://crates.io/crates/quantrs2-tytan) | | [![Documentation](https://docs.rs/quantrs2-tytan/badge.svg)](https://docs.rs/quantrs2-tytan) |
 | **quantrs2-py** | | [![PyPI](https://img.shields.io/pypi/v/quantrs2.svg)](https://pypi.org/project/quantrs2/) | |
+| **quantrs2-symengine-pure** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-symengine-pure.svg)](https://crates.io/crates/quantrs2-symengine-pure) | | [![Documentation](https://docs.rs/quantrs2-symengine-pure/badge.svg)](https://docs.rs/quantrs2-symengine-pure) |
+| **quantrs2-examples** | [![Crates.io](https://img.shields.io/crates/v/quantrs2-examples.svg)](https://crates.io/crates/quantrs2-examples) | | [![Documentation](https://docs.rs/quantrs2-examples/badge.svg)](https://docs.rs/quantrs2-examples) |
 
 QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing framework that provides a modular, high-performance toolkit for quantum simulation, algorithm development, and hardware interaction.
 
-**Current Version**: v0.1.3
+**Current Version**: v0.1.3 (released 2026-03-27)
+
+**Project Stats**: 965,802 total LoC | 777,061 Rust LoC across 2,663 files | 4,707 tests passing (0 failures, 69 skipped)
+
+### Crate Survey
+
+| Crate | Public APIs | Stubs | Status |
+|-------|-------------|-------|--------|
+| quantrs2-core | 4,820 | 0 | Alpha |
+| quantrs2-circuit | 2,004 | 0 | Alpha |
+| quantrs2-sim | 3,527 | 0 | Alpha |
+| quantrs2-device | 8,732 | 0 | Alpha |
+| quantrs2-ml | 4,223 | 0 | Alpha |
+| quantrs2-anneal | 3,895 | 0 | Alpha |
+| quantrs2-tytan | 2,567 | 0 | Alpha |
+| quantrs2-py | 282 | 0 | Alpha |
+| quantrs2-symengine-pure | 333 | 0 | Alpha |
+| quantrs2-examples | - | - | Alpha |
 
 ## Features
 
@@ -39,7 +58,7 @@ QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing fr
 
 ## Project Structure
 
-QuantRS2 is organized as a workspace with several crates:
+QuantRS2 is organized as a workspace with 11 crates:
 
 - **[quantrs2-core](core/README.md)**: Core types, traits, and abstractions shared across the ecosystem
 - **[quantrs2-circuit](circuit/README.md)**: Quantum circuit representation and DSL
@@ -50,6 +69,7 @@ QuantRS2 is organized as a workspace with several crates:
 - **[quantrs2-py](py/README.md)**: Python bindings with PyO3
 - **[quantrs2-tytan](tytan/README.md)**: High-level quantum annealing library
 - **quantrs2-symengine-pure**: Pure Rust symbolic computation engine (no C++ dependencies)
+- **[quantrs2-examples](examples/README.md)**: Example programs and demonstrations
 
 ## Getting Started
 
@@ -239,7 +259,7 @@ See [TODO.md](TODO.md) for the development roadmap and upcoming features.
 The QuantRS2 project maintains high code quality standards:
 
 - All code compiles with zero warnings when using `cargo clippy -- -D warnings`
-- Modern Rust APIs are used throughout (rand 0.9+, ndarray 0.15+)
+- Modern Rust APIs are used throughout with SciRS2 integration
 - CI checks enforce compilation without warnings
 - Dead code is appropriately marked with `#[allow(dead_code)]` for future API stability
 
@@ -410,9 +430,4 @@ cargo test --features "parallel,scirs,plotters"
 
 ## License
 
-This project is licensed under either:
-
-- Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
-
-at your option.
+This project is licensed under the [Apache License, Version 2.0](../LICENSE).

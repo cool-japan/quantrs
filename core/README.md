@@ -2,7 +2,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/quantrs2-core.svg)](https://crates.io/crates/quantrs2-core)
 [![Documentation](https://docs.rs/quantrs2-core/badge.svg)](https://docs.rs/quantrs2-core)
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
 
 QuantRS2-Core is the foundational library of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing a comprehensive suite of quantum computing primitives, algorithms, and optimizations that power the entire ecosystem.
 
@@ -32,7 +32,7 @@ This release focuses on algorithm correctness, new decomposition implementations
 - **GPU Acceleration**: Full GPU support with Metal backend (macOS) and cross-platform compatibility
 
 ### Production Features
-- 4,794 public items, 0 todo/unimplemented stubs, 0 unwrap() in production code
+- 4,820 public items, 0 todo/unimplemented stubs, 0 unwrap() in production code
 - 30+ qubit simulation capabilities
 - Comprehensive gate decomposition algorithms
 - Advanced error correction and fault-tolerance
@@ -391,9 +391,4 @@ fn batch_and_gpu_example() -> QuantRS2Result<()> {
 
 ## License
 
-This project is licensed under either:
-
-- [Apache License, Version 2.0](../LICENSE-APACHE)
-- [MIT License](../LICENSE-MIT)
-
-at your option.
+This project is licensed under the [Apache License, Version 2.0](../LICENSE).

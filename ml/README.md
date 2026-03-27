@@ -1,7 +1,7 @@
 # QuantRS2-ML: Advanced Quantum Machine Learning Suite
 
 [![Crates.io](https://img.shields.io/crates/v/quantrs2-ml.svg)](https://crates.io/crates/quantrs2-ml)
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
 
 QuantRS2-ML is the comprehensive quantum machine learning library of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing cutting-edge quantum algorithms, hybrid architectures, and industry-specific applications for next-generation artificial intelligence and data science.
 
@@ -19,9 +19,7 @@ This release incorporates [SciRS2](https://github.com/cool-japan/scirs2) v0.1.3 
 - **QNN Tutorials**: Comprehensive quantum neural network tutorials with step-by-step examples
 - **SMO-based QSVM**: Sequential Minimal Optimization for quantum support vector machines with Cholesky fallback for robust kernel computation
 - **Simulator Backends**: Expanded simulator backends with Pauli expectation value support
-- **4,218 public items**: 0 stubs — full production-ready implementation
-
-*Previous: 0 stubs, 4,218 public items*
+- **4,223 public items**: 0 stubs — full production-ready implementation
 
 ## Comprehensive Features
 
@@ -181,9 +179,4 @@ quantrs2-ml = { version = "0.1.3", features = ["gpu"] }
 
 ## License
 
-This project is licensed under either of:
-
-- MIT license ([LICENSE-MIT](../LICENSE-MIT) or https://opensource.org/licenses/MIT)
-- Apache License, Version 2.0 ([LICENSE-APACHE](../LICENSE-APACHE) or https://www.apache.org/licenses/LICENSE-2.0)
-
-at your option.
+This project is licensed under the Apache License, Version 2.0 ([LICENSE](../LICENSE) or https://www.apache.org/licenses/LICENSE-2.0).

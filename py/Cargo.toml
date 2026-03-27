@@ -9,6 +9,7 @@ license.workspace = true
 keywords = ["quantum", "computing", "python", "bindings", "pyo3"]
 categories = ["science", "api-bindings"]
 description = "Python bindings for the QuantRS2 framework"
+readme = "README.md"
 # Exclude from standard publishing - this should be published through Maturin/PyPI
 publish = false
 build = "build.rs"

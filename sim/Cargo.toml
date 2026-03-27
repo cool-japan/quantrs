@@ -9,6 +9,7 @@ license.workspace = true
 keywords = ["quantum", "computing", "simulator", "state-vector", "gates"]
 categories = ["science", "simulation"]
 description = "Quantum circuit simulators for the QuantRS2 framework"
+readme = "README.md"
 
 [dependencies]
 quantrs2-core.workspace = true

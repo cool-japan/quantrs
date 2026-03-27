@@ -170,7 +170,7 @@ Join our growing community of quantum developers:
 
 ## 📄 License
 
-QuantRS2 is open source software licensed under the MIT License. See [LICENSE](https://github.com/quantrs/quantrs2/blob/main/LICENSE) for details.
+QuantRS2 is open source software licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/cool-japan/quantrs/blob/main/LICENSE) for details.
 
 ---
 

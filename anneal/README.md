@@ -2,7 +2,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/quantrs2-anneal.svg)](https://crates.io/crates/quantrs2-anneal)
 [![Documentation](https://docs.rs/quantrs2-anneal/badge.svg)](https://docs.rs/quantrs2-anneal)
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
 
 QuantRS2-Anneal is the premier quantum annealing module of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing comprehensive support for quantum annealing, optimization problems, and quantum-inspired algorithms.
 
@@ -18,9 +18,7 @@ This release features:
 
 ### What's New in v0.1.3
 - **Zeno Annealing Protocol**: Full implementation of quantum Zeno effect-based annealing with configurable measurement schedules and decoherence control
-- **3,278 public items**: 0 stubs — complete production-ready implementation
-
-*Previous: 0 stubs, 3,278 public items*
+- **3,895 public items**: 0 stubs — complete production-ready implementation
 
 ## 🚀 Quick Start
 
@@ -453,12 +451,7 @@ We welcome contributions! Please see our [Contributing Guide](../CONTRIBUTING.md
 
 ## 📄 License
 
-This project is licensed under either:
-
-- [Apache License, Version 2.0](../LICENSE-APACHE)
-- [MIT License](../LICENSE-MIT)
-
-at your option.
+This project is licensed under the [Apache License, Version 2.0](../LICENSE).
 
 ## 🔬 Research and Citations
 

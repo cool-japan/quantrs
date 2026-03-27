@@ -278,7 +278,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - WebAssembly (wasm32)
 
 ### License
-- Dual licensed under MIT OR Apache-2.0
+- Dual licensed under Apache-2.0
 
 ### Authors
 - COOLJAPAN OU (Team Kitasan)

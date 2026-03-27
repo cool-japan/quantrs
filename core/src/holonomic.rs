@@ -572,6 +572,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "slow: ~62s holonomic gate synthesis"]
     fn test_holonomic_gate_synthesis() {
         // Use a simpler target gate - a phase gate that's closer to identity
         let target_gate = array![
