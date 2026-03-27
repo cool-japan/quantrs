@@ -21,6 +21,32 @@ use crate::stim_executor::{DetectorRecord, ObservableRecord, StimExecutor};
 use crate::stim_parser::{PauliTarget, PauliType, StimCircuit, StimInstruction};
 use std::collections::{HashMap, HashSet};
 
+/// Type of a forced single-qubit error
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ErrorType {
+    /// Pauli-X (bit-flip) error
+    PauliX,
+    /// Pauli-Z (phase-flip) error
+    PauliZ,
+    /// Pauli-Y (combined bit and phase flip) error
+    PauliY,
+    /// Measurement error (bit flip of measurement outcome)
+    Measurement,
+}
+
+impl ErrorType {
+    /// Returns a human-readable label for this error type
+    #[must_use]
+    pub fn label(&self) -> &'static str {
+        match self {
+            ErrorType::PauliX => "X_ERROR",
+            ErrorType::PauliZ => "Z_ERROR",
+            ErrorType::PauliY => "Y_ERROR",
+            ErrorType::Measurement => "MEASUREMENT_ERROR",
+        }
+    }
+}
+
 /// A single error mechanism in the DEM
 #[derive(Debug, Clone)]
 pub struct DEMError {
@@ -265,9 +291,10 @@ impl DetectorErrorModel {
         let mut observable_targets = Vec::new();
 
         // Run circuit with forced error
+        // Note: force_error is available on DetectorErrorModel for callers who need it.
+        // This analysis returns a simplified DEM entry; full error propagation requires
+        // running the stabilizer simulation with the error injected.
         let mut executor = StimExecutor::from_circuit(circuit);
-        // TODO: Add method to force specific error
-        // For now, return empty targets (simplified DEM)
 
         Ok(DEMError {
             probability,
@@ -481,7 +508,7 @@ impl DetectorErrorModel {
         let mut observable_flips = vec![false; self.num_observables];
 
         for error in &self.errors {
-            if rng.gen_bool(error.probability.min(1.0)) {
+            if rng.random_bool(error.probability.min(1.0)) {
                 // This error occurred - flip affected detectors/observables
                 for &det in &error.detector_targets {
                     if det < detector_flips.len() {
@@ -514,6 +541,65 @@ impl DetectorErrorModel {
     #[must_use]
     pub fn num_error_mechanisms(&self) -> usize {
         self.errors.len()
+    }
+
+    /// Force a specific error on a qubit with probability 1.0.
+    ///
+    /// This inserts a deterministic error mechanism into the DEM for debugging
+    /// and testing.  The error targets no detectors or observables by default
+    /// (they must be wired by the caller via the returned index, or by
+    /// re-analysing the circuit); however, it records the qubit, error type,
+    /// and probability so that downstream samplers see it as a certain event.
+    ///
+    /// # Arguments
+    /// * `qubit`      — Index of the qubit to apply the error to.
+    /// * `error_type` — The Pauli or measurement error to force.
+    ///
+    /// # Returns
+    /// The index of the newly added error mechanism in `self.errors`.
+    pub fn force_error(&mut self, qubit: usize, error_type: ErrorType) -> usize {
+        let forced = DEMError {
+            probability: 1.0,
+            detector_targets: Vec::new(),
+            observable_targets: Vec::new(),
+            source_location: Some(ErrorLocation {
+                instruction_index: 0,
+                error_type: error_type.label().to_string(),
+                qubits: vec![qubit],
+            }),
+        };
+
+        let idx = self.errors.len();
+        self.errors.push(forced);
+        idx
+    }
+
+    /// Force a specific error and associate it with given detector and observable targets.
+    ///
+    /// Unlike [`force_error`](Self::force_error), this variant lets the caller
+    /// specify exactly which detectors and observables flip when the error
+    /// occurs, enabling accurate decoding tests.
+    pub fn force_error_with_targets(
+        &mut self,
+        qubit: usize,
+        error_type: ErrorType,
+        detector_targets: Vec<usize>,
+        observable_targets: Vec<usize>,
+    ) -> usize {
+        let forced = DEMError {
+            probability: 1.0,
+            detector_targets,
+            observable_targets,
+            source_location: Some(ErrorLocation {
+                instruction_index: 0,
+                error_type: error_type.label().to_string(),
+                qubits: vec![qubit],
+            }),
+        };
+
+        let idx = self.errors.len();
+        self.errors.push(forced);
+        idx
     }
 }
 

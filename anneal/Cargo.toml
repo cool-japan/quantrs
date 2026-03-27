@@ -9,6 +9,7 @@ license.workspace = true
 keywords = ["quantum", "computing", "annealing", "optimization", "ising"]
 categories = ["science", "algorithms"]
 description = "Quantum annealing support for the QuantRS2 framework"
+readme = "README.md"
 
 [dependencies]
 quantrs2-core.workspace = true

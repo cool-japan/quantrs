@@ -336,7 +336,7 @@ impl CrosstalkMitigationTestSuite {
             for j in 0..n {
                 if i != j {
                     // Add some randomness around the specified strength
-                    let noise = rng.gen_range(-0.01..0.01);
+                    let noise = rng.random_range(-0.01..0.01);
                     crosstalk_matrix[[i, j]] = params.crosstalk_strength + noise;
                 }
             }
@@ -541,7 +541,7 @@ pub mod data_utils {
             for i in 0..n_qubits {
                 for j in 0..n_qubits {
                     if i != j {
-                        let noise = rng.gen_range(-noise_level..noise_level);
+                        let noise = rng.random_range(-noise_level..noise_level);
                         let time_variation = (t as f64 * 0.1).sin() * 0.01;
                         data[[t, i, j]] = base_strength + noise + time_variation;
                     }

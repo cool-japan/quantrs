@@ -627,7 +627,7 @@ impl HybridNeuralNetwork {
         use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
         for param in &mut self.quantum_circuit.parameters {
-            *param += self.config.quantum_learning_rate * (rng.gen::<f64>() - 0.5) * 0.1;
+            *param += self.config.quantum_learning_rate * (rng.random::<f64>() - 0.5) * 0.1;
         }
         Ok(())
     }
@@ -638,10 +638,10 @@ impl HybridNeuralNetwork {
         let mut rng = thread_rng();
         for layer in &mut self.classical_layers {
             for weight in &mut layer.weights {
-                *weight += self.config.classical_learning_rate * (rng.gen::<f64>() - 0.5) * 0.1;
+                *weight += self.config.classical_learning_rate * (rng.random::<f64>() - 0.5) * 0.1;
             }
             for bias in &mut layer.biases {
-                *bias += self.config.classical_learning_rate * (rng.gen::<f64>() - 0.5) * 0.1;
+                *bias += self.config.classical_learning_rate * (rng.random::<f64>() - 0.5) * 0.1;
             }
         }
         Ok(())
@@ -701,7 +701,7 @@ impl DenseLayer {
         let mut rng = thread_rng();
         let limit = (6.0 / (input_size + output_size) as f64).sqrt();
         let weights = Array2::from_shape_fn((output_size, input_size), |_| {
-            (rng.gen::<f64>() - 0.5) * 2.0 * limit
+            (rng.random::<f64>() - 0.5) * 2.0 * limit
         });
         let biases = Array1::zeros(output_size);
 
@@ -841,7 +841,7 @@ impl FusionLayer {
                     classical_size.max(quantum_size),
                     classical_size + quantum_size,
                 ),
-                |_| rng.gen::<f64>() - 0.5,
+                |_| rng.random::<f64>() - 0.5,
             ),
             _ => Array2::eye(classical_size.max(quantum_size)),
         };

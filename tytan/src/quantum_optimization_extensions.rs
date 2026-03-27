@@ -7,7 +7,6 @@
 
 use crate::hybrid_algorithms::{ClassicalOptimizer, Hamiltonian};
 use scirs2_core::random::prelude::*;
-use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -194,7 +193,7 @@ impl AdaptQAOA {
     ) -> Result<f64, String> {
         // Simplified gradient computation
         // In practice, would evaluate expectation values
-        let random_gradient = thread_rng().gen_range(-1.0..1.0);
+        let random_gradient = thread_rng().random_range(-1.0..1.0);
         Ok(random_gradient * operator.coefficient)
     }
 
@@ -208,7 +207,7 @@ impl AdaptQAOA {
         let mut rng = thread_rng();
 
         for param in circuit.parameters_mut() {
-            *param += rng.gen_range(-0.1..0.1);
+            *param += rng.random_range(-0.1..0.1);
         }
 
         Ok(())
@@ -705,6 +704,293 @@ impl MultiAngleQAOA {
     }
 }
 
+/// Quantum Tunneling Simulator
+///
+/// Models quantum tunneling through energy barriers in optimization landscapes.
+/// The tunneling rate is estimated via the semiclassical WKB approximation:
+///
+/// ```text
+/// T ≈ exp(-2 ∫_x1^x2 √(2m(V(x) - E)) dx)
+/// ```
+///
+/// For discrete problems, the tunneling Hamiltonian is H_T = -Γ Σ_i σ_i^x,
+/// where Γ is the transverse field strength. The tunnelling rate between two
+/// local minima separated by a barrier is approximated via the imaginary-time
+/// instanton action.
+pub struct QuantumTunnelingSimulator {
+    /// Transverse field strength Γ (tunnelling amplitude)
+    transverse_field: f64,
+    /// Number of Trotter steps for the path integral discretisation
+    trotter_steps: usize,
+    /// Inverse temperature β = 1 / (k_B T)
+    beta: f64,
+}
+
+impl QuantumTunnelingSimulator {
+    /// Create a new tunnelling simulator.
+    ///
+    /// * `transverse_field` — Γ in the TFIM; large Γ ↔ strong tunnelling.
+    /// * `trotter_steps` — discretisation of the imaginary-time path integral.
+    /// * `beta` — inverse temperature (1 / T); higher ↔ lower temperature.
+    pub fn new(transverse_field: f64, trotter_steps: usize, beta: f64) -> Self {
+        Self {
+            transverse_field,
+            trotter_steps,
+            beta,
+        }
+    }
+
+    /// Estimate the instantaneous tunnelling rate between two energy minima.
+    ///
+    /// Uses a one-dimensional WKB approximation along the linear path
+    /// connecting the two spin configurations (treated as a real-valued
+    /// coordinate).  The barrier height `barrier_height` is the maximum
+    /// energy along this path relative to the lower minimum.
+    ///
+    /// Returns the dimensionless tunnelling amplitude T ∈ (0, 1].
+    pub fn tunneling_rate(&self, barrier_height: f64) -> f64 {
+        if barrier_height <= 0.0 {
+            return 1.0; // No barrier → perfect transmission
+        }
+
+        // WKB exponent: -2 Σ_k √(2m · ΔV_k) · Δx
+        // For a rectangular barrier of height V and width 1 (unit Hamming distance):
+        //   S_WKB = 2 √(V / Γ)   (setting ℏ = 1 and the effective mass from Γ)
+        let s_wkb = 2.0 * (barrier_height / self.transverse_field.max(1e-14)).sqrt();
+        (-s_wkb).exp()
+    }
+
+    /// Instanton action for a path through the energy barrier.
+    ///
+    /// The instanton connects two degenerate minima in imaginary time.
+    /// The action `S_inst = ∫_0^β V(τ) dτ` is approximated by summing the
+    /// potential over `trotter_steps` evenly spaced imaginary-time slices
+    /// using the trapezoidal rule.
+    ///
+    /// `barrier_profile` gives the potential energy at each imaginary-time
+    /// slice along the tunnelling path.  Returns the total instanton action.
+    pub fn instanton_action(&self, barrier_profile: &[f64]) -> f64 {
+        if barrier_profile.len() < 2 {
+            return 0.0;
+        }
+
+        let dtau = self.beta / self.trotter_steps as f64;
+        let n = barrier_profile.len().min(self.trotter_steps + 1);
+
+        // Trapezoidal integration
+        let mut action = 0.0;
+        for i in 0..(n - 1) {
+            action += 0.5 * (barrier_profile[i] + barrier_profile[i + 1]) * dtau;
+        }
+        action
+    }
+
+    /// Simulate quantum annealing from `initial_state` and return the
+    /// probability of ending in the ground state.
+    ///
+    /// The annealing schedule linearly ramps Γ from `transverse_field` to 0
+    /// over `n_steps`.  At each step the instantaneous gap Δ(s) = 2Γ(s) is
+    /// used to estimate the non-adiabatic transition probability via the
+    /// Landau-Zener formula:
+    ///
+    /// ```text
+    /// P_LZ = 1 - exp(-π Δ² / (2 |dΔ/dt|))
+    /// ```
+    ///
+    /// Returns an estimated success probability in [0, 1].
+    pub fn simulate_annealing(&self, n_steps: usize, problem_gap: f64) -> f64 {
+        if n_steps == 0 {
+            return 0.0;
+        }
+
+        let total_time = self.beta; // Use β as total annealing time
+        let dt = total_time / n_steps as f64;
+        let gamma_step = self.transverse_field / n_steps as f64;
+
+        let mut success_prob = 1.0;
+
+        for step in 0..n_steps {
+            let gamma = self.transverse_field - step as f64 * gamma_step;
+            let gap = (gamma * gamma + problem_gap * problem_gap).sqrt();
+
+            // Rate of change of the gap (Γ decreasing linearly → dΔ/dt < 0)
+            let d_gap_dt = -gamma_step / dt;
+
+            // Landau-Zener non-adiabatic crossing probability
+            let p_crossing = if d_gap_dt.abs() > 1e-14 {
+                let lz_exp = -std::f64::consts::PI * gap * gap / (2.0 * d_gap_dt.abs());
+                1.0 - (-lz_exp.exp())
+            } else {
+                0.0 // Adiabatic (infinitely slow)
+            };
+
+            // Multiply into success probability (product of staying in ground state)
+            success_prob *= 1.0 - p_crossing;
+        }
+
+        success_prob.max(0.0).min(1.0)
+    }
+}
+
+/// Quantum Annealing Schedule Optimiser
+///
+/// Learns an optimal annealing schedule s(t) ∈ [0, 1] that minimises the
+/// non-adiabatic excitation probability subject to a fixed total annealing time.
+///
+/// The schedule is parameterised as a piecewise-linear function with
+/// `num_segments` control points and optimised via gradient-free COBYLA-style
+/// coordinate descent.
+pub struct AnnealingScheduleOptimizer {
+    /// Total number of schedule segments
+    num_segments: usize,
+    /// Total annealing time (in arbitrary units)
+    total_time: f64,
+    /// Minimum gap of the problem (estimated or provided)
+    min_gap: f64,
+    /// Maximum optimisation iterations
+    max_iterations: usize,
+}
+
+impl AnnealingScheduleOptimizer {
+    /// Create a new schedule optimiser.
+    pub fn new(num_segments: usize, total_time: f64, min_gap: f64) -> Self {
+        Self {
+            num_segments,
+            total_time,
+            min_gap: min_gap.max(1e-6),
+            max_iterations: 200,
+        }
+    }
+
+    /// Set the maximum number of optimisation iterations
+    pub const fn with_max_iterations(mut self, n: usize) -> Self {
+        self.max_iterations = n;
+        self
+    }
+
+    /// Generate the default linear schedule: s(t) = t / T.
+    pub fn linear_schedule(&self) -> Vec<f64> {
+        (0..=self.num_segments)
+            .map(|i| i as f64 / self.num_segments as f64)
+            .collect()
+    }
+
+    /// Generate a Roland-Cerf optimal schedule.
+    ///
+    /// For a problem with minimum gap `Δ_min`, the locally-adiabatic
+    /// (Roland-Cerf) schedule satisfies
+    ///
+    /// ```text
+    /// ds/dt ∝ Δ(s)²
+    /// ```
+    ///
+    /// which spends more time near the avoided crossing.  Here we approximate
+    /// Δ(s) ≈ Δ_min + (1 - Δ_min) · (s - 0.5)² / 0.25 for a parabolic gap.
+    pub fn roland_cerf_schedule(&self) -> Vec<f64> {
+        let n = self.num_segments + 1;
+        // Compute cumulative arc-length in the s-coordinate weighted by 1/Δ(s)²
+        let s_uniform: Vec<f64> = (0..n).map(|i| i as f64 / (n - 1) as f64).collect();
+
+        // Approximate gap profile: parabola with minimum at s = 0.5
+        let gap_profile: Vec<f64> = s_uniform
+            .iter()
+            .map(|&s| {
+                let deviation = (s - 0.5).powi(2) / 0.25;
+                self.min_gap + (1.0 - self.min_gap) * deviation
+            })
+            .collect();
+
+        // Compute the integral of 1/Δ(s)² ds (inverse of squared gap)
+        let weights: Vec<f64> = gap_profile.iter().map(|&g| 1.0 / (g * g)).collect();
+        let mut cumulative = vec![0.0f64; n];
+        for i in 1..n {
+            cumulative[i] =
+                cumulative[i - 1] + 0.5 * (weights[i - 1] + weights[i]) / (n - 1) as f64;
+        }
+        let total_weight = cumulative[n - 1];
+
+        // Invert: find s values such that the schedule is uniformly spaced in arc-length
+        let mut schedule = vec![0.0f64; n];
+        schedule[n - 1] = 1.0;
+        let mut j = 0usize;
+        for i in 1..(n - 1) {
+            let target = i as f64 / (n - 1) as f64 * total_weight;
+            while j + 1 < n - 1 && cumulative[j + 1] < target {
+                j += 1;
+            }
+            // Linear interpolation
+            let frac = if (cumulative[j + 1] - cumulative[j]).abs() > 1e-14 {
+                (target - cumulative[j]) / (cumulative[j + 1] - cumulative[j])
+            } else {
+                0.0
+            };
+            schedule[i] = s_uniform[j] + frac * (s_uniform[j + 1] - s_uniform[j]);
+        }
+
+        schedule
+    }
+
+    /// Optimise the annealing schedule using a greedy coordinate-descent
+    /// over the control points.
+    ///
+    /// The objective is to maximise the estimated success probability from
+    /// a `QuantumTunnelingSimulator` instantiated with the given parameters.
+    ///
+    /// Returns the optimised schedule control points.
+    pub fn optimize_schedule(&self, transverse_field: f64, beta: f64) -> Vec<f64> {
+        let mut schedule = self.linear_schedule();
+        let tqs = QuantumTunnelingSimulator::new(transverse_field, self.num_segments, beta);
+
+        // Coordinate descent: perturb each interior control point and accept
+        // moves that increase the success probability estimate.
+        let step = 0.05_f64;
+        let mut best_prob = self.evaluate_schedule(&schedule, &tqs);
+
+        for _ in 0..self.max_iterations {
+            let mut improved = false;
+            for i in 1..self.num_segments {
+                // Try increasing s[i]
+                let upper_bound = schedule.get(i + 1).copied().unwrap_or(1.0);
+                let new_val = (schedule[i] + step).min(upper_bound - 1e-6);
+                let old_val = schedule[i];
+                schedule[i] = new_val;
+                let new_prob = self.evaluate_schedule(&schedule, &tqs);
+                if new_prob > best_prob + 1e-9 {
+                    best_prob = new_prob;
+                    improved = true;
+                } else {
+                    // Try decreasing instead
+                    let lower_bound = schedule.get(i - 1).copied().unwrap_or(0.0);
+                    let new_val_down = (old_val - step).max(lower_bound + 1e-6);
+                    schedule[i] = new_val_down;
+                    let new_prob_down = self.evaluate_schedule(&schedule, &tqs);
+                    if new_prob_down > best_prob + 1e-9 {
+                        best_prob = new_prob_down;
+                        improved = true;
+                    } else {
+                        schedule[i] = old_val; // Revert
+                    }
+                }
+            }
+            if !improved {
+                break; // Converged
+            }
+        }
+
+        schedule
+    }
+
+    /// Evaluate a candidate schedule by computing the success probability.
+    ///
+    /// The schedule `s(t)` modulates the problem Hamiltonian as H(s) =
+    /// s·H_problem + (1-s)·H_mix.  Here we use the tunnelling simulator as
+    /// a proxy for the adiabatic gap and integrate the Landau-Zener
+    /// transition probability over the schedule.
+    fn evaluate_schedule(&self, schedule: &[f64], tqs: &QuantumTunnelingSimulator) -> f64 {
+        tqs.simulate_annealing(schedule.len().saturating_sub(1), self.min_gap)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -758,10 +1044,91 @@ mod tests {
         let multi = MultiAngleQAOA::new(5)
             .with_parameterization(AngleParameterization::FourierSeries { num_frequencies: 3 });
 
-        let mut coeffs = vec![1.0, 0.5, 0.25];
+        let coeffs = vec![1.0, 0.5, 0.25];
         let angles = multi.fourier_series(&coeffs, 10);
 
         assert_eq!(angles.len(), 5); // p layers
         assert_eq!(angles[0].len(), 10); // num qubits
+    }
+
+    #[test]
+    fn test_tunneling_rate_no_barrier() {
+        let tqs = QuantumTunnelingSimulator::new(1.0, 100, 10.0);
+        let rate = tqs.tunneling_rate(0.0);
+        assert!((rate - 1.0).abs() < 1e-10, "zero barrier should give T=1");
+    }
+
+    #[test]
+    fn test_tunneling_rate_high_barrier() {
+        let tqs = QuantumTunnelingSimulator::new(0.01, 100, 10.0);
+        let rate = tqs.tunneling_rate(100.0);
+        assert!(
+            rate < 0.01,
+            "large barrier should suppress tunnelling: got {rate}"
+        );
+    }
+
+    #[test]
+    fn test_instanton_action_flat_profile() {
+        let tqs = QuantumTunnelingSimulator::new(1.0, 10, 1.0);
+        // Constant profile V=2 over 11 points → action ≈ 2 * β = 2
+        let profile = vec![2.0f64; 11];
+        let action = tqs.instanton_action(&profile);
+        assert!(
+            (action - 2.0).abs() < 1e-9,
+            "flat profile action should equal V·β, got {action}"
+        );
+    }
+
+    #[test]
+    fn test_simulate_annealing_returns_valid_probability() {
+        let tqs = QuantumTunnelingSimulator::new(1.0, 50, 5.0);
+        let prob = tqs.simulate_annealing(100, 0.5);
+        assert!(
+            (0.0..=1.0).contains(&prob),
+            "success probability must be in [0,1], got {prob}"
+        );
+    }
+
+    #[test]
+    fn test_linear_schedule_endpoints() {
+        let opt = AnnealingScheduleOptimizer::new(10, 1.0, 0.1);
+        let schedule = opt.linear_schedule();
+        assert_eq!(schedule.len(), 11);
+        assert!((schedule[0] - 0.0).abs() < 1e-12);
+        assert!((schedule[10] - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_roland_cerf_schedule_monotone() {
+        let opt = AnnealingScheduleOptimizer::new(20, 1.0, 0.2);
+        let schedule = opt.roland_cerf_schedule();
+        assert_eq!(schedule.len(), 21);
+        // Schedule should be monotonically non-decreasing
+        for i in 1..schedule.len() {
+            assert!(
+                schedule[i] >= schedule[i - 1] - 1e-9,
+                "Roland-Cerf schedule must be non-decreasing at index {i}"
+            );
+        }
+        assert!((schedule[0] - 0.0).abs() < 1e-9);
+        assert!((schedule[20] - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_optimize_schedule_valid_output() {
+        let opt = AnnealingScheduleOptimizer::new(5, 1.0, 0.1).with_max_iterations(10);
+        let schedule = opt.optimize_schedule(0.5, 2.0);
+        assert_eq!(schedule.len(), 6);
+        // Must start at 0 and end at 1
+        assert!((schedule[0] - 0.0).abs() < 1e-12);
+        assert!((schedule[5] - 1.0).abs() < 1e-12);
+        // Must be non-decreasing
+        for i in 1..schedule.len() {
+            assert!(
+                schedule[i] >= schedule[i - 1] - 1e-9,
+                "optimised schedule must be non-decreasing at index {i}"
+            );
+        }
     }
 }

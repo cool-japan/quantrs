@@ -395,7 +395,7 @@ impl QuantumBoltzmannMachine {
             weights: {
                 let mut weights = Array2::zeros((n_visible, n_hidden));
                 for element in &mut weights {
-                    *element = rng.gen_range(-0.01..0.01);
+                    *element = rng.random_range(-0.01..0.01);
                 }
                 weights
             },
@@ -562,7 +562,7 @@ impl QuantumBoltzmannMachine {
         let mut hidden = {
             let mut hidden = Array2::zeros((n_samples, self.n_hidden));
             for element in &mut hidden {
-                *element = if rng.gen::<bool>() { 1.0 } else { 0.0 };
+                *element = if rng.random::<bool>() { 1.0 } else { 0.0 };
             }
             hidden
         };
@@ -818,7 +818,9 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
+    #[ignore = "SA sampler reliably finds local-minimum all-zero assignment (energy=0) \
+                rather than the correct one-hot solution; the QUBO penalty structure \
+                requires a better solver or higher iteration count to be reliable"]
     fn test_quantum_clustering() {
         let data = array![[0.0, 0.0], [0.1, 0.1], [5.0, 5.0], [5.1, 5.1],];
 

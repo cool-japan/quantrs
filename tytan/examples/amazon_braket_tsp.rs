@@ -67,7 +67,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             qubo_matrix[[idx1, idx1]] -= penalty;
             for t2 in (t1 + 1)..num_cities {
                 let idx2 = var_idx(i, t2);
-                qubo_matrix[[idx1, idx2]] += 2.0 * penalty;
+                qubo_matrix[[idx1, idx2]] = 2.0f64.mul_add(penalty, qubo_matrix[[idx1, idx2]]);
             }
         }
     }
@@ -79,7 +79,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             qubo_matrix[[idx1, idx1]] -= penalty;
             for i2 in (i1 + 1)..num_cities {
                 let idx2 = var_idx(i2, t);
-                qubo_matrix[[idx1, idx2]] += 2.0 * penalty;
+                qubo_matrix[[idx1, idx2]] = 2.0f64.mul_add(penalty, qubo_matrix[[idx1, idx2]]);
             }
         }
     }

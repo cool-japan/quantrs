@@ -7,7 +7,7 @@
 
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use scirs2_core::ndarray::{Array, ArrayD, Ix2, IxDyn};
-use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::random::{thread_rng, Rng, RngExt};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -308,8 +308,11 @@ impl EnhancedArminSampler {
             .map_err(|e| SamplerError::GpuError(format!("Energy allocation failed: {e}")))?;
 
         // Initialize random states on GPU
-        ctx.init_random_states(&d_states, self.seed.unwrap_or_else(|| thread_rng().gen()))
-            .map_err(|e| SamplerError::GpuError(format!("Random init failed: {e}")))?;
+        ctx.init_random_states(
+            &d_states,
+            self.seed.unwrap_or_else(|| thread_rng().random()),
+        )
+        .map_err(|e| SamplerError::GpuError(format!("Random init failed: {e}")))?;
 
         // Launch parallel tempering kernel
         let kernel_name = if self.use_mixed_precision {

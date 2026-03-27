@@ -4,6 +4,7 @@ use super::gaussian_process::{GaussianProcessSurrogate, KernelFunction};
 use crate::ising::IsingError;
 use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::random::Rng;
+use scirs2_core::RngExt;
 use thiserror::Error;
 
 /// Errors that can occur in Bayesian optimization
@@ -273,15 +274,15 @@ impl BayesianHyperoptimizer {
         for param in &self.parameter_space.parameters {
             match &param.bounds {
                 ParameterBounds::Continuous { min, max } => {
-                    let value = rng.gen_range(*min..*max);
+                    let value = rng.random_range(*min..*max);
                     point.push(value);
                 }
                 ParameterBounds::Discrete { min, max } => {
-                    let value = rng.gen_range(*min..*max) as f64;
+                    let value = rng.random_range(*min..*max) as f64;
                     point.push(value);
                 }
                 ParameterBounds::Categorical { values } => {
-                    let index = rng.gen_range(0..values.len()) as f64;
+                    let index = rng.random_range(0..values.len()) as f64;
                     point.push(index);
                 }
             }

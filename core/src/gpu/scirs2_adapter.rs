@@ -526,7 +526,7 @@ impl GpuKernel for SciRS2KernelAdapter {
 
         // Simulate measurement outcome
         use scirs2_core::random::prelude::*;
-        let outcome = thread_rng().gen::<f64>() < prob_one;
+        let outcome = thread_rng().random::<f64>() < prob_one;
 
         Ok((outcome, if outcome { prob_one } else { 1.0 - prob_one }))
     }

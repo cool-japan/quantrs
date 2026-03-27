@@ -476,7 +476,7 @@ impl SolutionDistribution {
             use scirs2_core::random::prelude::*;
             let mut rng = StdRng::seed_from_u64(42);
 
-            Ok((0..data.nrows()).map(|_| rng.gen_range(0..k)).collect())
+            Ok((0..data.nrows()).map(|_| rng.random_range(0..k)).collect())
         }
     }
 

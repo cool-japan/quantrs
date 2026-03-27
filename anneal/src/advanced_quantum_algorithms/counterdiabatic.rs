@@ -7,6 +7,7 @@ use std::collections::HashMap;
 
 use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::RngExt;
 
 use super::error::{AdvancedQuantumError, AdvancedQuantumResult};
 use crate::ising::IsingModel;
@@ -334,7 +335,7 @@ impl CounterdiabaticDrivingOptimizer {
             } else {
                 0.2
             };
-            let noise = rng.gen_range(-0.3..0.3);
+            let noise = rng.random_range(-0.3..0.3);
             ising
                 .set_bias(i, cluster_bias + noise)
                 .map_err(AdvancedQuantumError::IsingError)?;
@@ -343,7 +344,7 @@ impl CounterdiabaticDrivingOptimizer {
         // Add local couplings (nearest neighbor and some next-nearest)
         for i in 0..(num_qubits - 1) {
             // Nearest neighbor
-            let coupling = rng.gen_range(-0.8..0.8);
+            let coupling = rng.random_range(-0.8..0.8);
             ising
                 .set_coupling(i, i + 1, coupling)
                 .map_err(AdvancedQuantumError::IsingError)?;
@@ -351,8 +352,8 @@ impl CounterdiabaticDrivingOptimizer {
 
         // Next-nearest neighbor (with lower probability)
         for i in 0..(num_qubits.saturating_sub(2)) {
-            if rng.gen_bool(0.5) {
-                let coupling = rng.gen_range(-0.4..0.4);
+            if rng.random_bool(0.5) {
+                let coupling = rng.random_range(-0.4..0.4);
                 ising
                     .set_coupling(i, i + 2, coupling)
                     .map_err(AdvancedQuantumError::IsingError)?;
@@ -372,7 +373,7 @@ impl CounterdiabaticDrivingOptimizer {
 
         // Add random biases
         for i in 0..num_qubits {
-            let bias = rng.gen_range(-1.5..1.5);
+            let bias = rng.random_range(-1.5..1.5);
             ising
                 .set_bias(i, bias)
                 .map_err(AdvancedQuantumError::IsingError)?;
@@ -382,8 +383,8 @@ impl CounterdiabaticDrivingOptimizer {
         let coupling_probability = 0.4;
         for i in 0..num_qubits {
             for j in (i + 1)..num_qubits {
-                if rng.gen::<f64>() < coupling_probability {
-                    let coupling = rng.gen_range(-1.0..1.0);
+                if rng.random::<f64>() < coupling_probability {
+                    let coupling = rng.random_range(-1.0..1.0);
                     ising
                         .set_coupling(i, j, coupling)
                         .map_err(AdvancedQuantumError::IsingError)?;
@@ -404,7 +405,7 @@ impl CounterdiabaticDrivingOptimizer {
 
         // Add moderate biases
         for i in 0..num_qubits {
-            let bias = rng.gen_range(-0.8..0.8);
+            let bias = rng.random_range(-0.8..0.8);
             ising
                 .set_bias(i, bias)
                 .map_err(AdvancedQuantumError::IsingError)?;
@@ -414,8 +415,8 @@ impl CounterdiabaticDrivingOptimizer {
         let coupling_probability = 0.25;
         for i in 0..num_qubits {
             for j in (i + 1)..num_qubits {
-                if rng.gen::<f64>() < coupling_probability {
-                    let coupling = rng.gen_range(-0.6..0.6);
+                if rng.random::<f64>() < coupling_probability {
+                    let coupling = rng.random_range(-0.6..0.6);
                     ising
                         .set_coupling(i, j, coupling)
                         .map_err(AdvancedQuantumError::IsingError)?;

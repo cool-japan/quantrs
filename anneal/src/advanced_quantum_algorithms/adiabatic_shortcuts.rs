@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::RngExt;
 
 use super::error::{AdvancedQuantumError, AdvancedQuantumResult};
 use crate::ising::IsingModel;
@@ -471,7 +472,7 @@ impl AdiabaticShortcutsOptimizer {
 
         // Add nearest-neighbor couplings for smoothness
         for i in 0..(num_qubits - 1) {
-            let coupling = 0.2f64.mul_add(rng.gen_range(-1.0..1.0), -0.5);
+            let coupling = 0.2f64.mul_add(rng.random_range(-1.0..1.0), -0.5);
             ising
                 .set_coupling(i, i + 1, coupling)
                 .map_err(AdvancedQuantumError::IsingError)?;
@@ -479,10 +480,10 @@ impl AdiabaticShortcutsOptimizer {
 
         // Add some long-range couplings
         for _ in 0..(num_qubits / 4) {
-            let i = rng.gen_range(0..num_qubits);
-            let j = rng.gen_range(0..num_qubits);
+            let i = rng.random_range(0..num_qubits);
+            let j = rng.random_range(0..num_qubits);
             if i != j {
-                let coupling = 0.1 * rng.gen_range(-1.0..1.0);
+                let coupling = 0.1 * rng.random_range(-1.0..1.0);
                 ising
                     .set_coupling(i, j, coupling)
                     .map_err(AdvancedQuantumError::IsingError)?;
@@ -512,7 +513,7 @@ impl AdiabaticShortcutsOptimizer {
         for i in 0..num_qubits {
             for j in (i + 1)..num_qubits {
                 if (i + j) % 3 == 0 {
-                    let coupling = 0.3 * if rng.gen_bool(0.5) { 1.0 } else { -1.0 };
+                    let coupling = 0.3 * if rng.random_bool(0.5) { 1.0 } else { -1.0 };
                     ising
                         .set_coupling(i, j, coupling)
                         .map_err(AdvancedQuantumError::IsingError)?;
@@ -533,7 +534,7 @@ impl AdiabaticShortcutsOptimizer {
 
         // Add random biases
         for i in 0..num_qubits {
-            let bias = rng.gen_range(-1.0..1.0);
+            let bias = rng.random_range(-1.0..1.0);
             ising
                 .set_bias(i, bias)
                 .map_err(AdvancedQuantumError::IsingError)?;
@@ -543,8 +544,8 @@ impl AdiabaticShortcutsOptimizer {
         let coupling_probability = 0.3;
         for i in 0..num_qubits {
             for j in (i + 1)..num_qubits {
-                if rng.gen::<f64>() < coupling_probability {
-                    let coupling = rng.gen_range(-1.0..1.0);
+                if rng.random::<f64>() < coupling_probability {
+                    let coupling = rng.random_range(-1.0..1.0);
                     ising
                         .set_coupling(i, j, coupling)
                         .map_err(AdvancedQuantumError::IsingError)?;

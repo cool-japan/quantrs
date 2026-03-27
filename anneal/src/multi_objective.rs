@@ -355,7 +355,7 @@ impl MultiObjectiveOptimizer {
     pub fn new(config: MultiObjectiveConfig) -> Self {
         let rng = match config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
 
         Self { config, rng }
@@ -501,7 +501,7 @@ impl MultiObjectiveOptimizer {
         } else {
             // For more objectives, use random weights
             let mut weights: Vec<f64> = (0..num_objectives)
-                .map(|_| self.rng.gen_range(0.1..1.0))
+                .map(|_| self.rng.random_range(0.1..1.0))
                 .collect();
 
             // Normalize weights
@@ -518,7 +518,7 @@ impl MultiObjectiveOptimizer {
     fn generate_constraint_bounds(&mut self, num_objectives: usize, _run_index: usize) -> Vec<f64> {
         // Generate random constraint bounds
         (0..num_objectives)
-            .map(|_| self.rng.gen_range(-10.0..10.0))
+            .map(|_| self.rng.random_range(-10.0..10.0))
             .collect()
     }
 

@@ -118,8 +118,8 @@ impl CIMSimulator {
         // Initialize oscillator amplitudes (complex)
         let mut amplitudes: Vec<Complex64> = (0..n)
             .map(|_| {
-                let r = rng.gen_range(0.0..0.1);
-                let theta = rng.gen_range(0.0..2.0 * PI);
+                let r = rng.random_range(0.0..0.1);
+                let theta = rng.random_range(0.0..2.0 * PI);
                 Complex64::new(r * theta.cos(), r * theta.sin())
             })
             .collect();

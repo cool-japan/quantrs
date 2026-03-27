@@ -24,6 +24,7 @@ impl MockQuantumDevice {
     }
 }
 
+#[cfg(feature = "ibm")]
 #[async_trait::async_trait]
 impl QuantumDevice for MockQuantumDevice {
     async fn is_available(&self) -> DeviceResult<bool> {
@@ -46,6 +47,29 @@ impl QuantumDevice for MockQuantumDevice {
     }
 }
 
+#[cfg(not(feature = "ibm"))]
+impl QuantumDevice for MockQuantumDevice {
+    fn is_available(&self) -> DeviceResult<bool> {
+        Ok(self.is_available)
+    }
+
+    fn qubit_count(&self) -> DeviceResult<usize> {
+        Ok(self.qubit_count)
+    }
+
+    fn properties(&self) -> DeviceResult<HashMap<String, String>> {
+        let mut props = HashMap::new();
+        props.insert("device_type".to_string(), "mock".to_string());
+        props.insert("qubit_count".to_string(), self.qubit_count.to_string());
+        Ok(props)
+    }
+
+    fn is_simulator(&self) -> DeviceResult<bool> {
+        Ok(self.is_simulator)
+    }
+}
+
+#[cfg(feature = "ibm")]
 #[async_trait]
 impl CircuitExecutor for MockQuantumDevice {
     async fn execute_circuit<const N: usize>(
@@ -88,6 +112,52 @@ impl CircuitExecutor for MockQuantumDevice {
     }
 
     async fn estimated_queue_time<const N: usize>(
+        &self,
+        _circuit: &Circuit<N>,
+    ) -> DeviceResult<std::time::Duration> {
+        Ok(std::time::Duration::from_secs(1))
+    }
+}
+
+#[cfg(not(feature = "ibm"))]
+impl CircuitExecutor for MockQuantumDevice {
+    fn execute_circuit<const N: usize>(
+        &self,
+        _circuit: &Circuit<N>,
+        shots: usize,
+    ) -> DeviceResult<CircuitResult> {
+        let mut counts = HashMap::new();
+        let all_zeros = "0".repeat(N);
+        counts.insert(all_zeros, shots);
+
+        let mut metadata = HashMap::new();
+        metadata.insert("device_type".to_string(), "mock".to_string());
+
+        Ok(CircuitResult {
+            counts,
+            shots,
+            metadata,
+        })
+    }
+
+    fn execute_circuits<const N: usize>(
+        &self,
+        circuits: Vec<&Circuit<N>>,
+        shots: usize,
+    ) -> DeviceResult<Vec<CircuitResult>> {
+        let mut results = Vec::new();
+        for circuit in circuits {
+            let result = self.execute_circuit(circuit, shots)?;
+            results.push(result);
+        }
+        Ok(results)
+    }
+
+    fn can_execute_circuit<const N: usize>(&self, _circuit: &Circuit<N>) -> DeviceResult<bool> {
+        Ok(N <= self.qubit_count)
+    }
+
+    fn estimated_queue_time<const N: usize>(
         &self,
         _circuit: &Circuit<N>,
     ) -> DeviceResult<std::time::Duration> {

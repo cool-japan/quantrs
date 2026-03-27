@@ -355,7 +355,7 @@ impl MLIntegrator {
             // Xavier initialization
             let scale = (2.0 / (input_size + output_size) as f64).sqrt();
             let weight_matrix = Array2::from_shape_fn((output_size, input_size), |_| {
-                scale * (thread_rng().gen::<f64>() - 0.5) * 2.0
+                scale * (thread_rng().random::<f64>() - 0.5) * 2.0
             });
 
             let bias_vector = Array1::zeros(output_size);
@@ -400,7 +400,7 @@ impl MLIntegrator {
             // Simplified weight update (gradient descent approximation)
             for weight_matrix in &mut weights {
                 for w in weight_matrix.iter_mut() {
-                    *w += learning_rate * (thread_rng().gen::<f64>() - 0.5) * 0.01;
+                    *w += learning_rate * (thread_rng().random::<f64>() - 0.5) * 0.01;
                 }
             }
         }

@@ -978,7 +978,7 @@ impl ErrorMitigationManager {
 
         // Apply scaled noise to solution
         for i in 0..corrupted_solution.len() {
-            if rng.gen::<f64>() < scaled_error_rate {
+            if rng.random::<f64>() < scaled_error_rate {
                 corrupted_solution[i] *= -1; // Flip spin
             }
         }

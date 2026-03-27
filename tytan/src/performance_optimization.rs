@@ -9,6 +9,7 @@ use quantrs2_core::platform::PlatformCapabilities;
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 // NOTE: Parallel feature removed per SciRS2 POLICY - use scirs2_core::parallel_ops directly
 use scirs2_core::simd_ops;
+use scirs2_core::RngExt;
 use std::sync::Arc;
 
 /// Optimized QUBO evaluation
@@ -267,10 +268,10 @@ impl OptimizedSA {
             } else {
                 // Sequential moves
                 for _ in 0..n {
-                    let bit = rng.gen_range(0..n);
+                    let bit = rng.random_range(0..n);
                     let delta = self.evaluator.delta_energy(&current.view(), bit);
 
-                    if delta < 0.0 || rng.gen::<f64>() < (-delta / temp).exp() {
+                    if delta < 0.0 || rng.random::<f64>() < (-delta / temp).exp() {
                         current[bit] = 1 - current[bit];
                         current_energy += delta;
 
@@ -326,7 +327,7 @@ impl OptimizedSA {
         // Select moves to accept
         let mut accepted = Vec::new();
         for (bit, delta) in deltas {
-            if delta < 0.0 || rng.gen::<f64>() < (-delta / temp).exp() {
+            if delta < 0.0 || rng.random::<f64>() < (-delta / temp).exp() {
                 accepted.push((bit, delta));
             }
         }

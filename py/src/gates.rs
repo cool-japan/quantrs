@@ -73,7 +73,7 @@ impl Gate {
     }
 
     /// Get the matrix representation as a list of complex numbers
-    fn matrix_list(&self, py: Python) -> PyResult<PyObject> {
+    fn matrix_list(&self, py: Python) -> PyResult<Py<PyAny>> {
         let matrix_vec = self
             .gate
             .matrix()
@@ -524,7 +524,7 @@ impl GateParameter {
 
     /// Check if parameter has a value
     #[getter]
-    const fn has_value(&self) -> bool {
+    fn has_value(&self) -> bool {
         self.param.has_value()
     }
 
@@ -825,43 +825,43 @@ impl CustomGate {
 
 /// Module function to create standard gates
 #[pyfunction]
-fn hadamard(qubit: usize) -> PyResult<Py<HadamardGate>> {
-    Python::with_gil(|py| Py::new(py, HadamardGate::new(qubit)))
+fn hadamard(py: Python, qubit: usize) -> PyResult<Py<HadamardGate>> {
+    Py::new(py, HadamardGate::new(qubit))
 }
 
 #[pyfunction]
-fn pauli_x(qubit: usize) -> PyResult<Py<PauliXGate>> {
-    Python::with_gil(|py| Py::new(py, PauliXGate::new(qubit)))
+fn pauli_x(py: Python, qubit: usize) -> PyResult<Py<PauliXGate>> {
+    Py::new(py, PauliXGate::new(qubit))
 }
 
 #[pyfunction]
-fn pauli_y(qubit: usize) -> PyResult<Py<PauliYGate>> {
-    Python::with_gil(|py| Py::new(py, PauliYGate::new(qubit)))
+fn pauli_y(py: Python, qubit: usize) -> PyResult<Py<PauliYGate>> {
+    Py::new(py, PauliYGate::new(qubit))
 }
 
 #[pyfunction]
-fn pauli_z(qubit: usize) -> PyResult<Py<PauliZGate>> {
-    Python::with_gil(|py| Py::new(py, PauliZGate::new(qubit)))
+fn pauli_z(py: Python, qubit: usize) -> PyResult<Py<PauliZGate>> {
+    Py::new(py, PauliZGate::new(qubit))
 }
 
 #[pyfunction]
-fn cnot(control: usize, target: usize) -> PyResult<Py<CNOTGate>> {
-    Python::with_gil(|py| Py::new(py, CNOTGate::new(control, target)))
+fn cnot(py: Python, control: usize, target: usize) -> PyResult<Py<CNOTGate>> {
+    Py::new(py, CNOTGate::new(control, target))
 }
 
 #[pyfunction]
-fn rx(qubit: usize, theta: f64) -> PyResult<Py<RXGate>> {
-    Python::with_gil(|py| Py::new(py, RXGate::new(qubit, theta)))
+fn rx(py: Python, qubit: usize, theta: f64) -> PyResult<Py<RXGate>> {
+    Py::new(py, RXGate::new(qubit, theta))
 }
 
 #[pyfunction]
-fn ry(qubit: usize, theta: f64) -> PyResult<Py<RYGate>> {
-    Python::with_gil(|py| Py::new(py, RYGate::new(qubit, theta)))
+fn ry(py: Python, qubit: usize, theta: f64) -> PyResult<Py<RYGate>> {
+    Py::new(py, RYGate::new(qubit, theta))
 }
 
 #[pyfunction]
-fn rz(qubit: usize, theta: f64) -> PyResult<Py<RZGate>> {
-    Python::with_gil(|py| Py::new(py, RZGate::new(qubit, theta)))
+fn rz(py: Python, qubit: usize, theta: f64) -> PyResult<Py<RZGate>> {
+    Py::new(py, RZGate::new(qubit, theta))
 }
 
 /// Register the gates module with Python

@@ -15,6 +15,7 @@
 
 use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::random::{thread_rng, Rng, SeedableRng};
+use scirs2_core::RngExt;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use thiserror::Error;
@@ -889,7 +890,7 @@ impl SchedulePredictionNetwork {
 
         let mut rng = match seed {
             Some(s) => ChaCha8Rng::seed_from_u64(s),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
 
         let mut layers = Vec::new();
@@ -904,7 +905,7 @@ impl SchedulePredictionNetwork {
 
             for row in &mut weights {
                 for weight in row {
-                    *weight = rng.gen_range(-scale..scale);
+                    *weight = rng.random_range(-scale..scale);
                 }
             }
 
@@ -1045,11 +1046,11 @@ impl ScheduleRLAgent {
 
     /// Select action using epsilon-greedy policy
     pub fn select_action(&self, state: &[f64]) -> AdaptiveScheduleResult<usize> {
-        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().gen());
+        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().random());
 
-        if rng.gen::<f64>() < self.config.min_epsilon {
+        if rng.random::<f64>() < self.config.min_epsilon {
             // Random exploration
-            Ok(rng.gen_range(0..self.config.action_space_size))
+            Ok(rng.random_range(0..self.config.action_space_size))
         } else {
             // Greedy action selection
             let q_values = self.q_network.forward(state)?;

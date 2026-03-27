@@ -694,7 +694,7 @@ impl TopologicalDevice {
         } else if prob_zero <= 0.0001 {
             false // Definitely |1⟩
         } else {
-            thread_rng().gen::<f64>() < prob_zero
+            thread_rng().random::<f64>() < prob_zero
         };
 
         // Apply measurement backaction
@@ -710,7 +710,7 @@ impl TopologicalDevice {
         } else {
             // Measurement in topological systems has very high fidelity
             let measurement_fidelity = 0.999;
-            if thread_rng().gen::<f64>() < measurement_fidelity {
+            if thread_rng().random::<f64>() < measurement_fidelity {
                 measured_zero
             } else {
                 !measured_zero

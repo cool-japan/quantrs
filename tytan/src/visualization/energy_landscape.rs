@@ -243,7 +243,7 @@ impl EnergyLandscape {
         let mut proj_matrix = Array2::<f64>::zeros((n_features, n_components));
         for i in 0..n_features {
             for j in 0..n_components {
-                proj_matrix[[i, j]] = rng.gen_range(-1.0..1.0);
+                proj_matrix[[i, j]] = rng.random_range(-1.0..1.0);
             }
         }
 

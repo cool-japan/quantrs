@@ -333,8 +333,8 @@ impl BenchmarkRunner {
         // Generate symmetric matrix with given density
         for i in 0..size {
             for j in i..size {
-                if rng.gen::<f64>() < density {
-                    let value = rng.gen_range(-10.0..10.0);
+                if rng.random::<f64>() < density {
+                    let value = rng.random_range(-10.0..10.0);
                     matrix[[i, j]] = value;
                     if i != j {
                         matrix[[j, i]] = value;

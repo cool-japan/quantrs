@@ -66,7 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for i in 0..num_assets {
         qubo_matrix[[i, i]] += constraint_penalty * 2.0f64.mul_add(-(budget as f64), 1.0);
         for j in (i + 1)..num_assets {
-            qubo_matrix[[i, j]] += 2.0 * constraint_penalty;
+            qubo_matrix[[i, j]] = 2.0f64.mul_add(constraint_penalty, qubo_matrix[[i, j]]);
         }
     }
 

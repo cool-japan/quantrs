@@ -420,7 +420,7 @@ impl QECBenchmarkSuite {
             .map(|_| {
                 let mut rng = thread_rng();
                 // Simulate detection time (50-100 microseconds)
-                rng.gen_range(50_000.0..100_000.0)
+                rng.random_range(50_000.0..100_000.0)
             })
             .collect();
 
@@ -447,7 +447,7 @@ impl QECBenchmarkSuite {
             .map(|_| {
                 let mut rng = thread_rng();
                 // Simulate correction time (100-200 microseconds)
-                rng.gen_range(100_000.0..200_000.0)
+                rng.random_range(100_000.0..200_000.0)
             })
             .collect();
 
@@ -471,7 +471,7 @@ impl QECBenchmarkSuite {
             .map(|_| {
                 let mut rng = thread_rng();
                 // Simulate ML inference time (10-50 microseconds)
-                rng.gen_range(10_000.0..50_000.0)
+                rng.random_range(10_000.0..50_000.0)
             })
             .collect();
 

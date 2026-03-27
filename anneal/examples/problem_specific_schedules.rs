@@ -147,7 +147,7 @@ fn create_maxcut_problem(n: usize) -> Result<IsingModel, Box<dyn std::error::Err
     // Create a random graph with negative couplings
     for i in 0..n {
         for j in (i + 1)..n {
-            if thread_rng().gen::<f64>() < 0.3 {
+            if thread_rng().random::<f64>() < 0.3 {
                 // 30% edge probability
                 model.set_coupling(i, j, -1.0)?;
             }
@@ -166,7 +166,7 @@ fn create_tsp_problem(n_cities: usize) -> Result<IsingModel, Box<dyn std::error:
     let mut distances = vec![vec![0.0; n_cities]; n_cities];
     for i in 0..n_cities {
         for j in (i + 1)..n_cities {
-            let dist = ((i as f64 - j as f64).abs() + 1.0) * thread_rng().gen::<f64>();
+            let dist = ((i as f64 - j as f64).abs() + 1.0) * thread_rng().random::<f64>();
             distances[i][j] = dist;
             distances[j][i] = dist;
         }
@@ -218,7 +218,9 @@ fn create_number_partitioning_problem(n: usize) -> Result<IsingModel, Box<dyn st
     let mut builder = QuboBuilder::new();
 
     // Generate random numbers to partition
-    let numbers: Vec<f64> = (0..n).map(|_| thread_rng().gen::<f64>() * 100.0).collect();
+    let numbers: Vec<f64> = (0..n)
+        .map(|_| thread_rng().random::<f64>() * 100.0)
+        .collect();
     let target = numbers.iter().sum::<f64>() / 2.0;
 
     // Variables: x[i] = 1 if number i is in first partition
@@ -256,7 +258,7 @@ fn create_graph_coloring_problem(n: usize) -> Result<IsingModel, Box<dyn std::er
     let mut edges = Vec::new();
     for i in 0..n {
         for j in (i + 1)..n {
-            if thread_rng().gen::<f64>() < 0.4 {
+            if thread_rng().random::<f64>() < 0.4 {
                 // 40% edge probability
                 edges.push((i, j));
             }

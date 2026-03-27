@@ -1,10 +1,10 @@
 # quantrs2-symengine-pure
 
-Pure Rust symbolic mathematics library for quantum computing.
+Pure Rust symbolic mathematics library for quantum computing. 333 public APIs, 0 stubs.
 
 [![Crates.io](https://img.shields.io/crates/v/quantrs2-symengine-pure.svg)](https://crates.io/crates/quantrs2-symengine-pure)
 [![Documentation](https://docs.rs/quantrs2-symengine-pure/badge.svg)](https://docs.rs/quantrs2-symengine-pure)
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
 
 ## Overview
 
@@ -28,7 +28,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-quantrs2-symengine-pure = "0.1.2"
+quantrs2-symengine-pure = "0.1.3"
 ```
 
 ## Quick Start
@@ -55,16 +55,19 @@ println!("Derivative wrt x: {}", dx);
 
 | Module | Description |
 |--------|-------------|
-| `expr` | Core symbolic expression types |
+| `cache` | Expression caching |
 | `diff` | Automatic differentiation |
 | `eval` | Expression evaluation |
-| `simplify` | Expression simplification |
-| `optimization` | E-graph based optimization |
-| `parser` | Parse strings to expressions |
+| `expr` | Core symbolic expression types |
 | `matrix` | Symbolic matrix operations |
+| `ops` | Arithmetic and algebraic operations |
+| `optimization` | E-graph based optimization (via egg) |
+| `parser` | Parse strings to expressions |
+| `pattern` | Pattern matching on expressions |
 | `quantum` | Quantum-specific symbolic types |
-| `cache` | Expression caching |
+| `scirs2_bridge` | SciRS2 ecosystem integration |
 | `serialize` | Serialization support |
+| `simplify` | Expression simplification |
 
 ## Feature Flags
 
@@ -89,12 +92,7 @@ This crate is part of the [QuantRS2](https://github.com/cool-japan/quantrs) quan
 
 ## License
 
-Licensed under either of:
-
-- MIT License
-- Apache License, Version 2.0
-
-at your option.
+Licensed under the Apache License, Version 2.0.
 
 ## Author
 

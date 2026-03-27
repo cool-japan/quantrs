@@ -302,7 +302,7 @@ impl QuantumTransferLearning {
             if !config.frozen {
                 for &idx in &config.parameter_indices {
                     if idx < gradients.len() {
-                        gradients[idx] = 0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0);
+                        gradients[idx] = 0.1 * (2.0 * thread_rng().random::<f64>() - 1.0);
                     }
                 }
             }

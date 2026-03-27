@@ -286,7 +286,7 @@ impl PhotonicSystem {
         // Sample outcome
         use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
-        let random_value: f64 = rng.gen();
+        let random_value: f64 = rng.random();
         let mut cumulative = 0.0;
 
         for (n, &prob) in probabilities.iter().enumerate() {
@@ -321,7 +321,7 @@ impl PhotonicSystem {
         // Add measurement noise (simplified)
         use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
-        let noise = rng.gen_range(-0.1..0.1); // Simplified noise model
+        let noise = rng.random_range(-0.1..0.1); // Simplified noise model
 
         Ok(expectation + noise)
     }

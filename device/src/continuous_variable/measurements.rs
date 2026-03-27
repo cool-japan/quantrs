@@ -163,10 +163,10 @@ impl CVMeasurementEngine {
         // Update calibration factors
         for i in 0..self.config.calibration.efficiency.len() {
             self.config.calibration.efficiency[i] =
-                0.03f64.mul_add(thread_rng().gen::<f64>(), 0.95);
+                0.03f64.mul_add(thread_rng().random::<f64>(), 0.95);
             self.config.calibration.gain_factors[i] =
-                0.1f64.mul_add(thread_rng().gen::<f64>() - 0.5, 1.0);
-            self.config.calibration.phase_offsets[i] = 0.1 * (thread_rng().gen::<f64>() - 0.5);
+                0.1f64.mul_add(thread_rng().random::<f64>() - 0.5, 1.0);
+            self.config.calibration.phase_offsets[i] = 0.1 * (thread_rng().random::<f64>() - 0.5);
         }
 
         self.is_calibrated = true;
@@ -241,7 +241,7 @@ impl CVMeasurementEngine {
         let distribution = Normal::new(theoretical_mean, total_variance.sqrt())
             .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {e}")))?;
 
-        let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
+        let mut rng = StdRng::seed_from_u64(thread_rng().random::<u64>());
         for _ in 0..self.config.num_samples {
             let sample = distribution.sample(&mut rng) * gain;
             samples.push(sample);
@@ -329,7 +329,7 @@ impl CVMeasurementEngine {
             Normal::new(mean_p, (var_p / efficiency + noise_variance / 2.0).sqrt())
                 .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {e}")))?;
 
-        let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
+        let mut rng = StdRng::seed_from_u64(thread_rng().random::<u64>());
         for _ in 0..self.config.num_samples {
             x_samples.push(x_distribution.sample(&mut rng) * gain);
             p_samples.push(p_distribution.sample(&mut rng) * gain);
@@ -420,7 +420,7 @@ impl CVMeasurementEngine {
 
         // Sample from Poisson-like distribution
         let mut samples = Vec::new();
-        let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
+        let mut rng = StdRng::seed_from_u64(thread_rng().random::<u64>());
         for _ in 0..self.config.num_samples {
             let sample = if detected_n > 0.0 {
                 let poisson = Poisson::new(detected_n)

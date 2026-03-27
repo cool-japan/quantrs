@@ -9,6 +9,7 @@ license.workspace = true
 keywords = ["quantum", "computing", "simulator", "state-vector", "gates"]
 categories = ["science", "simulation"]
 description = "Quantum circuit simulators for the QuantRS2 framework"
+readme = "README.md"
 
 [dependencies]
 quantrs2-core.workspace = true
@@ -38,14 +39,9 @@ futures = { workspace = true, optional = true }
 # rand_xoshiro.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
 # wide.workspace = true  # REMOVED: Unused dependency (SciRS2 POLICY CLEANUP)
 fastrand.workspace = true
-# POLICY EXCEPTION: nalgebra-sparse for integer sparse matrices
-# REASON: scirs2-sparse v0.1.2 requires Float trait; clifford_sparse.rs uses u8
-# MIGRATION: Will migrate when scirs2-sparse adds integer type support
-# See: /tmp/CRITICAL_SCIRS2_SPARSE_LIMITATION.md
-nalgebra-sparse.workspace = true  # POLICY EXCEPTION (see above)
-# TEMPORARY: nalgebra for scirs2_integration.rs SparseMatrix (VIOLATES SciRS2 POLICY)
-# TODO: Refactor SparseMatrix to use scirs2_linalg (different API)
-nalgebra = { workspace = true, optional = true }  # TEMPORARY - awaiting refactoring
+# nalgebra-sparse removed: migrated to scirs2-sparse (COOLJAPAN Pure Rust Policy)
+# scirs2_sparse supports u8 via SparseElement trait (confirmed in scirs2-core/numeric.rs)
+nalgebra = { workspace = true, optional = true }  # Used by SparseSolvers CG (advanced_math feature)
 dashmap.workspace = true
 half.workspace = true
 # ndarray-linalg.workspace = true  # REMOVED: Use scirs2_core (SciRS2 POLICY)
@@ -53,13 +49,14 @@ serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
 num_cpus.workspace = true
-ndrustfft = { workspace = true, optional = true }
+# ndrustfft = { workspace = true, optional = true }  # REMOVED: Replaced by scirs2-fft (COOLJAPAN Policy)
 sprs = { workspace = true, optional = true }
 # nalgebra = { workspace = true, optional = true }  # REMOVED: Use scirs2_linalg (SciRS2 POLICY)
 md5.workspace = true
 regex.workspace = true
 tempfile.workspace = true
-flate2.workspace = true
+oxiarc-deflate.workspace = true  # Pure Rust zlib/deflate (COOLJAPAN Policy: replaces flate2)
+oxiarc-lz4.workspace = true      # Pure Rust LZ4 (COOLJAPAN Policy: replaces lz4 crate)
 uuid.workspace = true
 memmap2.workspace = true
 
@@ -73,7 +70,7 @@ gpu = ["dep:wgpu", "dep:bytemuck", "dep:tokio", "dep:futures"]
 simd = []
 optimize = ["simd", "dep:optirs-core"] # Enable optimized implementations with OptiRS
 memory_efficient = [] # Enable memory-efficient algorithms for large state vectors
-advanced_math = ["dep:scirs2-optimize", "dep:ndrustfft", "dep:sprs", "dep:nalgebra"] # Enable advanced math (TEMPORARY nalgebra for SparseMatrix)
+advanced_math = ["dep:scirs2-optimize", "dep:sprs", "dep:nalgebra"] # Enable advanced math (TEMPORARY nalgebra for SparseMatrix; ndrustfft replaced by scirs2-fft)
 mps = [] # Enable MPS simulator
 mpi = [] # Enable MPI support for distributed quantum simulation
 python = ["dep:pyo3"]  # Enable Python interop features

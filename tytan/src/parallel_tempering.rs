@@ -63,7 +63,7 @@ impl ParallelTemperingSampler {
             let mut chains: Vec<Vec<i32>> = (0..self.num_chains)
                 .map(|_| {
                     (0..n)
-                        .map(|_| i32::from(self.rng.gen::<f64>() >= 0.5))
+                        .map(|_| i32::from(self.rng.random::<f64>() >= 0.5))
                         .collect()
                 })
                 .collect();
@@ -78,7 +78,7 @@ impl ParallelTemperingSampler {
 
                 // Attempt replica exchanges
                 for i in 0..(self.num_chains - 1) {
-                    if self.rng.gen::<f64>() < 0.1 {
+                    if self.rng.random::<f64>() < 0.1 {
                         // 10% exchange probability
                         let energy_i = self.calculate_energy(&chains[i], matrix);
                         let energy_j = self.calculate_energy(&chains[i + 1], matrix);
@@ -86,7 +86,7 @@ impl ParallelTemperingSampler {
                         let delta = (energy_j - energy_i)
                             * (1.0 / self.temperatures[i] - 1.0 / self.temperatures[i + 1]);
 
-                        if delta <= 0.0 || self.rng.gen::<f64>() < (-delta).exp() {
+                        if delta <= 0.0 || self.rng.random::<f64>() < (-delta).exp() {
                             chains.swap(i, i + 1);
                         }
                     }
@@ -122,7 +122,7 @@ impl ParallelTemperingSampler {
         let n = chain.len();
 
         for _ in 0..n {
-            let idx = self.rng.gen_range(0..n);
+            let idx = self.rng.random_range(0..n);
             let old_value = chain[idx];
             let new_value = 1 - old_value;
 
@@ -133,7 +133,8 @@ impl ParallelTemperingSampler {
 
             let delta_energy = new_energy - old_energy;
 
-            if delta_energy <= 0.0 || self.rng.gen::<f64>() < (-delta_energy / temperature).exp() {
+            if delta_energy <= 0.0 || self.rng.random::<f64>() < (-delta_energy / temperature).exp()
+            {
                 chain[idx] = new_value;
             }
         }

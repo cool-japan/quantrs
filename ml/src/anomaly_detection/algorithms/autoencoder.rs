@@ -52,7 +52,7 @@ impl AnomalyDetectorTrait for QuantumAutoencoder {
         };
 
         // Placeholder: generate random scores
-        let anomaly_scores = Array1::from_shape_fn(n_samples, |_| thread_rng().gen::<f64>());
+        let anomaly_scores = Array1::from_shape_fn(n_samples, |_| thread_rng().random::<f64>());
         let anomaly_labels =
             anomaly_scores.mapv(|score| if score > self.threshold { 1 } else { 0 });
         let confidence_scores = anomaly_scores.clone();

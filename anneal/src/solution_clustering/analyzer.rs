@@ -322,14 +322,14 @@ impl SolutionClusteringAnalyzer {
         // Initialize centroids randomly
         let mut rng = match self.config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
 
         let mut centroids = Vec::new();
         for _ in 0..k {
             let mut centroid = Vec::new();
             for _ in 0..d {
-                centroid.push(rng.gen_range(-1.0..1.0));
+                centroid.push(rng.random_range(-1.0..1.0));
             }
             centroids.push(centroid);
         }

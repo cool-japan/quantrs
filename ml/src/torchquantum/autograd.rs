@@ -698,12 +698,12 @@ pub fn gradient_statistics(params: &[TQParameter]) -> GradientStatistics {
     let min = all_grads
         .iter()
         .copied()
-        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         .unwrap_or(0.0);
     let max = all_grads
         .iter()
         .copied()
-        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         .unwrap_or(0.0);
 
     let norm = gradient_norm(params);

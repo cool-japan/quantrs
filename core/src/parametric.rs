@@ -99,7 +99,7 @@ impl Parameter {
     }
 
     /// Check if the parameter has a concrete value
-    pub const fn has_value(&self) -> bool {
+    pub fn has_value(&self) -> bool {
         match self {
             Self::Constant(_) | Self::ComplexConstant(_) => true,
             Self::Symbol(sym) => sym.value.is_some(),

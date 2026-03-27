@@ -963,7 +963,13 @@ use quantrs2_circuit::prelude::*;
 fn create_bell_state() -> Result<QuantumCircuit> {
     let mut circuit = QuantumCircuit::new(2);
 
-    // TODO: Add gates here
+    // Step 1: Apply Hadamard to qubit 0 to create superposition |+⟩
+    circuit.h(0);
+    // Step 2: Apply CNOT with qubit 0 as control and qubit 1 as target
+    //         to entangle them, creating the Bell state (|00⟩ + |11⟩)/√2
+    circuit.cnot(0, 1);
+    // Step 3: Measure both qubits
+    circuit.measure_all();
 
     Ok(circuit)
 }
@@ -1024,9 +1030,34 @@ fn create_bell_state() -> Result<QuantumCircuit> {
                     r#"
 use quantrs2_ml::prelude::*;
 
+/// QNN binary classifier implementing angle encoding + variational layers.
+///
+/// Architecture:
+///   1. Embedding layer  – RY/RZ angle encoding of input features
+///   2. Entangling layer – CNOT chain for quantum correlations
+///   3. Variational layer – trainable RY/RZ parameters (gradient via parameter-shift)
+///   4. Measurement       – Z-expectation on qubit 0 → threshold at 0 → class label
 fn train_qnn_classifier(X: &ArrayD<f64>, y: &ArrayD<f64>) -> Result<Box<dyn QuantumModel>> {
-    // TODO: Implement QNN classifier
-    unimplemented!()
+    // Build a 4-qubit QNN with embedding, entangling, and parameterised layers
+    let qnn_builder = QNNBuilder::new(4)
+        .add_layer(QNNLayer::Embedding {
+            rotation_gates: vec!["RY".to_string(), "RZ".to_string()],
+        })
+        .add_layer(QNNLayer::Entangling {
+            entangling_gate: "CNOT".to_string(),
+        })
+        .add_layer(QNNLayer::Parameterized {
+            gates: vec!["RY".to_string(), "RZ".to_string()],
+            num_parameters: 8,
+        });
+
+    let mut qnn = qnn_builder.build()?;
+
+    // Training loop using parameter-shift gradient descent
+    // Parameters are updated by the QNN's internal optimizer
+    qnn.train(X, y)?;
+
+    Ok(Box::new(qnn))
 }
 "#
                     .to_string(),

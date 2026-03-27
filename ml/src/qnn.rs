@@ -110,7 +110,7 @@ impl QuantumNeuralNetwork {
         // Create random initial parameters
         let parameters = Array1::from_vec(
             (0..num_params)
-                .map(|_| thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI)
+                .map(|_| thread_rng().random::<f64>() * 2.0 * std::f64::consts::PI)
                 .collect(),
         );
 

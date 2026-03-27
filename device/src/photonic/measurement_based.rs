@@ -288,7 +288,7 @@ impl ClusterState {
             a if (a - PI).abs() < 1e-6 => 0.3,
             _ => 0.5,
         };
-        Ok(thread_rng().gen::<f64>() < probability)
+        Ok(thread_rng().random::<f64>() < probability)
     }
     /// Get all unmeasured neighbors of a node
     pub fn unmeasured_neighbors(&self, node_id: usize) -> Vec<usize> {

@@ -9,7 +9,7 @@ use crate::{
     variational::VariationalOptimizer,
 };
 use scirs2_core::ndarray::{Array1, Array2, Axis};
-use scirs2_core::random::{rngs::StdRng, Rng, SeedableRng};
+use scirs2_core::random::{rngs::StdRng, Rng, RngExt, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 

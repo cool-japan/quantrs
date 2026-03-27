@@ -2,16 +2,24 @@
 
 [![Crates.io](https://img.shields.io/crates/v/quantrs2-device.svg)](https://crates.io/crates/quantrs2-device)
 [![Documentation](https://docs.rs/quantrs2-device/badge.svg)](https://docs.rs/quantrs2-device)
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
 
 QuantRS2-Device is the comprehensive quantum hardware abstraction layer of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing seamless connectivity to quantum computers from major cloud providers, with advanced transpilation, optimization, and characterization capabilities for production quantum computing applications.
 
-## Version 0.1.2
+## Version 0.1.3 (2026-03-27)
 
 This release includes:
 - Stable APIs for IBM Quantum, Azure Quantum, and AWS Braket
-- Enhanced transpilation using SciRS2 v0.1.2's graph algorithms for optimal qubit routing
+- 8,732 public APIs, 0 stubs — full production-ready implementation
+- Enhanced transpilation using SciRS2's graph algorithms for optimal qubit routing
 - Improved error handling and asynchronous execution
+
+### New in v0.1.3
+- **Cloud Provider Optimizers**: Fully implemented AWS Braket, IBM Quantum, Azure Quantum, and Google Quantum provider-specific optimizers
+- **VF2 + Dijkstra Transpiler**: VF2 subgraph isomorphism combined with Dijkstra-based routing for hardware-optimal circuit layout
+- **AdaptiveCompiler**: Runtime-adaptive compilation that adjusts strategies based on device calibration feedback
+- **MLCircuitOptimizer**: Machine learning-guided circuit optimization for reduced gate count and depth
+- **PerformanceDashboard**: Real-time performance monitoring and analytics for quantum job execution
 
 ## Core Features
 
@@ -188,8 +196,14 @@ async fn run_on_aws() -> Result<(), Box<dyn std::error::Error>> {
 - **ibm**: Enables IBM Quantum connectivity
 - **azure**: Enables Azure Quantum connectivity
 - **aws**: Enables AWS Braket connectivity
+- **neutral_atom**: Enables neutral atom device support (includes IBM dependency)
+- **photonic**: Enables photonic quantum device support
+- **scheduling**: Enables async job scheduling and queue management (default)
+- **scirs2**: Enables SciRS2 graph/linalg/optimize integration for transpilation (default)
+- **security**: Enables AES-GCM encryption, X25519 key exchange, and secure credential handling (default)
+- **cloud-backends**: Meta-feature enabling all cloud provider backends (ibm, azure, aws, neutral_atom, photonic)
 
-Each feature flag can be enabled independently to minimize dependencies.
+Default features: `scheduling`, `scirs2`, `security`. Each cloud feature flag can be enabled independently to minimize dependencies.
 
 ## Technical Details
 
@@ -211,9 +225,4 @@ This module is designed to work seamlessly with:
 
 ## License
 
-This project is licensed under either:
-
-- [Apache License, Version 2.0](../LICENSE-APACHE)
-- [MIT License](../LICENSE-MIT)
-
-at your option.
+This project is licensed under the [Apache License, Version 2.0](../LICENSE).

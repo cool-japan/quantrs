@@ -214,7 +214,7 @@ fn portfolio_optimization_example() -> Result<(), Box<dyn std::error::Error>> {
 
         for i in 0..4 {
             for j in 0..4 {
-                variance += weights[i] * weights[j] * covariance[i][j];
+                variance = (weights[i] * weights[j]).mul_add(covariance[i][j], variance);
             }
         }
 

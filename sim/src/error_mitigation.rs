@@ -371,7 +371,11 @@ impl MeasurementErrorMitigation {
     /// Mitigated counts (may contain negative values due to inversion)
     pub fn apply(&mut self, noisy_counts: &HashMap<String, usize>) -> Result<HashMap<String, f64>> {
         self.compute_inverse()?;
-        let inverse = self.inverse_matrix.as_ref().unwrap();
+        let inverse = self.inverse_matrix.as_ref().ok_or_else(|| {
+            SimulatorError::InvalidInput(
+                "Inverse matrix not yet computed — call compute_inverse() first".to_string(),
+            )
+        })?;
 
         let dim = 1 << self.n_qubits;
         let total_shots: usize = noisy_counts.values().sum();

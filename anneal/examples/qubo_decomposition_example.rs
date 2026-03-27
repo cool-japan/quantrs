@@ -339,21 +339,21 @@ fn create_chain_qubo(
 
     // Add linear terms (random costs)
     for i in 0..n {
-        let cost = thread_rng().gen::<f64>().mul_add(2.0, -1.0); // Range [-1, 1]
+        let cost = thread_rng().random::<f64>().mul_add(2.0, -1.0); // Range [-1, 1]
         builder.set_linear_term(&vars[i], cost)?;
     }
 
     // Add chain interactions
     for i in 0..(n - 1) {
-        let interaction = -thread_rng().gen::<f64>().mul_add(2.0, 1.0); // Range [-3, -1]
+        let interaction = -thread_rng().random::<f64>().mul_add(2.0, 1.0); // Range [-3, -1]
         builder.set_quadratic_term(&vars[i], &vars[i + 1], interaction)?;
     }
 
     // Add some long-range interactions
     for i in 0..n {
         for j in (i + 3)..std::cmp::min(i + 6, n) {
-            if thread_rng().gen::<f64>() < 0.3 {
-                let interaction = (thread_rng().gen::<f64>() - 0.5) * 0.5;
+            if thread_rng().random::<f64>() < 0.3 {
+                let interaction = (thread_rng().random::<f64>() - 0.5) * 0.5;
                 builder.set_quadratic_term(&vars[i], &vars[j], interaction)?;
             }
         }
@@ -377,7 +377,7 @@ fn create_grid_qubo(
 
     // Add linear terms
     for i in 0..n {
-        let cost = thread_rng().gen::<f64>() - 0.5;
+        let cost = thread_rng().random::<f64>() - 0.5;
         builder.set_linear_term(&vars[i], cost)?;
     }
 
@@ -389,14 +389,14 @@ fn create_grid_qubo(
             // Right neighbor
             if col + 1 < cols {
                 let neighbor = row * cols + (col + 1);
-                let interaction = -(thread_rng().gen::<f64>() + 0.5);
+                let interaction = -(thread_rng().random::<f64>() + 0.5);
                 builder.set_quadratic_term(&vars[idx], &vars[neighbor], interaction)?;
             }
 
             // Bottom neighbor
             if row + 1 < rows {
                 let neighbor = (row + 1) * cols + col;
-                let interaction = -(thread_rng().gen::<f64>() + 0.5);
+                let interaction = -(thread_rng().random::<f64>() + 0.5);
                 builder.set_quadratic_term(&vars[idx], &vars[neighbor], interaction)?;
             }
         }
@@ -418,7 +418,7 @@ fn create_hierarchical_qubo(
 
     // Add linear terms
     for i in 0..n {
-        builder.set_linear_term(&vars[i], thread_rng().gen::<f64>() - 0.5)?;
+        builder.set_linear_term(&vars[i], thread_rng().random::<f64>() - 0.5)?;
     }
 
     // Add hierarchical structure
@@ -432,7 +432,7 @@ fn create_hierarchical_qubo(
 
         for i in start..end {
             for j in (i + 1)..end {
-                let interaction = -thread_rng().gen::<f64>().mul_add(2.0, 1.0);
+                let interaction = -thread_rng().random::<f64>().mul_add(2.0, 1.0);
                 builder.set_quadratic_term(&vars[i], &vars[j], interaction)?;
             }
         }
@@ -441,11 +441,11 @@ fn create_hierarchical_qubo(
     // Inter-block interactions (weaker)
     for block1 in 0..num_blocks {
         for block2 in (block1 + 1)..num_blocks {
-            if thread_rng().gen::<f64>() < 0.3 {
-                let i = block1 * block_size + thread_rng().gen_range(0..block_size);
-                let j = block2 * block_size + thread_rng().gen_range(0..block_size);
+            if thread_rng().random::<f64>() < 0.3 {
+                let i = block1 * block_size + thread_rng().random_range(0..block_size);
+                let j = block2 * block_size + thread_rng().random_range(0..block_size);
                 if i < n && j < n {
-                    let interaction = (thread_rng().gen::<f64>() - 0.5) * 0.5;
+                    let interaction = (thread_rng().random::<f64>() - 0.5) * 0.5;
                     builder.set_quadratic_term(&vars[i], &vars[j], interaction)?;
                 }
             }
@@ -469,7 +469,7 @@ fn create_clustered_qubo(
 
     // Add linear terms
     for i in 0..n {
-        builder.set_linear_term(&vars[i], thread_rng().gen::<f64>() - 0.5)?;
+        builder.set_linear_term(&vars[i], thread_rng().random::<f64>() - 0.5)?;
     }
 
     let cluster_size = n / num_clusters;
@@ -481,8 +481,8 @@ fn create_clustered_qubo(
 
         for i in start..end {
             for j in (i + 1)..end {
-                if thread_rng().gen::<f64>() < 0.7 {
-                    let interaction = -thread_rng().gen::<f64>().mul_add(1.5, 0.5);
+                if thread_rng().random::<f64>() < 0.7 {
+                    let interaction = -thread_rng().random::<f64>().mul_add(1.5, 0.5);
                     builder.set_quadratic_term(&vars[i], &vars[j], interaction)?;
                 }
             }
@@ -495,8 +495,8 @@ fn create_clustered_qubo(
             let cluster_i = i / cluster_size;
             let cluster_j = j / cluster_size;
 
-            if cluster_i != cluster_j && thread_rng().gen::<f64>() < 0.1 {
-                let interaction = (thread_rng().gen::<f64>() - 0.5) * 0.3;
+            if cluster_i != cluster_j && thread_rng().random::<f64>() < 0.1 {
+                let interaction = (thread_rng().random::<f64>() - 0.5) * 0.3;
                 builder.set_quadratic_term(&vars[i], &vars[j], interaction)?;
             }
         }
@@ -519,10 +519,10 @@ fn create_portfolio_qubo(
 
     // Random returns and risks
     let returns: Vec<f64> = (0..n_assets)
-        .map(|_| thread_rng().gen::<f64>() * 0.2)
+        .map(|_| thread_rng().random::<f64>() * 0.2)
         .collect();
     let risks: Vec<f64> = (0..n_assets)
-        .map(|_| thread_rng().gen::<f64>() * 0.1)
+        .map(|_| thread_rng().random::<f64>() * 0.1)
         .collect();
 
     // Objective: maximize returns - risk penalty
@@ -534,9 +534,9 @@ fn create_portfolio_qubo(
     // Correlation penalties
     for i in 0..n_assets {
         for j in (i + 1)..n_assets {
-            if thread_rng().gen::<f64>() < 0.2 {
+            if thread_rng().random::<f64>() < 0.2 {
                 // 20% of pairs are correlated
-                let correlation = thread_rng().gen::<f64>() * 0.1;
+                let correlation = thread_rng().random::<f64>() * 0.1;
                 builder.set_quadratic_term(&assets[i], &assets[j], correlation)?;
             }
         }

@@ -330,7 +330,7 @@ impl AdvancedDecomposer {
         let mut rng = thread_rng();
 
         // Random initialization
-        let mut v = Array1::from_shape_fn(n, |_| rng.gen::<f64>().mul_add(2.0, -1.0));
+        let mut v = Array1::from_shape_fn(n, |_| rng.random::<f64>().mul_add(2.0, -1.0));
 
         // Orthogonalize against constant vector (first eigenvector)
         let ones = Array1::ones(n);

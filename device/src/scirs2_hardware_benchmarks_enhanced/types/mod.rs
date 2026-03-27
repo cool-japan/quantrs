@@ -1,0 +1,59 @@
+//! Auto-generated module structure
+#![allow(clippy::module_inception)]
+
+pub mod enhancedhardwarebenchmark_analyze_mirror_results_group;
+pub mod enhancedhardwarebenchmark_analyze_suite_statistics_group;
+pub mod enhancedhardwarebenchmark_benchmark_application_group;
+pub mod enhancedhardwarebenchmark_calculate_gate_fidelity_group;
+pub mod enhancedhardwarebenchmark_calculate_process_fidelity_group;
+pub mod enhancedhardwarebenchmark_calculate_quantum_volume_group;
+pub mod enhancedhardwarebenchmark_calculate_std_dev_group;
+pub mod enhancedhardwarebenchmark_calculate_xeb_score_group;
+pub mod enhancedhardwarebenchmark_collect_device_info_group;
+pub mod enhancedhardwarebenchmark_crud;
+pub mod enhancedhardwarebenchmark_execute_and_measure_group;
+pub mod enhancedhardwarebenchmark_generate_executive_summary_group;
+pub mod enhancedhardwarebenchmark_generate_fiducials_group;
+pub mod enhancedhardwarebenchmark_generate_germs_group;
+pub mod enhancedhardwarebenchmark_generate_mirror_circuits_group;
+pub mod enhancedhardwarebenchmark_generate_visualizations_group;
+pub mod enhancedhardwarebenchmark_identify_bottlenecks_group;
+pub mod enhancedhardwarebenchmark_measure_layer_fidelity_group;
+pub mod enhancedhardwarebenchmark_perform_process_tomography_group;
+pub mod enhancedhardwarebenchmark_perform_significance_tests_group;
+pub mod enhancedhardwarebenchmark_run_benchmark_suite_group;
+pub mod enhancedhardwarebenchmark_run_single_qubit_rb_group;
+pub mod enhancedhardwarebenchmark_run_two_qubit_rb_group;
+pub mod enhancedhardwarebenchmark_summarize_comparison_group;
+pub mod enhancedhardwarebenchmark_summarize_predictions_group;
+pub mod enhancedhardwarebenchmark_type;
+pub mod types;
+
+// Re-export all types
+pub use enhancedhardwarebenchmark_analyze_mirror_results_group::*;
+pub use enhancedhardwarebenchmark_analyze_suite_statistics_group::*;
+pub use enhancedhardwarebenchmark_benchmark_application_group::*;
+pub use enhancedhardwarebenchmark_calculate_gate_fidelity_group::*;
+pub use enhancedhardwarebenchmark_calculate_process_fidelity_group::*;
+pub use enhancedhardwarebenchmark_calculate_quantum_volume_group::*;
+pub use enhancedhardwarebenchmark_calculate_std_dev_group::*;
+pub use enhancedhardwarebenchmark_calculate_xeb_score_group::*;
+pub use enhancedhardwarebenchmark_collect_device_info_group::*;
+pub use enhancedhardwarebenchmark_crud::*;
+pub use enhancedhardwarebenchmark_execute_and_measure_group::*;
+pub use enhancedhardwarebenchmark_generate_executive_summary_group::*;
+pub use enhancedhardwarebenchmark_generate_fiducials_group::*;
+pub use enhancedhardwarebenchmark_generate_germs_group::*;
+pub use enhancedhardwarebenchmark_generate_mirror_circuits_group::*;
+pub use enhancedhardwarebenchmark_generate_visualizations_group::*;
+pub use enhancedhardwarebenchmark_identify_bottlenecks_group::*;
+pub use enhancedhardwarebenchmark_measure_layer_fidelity_group::*;
+pub use enhancedhardwarebenchmark_perform_process_tomography_group::*;
+pub use enhancedhardwarebenchmark_perform_significance_tests_group::*;
+pub use enhancedhardwarebenchmark_run_benchmark_suite_group::*;
+pub use enhancedhardwarebenchmark_run_single_qubit_rb_group::*;
+pub use enhancedhardwarebenchmark_run_two_qubit_rb_group::*;
+pub use enhancedhardwarebenchmark_summarize_comparison_group::*;
+pub use enhancedhardwarebenchmark_summarize_predictions_group::*;
+pub use enhancedhardwarebenchmark_type::*;
+pub use types::*;

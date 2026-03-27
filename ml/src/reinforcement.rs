@@ -182,7 +182,7 @@ impl ReinforcementLearning {
         let mut q_values = Array1::zeros(self.action_dim);
 
         for i in 0..self.action_dim {
-            q_values[i] = 0.5 + 0.5 * thread_rng().gen::<f64>();
+            q_values[i] = 0.5 + 0.5 * thread_rng().random::<f64>();
         }
 
         Ok(q_values)
@@ -192,7 +192,7 @@ impl ReinforcementLearning {
 impl QuantumAgent for ReinforcementLearning {
     fn get_action(&self, state: &Array1<f64>) -> Result<usize> {
         // Epsilon-greedy action selection
-        if thread_rng().gen::<f64>() < self.exploration_rate {
+        if thread_rng().random::<f64>() < self.exploration_rate {
             // Explore: random action
             Ok(fastrand::usize(0..self.action_dim))
         } else {

@@ -522,18 +522,150 @@ impl QuantumKernelRidge {
         }
     }
 
-    /// Simple linear system solver (placeholder)
+    /// Solve the linear system `A x = b` using Cholesky decomposition (LL^T factorisation).
+    ///
+    /// `A` is assumed to be symmetric positive-definite (the kernel matrix + regularisation
+    /// diagonal satisfies this by construction).
+    ///
+    /// Algorithm:
+    /// 1. Compute the lower-triangular Cholesky factor `L` such that `A = L Lᵀ`.
+    /// 2. Forward-substitute: solve `L y = b`.
+    /// 3. Backward-substitute: solve `Lᵀ x = y`.
     fn solve_linear_system(a: &Array2<f64>, b: &Array1<f64>) -> Result<Array1<f64>, String> {
-        // This is a simplified implementation
-        // In practice, use proper linear algebra libraries
         let n = a.nrows();
+        if n == 0 {
+            return Err("Empty matrix".to_string());
+        }
+        if n != a.ncols() {
+            return Err(format!("Matrix is not square: {}×{}", n, a.ncols()));
+        }
         if n != b.len() {
-            return Err("Dimension mismatch".to_string());
+            return Err(format!(
+                "Dimension mismatch: matrix is {}×{} but rhs has {} elements",
+                n,
+                n,
+                b.len()
+            ));
         }
 
-        // For now, return zeros
-        // TODO: Implement proper linear solver
-        Ok(Array1::zeros(n))
+        // ── Step 1: Cholesky factorisation A = L Lᵀ ─────────────────────────
+        // L is stored as a flat row-major lower triangular matrix.
+        let mut l = Array2::<f64>::zeros((n, n));
+
+        for i in 0..n {
+            // Diagonal element
+            let mut sum_sq = a[[i, i]];
+            for k in 0..i {
+                sum_sq -= l[[i, k]] * l[[i, k]];
+            }
+            if sum_sq <= 0.0 {
+                // Matrix is not positive-definite; fall back to Gaussian elimination.
+                return Self::solve_gaussian_elimination(a, b);
+            }
+            l[[i, i]] = sum_sq.sqrt();
+
+            // Sub-diagonal elements for column i
+            for j in (i + 1)..n {
+                let mut sum_prod = a[[j, i]];
+                for k in 0..i {
+                    sum_prod -= l[[j, k]] * l[[i, k]];
+                }
+                l[[j, i]] = sum_prod / l[[i, i]];
+            }
+        }
+
+        // ── Step 2: Forward substitution — solve L y = b ─────────────────────
+        let mut y = Array1::<f64>::zeros(n);
+        for i in 0..n {
+            let mut s = b[i];
+            for k in 0..i {
+                s -= l[[i, k]] * y[k];
+            }
+            let diag = l[[i, i]];
+            if diag.abs() < 1e-14 {
+                return Err(format!("Singular Cholesky factor at row {i}"));
+            }
+            y[i] = s / diag;
+        }
+
+        // ── Step 3: Backward substitution — solve Lᵀ x = y ──────────────────
+        let mut x = Array1::<f64>::zeros(n);
+        for i in (0..n).rev() {
+            let mut s = y[i];
+            for k in (i + 1)..n {
+                s -= l[[k, i]] * x[k]; // l[[k,i]] = Lᵀ[[i,k]]
+            }
+            let diag = l[[i, i]];
+            if diag.abs() < 1e-14 {
+                return Err(format!("Singular Cholesky factor at column {i}"));
+            }
+            x[i] = s / diag;
+        }
+
+        Ok(x)
+    }
+
+    /// Fallback linear solver using Gaussian elimination with partial pivoting.
+    ///
+    /// Used when the matrix is not numerically positive-definite.
+    fn solve_gaussian_elimination(a: &Array2<f64>, b: &Array1<f64>) -> Result<Array1<f64>, String> {
+        let n = a.nrows();
+
+        // Build augmented matrix [A | b]
+        let mut aug: Vec<Vec<f64>> = (0..n)
+            .map(|i| {
+                let mut row: Vec<f64> = (0..n).map(|j| a[[i, j]]).collect();
+                row.push(b[i]);
+                row
+            })
+            .collect();
+
+        // Forward elimination with partial pivoting
+        for col in 0..n {
+            // Find pivot
+            let pivot_row = (col..n)
+                .max_by(|&r1, &r2| {
+                    aug[r1][col]
+                        .abs()
+                        .partial_cmp(&aug[r2][col].abs())
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .ok_or("Empty column range during elimination")?;
+
+            aug.swap(col, pivot_row);
+
+            let pivot = aug[col][col];
+            if pivot.abs() < 1e-14 {
+                return Err(format!("Singular or near-singular matrix at column {col}"));
+            }
+
+            // Eliminate column entries below the pivot
+            for row in (col + 1)..n {
+                let factor = aug[row][col] / pivot;
+                for j in col..=n {
+                    let val = aug[col][j];
+                    aug[row][j] -= factor * val;
+                }
+            }
+        }
+
+        // Back-substitution
+        let mut x = vec![0.0_f64; n];
+        for i in (0..n).rev() {
+            let mut s = aug[i][n];
+            for j in (i + 1)..n {
+                s -= aug[i][j] * x[j];
+            }
+            let diag = aug[i][i];
+            if diag.abs() < 1e-14 {
+                return Err(format!(
+                    "Singular matrix during back-substitution at row {i}"
+                ));
+            }
+            x[i] = s / diag;
+        }
+
+        Ok(Array1::from_vec(x))
     }
 
     /// Predict values for new data

@@ -536,8 +536,13 @@ impl CircuitVisualization {
                             }
 
                             // Add connections between control and target qubits
-                            let min_q = *op.qubits.iter().min().expect("Failed to find min qubit in circuit visualization (op.qubits should not be empty)");
-                            let max_q = *op.qubits.iter().max().expect("Failed to find max qubit in circuit visualization (op.qubits should not be empty)");
+                            // Safety: op.qubits is guaranteed non-empty for multi-qubit gates
+                            let Some(&min_q) = op.qubits.iter().min() else {
+                                continue;
+                            };
+                            let Some(&max_q) = op.qubits.iter().max() else {
+                                continue;
+                            };
 
                             if op.qubits.len() == 2 && min_q < max_q && (q == min_q || q == max_q) {
                                 let top = if q == min_q { "50%" } else { "0" };

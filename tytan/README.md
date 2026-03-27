@@ -2,17 +2,24 @@
 
 [![Crates.io](https://img.shields.io/crates/v/quantrs2-tytan.svg)](https://crates.io/crates/quantrs2-tytan)
 [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](docs/)
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
 
 QuantRS2-Tytan is a comprehensive, high-performance quantum annealing library for the QuantRS2 framework. Inspired by the Python [Tytan](https://github.com/tytansdk/tytan) library, it provides powerful tools for formulating and solving quantum optimization problems with state-of-the-art performance.
 
-## Version 0.1.2
+## Version 0.1.3
 
-This release features refined integration with [SciRS2](https://github.com/cool-japan/scirs2) v0.1.2:
+Released: 2026-03-27
+
+This release features refined integration with [SciRS2](https://github.com/cool-japan/scirs2) v0.1.3:
 - High-performance sparse matrix operations via SciRS2
 - Parallel optimization using `scirs2_core::parallel_ops`
 - SIMD-accelerated energy calculations
 - Memory-efficient large problem handling
+
+### What's New in v0.1.3
+- **2,567 public items**: 0 stubs — all large files refactored into module directories, 0 `todo!/unimplemented!` stubs remaining
+- Complete large-file refactoring: all modules split and reorganized for maintainability
+- Full TODO/FIXME resolution across the codebase
 
 ## Key Features
 
@@ -65,10 +72,10 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-quantrs2-tytan = "0.1.2"
+quantrs2-tytan = "0.1.3"
 
 # Optional features
-# quantrs2-tytan = { version = "0.1.2", features = ["gpu", "dwave", "scirs"] }
+# quantrs2-tytan = { version = "0.1.3", features = ["gpu", "dwave", "scirs"] }
 ```
 
 ### Basic Example
@@ -287,6 +294,11 @@ fn constrained_problem() -> Result<(), Box<dyn std::error::Error>> {
 - `gpu_accelerated`: Full GPU acceleration pipeline
 - `simd`: SIMD optimizations for CPU operations
 
+### Cloud & Hardware Features
+- `ibm_quantum`: IBM Quantum hardware backend support
+- `azure_quantum`: Azure Quantum hardware backend support
+- `amazon_braket`: Amazon Braket hardware backend support
+
 ### Analysis Features
 - `clustering`: Solution clustering and pattern analysis
 - `plotters`: Visualization tools for results and convergence
@@ -370,9 +382,4 @@ cargo clippy -- -D warnings
 
 ## License
 
-This project is licensed under either:
-
-- Apache License, Version 2.0, ([LICENSE-APACHE](../LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-- MIT license ([LICENSE-MIT](../LICENSE-MIT) or http://opensource.org/licenses/MIT)
-
-at your option.
+This project is licensed under the [Apache License, Version 2.0](../LICENSE).

@@ -32,10 +32,21 @@ impl<T: Clone + Default> BufferPool<T> {
         )
     }
 
-    /// Return a buffer to the pool
+    /// Return a buffer to the pool for reuse
     pub fn put(&self, buffer: Vec<T>) {
         let mut pool = self.pool.lock().unwrap_or_else(|e| e.into_inner());
         pool.push_back(buffer);
+    }
+
+    /// Alias for `put` — return a buffer to the pool
+    #[inline]
+    pub fn return_buffer(&self, buffer: Vec<T>) {
+        self.put(buffer);
+    }
+
+    /// Returns the current number of pooled buffers
+    pub fn pool_size(&self) -> usize {
+        self.pool.lock().unwrap_or_else(|e| e.into_inner()).len()
     }
 
     /// Clear all buffers in the pool

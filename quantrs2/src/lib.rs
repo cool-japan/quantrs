@@ -39,7 +39,7 @@ Add `QuantRS2` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-quantrs2 = "0.1.2"
+quantrs2 = "0.1.3"
 ```
 
 ### Feature Flags
@@ -48,10 +48,10 @@ Enable specific modules as needed:
 
 ```toml
 # Full installation with all features
-quantrs2 = { version = "0.1.2", features = ["full"] }
+quantrs2 = { version = "0.1.3", features = ["full"] }
 
 # Selective installation
-quantrs2 = { version = "0.1.2", features = ["circuit", "sim", "ml"] }
+quantrs2 = { version = "0.1.3", features = ["circuit", "sim", "ml"] }
 ```
 
 **Available Features:**
@@ -75,7 +75,7 @@ Create and simulate a Bell state (maximally entangled 2-qubit state):
 
 ```rust,ignore
 // This example demonstrates basic quantum circuit creation and simulation
-// Requires: quantrs2 = { version = "0.1.2", features = ["circuit", "sim"] }
+// Requires: quantrs2 = { version = "0.1.3", features = ["circuit", "sim"] }
 
 use quantrs2_circuit::Circuit;
 use quantrs2_sim::StateVectorSimulator;
@@ -108,7 +108,7 @@ Compute the ground state energy of a molecular Hamiltonian:
 
 ```rust,ignore
 // This example demonstrates VQE usage with the quantum ML module
-// Requires: quantrs2 = { version = "0.1.2", features = ["ml"] }
+// Requires: quantrs2 = { version = "0.1.3", features = ["ml"] }
 
 // Define H2 molecule Hamiltonian
 let hamiltonian = MolecularHamiltonian::h2_sto3g(0.74)?;
@@ -137,7 +137,7 @@ Solve `MaxCut` problem on a graph:
 
 ```rust,ignore
 // This example demonstrates QAOA usage with the quantum ML module
-// Requires: quantrs2 = { version = "0.1.2", features = ["ml"] }
+// Requires: quantrs2 = { version = "0.1.3", features = ["ml"] }
 
 // Define graph edges for MaxCut problem
 let edges = vec![(0, 1), (1, 2), (2, 3), (3, 0), (0, 2)];
@@ -157,7 +157,7 @@ println!("Optimal cut: {:?}", result.bitstring);
 
 ```rust,ignore
 // This example demonstrates quantum annealing with D-Wave integration
-// Requires: quantrs2 = { version = "0.1.2", features = ["anneal"] }
+// Requires: quantrs2 = { version = "0.1.3", features = ["anneal"] }
 
 // Define QUBO problem
 let mut qubo = QUBO::new(4);
@@ -247,7 +247,7 @@ For users who only need circuit construction and manipulation:
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.2", features = ["circuit"] }
+quantrs2 = { version = "0.1.3", features = ["circuit"] }
 ```
 
 ```rust,ignore
@@ -275,7 +275,7 @@ For quantum algorithm research and development:
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.2", features = ["sim"] }
+quantrs2 = { version = "0.1.3", features = ["sim"] }
 ```
 
 ```rust,ignore
@@ -305,7 +305,7 @@ For variational algorithms and quantum ML:
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.2", features = ["ml"] }
+quantrs2 = { version = "0.1.3", features = ["ml"] }
 ```
 
 ```rust,ignore
@@ -335,7 +335,7 @@ For QUBO/Ising model optimization:
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.2", features = ["tytan"] }
+quantrs2 = { version = "0.1.3", features = ["tytan"] }
 ```
 
 ```rust,ignore
@@ -358,7 +358,7 @@ For real quantum device execution:
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.2", features = ["device", "circuit"] }
+quantrs2 = { version = "0.1.3", features = ["device", "circuit"] }
 ```
 
 ```rust,ignore
@@ -385,7 +385,7 @@ For comprehensive quantum computing capabilities:
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.2", features = ["full"] }
+quantrs2 = { version = "0.1.3", features = ["full"] }
 ```
 
 ```rust,ignore
@@ -439,7 +439,7 @@ QuantRS2 uses **SciRS2** for all numerical operations, providing:
 
 **Tip**: Enable SciRS2 SIMD features for maximum performance:
 ```toml
-quantrs2 = { version = "0.1.2", features = ["sim"] }
+quantrs2 = { version = "0.1.3", features = ["sim"] }
 # SciRS2 automatically uses SIMD when available
 ```
 
@@ -452,15 +452,15 @@ quantrs2 = { version = "0.1.2", features = ["sim"] }
 **Before** (Using individual crates):
 ```toml
 [dependencies]
-quantrs2-core = "0.1.2"
-quantrs2-circuit = "0.1.2"
-quantrs2-sim = "0.1.2"
+quantrs2-core = "0.1.3"
+quantrs2-circuit = "0.1.3"
+quantrs2-sim = "0.1.3"
 ```
 
 **After** (Using facade):
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.2", features = ["sim"] }
+quantrs2 = { version = "0.1.3", features = ["sim"] }
 ```
 
 **Code Changes**:
@@ -492,7 +492,7 @@ use quantrs2::sim::StateVectorSimulator;
 cargo update -p quantrs2
 
 # Or specify exact version
-quantrs2 = "0.1.2"
+quantrs2 = "0.1.3"
 ```
 
 **Verify Compatibility**:
@@ -857,9 +857,9 @@ at your option.
 
 ## 🔖 Version Information
 
-**Current Version**: `0.1.2`
+**Current Version**: `0.1.3`
 
-### Recent Updates (v0.1.2)
+### Recent Updates (v0.1.3)
 
 - 🎯 **Facade Enhancements**: Comprehensive system management features
   - System diagnostics module with hardware detection and compatibility checking
@@ -870,7 +870,7 @@ at your option.
 - 🔧 **Developer Experience**: Hierarchical prelude system, improved error handling
 - 📝 **Documentation**: Enhanced examples and inline documentation
 - 🛠️ **Code Quality**: All clippy warnings fixed, formatted with `cargo fmt`
-- ✅ **SciRS2 v0.1.2 Stable Release with unified patterns
+- ✅ **SciRS2 v0.1.3 Stable Release with unified patterns
 - ✨ Refined `SciRS2` integration with unified import patterns
 - 📚 Comprehensive policy documentation
 - 🛠️ Enhanced developer experience with CLAUDE.md development guidelines
@@ -880,7 +880,7 @@ at your option.
 
 ### Roadmap
 
-- **v0.1.2**: Current stable release with full API stability
+- **v0.1.3**: Current stable release with full API stability
 - **v0.2.0**: Advanced quantum ML models, quantum chemistry extensions
 
 ---
@@ -1375,7 +1375,7 @@ pub mod error;
 ///
 /// # Version Constants
 ///
-/// - `VERSION` - QuantRS2 version (e.g., "0.1.2")
+/// - `VERSION` - QuantRS2 version (e.g., "0.1.3")
 /// - `SCIRS2_VERSION` - SciRS2 dependency version
 /// - `BUILD_TIMESTAMP` - When this build was created
 /// - `GIT_COMMIT_HASH` - Git commit SHA
@@ -1677,397 +1677,4 @@ pub use version::{QUANTRS2_VERSION, VERSION};
 // ================================================================================================
 
 #[cfg(test)]
-mod feature_gate_tests {
-    use super::*;
-
-    /// Test that core module is always available
-    #[test]
-    fn test_core_always_available() {
-        // Core should always be accessible
-        let _qubit = core::QubitId::new(0);
-        assert_eq!(VERSION, QUANTRS2_VERSION);
-    }
-
-    /// Test circuit feature availability
-    #[cfg(feature = "circuit")]
-    #[test]
-    fn test_circuit_feature_available() {
-        // When circuit feature is enabled, circuit module should be available
-        // Just importing the module is sufficient to verify it exists
-        #[allow(unused_imports)]
-        use crate::circuit;
-        // Test passes if compilation succeeds
-    }
-
-    /// Test circuit feature unavailability
-    #[cfg(not(feature = "circuit"))]
-    #[test]
-    fn test_circuit_feature_unavailable() {
-        // When circuit feature is disabled, circuit module should not be available
-        // This test exists to document the expected behavior
-        // Compilation will fail if we try to access circuit module
-    }
-
-    /// Test sim feature availability
-    #[cfg(feature = "sim")]
-    #[test]
-    fn test_sim_feature_available() {
-        // When sim feature is enabled, sim module should be available
-        #[allow(unused_imports)]
-        use crate::sim;
-        // Test passes if compilation succeeds
-    }
-
-    /// Test sim feature dependency on circuit
-    #[cfg(feature = "sim")]
-    #[test]
-    fn test_sim_requires_circuit() {
-        // Sim feature should automatically enable circuit
-        #[allow(unused_imports)]
-        use crate::circuit;
-        // Test passes if compilation succeeds
-    }
-
-    /// Test anneal feature availability
-    #[cfg(feature = "anneal")]
-    #[test]
-    fn test_anneal_feature_available() {
-        // When anneal feature is enabled, anneal module should be available
-        #[allow(unused_imports)]
-        use crate::anneal;
-        // Test passes if compilation succeeds
-    }
-
-    /// Test device feature availability
-    #[cfg(feature = "device")]
-    #[test]
-    fn test_device_feature_available() {
-        // When device feature is enabled, device module should be available
-        #[allow(unused_imports)]
-        use crate::device;
-        // Test passes if compilation succeeds
-    }
-
-    /// Test ml feature availability
-    #[cfg(feature = "ml")]
-    #[test]
-    fn test_ml_feature_available() {
-        // When ml feature is enabled, ml module should be available
-        #[allow(unused_imports)]
-        use crate::ml;
-        // Test passes if compilation succeeds
-    }
-
-    /// Test ml feature dependencies
-    #[cfg(feature = "ml")]
-    #[test]
-    fn test_ml_requires_sim_and_anneal() {
-        // ML feature should automatically enable both sim and anneal
-        #[allow(unused_imports)]
-        use crate::{anneal, circuit, sim};
-        // Test passes if compilation succeeds
-    }
-
-    /// Test tytan feature availability
-    #[cfg(feature = "tytan")]
-    #[test]
-    fn test_tytan_feature_available() {
-        // When tytan feature is enabled, tytan module should be available
-        #[allow(unused_imports)]
-        use crate::tytan;
-        // Test passes if compilation succeeds
-    }
-
-    /// Test tytan feature dependency on anneal
-    #[cfg(feature = "tytan")]
-    #[test]
-    fn test_tytan_requires_anneal() {
-        // Tytan feature should automatically enable anneal
-        #[allow(unused_imports)]
-        use crate::{anneal, circuit};
-        // Test passes if compilation succeeds
-    }
-
-    /// Test symengine feature availability
-    #[cfg(feature = "symengine")]
-    #[test]
-    fn test_symengine_feature_available() {
-        // When symengine feature is enabled, symengine module should be available
-        #[allow(unused_imports)]
-        use crate::symengine;
-        // Test passes if compilation succeeds
-    }
-
-    /// Test full feature set
-    #[cfg(feature = "full")]
-    #[test]
-    fn test_full_feature_enables_all() {
-        // When full feature is enabled, all modules should be available
-        #[allow(unused_imports)]
-        use crate::{anneal, circuit, device, ml, sim, symengine, tytan};
-        // Test passes if compilation succeeds
-    }
-
-    /// Test prelude essentials always available
-    #[test]
-    fn test_prelude_essentials_available() {
-        use crate::prelude::essentials::*;
-
-        // VERSION should be available
-        assert!(!VERSION.is_empty());
-        assert_eq!(VERSION, QUANTRS2_VERSION);
-    }
-
-    /// Test prelude circuits availability
-    #[cfg(feature = "circuit")]
-    #[test]
-    fn test_prelude_circuits_available() {
-        use crate::prelude::circuits::*;
-
-        // VERSION should still be available (inherited from essentials)
-        assert!(!VERSION.is_empty());
-    }
-
-    /// Test prelude simulation availability
-    #[cfg(feature = "sim")]
-    #[test]
-    fn test_prelude_simulation_available() {
-        use crate::prelude::simulation::*;
-
-        // VERSION should still be available
-        assert!(!VERSION.is_empty());
-    }
-
-    /// Test prelude algorithms availability
-    #[cfg(feature = "ml")]
-    #[test]
-    fn test_prelude_algorithms_available() {
-        use crate::prelude::algorithms::*;
-
-        // VERSION should still be available
-        assert!(!VERSION.is_empty());
-    }
-
-    /// Test prelude hardware availability
-    #[cfg(feature = "device")]
-    #[test]
-    fn test_prelude_hardware_available() {
-        use crate::prelude::hardware::*;
-
-        // VERSION should still be available
-        assert!(!VERSION.is_empty());
-    }
-
-    /// Test prelude quantum_annealing availability
-    #[cfg(feature = "anneal")]
-    #[test]
-    fn test_prelude_quantum_annealing_available() {
-        use crate::prelude::quantum_annealing::*;
-
-        // VERSION should still be available
-        assert!(!VERSION.is_empty());
-    }
-
-    /// Test prelude tytan availability
-    #[cfg(feature = "tytan")]
-    #[test]
-    fn test_prelude_tytan_available() {
-        use crate::prelude::tytan::*;
-
-        // VERSION should still be available
-        assert!(!VERSION.is_empty());
-    }
-
-    /// Test prelude full availability
-    #[cfg(feature = "full")]
-    #[test]
-    fn test_prelude_full_available() {
-        // Test full prelude without glob import to avoid ambiguity
-        #[allow(unused_imports)]
-        use crate::prelude::full;
-        // Test passes if compilation succeeds
-    }
-
-    /// Test facade modules are always available
-    #[test]
-    fn test_facade_modules_always_available() {
-        // These modules should always be available regardless of features
-        use crate::bench;
-        use crate::config;
-        use crate::deprecation;
-        use crate::diagnostics;
-        use crate::error;
-        use crate::testing;
-        use crate::utils;
-        use crate::version;
-
-        // Verify they're accessible
-        let _ = error::ErrorCategory::Core;
-        let _ = version::VERSION;
-        let _ = config::Config::global();
-        let _ = diagnostics::is_ready();
-        let _ = utils::estimate_statevector_memory(10);
-        let _ = testing::test_seed();
-        let _timer = bench::BenchmarkTimer::start();
-        let _ = deprecation::is_deprecated("test");
-    }
-
-    /// Test default feature set (no features)
-    #[cfg(all(
-        not(feature = "circuit"),
-        not(feature = "sim"),
-        not(feature = "anneal"),
-        not(feature = "device"),
-        not(feature = "ml"),
-        not(feature = "tytan"),
-        not(feature = "symengine"),
-        not(feature = "full")
-    ))]
-    #[test]
-    fn test_default_feature_set() {
-        // With no features enabled, only core and facade modules should be available
-        use crate::core;
-
-        let _qubit = core::QubitId::new(0);
-        assert!(!VERSION.is_empty());
-    }
-
-    /// Test version constants are consistent
-    #[test]
-    fn test_version_constants_consistent() {
-        assert_eq!(VERSION, QUANTRS2_VERSION);
-        assert_eq!(VERSION, version::VERSION);
-        assert_eq!(VERSION, version::QUANTRS2_VERSION);
-    }
-
-    /// Test error module integration
-    #[test]
-    fn test_error_module_integration() {
-        use crate::error::*;
-
-        // Create a sample error
-        let err = QuantRS2Error::InvalidInput("test".into());
-        assert!(err.is_invalid_input());
-
-        // Test error categories
-        let category = err.category();
-        assert_eq!(category.name(), "Core");
-    }
-
-    /// Test config module integration
-    #[test]
-    fn test_config_module_integration() {
-        use crate::config::*;
-
-        let cfg = Config::global();
-        // Just verify we can access it
-        let _ = cfg.num_threads();
-    }
-
-    /// Test diagnostics module integration
-    #[test]
-    fn test_diagnostics_module_integration() {
-        use crate::diagnostics::*;
-
-        // Run diagnostics
-        let report = run_diagnostics();
-
-        // Verify report is valid
-        assert!(!report.summary().is_empty());
-    }
-
-    /// Test utils module integration
-    #[test]
-    fn test_utils_module_integration() {
-        use crate::utils::*;
-
-        // Test memory estimation
-        let mem = estimate_statevector_memory(10);
-        assert!(mem > 0);
-
-        // Test formatting
-        let formatted = format_memory(1024 * 1024);
-        assert!(formatted.contains("MB") || formatted.contains("KiB"));
-    }
-
-    /// Test testing module integration
-    #[test]
-    fn test_testing_module_integration() {
-        use crate::testing::*;
-
-        // Test floating-point assertion
-        assert_approx_eq(1.0, 1.0, 1e-10);
-
-        // Test seed generation
-        let seed = test_seed();
-        assert!(seed > 0);
-    }
-
-    /// Test bench module integration
-    #[test]
-    fn test_bench_module_integration() {
-        use crate::bench::*;
-        use std::time::Duration;
-
-        // Test timer
-        let timer = BenchmarkTimer::start();
-        std::thread::sleep(Duration::from_micros(1));
-        let elapsed = timer.stop();
-        assert!(elapsed > Duration::ZERO);
-
-        // Test stats
-        let mut stats = BenchmarkStats::new("test");
-        stats.record(Duration::from_millis(10));
-        assert_eq!(stats.count(), 1);
-    }
-
-    /// Test deprecation module integration
-    #[test]
-    fn test_deprecation_module_integration() {
-        use crate::deprecation::*;
-
-        // Test deprecation check
-        let is_deprecated = is_deprecated("nonexistent");
-        assert!(!is_deprecated);
-
-        // Test module stability - use a module that's actually registered
-        let stability = get_module_stability("quantrs2::core");
-        assert!(stability.is_some());
-    }
-
-    /// Test feature combination: circuit + sim
-    #[cfg(all(feature = "circuit", feature = "sim"))]
-    #[test]
-    fn test_feature_combination_circuit_sim() {
-        #[allow(unused_imports)]
-        use crate::{circuit, sim};
-        // Test passes if compilation succeeds
-    }
-
-    /// Test feature combination: sim + ml
-    #[cfg(all(feature = "sim", feature = "ml"))]
-    #[test]
-    fn test_feature_combination_sim_ml() {
-        #[allow(unused_imports)]
-        use crate::{anneal, ml, sim};
-        // Test passes if compilation succeeds
-    }
-
-    /// Test feature combination: anneal + tytan
-    #[cfg(all(feature = "anneal", feature = "tytan"))]
-    #[test]
-    fn test_feature_combination_anneal_tytan() {
-        #[allow(unused_imports)]
-        use crate::{anneal, tytan};
-        // Test passes if compilation succeeds
-    }
-
-    /// Test feature combination: device + circuit
-    #[cfg(all(feature = "device", feature = "circuit"))]
-    #[test]
-    fn test_feature_combination_device_circuit() {
-        #[allow(unused_imports)]
-        use crate::{circuit, device};
-        // Test passes if compilation succeeds
-    }
-}
+mod feature_gate_tests;

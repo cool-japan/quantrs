@@ -210,45 +210,179 @@ impl CartanDecomposer {
         magic_dag.dot(u).dot(magic)
     }
 
-    /// Diagonalize a symmetric complex matrix
+    /// Diagonalize a symmetric complex matrix via QR iteration
+    ///
+    /// For the Cartan decomposition, M = U^T U is complex symmetric.
+    /// Its eigenvalues are complex numbers on the unit circle: exp(2i*phi_k).
+    /// Returns (eigenvalues as Complex, approximate eigenvectors).
     fn diagonalize_symmetric(
         m: &Array2<Complex<f64>>,
-    ) -> QuantRS2Result<(Array1<f64>, Array2<Complex<f64>>)> {
-        // For a unitary in magic basis, M = U^T U has special structure
-        // Its eigenvalues come in pairs (λ, λ*) and determine the interaction
+    ) -> QuantRS2Result<(Array1<Complex<f64>>, Array2<Complex<f64>>)> {
+        let n = m.nrows();
+        // QR iteration with Francis shifts to find all eigenvalues of the complex matrix M.
+        // We work with a Hessenberg reduction first, then apply shifted QR steps.
+        let mut h = m.to_owned();
+        let mut q = Array2::<Complex<f64>>::eye(n);
 
-        // Simplified diagonalization for 4x4 case
-        // In practice, would use proper eigendecomposition
+        // Reduce to upper Hessenberg form using Householder reflections
+        for k in 0..n.saturating_sub(2) {
+            // Build Householder vector from column k, rows k+1..n
+            let col: Vec<Complex<f64>> = (k + 1..n).map(|i| h[[i, k]]).collect();
+            let sigma_sq: f64 = col.iter().map(|z| z.norm_sqr()).sum();
+            let sigma = sigma_sq.sqrt();
+            if sigma < 1e-14 {
+                continue;
+            }
+            // Choose Householder sign to maximise numerical stability
+            let phase = if col[0].norm() > 1e-14 {
+                col[0] / col[0].norm()
+            } else {
+                Complex::new(1.0, 0.0)
+            };
+            let mut v = col.clone();
+            v[0] = v[0] + phase * sigma;
+            let v_norm_sq: f64 = v.iter().map(|z| z.norm_sqr()).sum();
+            if v_norm_sq < 1e-28 {
+                continue;
+            }
+            let m_len = v.len(); // = n - (k+1)
 
-        // For now, extract diagonal approximation
-        let mut eigenvalues = Array1::zeros(4);
-        let eigenvectors = Array2::eye(4);
-
-        // This is a placeholder - real implementation needs eigendecomposition
-        for i in 0..4 {
-            eigenvalues[i] = m[[i, i]].norm();
+            // Apply H from the left: h[k+1.., ..] -= (2/v^†v) v (v^† h[k+1.., ..])
+            for j in 0..n {
+                let dot: Complex<f64> = (0..m_len).map(|i| v[i].conj() * h[[k + 1 + i, j]]).sum();
+                let scale = dot * Complex::new(2.0 / v_norm_sq, 0.0);
+                for i in 0..m_len {
+                    h[[k + 1 + i, j]] = h[[k + 1 + i, j]] - v[i] * scale;
+                }
+            }
+            // Apply H from the right: h[.., k+1..] -= (2/v^†v) (h[.., k+1..] v) v^†
+            for i in 0..n {
+                let dot: Complex<f64> = (0..m_len).map(|j| h[[i, k + 1 + j]] * v[j]).sum();
+                let scale = dot * Complex::new(2.0 / v_norm_sq, 0.0);
+                for j in 0..m_len {
+                    h[[i, k + 1 + j]] = h[[i, k + 1 + j]] - scale * v[j].conj();
+                }
+            }
+            // Accumulate Q
+            for i in 0..n {
+                let dot: Complex<f64> = (0..m_len).map(|j| q[[i, k + 1 + j]] * v[j]).sum();
+                let scale = dot * Complex::new(2.0 / v_norm_sq, 0.0);
+                for j in 0..m_len {
+                    q[[i, k + 1 + j]] = q[[i, k + 1 + j]] - scale * v[j].conj();
+                }
+            }
         }
 
-        Ok((eigenvalues, eigenvectors))
+        // Francis double-shift QR iteration on the Hessenberg matrix
+        let max_iter = 300 * n;
+        let mut active = n;
+        for _iter in 0..max_iter {
+            if active <= 1 {
+                break;
+            }
+            // Deflate converged eigenvalues at the bottom
+            while active > 1 {
+                let off = h[[active - 1, active - 2]].norm();
+                let d1 = h[[active - 1, active - 1]].norm();
+                let d0 = h[[active - 2, active - 2]].norm();
+                if off < 1e-12 * (d1 + d0) {
+                    active -= 1;
+                } else {
+                    break;
+                }
+            }
+            if active <= 1 {
+                break;
+            }
+
+            // Wilkinson (single complex) shift: eigenvalue of bottom 2x2 closest to h[a-1,a-1]
+            let a = active;
+            let s = h[[a - 1, a - 1]];
+
+            // Single-shift QR step: compute Givens rotations to push shift through
+            // Apply shift: h' = h - s*I, QR decompose, then h'' = RQ + s*I
+            for k in 0..a - 1 {
+                // Compute Givens rotation to zero h[k+1, k]
+                let x = h[[k, k]] - s;
+                let y = h[[k + 1, k]];
+                let r = (x.norm_sqr() + y.norm_sqr()).sqrt();
+                if r < 1e-14 {
+                    continue;
+                }
+                let c_val = x / r;
+                let s_val = -y / r;
+
+                // Apply Givens rotation from left: rows k and k+1
+                for j in 0..n {
+                    let tmp0 = c_val * h[[k, j]] - s_val.conj() * h[[k + 1, j]];
+                    let tmp1 = s_val * h[[k, j]] + c_val.conj() * h[[k + 1, j]];
+                    h[[k, j]] = tmp0;
+                    h[[k + 1, j]] = tmp1;
+                }
+                // Apply Givens rotation from right: cols k and k+1
+                for i in 0..n {
+                    let tmp0 = c_val.conj() * h[[i, k]] - s_val.conj() * h[[i, k + 1]];
+                    let tmp1 = s_val * h[[i, k]] + c_val * h[[i, k + 1]];
+                    h[[i, k]] = tmp0;
+                    h[[i, k + 1]] = tmp1;
+                }
+                // Accumulate in Q
+                for i in 0..n {
+                    let tmp0 = c_val.conj() * q[[i, k]] - s_val.conj() * q[[i, k + 1]];
+                    let tmp1 = s_val * q[[i, k]] + c_val * q[[i, k + 1]];
+                    q[[i, k]] = tmp0;
+                    q[[i, k + 1]] = tmp1;
+                }
+            }
+        }
+
+        // Extract eigenvalues from the diagonal of h
+        let mut eigenvalues = Array1::zeros(n);
+        for i in 0..n {
+            eigenvalues[i] = h[[i, i]];
+        }
+
+        Ok((eigenvalues, q))
     }
 
-    /// Extract Cartan coefficients from eigenvalues
-    fn extract_coefficients(eigenvalues: &Array1<f64>) -> CartanCoefficients {
-        // The eigenvalues of M determine the interaction coefficients
-        // For U = exp(i(aXX + bYY + cZZ)), the eigenvalues are:
-        // exp(2i(a+b+c)), exp(2i(a-b-c)), exp(2i(-a+b-c)), exp(2i(-a-b+c))
+    /// Extract Cartan coefficients from complex eigenvalues of M = U^T U
+    ///
+    /// The eigenvalues are exp(2i·phi_k). For U = exp(i(aXX + bYY + cZZ)),
+    /// the phases come in pairs: {+(a+b+c), +(a-b-c), +(-a+b-c), +(-a-b+c)}.
+    /// Sorting and averaging the phases gives:
+    ///   a = (phi_0 + phi_1 - phi_2 - phi_3) / 4   (after appropriate ordering)
+    /// More robustly: solve the 4×4 linear system.
+    fn extract_coefficients(eigenvalues: &Array1<Complex<f64>>) -> CartanCoefficients {
+        // Extract phases phi_k from eigenvalues exp(2i*phi_k)
+        // The arg() gives 2*phi, so phi = arg/2
+        let mut phases: Vec<f64> = eigenvalues.iter().map(|z| z.arg() / 2.0).collect();
+        // Sort phases for stable extraction
+        phases.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-        // Extract phases from eigenvalues
-        let phases: Vec<f64> = eigenvalues
-            .iter()
-            .map(|&lambda| lambda.ln() / 2.0)
-            .collect();
+        // For the four Cartan phases {a+b+c, a-b-c, -a+b-c, -a-b+c}:
+        // Sum = 0, so use differences.
+        // Ordered phases p0 <= p1 <= p2 <= p3 with p0+p3 ≈ 0, p1+p2 ≈ 0
+        // a = (p3 - p2 + p1 - p0) / 4 ... but sign ordering depends on values.
+        // Use the symmetric formula: after sorting ascending,
+        //   a+b+c corresponds to the largest magnitude phase
+        //   We identify:
+        //     c = (p3 - p0) / 4   (half the spread of extreme phases)
+        //     b = (p2 - p1) / 4   (half the spread of middle phases)
+        //     a ≈ (p3 + p2 - p1 - p0) / 4
+        let p0 = phases.first().copied().unwrap_or(0.0);
+        let p1 = phases.get(1).copied().unwrap_or(0.0);
+        let p2 = phases.get(2).copied().unwrap_or(0.0);
+        let p3 = phases.get(3).copied().unwrap_or(0.0);
 
-        // Solve for a, b, c
-        // This is simplified - proper implementation uses the correct formula
-        let a = (phases[0] - phases[3]) / 4.0;
-        let b = (phases[0] - phases[2]) / 4.0;
-        let c = (phases[0] - phases[1]) / 4.0;
+        // Solve: a+b+c=p3, a-b-c=p0, -a+b-c=p1, -a-b+c=p2  (one consistent assignment)
+        // Adding all: 0 = p0+p1+p2+p3 (true up to 2π ambiguity)
+        // From (p3+p0)/2 = a and (p3-p0)/2 = b+c
+        // From (p2+p1)/2 = -a and (p2-p1)/2 = c-b
+        let a = (p3 + p0) / 2.0;
+        let b_plus_c = (p3 - p0) / 2.0;
+        let c_minus_b = (p2 - p1) / 2.0;
+        let b = (b_plus_c - c_minus_b) / 2.0;
+        let c = (b_plus_c + c_minus_b) / 2.0;
 
         let mut coeffs = CartanCoefficients::new(a, b, c);
         coeffs.canonicalize();

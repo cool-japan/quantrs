@@ -87,13 +87,19 @@ impl<const N: usize> RoutedCircuit<N> {
         counts
     }
 
-    /// Convert back to a Circuit (if possible)
+    /// Convert back to a `Circuit<N>` by replaying the routed gate sequence.
+    ///
+    /// Each stored `Box<dyn GateOp>` is added via `Circuit::add_gate_box`, which
+    /// down-casts to the concrete gate type internally.  Gates whose concrete type
+    /// is not recognised by `add_gate_box` will produce an error.
     pub fn to_circuit(&self) -> QuantRS2Result<Circuit<N>> {
         let mut circuit = Circuit::<N>::new();
 
-        // Note: This is a simplified conversion - in practice we'd need proper gate conversion
-        // For now, we'll just return an empty circuit as this is mainly for demonstration
-        // TODO: Implement proper gate conversion from boxed gates back to circuit
+        for gate in &self.gates {
+            // Clone the boxed gate so we can hand ownership to the circuit.
+            let gate_clone: Box<dyn quantrs2_core::gate::GateOp> = gate.clone_gate();
+            circuit.add_gate_box(gate_clone)?;
+        }
 
         Ok(circuit)
     }

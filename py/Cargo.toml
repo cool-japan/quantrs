@@ -9,6 +9,7 @@ license.workspace = true
 keywords = ["quantum", "computing", "python", "bindings", "pyo3"]
 categories = ["science", "api-bindings"]
 description = "Python bindings for the QuantRS2 framework"
+readme = "README.md"
 # Exclude from standard publishing - this should be published through Maturin/PyPI
 publish = false
 build = "build.rs"
@@ -16,7 +17,8 @@ build = "build.rs"
 [lib]
 name = "quantrs2"
 crate-type = ["cdylib"]
-doc = false  # Exclude from rustdoc to avoid collision with main quantrs2 crate
+doc = false   # Exclude from rustdoc to avoid collision with main quantrs2 crate
+test = false  # Exclude from cargo test/nextest: cdylib PyO3 extension modules cannot link Python symbols in test binaries (macOS SIGABRT / dyld _PyExc_BaseException)
 
 [dependencies]
 quantrs2-core.workspace = true

@@ -231,10 +231,43 @@ impl QuantumMatrix for SparseMatrix {
     }
 
     fn tensor_product(&self, other: &dyn QuantumMatrix) -> QuantRS2Result<Array2<Complex64>> {
-        // For now, convert to dense and compute
-        // TODO: Implement sparse tensor product
-        let dense = DenseMatrix::new(self.to_dense())?;
-        dense.tensor_product(other)
+        // Implement sparse tensor product (Kronecker product) efficiently
+        // Result dimensions: (a.rows * b.rows, a.cols * b.cols)
+        let other_dense = other.to_dense();
+        let (a_rows, a_cols) = self.csr.shape();
+        let b_rows = other_dense.nrows();
+        let b_cols = other_dense.ncols();
+
+        // Early return for zero dimensions
+        if a_rows == 0 || a_cols == 0 || b_rows == 0 || b_cols == 0 {
+            let out_rows = a_rows * b_rows;
+            let out_cols = a_cols * b_cols;
+            return Ok(Array2::zeros((out_rows, out_cols)));
+        }
+
+        let out_rows = a_rows * b_rows;
+        let out_cols = a_cols * b_cols;
+        let mut result = Array2::zeros((out_rows, out_cols));
+
+        // Iterate over non-zero elements of the sparse matrix A
+        // result[(i*p + k, j*q + l)] = a[(i,j)] * b[(k,l)]
+        let dense_a = self.csr.to_dense();
+        for i in 0..a_rows {
+            for j in 0..a_cols {
+                let val_a = dense_a[[i, j]];
+                // Skip near-zero entries for efficiency
+                if val_a.norm() < 1e-14 {
+                    continue;
+                }
+                for k in 0..b_rows {
+                    for l in 0..b_cols {
+                        result[[i * b_rows + k, j * b_cols + l]] = val_a * other_dense[[k, l]];
+                    }
+                }
+            }
+        }
+
+        Ok(result)
     }
 
     fn apply(&self, state: &ArrayView1<Complex64>) -> QuantRS2Result<Array1<Complex64>> {
@@ -249,6 +282,48 @@ impl QuantumMatrix for SparseMatrix {
         let dense = self.to_dense();
         Ok(dense.dot(state))
     }
+}
+
+/// Compute the sparse Kronecker (tensor) product of two dense matrices.
+///
+/// Given matrices A of shape `(m, n)` and B of shape `(p, q)`,
+/// returns the Kronecker product A ⊗ B of shape `(m*p, n*q)`.
+///
+/// `result[(i*p + k, j*q + l)] = a[(i,j)] * b[(k,l)]`
+pub fn sparse_tensor_product(
+    a: &Array2<scirs2_core::Complex64>,
+    b: &Array2<scirs2_core::Complex64>,
+) -> QuantRS2Result<Array2<scirs2_core::Complex64>> {
+    let a_rows = a.nrows();
+    let a_cols = a.ncols();
+    let b_rows = b.nrows();
+    let b_cols = b.ncols();
+
+    // Handle zero-dimension early return
+    if a_rows == 0 || a_cols == 0 || b_rows == 0 || b_cols == 0 {
+        return Ok(Array2::zeros((a_rows * b_rows, a_cols * b_cols)));
+    }
+
+    let out_rows = a_rows * b_rows;
+    let out_cols = a_cols * b_cols;
+    let mut result = Array2::zeros((out_rows, out_cols));
+
+    for i in 0..a_rows {
+        for j in 0..a_cols {
+            let val_a = a[[i, j]];
+            // Skip near-zero entries for sparse efficiency
+            if val_a.norm() < 1e-14 {
+                continue;
+            }
+            for k in 0..b_rows {
+                for l in 0..b_cols {
+                    result[[i * b_rows + k, j * b_cols + l]] = val_a * b[[k, l]];
+                }
+            }
+        }
+    }
+
+    Ok(result)
 }
 
 /// Compute the partial trace of a matrix

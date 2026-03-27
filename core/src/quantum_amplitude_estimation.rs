@@ -268,7 +268,7 @@ impl MaximumLikelihoodAE {
     /// Measure in computational basis
     fn measure_computational_basis(&self, state: &Array1<Complex64>) -> usize {
         let mut rng = thread_rng();
-        let random: f64 = rng.gen();
+        let random: f64 = rng.random();
 
         let mut cumulative_prob = 0.0;
         for (idx, amp) in state.iter().enumerate() {
@@ -440,7 +440,7 @@ impl IterativeQAE {
     /// Measure whether state is in good subspace
     fn measure_good_state(&self, state: &Array1<Complex64>, oracle: &dyn AmplitudeOracle) -> bool {
         let mut rng = thread_rng();
-        let random: f64 = rng.gen();
+        let random: f64 = rng.random();
 
         let mut cumulative_prob = 0.0;
         for (idx, amp) in state.iter().enumerate() {

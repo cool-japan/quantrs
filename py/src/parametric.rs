@@ -57,7 +57,7 @@ impl PyParametricCircuit {
     }
 
     /// Get all parameters
-    pub fn get_parameters(&self, py: Python) -> PyObject {
+    pub fn get_parameters(&self, py: Python) -> Py<PyAny> {
         let dict = PyDict::new(py);
         for (name, value) in &self.parameters {
             let _ = dict.set_item(name, value);
@@ -81,7 +81,7 @@ impl PyParametricCircuit {
     }
 
     /// Get state vector (simplified - returns dummy state)
-    pub fn get_statevector(&self, py: Python, _params: Vec<f64>) -> PyResult<PyObject> {
+    pub fn get_statevector(&self, py: Python, _params: Vec<f64>) -> PyResult<Py<PyAny>> {
         let n_states = 1 << self.n_qubits;
         let mut state = vec![Complex64::new(0.0, 0.0); n_states];
         state[0] = Complex64::new(1.0, 0.0);

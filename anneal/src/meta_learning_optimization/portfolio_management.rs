@@ -336,7 +336,7 @@ impl AlgorithmPortfolio {
             return Err("No applicable algorithms found".to_string());
         }
 
-        if rng.gen_bool(epsilon) {
+        if rng.random_bool(epsilon) {
             // Explore: random selection
             let algorithm = applicable_algorithms
                 .choose(&mut rng)

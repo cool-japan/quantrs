@@ -1,0 +1,155 @@
+//! # TQControlledRot - Trait Implementations
+//!
+//! This module contains trait implementations for `TQControlledRot`.
+//!
+//! ## Implemented Traits
+//!
+//! - `Default`
+//! - `TQModule`
+//! - `TQOperator`
+//!
+//! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
+
+use crate::error::{MLError, Result};
+use crate::torchquantum::{
+    CType, NParamsEnum, OpHistoryEntry, TQDevice, TQModule, TQOperator, TQParameter, WiresEnum,
+};
+use scirs2_core::ndarray::{Array2, ArrayD, IxDyn};
+
+use super::types::TQControlledRot;
+
+impl Default for TQControlledRot {
+    fn default() -> Self {
+        Self::new(true, true)
+    }
+}
+
+impl TQModule for TQControlledRot {
+    fn forward(&mut self, _qdev: &mut TQDevice) -> Result<()> {
+        Err(MLError::InvalidConfiguration(
+            "Use apply() instead of forward() for operators".to_string(),
+        ))
+    }
+    fn parameters(&self) -> Vec<TQParameter> {
+        self.params.iter().cloned().collect()
+    }
+    fn n_wires(&self) -> Option<usize> {
+        Some(2)
+    }
+    fn set_n_wires(&mut self, _n_wires: usize) {}
+    fn is_static_mode(&self) -> bool {
+        self.static_mode
+    }
+    fn static_on(&mut self) {
+        self.static_mode = true;
+    }
+    fn static_off(&mut self) {
+        self.static_mode = false;
+    }
+    fn name(&self) -> &str {
+        "CRot"
+    }
+    fn zero_grad(&mut self) {
+        if let Some(ref mut p) = self.params {
+            p.zero_grad();
+        }
+    }
+}
+
+impl TQOperator for TQControlledRot {
+    fn num_wires(&self) -> WiresEnum {
+        WiresEnum::Fixed(2)
+    }
+    fn num_params(&self) -> NParamsEnum {
+        NParamsEnum::Fixed(3)
+    }
+    fn get_matrix(&self, params: Option<&[f64]>) -> Array2<CType> {
+        let theta = params
+            .and_then(|p| p.first().copied())
+            .or_else(|| self.params.as_ref().map(|p| p.data[[0, 0]]))
+            .unwrap_or(0.0);
+        let phi = params
+            .and_then(|p| p.get(1).copied())
+            .or_else(|| self.params.as_ref().map(|p| p.data[[0, 1]]))
+            .unwrap_or(0.0);
+        let omega = params
+            .and_then(|p| p.get(2).copied())
+            .or_else(|| self.params.as_ref().map(|p| p.data[[0, 2]]))
+            .unwrap_or(0.0);
+        let (theta, phi, omega) = if self.inverse {
+            (-omega, -phi, -theta)
+        } else {
+            (theta, phi, omega)
+        };
+        let half_theta = theta / 2.0;
+        let half_phi = phi / 2.0;
+        let half_omega = omega / 2.0;
+        let cos_phi = half_phi.cos();
+        let sin_phi = half_phi.sin();
+        let u00 = CType::from_polar(cos_phi, -(half_theta + half_omega));
+        let u01 = CType::from_polar(-sin_phi, -(half_theta - half_omega));
+        let u10 = CType::from_polar(sin_phi, half_theta - half_omega);
+        let u11 = CType::from_polar(cos_phi, half_theta + half_omega);
+        Array2::from_shape_vec(
+            (4, 4),
+            vec![
+                CType::new(1.0, 0.0),
+                CType::new(0.0, 0.0),
+                CType::new(0.0, 0.0),
+                CType::new(0.0, 0.0),
+                CType::new(0.0, 0.0),
+                CType::new(1.0, 0.0),
+                CType::new(0.0, 0.0),
+                CType::new(0.0, 0.0),
+                CType::new(0.0, 0.0),
+                CType::new(0.0, 0.0),
+                u00,
+                u01,
+                CType::new(0.0, 0.0),
+                CType::new(0.0, 0.0),
+                u10,
+                u11,
+            ],
+        )
+        .unwrap_or_else(|_| Array2::eye(4).mapv(|x| CType::new(x, 0.0)))
+    }
+    fn apply(&mut self, qdev: &mut TQDevice, wires: &[usize]) -> Result<()> {
+        self.apply_with_params(qdev, wires, None)
+    }
+    fn apply_with_params(
+        &mut self,
+        qdev: &mut TQDevice,
+        wires: &[usize],
+        params: Option<&[f64]>,
+    ) -> Result<()> {
+        if wires.len() < 2 {
+            return Err(MLError::InvalidConfiguration(
+                "CRot gate requires exactly 2 wires".to_string(),
+            ));
+        }
+        let matrix = self.get_matrix(params);
+        qdev.apply_two_qubit_gate(wires[0], wires[1], &matrix)?;
+        if qdev.record_op {
+            qdev.record_operation(OpHistoryEntry {
+                name: "crot".to_string(),
+                wires: wires.to_vec(),
+                params: params.map(|p| p.to_vec()),
+                inverse: self.inverse,
+                trainable: self.trainable,
+            });
+        }
+        Ok(())
+    }
+    fn has_params(&self) -> bool {
+        self.has_params
+    }
+    fn trainable(&self) -> bool {
+        self.trainable
+    }
+    fn inverse(&self) -> bool {
+        self.inverse
+    }
+    fn set_inverse(&mut self, inverse: bool) {
+        self.inverse = inverse;
+    }
+}

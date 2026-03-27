@@ -442,8 +442,9 @@ impl AdvancedMLErrorMitigator {
             let fan_out = layers[i + 1];
             let limit = (6.0 / (fan_in + fan_out) as f64).sqrt();
 
-            let w =
-                Array2::from_shape_fn((fan_out, fan_in), |_| thread_rng().gen_range(-limit..limit));
+            let w = Array2::from_shape_fn((fan_out, fan_in), |_| {
+                thread_rng().random_range(-limit..limit)
+            });
             let b = Array1::zeros(fan_out);
 
             weights.push(w);
@@ -535,7 +536,7 @@ impl AdvancedMLErrorMitigator {
             let state_key = Self::features_to_state_key(features);
 
             // Epsilon-greedy action selection
-            if thread_rng().gen::<f64>() < agent.exploration_rate {
+            if thread_rng().random::<f64>() < agent.exploration_rate {
                 // Random exploration
                 let actions = [
                     MitigationAction::ZeroNoiseExtrapolation,
@@ -543,7 +544,7 @@ impl AdvancedMLErrorMitigator {
                     MitigationAction::MachineLearningPrediction,
                     MitigationAction::EnsembleMitigation,
                 ];
-                Ok(actions[thread_rng().gen_range(0..actions.len())])
+                Ok(actions[thread_rng().random_range(0..actions.len())])
             } else {
                 // Greedy exploitation
                 let q_values = agent.q_table.get(&state_key).cloned().unwrap_or_default();

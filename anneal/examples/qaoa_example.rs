@@ -753,13 +753,15 @@ fn evaluate_ising_energy(
 
     // Bias terms
     for i in 0..spins.len() {
-        energy += problem.get_bias(i)? * f64::from(spins[i]);
+        energy = problem.get_bias(i)?.mul_add(f64::from(spins[i]), energy);
     }
 
     // Coupling terms
     for i in 0..spins.len() {
         for j in (i + 1)..spins.len() {
-            energy += problem.get_coupling(i, j)? * f64::from(spins[i]) * f64::from(spins[j]);
+            energy = problem
+                .get_coupling(i, j)?
+                .mul_add(f64::from(spins[i]) * f64::from(spins[j]), energy);
         }
     }
 

@@ -59,10 +59,9 @@ impl GateRegistry {
     }
 
     fn register(&self, name: String, definition: GateDefinition) -> PyResult<()> {
-        let mut gates = self
-            .gates
-            .lock()
-            .expect("Failed to lock gates mutex in GateRegistry::register");
+        let mut gates = self.gates.lock().map_err(|e| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to lock gates mutex: {e}"))
+        })?;
         if gates.contains_key(&name) {
             return Err(PyValueError::new_err(format!("Gate {name} already exists")));
         }
@@ -71,19 +70,17 @@ impl GateRegistry {
     }
 
     fn get(&self, name: &str) -> Option<GateDefinition> {
-        let gates = self
-            .gates
-            .lock()
-            .expect("Failed to lock gates mutex in GateRegistry::get");
-        gates.get(name).cloned()
+        match self.gates.lock() {
+            Ok(gates) => gates.get(name).cloned(),
+            Err(_) => None,
+        }
     }
 
     fn list_gates(&self) -> Vec<String> {
-        let gates = self
-            .gates
-            .lock()
-            .expect("Failed to lock gates mutex in GateRegistry::list_gates");
-        gates.keys().cloned().collect()
+        match self.gates.lock() {
+            Ok(gates) => gates.keys().cloned().collect(),
+            Err(_) => Vec::new(),
+        }
     }
 }
 
@@ -138,20 +135,32 @@ impl PyCustomGate {
         name: String,
         num_qubits: usize,
         num_params: usize,
-        matrix_fn: PyObject,
+        matrix_fn: Py<PyAny>,
     ) -> PyResult<Self> {
         // Create wrapper that calls Python function
+        let gate_dim = 1usize << num_qubits;
         let matrix_fn_wrapper = Arc::new(move |params: &[f64]| -> Array2<Complex64> {
-            Python::with_gil(|py| {
-                let params_py = params.to_vec().into_pyarray(py);
-                let result = matrix_fn
-                    .call1(py, (params_py,))
-                    .expect("Failed to call Python matrix function in PyCustomGate::from_function");
-                let matrix: PyReadonlyArray2<Complex64> = result.extract(py).expect(
-                    "Failed to extract matrix from Python result in PyCustomGate::from_function",
-                );
-                matrix.as_array().to_owned()
-            })
+            // SAFETY: This closure is only called from Python-originated contexts
+            // where the GIL is already held or can be safely acquired.
+            unsafe {
+                Python::attach_unchecked(|py| {
+                    let params_py = params.to_vec().into_pyarray(py);
+                    let result = match matrix_fn.call1(py, (params_py,)) {
+                        Ok(r) => r,
+                        Err(e) => {
+                            eprintln!("Warning: PyCustomGate matrix_fn call failed: {e}");
+                            return Array2::eye(gate_dim);
+                        }
+                    };
+                    match result.extract::<PyReadonlyArray2<Complex64>>(py) {
+                        Ok(matrix) => matrix.as_array().to_owned(),
+                        Err(e) => {
+                            eprintln!("Warning: PyCustomGate matrix extraction failed: {e}");
+                            Array2::eye(gate_dim)
+                        }
+                    }
+                })
+            }
         });
 
         Ok(Self {
@@ -336,13 +345,14 @@ impl PyGateBuilder {
             .ok_or_else(|| PyValueError::new_err("Gate name not set"))?;
 
         if let Some(ref matrix) = self.matrix {
+            let num_qubits = self.num_qubits.ok_or_else(|| {
+                PyValueError::new_err("Number of qubits must be set when matrix is provided")
+            })?;
             Ok(PyCustomGate {
                 name,
                 definition: GateDefinition::Matrix {
                     unitary: matrix.clone(),
-                    num_qubits: self.num_qubits.expect(
-                        "num_qubits should be set when matrix is set in PyGateBuilder::build",
-                    ),
+                    num_qubits,
                 },
             })
         } else if let Some(ref decomp) = self.decomposition {
@@ -400,23 +410,20 @@ impl PyGateRegistry {
     }
 
     /// Clear all registered gates
-    fn clear(&self) {
-        let mut gates = self
-            .registry
-            .gates
-            .lock()
-            .expect("Failed to lock gates mutex in PyGateRegistry::clear");
+    fn clear(&self) -> PyResult<()> {
+        let mut gates = self.registry.gates.lock().map_err(|e| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to lock gates mutex: {e}"))
+        })?;
         gates.clear();
+        Ok(())
     }
 
     /// Check if a gate is registered
     fn contains(&self, name: &str) -> bool {
-        let gates = self
-            .registry
-            .gates
-            .lock()
-            .expect("Failed to lock gates mutex in PyGateRegistry::contains");
-        gates.contains_key(name)
+        match self.registry.gates.lock() {
+            Ok(gates) => gates.contains_key(name),
+            Err(_) => false,
+        }
     }
 }
 
@@ -468,7 +475,9 @@ fn create_phase_gate(phase: f64) -> PyResult<PyCustomGate> {
             Complex64::new(phase.cos(), phase.sin()),
         ],
     )
-    .expect("Failed to create phase gate matrix in create_phase_gate");
+    .map_err(|e| {
+        pyo3::exceptions::PyValueError::new_err(format!("Failed to create phase gate matrix: {e}"))
+    })?;
 
     Ok(PyCustomGate {
         name: format!("Phase({phase:.3})"),
@@ -507,7 +516,11 @@ fn create_rotation_gate(axis: Vec<f64>, angle: f64) -> PyResult<PyCustomGate> {
             Complex64::new(cos_half, sin_half * nz),
         ],
     )
-    .expect("Failed to create rotation gate matrix in create_rotation_gate");
+    .map_err(|e| {
+        pyo3::exceptions::PyValueError::new_err(format!(
+            "Failed to create rotation gate matrix: {e}"
+        ))
+    })?;
 
     Ok(PyCustomGate {
         name: format!("Rot({nx:.2},{ny:.2},{nz:.2},{angle:.3})"),

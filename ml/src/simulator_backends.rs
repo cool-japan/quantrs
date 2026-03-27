@@ -254,39 +254,33 @@ impl SimulatorBackend for StatevectorBackend {
         _parameters: &[f64],
         _shots: Option<usize>,
     ) -> Result<SimulationResult> {
+        /// Convert a Register's amplitude slice into an `Array1<Complex64>`.
+        fn register_to_array(amplitudes: &[Complex64]) -> Array1<Complex64> {
+            Array1::from_vec(amplitudes.to_vec())
+        }
+
+        macro_rules! run_circuit {
+            ($c:expr) => {{
+                let state = self.simulator.run($c)?;
+                let amps = register_to_array(state.amplitudes());
+                let probabilities: Vec<f64> = amps.iter().map(|c| c.norm_sqr()).collect();
+                Ok(SimulationResult {
+                    state: Some(amps),
+                    measurements: None,
+                    probabilities: Some(Array1::from_vec(probabilities)),
+                    metadata: HashMap::new(),
+                })
+            }};
+        }
+
         match circuit {
-            DynamicCircuit::Circuit1(c) => {
-                let state = self.simulator.run(c)?;
-                let probabilities = state
-                    .amplitudes()
-                    .iter()
-                    .map(|c| c.norm_sqr())
-                    .collect::<Vec<_>>();
-                Ok(SimulationResult {
-                    state: None, // TODO: Convert Register to Array
-                    measurements: None,
-                    probabilities: Some(probabilities.into()),
-                    metadata: HashMap::new(),
-                })
-            }
-            DynamicCircuit::Circuit2(c) => {
-                let state = self.simulator.run(c)?;
-                let probabilities = state
-                    .amplitudes()
-                    .iter()
-                    .map(|c| c.norm_sqr())
-                    .collect::<Vec<_>>();
-                Ok(SimulationResult {
-                    state: None, // TODO: Convert Register to Array
-                    measurements: None,
-                    probabilities: Some(probabilities.into()),
-                    metadata: HashMap::new(),
-                })
-            }
-            // Add other circuit sizes as needed
-            _ => Err(MLError::ValidationError(
-                "Unsupported circuit size".to_string(),
-            )),
+            DynamicCircuit::Circuit1(c) => run_circuit!(c),
+            DynamicCircuit::Circuit2(c) => run_circuit!(c),
+            DynamicCircuit::Circuit4(c) => run_circuit!(c),
+            DynamicCircuit::Circuit8(c) => run_circuit!(c),
+            DynamicCircuit::Circuit16(c) => run_circuit!(c),
+            DynamicCircuit::Circuit32(c) => run_circuit!(c),
+            DynamicCircuit::Circuit64(c) => run_circuit!(c),
         }
     }
 
@@ -296,21 +290,22 @@ impl SimulatorBackend for StatevectorBackend {
         _parameters: &[f64],
         observable: &Observable,
     ) -> Result<f64> {
+        macro_rules! run_and_expect {
+            ($c:expr) => {{
+                let state = self.simulator.run($c)?;
+                let amps = Array1::from_vec(state.amplitudes().to_vec());
+                self.compute_expectation(&amps, observable)
+            }};
+        }
+
         match circuit {
-            DynamicCircuit::Circuit1(c) => {
-                let _state = self.simulator.run(c)?;
-                // TODO: Convert Register to Array for expectation computation
-                Ok(0.0)
-            }
-            DynamicCircuit::Circuit2(c) => {
-                let _state = self.simulator.run(c)?;
-                // TODO: Convert Register to Array for expectation computation
-                Ok(0.0)
-            }
-            // Add other circuit sizes as needed
-            _ => Err(MLError::ValidationError(
-                "Unsupported circuit size".to_string(),
-            )),
+            DynamicCircuit::Circuit1(c) => run_and_expect!(c),
+            DynamicCircuit::Circuit2(c) => run_and_expect!(c),
+            DynamicCircuit::Circuit4(c) => run_and_expect!(c),
+            DynamicCircuit::Circuit8(c) => run_and_expect!(c),
+            DynamicCircuit::Circuit16(c) => run_and_expect!(c),
+            DynamicCircuit::Circuit32(c) => run_and_expect!(c),
+            DynamicCircuit::Circuit64(c) => run_and_expect!(c),
         }
     }
 
@@ -333,61 +328,223 @@ impl SimulatorBackend for StatevectorBackend {
 
     /// Get backend capabilities
     fn capabilities(&self) -> BackendCapabilities {
-        self.capabilities()
+        BackendCapabilities {
+            max_qubits: self.max_qubits,
+            noise_simulation: false,
+            gpu_acceleration: false,
+            distributed: false,
+            adjoint_gradients: false,
+            memory_per_qubit: 16, // 16 bytes per amplitude (Complex64)
+        }
     }
 
     /// Get backend name
     fn name(&self) -> &str {
-        "StatevectorBackend"
+        "statevector"
     }
 
     /// Maximum number of qubits supported
     fn max_qubits(&self) -> usize {
-        self.capabilities().max_qubits
+        self.max_qubits
     }
 
     /// Check if backend supports noise simulation
     fn supports_noise(&self) -> bool {
-        self.capabilities().noise_simulation
+        false
     }
 }
 
 impl StatevectorBackend {
-    /// Helper method to compute expectation values
+    /// Compute `<ψ|P|ψ>` for a single-qubit Pauli on qubit index `qubit_idx`.
+    ///
+    /// The statevector has `2^n` entries.  The basis states are indexed by integers where
+    /// bit `qubit_idx` (LSB = qubit 0) selects the computational basis state of that qubit.
+    ///
+    /// - `Z_i`: `<Z_i>` = Σ_{j: bit i is 0} |ψ_j|² - Σ_{j: bit i is 1} |ψ_j|²
+    /// - `X_i`: `<X_i>` = 2 · Re[ Σ_{j: bit i is 0} ψ_j* · ψ_{j ⊕ (1 << i)} ]
+    /// - `Y_i`: `<Y_i>` = 2 · Im[ Σ_{j: bit i is 0} ψ_j* · ψ_{j ⊕ (1 << i)} ]  (sign convention: Y = [[0,-i],[i,0]])
+    /// - `I_i`:  1.0
+    fn pauli_expectation_single(
+        &self,
+        state: &Array1<Complex64>,
+        pauli: char,
+        qubit_idx: usize,
+    ) -> Result<f64> {
+        let dim = state.len();
+        if dim == 0 {
+            return Err(MLError::ValidationError("Empty statevector".to_string()));
+        }
+        // Check dim is a power of 2.
+        if dim & (dim - 1) != 0 {
+            return Err(MLError::ValidationError(format!(
+                "Statevector dimension {dim} is not a power of 2"
+            )));
+        }
+        let n = dim.trailing_zeros() as usize; // number of qubits
+        if qubit_idx >= n {
+            return Err(MLError::ValidationError(format!(
+                "Qubit index {qubit_idx} out of range for {n}-qubit state"
+            )));
+        }
+
+        let bit = 1usize << qubit_idx;
+
+        match pauli {
+            'I' => Ok(1.0),
+            'Z' => {
+                let mut expectation = 0.0_f64;
+                for (j, amp) in state.iter().enumerate() {
+                    let prob = amp.norm_sqr();
+                    if j & bit == 0 {
+                        expectation += prob; // eigenvalue +1
+                    } else {
+                        expectation -= prob; // eigenvalue -1
+                    }
+                }
+                Ok(expectation)
+            }
+            'X' => {
+                // <X_i> = 2 Re[ Σ_{j: bit i=0} ψ_j* · ψ_{j ^ bit} ]
+                let mut sum = Complex64::new(0.0, 0.0);
+                for (j, amp) in state.iter().enumerate() {
+                    if j & bit == 0 {
+                        let partner = j ^ bit;
+                        if partner < dim {
+                            sum += amp.conj() * state[partner];
+                        }
+                    }
+                }
+                Ok(2.0 * sum.re)
+            }
+            'Y' => {
+                // Y = [[0,-i],[i,0]]; <Y_i> = 2 Im[ Σ_{j: bit i=0} ψ_j* · ψ_{j ^ bit} ]
+                // Because Y = -i·σ^+ + i·σ^-, the expectation is purely real:
+                // <Y> = Im[2 · Σ_{j: bit=0} conj(ψ_j) * ψ_{j^bit}]
+                let mut sum = Complex64::new(0.0, 0.0);
+                for (j, amp) in state.iter().enumerate() {
+                    if j & bit == 0 {
+                        let partner = j ^ bit;
+                        if partner < dim {
+                            sum += amp.conj() * state[partner];
+                        }
+                    }
+                }
+                Ok(2.0 * sum.im)
+            }
+            _ => Err(MLError::ValidationError(format!(
+                "Unknown Pauli operator '{pauli}'"
+            ))),
+        }
+    }
+
+    /// Helper method to compute expectation values `<ψ|O|ψ>`.
     fn compute_expectation(
         &self,
         state: &Array1<Complex64>,
         observable: &Observable,
     ) -> Result<f64> {
         match observable {
-            Observable::PauliString(pauli) => {
-                // Placeholder implementation - compute expectation value manually
-                Ok(0.0) // TODO: Implement proper Pauli expectation value computation
+            Observable::PauliString(pauli_string) => {
+                use quantrs2_sim::prelude::PauliOperator;
+
+                let dim = state.len();
+                // Apply the Pauli string to |ψ⟩: result_vec = P|ψ⟩
+                // Then <ψ|P|ψ> = Re[<ψ|result_vec>]  (expectation is real for Hermitian P)
+                let mut result_vec = state.clone();
+
+                for (qubit_idx, pauli_op) in pauli_string.operators.iter().enumerate() {
+                    let bit = 1usize << qubit_idx;
+                    match pauli_op {
+                        PauliOperator::I => {} // identity — no change
+                        PauliOperator::Z => {
+                            // Z flips sign for basis states where qubit i = 1
+                            for j in 0..dim {
+                                if j & bit != 0 {
+                                    result_vec[j] = -result_vec[j];
+                                }
+                            }
+                        }
+                        PauliOperator::X => {
+                            // X bit-flips qubit i: swap amplitude pairs (j, j^bit)
+                            for j in 0..dim {
+                                if j & bit == 0 {
+                                    let partner = j ^ bit;
+                                    if partner < dim {
+                                        result_vec.swap(j, partner);
+                                    }
+                                }
+                            }
+                        }
+                        PauliOperator::Y => {
+                            // Y = [[0,-i],[i,0]]:  |0⟩ → i|1⟩,  |1⟩ → -i|0⟩
+                            let mut new_vec = result_vec.clone();
+                            for j in 0..dim {
+                                if j & bit == 0 {
+                                    let partner = j ^ bit;
+                                    if partner < dim {
+                                        let orig_0 = result_vec[j];
+                                        let orig_1 = result_vec[partner];
+                                        new_vec[j] = Complex64::new(0.0, -1.0) * orig_1;
+                                        new_vec[partner] = Complex64::new(0.0, 1.0) * orig_0;
+                                    }
+                                }
+                            }
+                            result_vec = new_vec;
+                        }
+                    }
+                }
+
+                // Apply the overall coefficient from the PauliString.
+                // Then <ψ|P|ψ> = Re[ coeff · Σ_j conj(ψ_j) * (P|ψ>)_j ]
+                let inner: Complex64 = state
+                    .iter()
+                    .zip(result_vec.iter())
+                    .map(|(&a, &b)| a.conj() * b)
+                    .sum();
+                Ok((pauli_string.coefficient * inner).re)
             }
-            Observable::PauliZ(_qubits) => {
-                // Placeholder implementation for Pauli Z expectation value
-                Ok(0.0) // TODO: Implement proper Pauli Z expectation value computation
+            Observable::PauliZ(qubits) => {
+                // Product of Z expectations on the given qubits.
+                // For a single-qubit problem: <Z_i> as defined above.
+                // For multiple qubits: < ⊗_i Z_i > using the combined bit-flip parity.
+                let dim = state.len();
+                let mut expectation = 0.0_f64;
+                for (j, amp) in state.iter().enumerate() {
+                    // Parity of bits at qubit positions listed in `qubits`.
+                    let parity: u32 = qubits
+                        .iter()
+                        .map(|&q| if j & (1 << q) != 0 { 1u32 } else { 0u32 })
+                        .sum::<u32>()
+                        % 2;
+                    let eigenvalue = if parity == 0 { 1.0 } else { -1.0 };
+                    expectation += eigenvalue * amp.norm_sqr();
+                }
+                Ok(expectation)
             }
             Observable::Matrix(matrix) => {
-                // Compute <ψ|H|ψ>
-                let amplitudes = state;
-                let result = amplitudes
+                // Compute <ψ|H|ψ> = Σ_{i,j} ψ_i* H_{ij} ψ_j
+                let result: Complex64 = state
                     .iter()
                     .enumerate()
-                    .map(|(i, &amp)| {
-                        amplitudes
+                    .map(|(i, &amp_i)| {
+                        state
                             .iter()
                             .enumerate()
-                            .map(|(j, &amp2)| amp.conj() * matrix[[i, j]] * amp2)
+                            .map(|(j, &amp_j)| amp_i.conj() * matrix[[i, j]] * amp_j)
                             .sum::<Complex64>()
                     })
-                    .sum::<Complex64>();
+                    .sum();
                 Ok(result.re)
             }
             Observable::Hamiltonian(terms) => {
-                let mut expectation = 0.0;
-                for (coeff, pauli) in terms {
-                    expectation += coeff * 0.0; // TODO: Implement proper Pauli expectation value
+                // H = Σ_k c_k P_k  →  <H> = Σ_k c_k <P_k>
+                let mut expectation = 0.0_f64;
+                for (coeff, pauli_string) in terms {
+                    let term_exp = self.compute_expectation(
+                        state,
+                        &Observable::PauliString(pauli_string.clone()),
+                    )?;
+                    expectation += coeff * term_exp;
                 }
                 Ok(expectation)
             }
@@ -857,7 +1014,6 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore]
     fn test_statevector_backend() {
         let backend = StatevectorBackend::new(10);
         assert_eq!(backend.name(), "statevector");
@@ -877,7 +1033,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Temporarily disabled due to stack overflow issue
     fn test_backend_manager() {
         let mut manager = BackendManager::new();
         manager.register_backend("test", Backend::Statevector(StatevectorBackend::new(10)));

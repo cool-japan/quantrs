@@ -395,7 +395,7 @@ impl VariationalQuantumAnnealer {
 
         let rng = match config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
 
         let mut vqa = Self {
@@ -517,7 +517,7 @@ impl VariationalQuantumAnnealer {
         let (min, max) = self.config.parameter_init_range;
 
         for param in &mut self.parameters {
-            *param = self.rng.gen_range(min..max);
+            *param = self.rng.random_range(min..max);
         }
 
         Ok(())

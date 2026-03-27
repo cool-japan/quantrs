@@ -767,3 +767,268 @@ impl Default for MarketplaceConfig {
         }
     }
 }
+
+// ============================================================================
+// AlgorithmMarketplace — lightweight synchronous facade
+// ============================================================================
+//
+// The `QuantumAlgorithmMarketplace` above is a fully-async, subsystem-rich
+// manager.  The `AlgorithmMarketplace` below is a simpler, *synchronous*
+// facade that is easier to use in non-async contexts (CLI tools, unit tests,
+// benchmarks) while still delegating to the same underlying data model.
+
+/// A simplified, synchronous listing for an algorithm in the marketplace.
+///
+/// This is a thin wrapper around `RegisteredAlgorithm` / `AlgorithmMetadata`
+/// that surfaces only the fields needed by the synchronous API.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AlgorithmListing {
+    /// Stable, unique identifier for this algorithm (UUID v4 string).
+    pub id: String,
+    /// Human-readable name.
+    pub name: String,
+    /// Short description.
+    pub description: String,
+    /// Author or organization name.
+    pub author: String,
+    /// Semantic version string, e.g. `"1.0.0"`.
+    pub version: String,
+    /// High-level category.
+    pub category: AlgorithmCategory,
+    /// Free-form tags for search.
+    pub tags: Vec<String>,
+    /// Minimum qubit count required to run.
+    pub min_qubits: usize,
+    /// QASM3 / pseudo-code source snippet (may be empty for proprietary algorithms).
+    pub source_snippet: String,
+}
+
+/// Query parameters for `AlgorithmMarketplace::search_algorithms`.
+#[derive(Debug, Clone, Default)]
+pub struct AlgorithmQuery {
+    /// Filter by name substring (case-insensitive).
+    pub name_contains: Option<String>,
+    /// Filter by category.
+    pub category: Option<AlgorithmCategory>,
+    /// All of these tags must be present.
+    pub required_tags: Vec<String>,
+    /// Maximum qubit count (inclusive).  Useful for constrained hardware.
+    pub max_qubits: Option<usize>,
+    /// Author substring filter (case-insensitive).
+    pub author_contains: Option<String>,
+}
+
+/// Input parameters for `AlgorithmMarketplace::execute_algorithm`.
+#[derive(Debug, Clone)]
+pub struct AlgorithmParams {
+    /// Number of measurement shots.
+    pub shots: usize,
+    /// Named scalar parameters forwarded to the algorithm (e.g. rotation angles).
+    pub scalar_params: HashMap<String, f64>,
+    /// Arbitrary string metadata forwarded without interpretation.
+    pub metadata: HashMap<String, String>,
+}
+
+impl Default for AlgorithmParams {
+    fn default() -> Self {
+        Self {
+            shots: 1024,
+            scalar_params: HashMap::new(),
+            metadata: HashMap::new(),
+        }
+    }
+}
+
+/// Result returned by `AlgorithmMarketplace::execute_algorithm`.
+#[derive(Debug, Clone)]
+pub struct AlgorithmResult {
+    /// Algorithm identifier that was executed.
+    pub algorithm_id: String,
+    /// Measurement outcome counts keyed by bitstring (e.g. `"001" -> 372`).
+    pub counts: HashMap<String, usize>,
+    /// Estimated success probability or fidelity (provider-dependent).
+    pub estimated_fidelity: f64,
+    /// Wall-clock execution time.
+    pub execution_time: Duration,
+    /// Arbitrary metadata returned by the execution backend.
+    pub metadata: HashMap<String, String>,
+}
+
+/// Lightweight synchronous marketplace facade.
+///
+/// Stores algorithm listings in memory and provides CRUD + search + mock
+/// execution without requiring an async runtime.
+pub struct AlgorithmMarketplace {
+    /// All registered algorithms keyed by their ID.
+    listings: std::sync::RwLock<HashMap<String, AlgorithmListing>>,
+}
+
+impl AlgorithmMarketplace {
+    /// Create an empty marketplace.
+    pub fn new() -> Self {
+        Self {
+            listings: std::sync::RwLock::new(HashMap::new()),
+        }
+    }
+
+    /// Register a new algorithm.
+    ///
+    /// Fails if an algorithm with the same `id` is already registered.
+    pub fn register_algorithm(&self, algo: AlgorithmListing) -> DeviceResult<()> {
+        let mut listings = self
+            .listings
+            .write()
+            .map_err(|e| DeviceError::LockError(format!("marketplace write lock: {e}")))?;
+        if listings.contains_key(&algo.id) {
+            return Err(DeviceError::InvalidInput(format!(
+                "algorithm '{}' is already registered",
+                algo.id
+            )));
+        }
+        listings.insert(algo.id.clone(), algo);
+        Ok(())
+    }
+
+    /// Search for algorithms matching `query`.
+    ///
+    /// Returns a cloned `Vec` so the caller does not need to hold any locks.
+    pub fn search_algorithms(&self, query: &AlgorithmQuery) -> DeviceResult<Vec<AlgorithmListing>> {
+        let listings = self
+            .listings
+            .read()
+            .map_err(|e| DeviceError::LockError(format!("marketplace read lock: {e}")))?;
+        let results = listings
+            .values()
+            .filter(|a| Self::matches(a, query))
+            .cloned()
+            .collect();
+        Ok(results)
+    }
+
+    /// Retrieve an algorithm by its exact identifier.
+    pub fn get_algorithm(&self, id: &str) -> DeviceResult<Option<AlgorithmListing>> {
+        let listings = self
+            .listings
+            .read()
+            .map_err(|e| DeviceError::LockError(format!("marketplace read lock: {e}")))?;
+        Ok(listings.get(id).cloned())
+    }
+
+    /// Remove a previously registered algorithm.
+    pub fn deregister_algorithm(&self, id: &str) -> DeviceResult<()> {
+        let mut listings = self
+            .listings
+            .write()
+            .map_err(|e| DeviceError::LockError(format!("marketplace write lock: {e}")))?;
+        if listings.remove(id).is_none() {
+            return Err(DeviceError::DeviceNotFound(format!(
+                "algorithm '{}' not found",
+                id
+            )));
+        }
+        Ok(())
+    }
+
+    /// Execute an algorithm by ID with the given parameters.
+    ///
+    /// This is a *mock* executor: it simulates a uniform distribution over
+    /// all 2^n bitstrings (where n is `min_qubits` for the listing) and
+    /// records counts that sum to `params.shots`.  A real implementation
+    /// would dispatch to a backend simulator or quantum hardware.
+    pub fn execute_algorithm(
+        &self,
+        id: &str,
+        params: AlgorithmParams,
+    ) -> DeviceResult<AlgorithmResult> {
+        let listing = self
+            .get_algorithm(id)?
+            .ok_or_else(|| DeviceError::DeviceNotFound(format!("algorithm '{}' not found", id)))?;
+
+        let start = std::time::Instant::now();
+
+        // Simulate a uniform distribution over bitstrings.
+        // We use a simple deterministic PRNG (xorshift64) seeded from the
+        // algorithm ID so that results are reproducible without pulling in a
+        // full RNG library.
+        let n_qubits = listing.min_qubits.clamp(1, 16);
+        let n_states = 1usize << n_qubits;
+        let shots = params.shots.max(1);
+
+        let mut counts: HashMap<String, usize> = HashMap::with_capacity(n_states);
+        let mut rng: u64 = {
+            // Seed from id bytes using djb2 hash.
+            let mut h: u64 = 5381;
+            for b in id.bytes() {
+                h = h.wrapping_mul(33).wrapping_add(b as u64);
+            }
+            h | 1 // ensure non-zero seed
+        };
+
+        for _ in 0..shots {
+            // xorshift64
+            rng ^= rng << 13;
+            rng ^= rng >> 7;
+            rng ^= rng << 17;
+            let state_idx = (rng as usize) % n_states;
+            let bitstring = format!("{:0width$b}", state_idx, width = n_qubits);
+            *counts.entry(bitstring).or_insert(0) += 1;
+        }
+
+        let elapsed = start.elapsed();
+
+        Ok(AlgorithmResult {
+            algorithm_id: id.to_string(),
+            counts,
+            estimated_fidelity: 0.95, // Placeholder — real backend would populate this.
+            execution_time: elapsed,
+            metadata: params.metadata,
+        })
+    }
+
+    // ------------------------------------------------------------------
+    // Private helpers
+    // ------------------------------------------------------------------
+
+    fn matches(listing: &AlgorithmListing, query: &AlgorithmQuery) -> bool {
+        if let Some(ref name_substr) = query.name_contains {
+            if !listing
+                .name
+                .to_lowercase()
+                .contains(&name_substr.to_lowercase())
+            {
+                return false;
+            }
+        }
+        if let Some(ref cat) = query.category {
+            if &listing.category != cat {
+                return false;
+            }
+        }
+        for tag in &query.required_tags {
+            if !listing.tags.iter().any(|t| t.eq_ignore_ascii_case(tag)) {
+                return false;
+            }
+        }
+        if let Some(max_q) = query.max_qubits {
+            if listing.min_qubits > max_q {
+                return false;
+            }
+        }
+        if let Some(ref author_substr) = query.author_contains {
+            if !listing
+                .author
+                .to_lowercase()
+                .contains(&author_substr.to_lowercase())
+            {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+impl Default for AlgorithmMarketplace {
+    fn default() -> Self {
+        Self::new()
+    }
+}

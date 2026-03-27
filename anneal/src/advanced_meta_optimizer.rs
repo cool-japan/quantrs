@@ -13,6 +13,7 @@ use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
 use scirs2_core::ChaCha8Rng;
 use scirs2_core::Complex64;
+use scirs2_core::RngExt;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
@@ -328,9 +329,9 @@ impl AdaptiveStrategySelector {
         available_strategies: &[OptimizationStrategy],
     ) -> OptimizationStrategy {
         // Exploration: randomly select strategy
-        if self.rng.gen::<f64>() < self.exploration_rate {
+        if self.rng.random::<f64>() < self.exploration_rate {
             return *available_strategies
-                .get(self.rng.gen_range(0..available_strategies.len()))
+                .get(self.rng.random_range(0..available_strategies.len()))
                 .expect("random index should be within bounds");
         }
 

@@ -31,7 +31,7 @@ pub fn benchmark_holographic_qec(
             let num_errors = ((config.boundary_qubits as f64) * error_rate) as usize;
             let mut rng = thread_rng();
             let error_locations: Vec<usize> = (0..num_errors)
-                .map(|_| rng.gen_range(0..config.boundary_qubits))
+                .map(|_| rng.random_range(0..config.boundary_qubits))
                 .collect();
 
             // Perform error correction

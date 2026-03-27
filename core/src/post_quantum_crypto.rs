@@ -12,7 +12,7 @@ use scirs2_core::ndarray::{Array1, Array2};
 use std::f64::consts::PI;
 // use sha3::{Digest, Sha3_256, Sha3_512};
 use scirs2_core::random::ChaCha20Rng;
-use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::{Rng, RngExt, SeedableRng};
 
 /// Quantum hash function implementations
 #[derive(Debug, Clone)]

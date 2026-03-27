@@ -635,7 +635,7 @@ impl HardwareEfficientMLLayer {
     pub fn initialize_parameters(&mut self, rng: &mut impl scirs2_core::random::Rng) {
         use scirs2_core::random::prelude::*;
         for param in &mut self.parameters {
-            *param = rng.gen_range(-PI..PI);
+            *param = rng.random_range(-PI..PI);
         }
     }
 

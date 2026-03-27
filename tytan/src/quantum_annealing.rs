@@ -338,7 +338,8 @@ impl QuantumAnnealingSampler {
             // Dephasing noise
             if noise.dephasing_rate > 0.0 {
                 for amp in &mut state.amplitudes {
-                    let phase_noise = rng.gen_range(-1.0..1.0) * (noise.dephasing_rate * dt).sqrt();
+                    let phase_noise =
+                        rng.random_range(-1.0..1.0) * (noise.dephasing_rate * dt).sqrt();
                     let phase = Complex64::new(phase_noise.cos(), phase_noise.sin());
                     let new_amp = Complex64::new(
                         amp.re.mul_add(phase.re, -(amp.im * phase.im)),
@@ -352,12 +353,12 @@ impl QuantumAnnealingSampler {
             if noise.temperature > 0.0 {
                 // Simplified thermal noise model
                 let thermal_prob = (noise.temperature * dt).min(0.1);
-                if rng.gen::<f64>() < thermal_prob {
-                    let i = rng.gen_range(0..n);
-                    let j = rng.gen_range(0..n);
+                if rng.random::<f64>() < thermal_prob {
+                    let i = rng.random_range(0..n);
+                    let j = rng.random_range(0..n);
                     if i != j {
                         // Mix states i and j
-                        let mix_angle: f64 = rng.gen_range(0.0..0.1);
+                        let mix_angle: f64 = rng.random_range(0.0..0.1);
                         let cos_a = mix_angle.cos();
                         let sin_a = mix_angle.sin();
 
@@ -419,7 +420,7 @@ impl QuantumAnnealingSampler {
 
         // Sample according to probability distribution
         let mut rng = StdRng::from_seed([42; 32]); // Create local RNG
-        let r = rng.gen::<f64>();
+        let r = rng.random::<f64>();
         let mut measured_state = 0;
 
         for (i, &prob) in probabilities.iter().enumerate() {

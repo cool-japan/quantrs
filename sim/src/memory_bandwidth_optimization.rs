@@ -487,13 +487,49 @@ impl OptimizedStateVector {
         Ok(())
     }
 
-    /// Prefetch memory to cache
+    /// Prefetch memory to cache using platform-specific intrinsics where available.
+    ///
+    /// On x86_64 this emits an `_MM_HINT_T0` prefetch into L1 cache.
+    /// On aarch64 this emits a `PRFM PLDL1KEEP` equivalent prefetch.
+    /// On all other architectures a volatile read is used as a no-op hint so that
+    /// the call sites compile without `#[cfg]` guards.
     #[inline(always)]
     fn prefetch_memory(addr: &Complex64) {
-        // TODO: Use scirs2_core's platform-agnostic prefetch operations when API is stabilized
-        // For now, use a volatile read as a simple prefetch hint
-        unsafe {
-            let _ = std::ptr::read_volatile(std::ptr::from_ref(addr).cast::<u8>());
+        #[cfg(target_arch = "x86_64")]
+        {
+            use std::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
+            // SAFETY: `addr` is a valid reference. `_mm_prefetch` is a hint
+            // instruction; it never reads or writes memory — it only tells the
+            // CPU to load the cache line containing `addr` into L1 cache.  The
+            // worst-case outcome of a bad pointer is that the prefetch is
+            // silently ignored.
+            unsafe {
+                _mm_prefetch(std::ptr::from_ref(addr).cast::<i8>(), _MM_HINT_T0);
+            }
+        }
+        #[cfg(target_arch = "aarch64")]
+        {
+            // AArch64 does not expose a stable intrinsic in std::arch yet, but
+            // we can emit the equivalent instruction via inline assembly.
+            // `prfm pldl1keep` is the AArch64 prefetch-for-load-keep-in-L1 hint.
+            // SAFETY: Same reasoning as x86_64 — this is a hint-only instruction.
+            unsafe {
+                std::arch::asm!(
+                    "prfm pldl1keep, [{addr}]",
+                    addr = in(reg) std::ptr::from_ref(addr).cast::<u8>(),
+                    options(nostack, readonly, preserves_flags),
+                );
+            }
+        }
+        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+        {
+            // Generic fallback: a volatile read causes the compiler to keep the
+            // load visible in the instruction stream, giving the hardware a
+            // reasonable prefetch opportunity without additional intrinsics.
+            // SAFETY: `addr` is a valid reference.
+            unsafe {
+                let _ = std::ptr::read_volatile(std::ptr::from_ref(addr).cast::<u8>());
+            }
         }
     }
 

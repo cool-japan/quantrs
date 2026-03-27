@@ -153,7 +153,7 @@ fn create_maxcut_instance(n: usize) -> Result<IsingModel, Box<dyn std::error::Er
     // Create a random graph with negative couplings for MaxCut
     for i in 0..n {
         for j in (i + 1)..n {
-            if thread_rng().gen::<f64>() < 0.4 {
+            if thread_rng().random::<f64>() < 0.4 {
                 // 40% edge density
                 model.set_coupling(i, j, -1.0)?;
             }
@@ -171,10 +171,10 @@ fn create_portfolio_optimization(
 
     // Generate random returns and risks
     let returns: Vec<f64> = (0..n_assets)
-        .map(|_| thread_rng().gen::<f64>() * 0.1)
+        .map(|_| thread_rng().random::<f64>() * 0.1)
         .collect();
     let risks: Vec<f64> = (0..n_assets)
-        .map(|_| thread_rng().gen::<f64>() * 0.05)
+        .map(|_| thread_rng().random::<f64>() * 0.05)
         .collect();
 
     // Decision variables: x[i] = 1 if asset i is selected
@@ -197,9 +197,9 @@ fn create_portfolio_optimization(
     // Add correlation penalties between assets
     for i in 0..n_assets {
         for j in (i + 1)..n_assets {
-            if thread_rng().gen::<f64>() < 0.2 {
+            if thread_rng().random::<f64>() < 0.2 {
                 // 20% correlation
-                let correlation = thread_rng().gen::<f64>() * 0.1;
+                let correlation = thread_rng().random::<f64>() * 0.1;
                 builder.set_quadratic_term(&vars[i], &vars[j], lambda * correlation)?;
             }
         }

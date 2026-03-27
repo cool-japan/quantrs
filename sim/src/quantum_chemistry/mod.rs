@@ -1,0 +1,56 @@
+//! Auto-generated module structure
+
+pub mod electronicstructureconfig_traits;
+pub mod functions;
+pub mod quantumchemistrysimulator_accessors;
+pub mod quantumchemistrysimulator_accessors_1;
+pub mod quantumchemistrysimulator_accessors_2;
+pub mod quantumchemistrysimulator_apply_pauli_x_public_group;
+pub mod quantumchemistrysimulator_apply_pauli_z_public_group;
+pub mod quantumchemistrysimulator_build_density_matrix_group;
+pub mod quantumchemistrysimulator_build_fock_matrix_group;
+pub mod quantumchemistrysimulator_calculate_dipole_moment_group;
+pub mod quantumchemistrysimulator_calculate_scf_energy_group;
+pub mod quantumchemistrysimulator_calculate_single_pauli_expectation_group;
+pub mod quantumchemistrysimulator_compute_nuclear_repulsion_group;
+pub mod quantumchemistrysimulator_compute_one_electron_integrals_group;
+pub mod quantumchemistrysimulator_compute_two_electron_integrals_group;
+pub mod quantumchemistrysimulator_construct_molecular_hamiltonian_public_group;
+pub mod quantumchemistrysimulator_create_fermionic_hamiltonian_public_group;
+pub mod quantumchemistrysimulator_crud;
+pub mod quantumchemistrysimulator_determine_occupations_group;
+pub mod quantumchemistrysimulator_evaluate_energy_expectation_group;
+pub mod quantumchemistrysimulator_extract_energy_from_qpe_state_group;
+pub mod quantumchemistrysimulator_run_calculation_group;
+pub mod quantumchemistrysimulator_type;
+pub mod quantumchemistrysimulator_update_vqe_parameters_group;
+pub mod types;
+pub mod vqeconfig_traits;
+
+// Re-export all types
+pub use electronicstructureconfig_traits::*;
+pub use functions::*;
+pub use quantumchemistrysimulator_accessors::*;
+pub use quantumchemistrysimulator_accessors_1::*;
+pub use quantumchemistrysimulator_accessors_2::*;
+pub use quantumchemistrysimulator_apply_pauli_x_public_group::*;
+pub use quantumchemistrysimulator_apply_pauli_z_public_group::*;
+pub use quantumchemistrysimulator_build_density_matrix_group::*;
+pub use quantumchemistrysimulator_build_fock_matrix_group::*;
+pub use quantumchemistrysimulator_calculate_dipole_moment_group::*;
+pub use quantumchemistrysimulator_calculate_scf_energy_group::*;
+pub use quantumchemistrysimulator_calculate_single_pauli_expectation_group::*;
+pub use quantumchemistrysimulator_compute_nuclear_repulsion_group::*;
+pub use quantumchemistrysimulator_compute_one_electron_integrals_group::*;
+pub use quantumchemistrysimulator_compute_two_electron_integrals_group::*;
+pub use quantumchemistrysimulator_construct_molecular_hamiltonian_public_group::*;
+pub use quantumchemistrysimulator_create_fermionic_hamiltonian_public_group::*;
+pub use quantumchemistrysimulator_crud::*;
+pub use quantumchemistrysimulator_determine_occupations_group::*;
+pub use quantumchemistrysimulator_evaluate_energy_expectation_group::*;
+pub use quantumchemistrysimulator_extract_energy_from_qpe_state_group::*;
+pub use quantumchemistrysimulator_run_calculation_group::*;
+pub use quantumchemistrysimulator_type::*;
+pub use quantumchemistrysimulator_update_vqe_parameters_group::*;
+pub use types::*;
+pub use vqeconfig_traits::*;

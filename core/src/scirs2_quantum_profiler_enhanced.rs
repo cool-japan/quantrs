@@ -797,7 +797,7 @@ impl EnhancedQuantumProfiler {
 
         // Simulate cache behavior
         use scirs2_core::random::prelude::*;
-        let cache_hit = thread_rng().gen::<f64>() > 0.2; // 80% hit rate simulation
+        let cache_hit = thread_rng().random::<f64>() > 0.2; // 80% hit rate simulation
         self.metrics_collector.record_cache_access(cache_hit);
 
         Ok(())

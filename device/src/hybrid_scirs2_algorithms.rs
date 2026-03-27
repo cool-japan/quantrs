@@ -133,7 +133,7 @@ impl HybridAlgorithmExecutor {
         range: (f64, f64),
     ) -> Array1<f64> {
         let (low, high) = range;
-        Array1::from_shape_fn(dimension, |_| low + (high - low) * self.rng.gen::<f64>())
+        Array1::from_shape_fn(dimension, |_| low + (high - low) * self.rng.random::<f64>())
     }
 }
 

@@ -178,7 +178,7 @@ impl VQAExecutor {
         let mut rng = thread_rng();
 
         for param in &mut circuit.parameters {
-            *param += rng.gen_range(-0.1..0.1) * self.config.optimizer.learning_rate;
+            *param += rng.random_range(-0.1..0.1) * self.config.optimizer.learning_rate;
         }
 
         Ok(())

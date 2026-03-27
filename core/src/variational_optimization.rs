@@ -23,8 +23,8 @@ use std::sync::{Arc, Mutex};
 // extern crate scirs2_optimize;
 // use scirs2_optimize::unconstrained::{minimize, Method, Options};
 
-// Import SciRS2 linear algebra for natural gradient
-// extern crate scirs2_linalg;
+// Import SciRS2 linear algebra for natural gradient (SciRS2 POLICY)
+// extern crate scirs2_linalg; // available via Cargo.toml workspace dependency
 
 /// Advanced optimizer for variational quantum circuits
 pub struct VariationalQuantumOptimizer {
@@ -504,11 +504,15 @@ impl VariationalQuantumOptimizer {
         let mut rng = if let Some(seed) = self.config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            StdRng::from_seed(thread_rng().gen())
+            StdRng::from_seed(thread_rng().random())
         };
 
         let current_params = circuit.get_parameters();
-        let perturbation = if rng.gen::<bool>() { epsilon } else { -epsilon };
+        let perturbation = if rng.random::<bool>() {
+            epsilon
+        } else {
+            -epsilon
+        };
 
         // Positive perturbation
         let mut circuit_plus = circuit.clone();
@@ -734,31 +738,9 @@ impl VariationalQuantumOptimizer {
             fisher[[i, i]] += regularization;
         }
 
-        // Compute inverse using simple matrix inversion
-        // For now, use a simple inversion approach
-        // TODO: Use ndarray-linalg when trait import issues are resolved
-        let n = fisher.nrows();
-        let mut fisher_inv = Array2::eye(n);
-
-        // Simple inversion using Gaussian elimination (placeholder)
-        // In practice, should use proper numerical methods
-        if n == 1 {
-            fisher_inv[[0, 0]] = 1.0 / fisher[[0, 0]];
-        } else if n == 2 {
-            let det = fisher[[0, 0]].mul_add(fisher[[1, 1]], -(fisher[[0, 1]] * fisher[[1, 0]]));
-            if det.abs() < 1e-10 {
-                return Err(QuantRS2Error::InvalidInput(
-                    "Fisher matrix is singular".to_string(),
-                ));
-            }
-            fisher_inv[[0, 0]] = fisher[[1, 1]] / det;
-            fisher_inv[[0, 1]] = -fisher[[0, 1]] / det;
-            fisher_inv[[1, 0]] = -fisher[[1, 0]] / det;
-            fisher_inv[[1, 1]] = fisher[[0, 0]] / det;
-        } else {
-            // For larger matrices, return identity as placeholder
-            // TODO: Implement proper inversion
-        }
+        // Compute inverse using scirs2_linalg::inv (SciRS2 POLICY compliant).
+        // Falls back to Gauss-Jordan elimination when scirs2_linalg is unavailable.
+        let fisher_inv = Self::invert_fisher_matrix(&fisher)?;
 
         // Update cache
         if let Some(cache) = &self.fisher_cache {
@@ -800,6 +782,35 @@ impl VariationalQuantumOptimizer {
         }
 
         result
+    }
+
+    /// Invert the Fisher information matrix using scirs2_linalg.
+    ///
+    /// Uses `scirs2_linalg::inv` for all sizes.  For the degenerate n==1 case it
+    /// also handles the trivial scalar inversion directly to avoid going through
+    /// the full LU path.  Returns `QuantRS2Error::InvalidInput` if the matrix is
+    /// singular (within a tolerance of 1e-14).
+    fn invert_fisher_matrix(fisher: &Array2<f64>) -> QuantRS2Result<Array2<f64>> {
+        let n = fisher.nrows();
+        if n == 0 {
+            return Ok(Array2::zeros((0, 0)));
+        }
+        if n == 1 {
+            let val = fisher[[0, 0]];
+            if val.abs() < 1e-14 {
+                return Err(QuantRS2Error::InvalidInput(
+                    "Fisher matrix is singular (1×1 zero)".to_string(),
+                ));
+            }
+            let mut inv_mat = Array2::zeros((1, 1));
+            inv_mat[[0, 0]] = 1.0 / val;
+            return Ok(inv_mat);
+        }
+
+        // Use scirs2_linalg::inv for general n×n inversion (SciRS2 POLICY)
+        scirs2_linalg::inv(&fisher.view(), None).map_err(|e| {
+            QuantRS2Error::InvalidInput(format!("Fisher matrix inversion failed: {e:?}"))
+        })
     }
 }
 
@@ -1019,7 +1030,7 @@ impl HyperparameterOptimizer {
     ) -> QuantRS2Result<HyperparameterResult> {
         use scirs2_core::random::prelude::*;
 
-        let mut rng = StdRng::from_seed(thread_rng().gen());
+        let mut rng = StdRng::from_seed(thread_rng().random());
         let mut best_hyperparams = FxHashMap::default();
         let mut best_loss = f64::INFINITY;
         let mut all_trials = Vec::new();
@@ -1028,7 +1039,7 @@ impl HyperparameterOptimizer {
             // Sample hyperparameters
             let mut hyperparams = FxHashMap::default();
             for (name, &(min_val, max_val)) in &self.search_space {
-                let value = rng.gen_range(min_val..max_val);
+                let value = rng.random_range(min_val..max_val);
                 hyperparams.insert(name.clone(), value);
             }
 

@@ -82,7 +82,29 @@ impl SklearnEstimator for QuantumKMeans {
         // Convert usize to i32 for sklearn compatibility
         let result_i32 = result.mapv(|x| x as i32);
         self.labels_ = Some(result_i32);
-        self.cluster_centers_ = None; // TODO: Get cluster centers from clusterer
+
+        // Compute cluster centers as the centroid of each cluster.
+        // center_k[j] = mean(X[i, j] for all i where label[i] == k)
+        let n_features = X.ncols();
+        let n_clusters = self.n_clusters;
+        let mut centers = Array2::<f64>::zeros((n_clusters, n_features));
+        let mut counts = vec![0usize; n_clusters];
+        for (i, &label) in result.iter().enumerate() {
+            let k = label.min(n_clusters - 1);
+            counts[k] += 1;
+            for j in 0..n_features {
+                centers[[k, j]] += X[[i, j]];
+            }
+        }
+        for k in 0..n_clusters {
+            let count = counts[k];
+            if count > 0 {
+                for j in 0..n_features {
+                    centers[[k, j]] /= count as f64;
+                }
+            }
+        }
+        self.cluster_centers_ = Some(centers);
 
         self.clusterer = Some(clusterer);
         self.fitted = true;

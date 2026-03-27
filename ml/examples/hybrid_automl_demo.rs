@@ -219,10 +219,10 @@ fn generate_synthetic_dataset(
     let mut rng = thread_rng();
 
     let x = Array2::from_shape_fn((n_samples, n_features), |(_, _)| {
-        rng.gen::<f64>().mul_add(2.0, -1.0)
+        rng.random::<f64>().mul_add(2.0, -1.0)
     });
 
-    let y = Array1::from_shape_fn(n_samples, |_| rng.gen_range(0..n_classes));
+    let y = Array1::from_shape_fn(n_samples, |_| rng.random_range(0..n_classes));
 
     (x, y)
 }

@@ -734,11 +734,7 @@ use crate::parallel_ops_stubs::*;\n\n",
             consistency_score: self.calculate_consistency_score(outputs),
             optimization_score: self.calculate_optimization_score(circuit),
             documentation_score: self.calculate_documentation_score(outputs),
-            average_line_length: if total_lines > 0 {
-                total_chars / total_lines
-            } else {
-                0
-            },
+            average_line_length: total_chars.checked_div(total_lines).unwrap_or(0),
             gate_density: circuit.len() as f64 / total_lines.max(1) as f64,
             comment_ratio: self.calculate_comment_ratio(outputs),
             simd_optimization_ratio: self.calculate_simd_ratio(circuit),

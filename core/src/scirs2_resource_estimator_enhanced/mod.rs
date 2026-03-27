@@ -1,0 +1,56 @@
+//! Auto-generated module structure
+
+pub mod enhancedresourceconfig_traits;
+pub mod enhancedresourceestimator_calculate_error_budget_group;
+pub mod enhancedresourceestimator_calculate_resource_scores_group;
+pub mod enhancedresourceestimator_classify_topology_group;
+pub mod enhancedresourceestimator_count_clifford_gates_group;
+pub mod enhancedresourceestimator_count_multi_qubit_gates_group;
+pub mod enhancedresourceestimator_count_non_clifford_gates_group;
+pub mod enhancedresourceestimator_count_two_qubit_gates_group;
+pub mod enhancedresourceestimator_detect_grover_pattern_group;
+pub mod enhancedresourceestimator_detect_qaoa_pattern_group;
+pub mod enhancedresourceestimator_detect_vqe_pattern_group;
+pub mod enhancedresourceestimator_estimate_code_distance_group;
+pub mod enhancedresourceestimator_estimate_entanglement_complexity_group;
+pub mod enhancedresourceestimator_estimate_execution_time_group;
+pub mod enhancedresourceestimator_estimate_magic_states_group;
+pub mod enhancedresourceestimator_estimate_memory_requirements_group;
+pub mod enhancedresourceestimator_estimate_pattern_impact_group;
+pub mod enhancedresourceestimator_estimate_physical_qubits_group;
+pub mod enhancedresourceestimator_export_report_group;
+pub mod enhancedresourceestimator_new_group;
+pub mod enhancedresourceestimator_perform_basic_analysis_group;
+pub mod enhancedresourceestimator_start_monitoring_group;
+pub mod enhancedresourceestimator_stop_monitoring_group;
+pub mod enhancedresourceestimator_type;
+pub mod functions;
+pub mod types;
+
+// Re-export all types
+pub use enhancedresourceconfig_traits::*;
+pub use enhancedresourceestimator_calculate_error_budget_group::*;
+pub use enhancedresourceestimator_calculate_resource_scores_group::*;
+pub use enhancedresourceestimator_classify_topology_group::*;
+pub use enhancedresourceestimator_count_clifford_gates_group::*;
+pub use enhancedresourceestimator_count_multi_qubit_gates_group::*;
+pub use enhancedresourceestimator_count_non_clifford_gates_group::*;
+pub use enhancedresourceestimator_count_two_qubit_gates_group::*;
+pub use enhancedresourceestimator_detect_grover_pattern_group::*;
+pub use enhancedresourceestimator_detect_qaoa_pattern_group::*;
+pub use enhancedresourceestimator_detect_vqe_pattern_group::*;
+pub use enhancedresourceestimator_estimate_code_distance_group::*;
+pub use enhancedresourceestimator_estimate_entanglement_complexity_group::*;
+pub use enhancedresourceestimator_estimate_execution_time_group::*;
+pub use enhancedresourceestimator_estimate_magic_states_group::*;
+pub use enhancedresourceestimator_estimate_memory_requirements_group::*;
+pub use enhancedresourceestimator_estimate_pattern_impact_group::*;
+pub use enhancedresourceestimator_estimate_physical_qubits_group::*;
+pub use enhancedresourceestimator_export_report_group::*;
+pub use enhancedresourceestimator_new_group::*;
+pub use enhancedresourceestimator_perform_basic_analysis_group::*;
+pub use enhancedresourceestimator_start_monitoring_group::*;
+pub use enhancedresourceestimator_stop_monitoring_group::*;
+pub use enhancedresourceestimator_type::*;
+pub use functions::*;
+pub use types::*;

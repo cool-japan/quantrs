@@ -537,7 +537,7 @@ impl DDStatisticalAnalyzer {
         // Fill with simulated data
         for i in 0..n_samples {
             for j in 0..n_features {
-                data[[i, j]] = thread_rng().gen::<f64>();
+                data[[i, j]] = thread_rng().random::<f64>();
             }
         }
 

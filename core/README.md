@@ -2,27 +2,37 @@
 
 [![Crates.io](https://img.shields.io/crates/v/quantrs2-core.svg)](https://crates.io/crates/quantrs2-core)
 [![Documentation](https://docs.rs/quantrs2-core/badge.svg)](https://docs.rs/quantrs2-core)
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
 
 QuantRS2-Core is the foundational library of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing a comprehensive suite of quantum computing primitives, algorithms, and optimizations that power the entire ecosystem.
 
-## Version 0.1.2 🎉 PRODUCTION READY!
+## Version 0.1.3 PRODUCTION READY (2026-03-27)
 
-**✅ Core Module - Policy Refinement Release**
+**Core Module - Algorithm Correctness & QML Enhancement Release**
 
-This release focuses on comprehensive documentation, refined SciRS2 integration patterns, and improved developer experience.
+This release focuses on algorithm correctness, new decomposition implementations, and expanded QML capabilities.
 
-### Release Highlights ✅
-- **🔧 Complete SciRS2 v0.1.2 Integration**: Enhanced scientific computing acceleration with unified patterns
-- **⚡ Advanced SIMD Operations**: Hardware-optimized vectorized quantum operations via `scirs2_core::simd_ops`
-- **🔄 Unified Parallel Processing**: Automatic parallelization via `scirs2_core::parallel_ops`
-- **🎯 Intelligent Platform Detection**: Automatic CPU/GPU capability detection and optimization
-- **🛠️ Developer Experience Tools**: Complete suite of debugging, profiling, and optimization tools
-- **🤖 AutoOptimizer**: Intelligent automatic backend selection for optimal performance
-- **💾 Advanced Memory Management**: Memory-efficient algorithms for large-scale quantum computing
-- **🎮 GPU Acceleration**: Full GPU support with Metal backend (macOS) and cross-platform compatibility
+### Release Highlights
+- **ZYZ Decomposition Fixed**: Corrected algorithm with tests re-enabled and passing
+- **Holonomic Gate Synthesis**: Holonomic gate tests re-enabled and fully passing
+- **Cartan/KAK Decomposition**: Real QR iteration eigensolver implemented for robust two-qubit gate decomposition
+- **Adiabatic Eigenvalue Solver**: Inverse power iteration with deflation for adiabatic quantum computing
+- **QML: Mottonen Amplitude Encoding**: Full Mottonen-state-preparation amplitude encoding
+- **QML: IQP ZZ Interaction**: Instantaneous Quantum Polynomial ZZ interaction encoding
+- **QML: Parameter-Shift Rule Gradients**: Analytical gradient computation for QML layers
+- **QML: NLP parameters() Method**: Parameter introspection for natural language processing layers
+- **QPE Bug Fix**: Quantum phase estimation corrected in `quantum_counting.rs`
+- **SciRS2 v0.1.3 Integration**: Enhanced scientific computing acceleration with unified patterns
+- **Advanced SIMD Operations**: Hardware-optimized vectorized quantum operations via `scirs2_core::simd_ops`
+- **Unified Parallel Processing**: Automatic parallelization via `scirs2_core::parallel_ops`
+- **Intelligent Platform Detection**: Automatic CPU/GPU capability detection and optimization
+- **Developer Experience Tools**: Complete suite of debugging, profiling, and optimization tools
+- **AutoOptimizer**: Intelligent automatic backend selection for optimal performance
+- **Advanced Memory Management**: Memory-efficient algorithms for large-scale quantum computing
+- **GPU Acceleration**: Full GPU support with Metal backend (macOS) and cross-platform compatibility
 
-### Production Features ✅
+### Production Features
+- 4,820 public items, 0 todo/unimplemented stubs, 0 unwrap() in production code
 - 30+ qubit simulation capabilities
 - Comprehensive gate decomposition algorithms
 - Advanced error correction and fault-tolerance
@@ -339,7 +349,7 @@ fn batch_and_gpu_example() -> QuantRS2Result<()> {
 - Optimized kernels for common quantum operations
 - Automatic fallback to CPU processing
 - Metal GPU support for Apple Silicon (M1/M2/M3) with unified memory architecture
-- Forward-compatible implementation ready for SciRS2 v0.1.2 Metal integration
+- Forward-compatible implementation ready for SciRS2 v0.1.3 Metal integration
 
 ### SciRS2 Integration
 - Advanced linear algebra operations using SciRS2's optimized BLAS/LAPACK bindings
@@ -381,9 +391,4 @@ fn batch_and_gpu_example() -> QuantRS2Result<()> {
 
 ## License
 
-This project is licensed under either:
-
-- [Apache License, Version 2.0](../LICENSE-APACHE)
-- [MIT License](../LICENSE-MIT)
-
-at your option.
+This project is licensed under the [Apache License, Version 2.0](../LICENSE).

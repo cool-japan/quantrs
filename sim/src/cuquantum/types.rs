@@ -5,6 +5,7 @@
 use crate::error::{Result, SimulatorError};
 use quantrs2_circuit::prelude::Circuit;
 use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::RngExt;
 use scirs2_core::Complex64;
 use std::collections::HashMap;
 use thiserror::Error;
@@ -778,7 +779,7 @@ impl CuTensorNetSimulator {
             }
             candidates.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
             let pick_range = (candidates.len() / 3).max(1);
-            let pick_idx = rng.gen_range(0..pick_range);
+            let pick_idx = rng.random_range(0..pick_range);
             let (best_pair, _) = candidates[pick_idx];
             path.add_contraction(remaining[best_pair.0], remaining[best_pair.1]);
             remaining.remove(best_pair.1);

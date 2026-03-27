@@ -713,16 +713,16 @@ impl PulseNoiseModel {
 
         // Apply amplitude noise
         let amplitude_factor = rng
-            .gen_range(0.0_f64..1.0_f64)
+            .random_range(0.0_f64..1.0_f64)
             .mul_add(self.amplitude_noise, 1.0_f64);
         pulse.amplitude *= amplitude_factor;
 
         // Apply phase noise
-        let phase_shift = rng.gen_range(0.0_f64..1.0_f64) * self.phase_noise;
+        let phase_shift = rng.random_range(0.0_f64..1.0_f64) * self.phase_noise;
         pulse.phase += phase_shift;
 
         // Apply frequency noise
-        let freq_shift = rng.gen_range(0.0_f64..1.0_f64) * self.flux_noise / 1000.0; // Convert MHz to GHz
+        let freq_shift = rng.random_range(0.0_f64..1.0_f64) * self.flux_noise / 1000.0; // Convert MHz to GHz
         pulse.frequency += freq_shift;
 
         Ok(())
@@ -737,7 +737,7 @@ impl PulseNoiseModel {
         use scirs2_core::random::prelude::*;
 
         for (start_time, _, _) in &mut sequence.pulses {
-            let jitter = rng.gen_range(0.0..1.0) * self.timing_jitter;
+            let jitter = rng.random_range(0.0..1.0) * self.timing_jitter;
             *start_time += jitter;
         }
 

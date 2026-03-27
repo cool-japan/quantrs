@@ -367,7 +367,7 @@ impl StimExecutor {
     fn execute_x_error(&mut self, probability: f64, qubits: &[usize]) -> Result<()> {
         let mut rng = thread_rng();
         for &qubit in qubits {
-            if rng.gen_bool(probability) {
+            if rng.random_bool(probability) {
                 self.simulator
                     .apply_gate(crate::stabilizer::StabilizerGate::X(qubit))
                     .map_err(|e| {
@@ -382,7 +382,7 @@ impl StimExecutor {
     fn execute_y_error(&mut self, probability: f64, qubits: &[usize]) -> Result<()> {
         let mut rng = thread_rng();
         for &qubit in qubits {
-            if rng.gen_bool(probability) {
+            if rng.random_bool(probability) {
                 self.simulator
                     .apply_gate(crate::stabilizer::StabilizerGate::Y(qubit))
                     .map_err(|e| {
@@ -397,7 +397,7 @@ impl StimExecutor {
     fn execute_z_error(&mut self, probability: f64, qubits: &[usize]) -> Result<()> {
         let mut rng = thread_rng();
         for &qubit in qubits {
-            if rng.gen_bool(probability) {
+            if rng.random_bool(probability) {
                 self.simulator
                     .apply_gate(crate::stabilizer::StabilizerGate::Z(qubit))
                     .map_err(|e| {
@@ -413,8 +413,8 @@ impl StimExecutor {
         let mut rng = thread_rng();
         // Depolarizing: with prob p, apply X, Y, or Z uniformly at random
         for &qubit in qubits {
-            if rng.gen_bool(probability) {
-                let error_type: u8 = rng.gen_range(0..3);
+            if rng.random_bool(probability) {
+                let error_type: u8 = rng.random_range(0..3);
                 let gate = match error_type {
                     0 => crate::stabilizer::StabilizerGate::X(qubit),
                     1 => crate::stabilizer::StabilizerGate::Y(qubit),
@@ -437,9 +437,9 @@ impl StimExecutor {
         let mut rng = thread_rng();
         // Two-qubit depolarizing: 15 non-identity Pauli pairs
         for &(q1, q2) in qubit_pairs {
-            if rng.gen_bool(probability) {
+            if rng.random_bool(probability) {
                 // Select one of 15 non-identity two-qubit Paulis
-                let error_idx: u8 = rng.gen_range(0..15);
+                let error_idx: u8 = rng.random_range(0..15);
                 let (pauli1, pauli2) = Self::two_qubit_pauli_from_index(error_idx);
                 self.apply_pauli_to_qubit(pauli1, q1)?;
                 self.apply_pauli_to_qubit(pauli2, q2)?;
@@ -455,7 +455,7 @@ impl StimExecutor {
         targets: &[PauliTarget],
     ) -> Result<()> {
         let mut rng = thread_rng();
-        self.last_error_triggered = rng.gen_bool(probability);
+        self.last_error_triggered = rng.random_bool(probability);
 
         if self.last_error_triggered {
             for target in targets {
@@ -474,7 +474,7 @@ impl StimExecutor {
         // Only consider triggering if the previous E did NOT trigger
         if !self.last_error_triggered {
             let mut rng = thread_rng();
-            self.last_error_triggered = rng.gen_bool(probability);
+            self.last_error_triggered = rng.random_bool(probability);
 
             if self.last_error_triggered {
                 for target in targets {
@@ -496,7 +496,7 @@ impl StimExecutor {
     ) -> Result<()> {
         let mut rng = thread_rng();
         for &qubit in qubits {
-            let r: f64 = rng.gen();
+            let r: f64 = rng.random();
             if r < px {
                 self.simulator
                     .apply_gate(crate::stabilizer::StabilizerGate::X(qubit))
@@ -535,7 +535,7 @@ impl StimExecutor {
 
         let mut rng = thread_rng();
         for &(q1, q2) in qubit_pairs {
-            let r: f64 = rng.gen();
+            let r: f64 = rng.random();
             let mut cumulative = 0.0;
 
             for (i, &p) in probabilities.iter().enumerate() {

@@ -22,11 +22,11 @@ impl TrainingManager {
         experience_buffer: &[EmbeddingExperience],
         batch_size: usize,
     ) -> RLEmbeddingResult<Vec<EmbeddingExperience>> {
-        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().gen());
+        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().random());
         let mut batch = Vec::new();
 
         for _ in 0..batch_size {
-            let idx = rng.gen_range(0..experience_buffer.len());
+            let idx = rng.random_range(0..experience_buffer.len());
             batch.push(experience_buffer[idx].clone());
         }
 
@@ -144,9 +144,9 @@ impl TrainingManager {
         epsilon: f64,
     ) -> RLEmbeddingResult<EmbeddingAction> {
         // Use epsilon-greedy for DQN
-        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().gen());
+        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().random());
 
-        if rng.gen::<f64>() < epsilon {
+        if rng.random::<f64>() < epsilon {
             // Random exploration
             Ok(EmbeddingAction::Discrete(
                 StateActionProcessor::sample_random_action(state)?,

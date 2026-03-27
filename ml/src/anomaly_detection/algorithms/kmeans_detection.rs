@@ -30,7 +30,7 @@ impl AnomalyDetectorTrait for QuantumKMeansDetection {
         let n_samples = data.nrows();
         let n_features = data.ncols();
 
-        let anomaly_scores = Array1::from_shape_fn(n_samples, |_| thread_rng().gen::<f64>());
+        let anomaly_scores = Array1::from_shape_fn(n_samples, |_| thread_rng().random::<f64>());
         let anomaly_labels = anomaly_scores.mapv(|score| if score > 0.5 { 1 } else { 0 });
         let confidence_scores = anomaly_scores.clone();
         let feature_importance =
@@ -42,7 +42,7 @@ impl AnomalyDetectorTrait for QuantumKMeansDetection {
             MethodSpecificResult::Clustering {
                 cluster_assignments: Array1::from_shape_fn(n_samples, |_| {
                     use scirs2_core::random::prelude::*;
-                    thread_rng().gen_range(0..3)
+                    thread_rng().random_range(0..3)
                 }),
                 cluster_distances: anomaly_scores.clone(),
             },

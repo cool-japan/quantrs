@@ -430,16 +430,16 @@ impl HyperparameterOptimizer {
                     if *log_scale {
                         let log_min = min.ln();
                         let log_max = max.ln();
-                        let log_val = rng.gen_range(log_min..log_max);
+                        let log_val = rng.random_range(log_min..log_max);
                         log_val.exp()
                     } else {
-                        rng.gen_range(*min..*max)
+                        rng.random_range(*min..*max)
                     }
                 }
-                ParameterSpace::Discrete { values } => values[rng.gen_range(0..values.len())],
+                ParameterSpace::Discrete { values } => values[rng.random_range(0..values.len())],
                 ParameterSpace::Categorical { options } => {
                     // Return index for categorical
-                    rng.gen_range(0..options.len()) as f64
+                    rng.random_range(0..options.len()) as f64
                 }
             };
 

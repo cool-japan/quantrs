@@ -125,7 +125,6 @@ fn test_compile_constraint_expression() {
 
 #[test]
 #[cfg(feature = "dwave")]
-#[ignore] // Enable when HOBO support is fully implemented
 fn test_compile_cubic_expression() {
     // Test compiling a cubic expression
     let x = symbols("x");

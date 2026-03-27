@@ -629,7 +629,7 @@ pub fn spring_layout(n_nodes: usize, edges: &[(usize, usize)]) -> Vec<(f64, f64)
 
     // Initialize random positions
     let mut positions: Vec<(f64, f64)> = (0..n_nodes)
-        .map(|_| (rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0)))
+        .map(|_| (rng.random_range(-1.0..1.0), rng.random_range(-1.0..1.0)))
         .collect();
 
     // Simple force-directed layout

@@ -99,42 +99,39 @@ unwrap_used = "allow"
 ptr_eq = "allow"
 
 [workspace.package]
-version = "0.1.2"
+version = "0.1.3"
 authors = ["COOLJAPAN OU"]
 edition = "2021"
 rust-version = "1.86.0"
 repository = "https://github.com/cool-japan/quantrs"
-license = "MIT OR Apache-2.0"
+license = "Apache-2.0"
 keywords = ["quantum", "computing", "simulator", "annealing", "gate"]
 categories = ["science", "simulation"]
 
 [workspace.dependencies]
 # Core quantum computing dependencies
-quantrs2-core = { path = "core", version = "0.1.2" }
-quantrs2-circuit = { path = "circuit", version = "0.1.2" }
-quantrs2-sim = { path = "sim", version = "0.1.2" }
-quantrs2-anneal = { path = "anneal", version = "0.1.2" }
-quantrs2-device = { path = "device", version = "0.1.2", default-features = false }
-quantrs2-ml = { path = "ml", version = "0.1.2" }
-quantrs2-tytan = { path = "tytan", version = "0.1.2" }
+quantrs2-core = { path = "core", version = "0.1.3" }
+quantrs2-circuit = { path = "circuit", version = "0.1.3" }
+quantrs2-sim = { path = "sim", version = "0.1.3" }
+quantrs2-anneal = { path = "anneal", version = "0.1.3" }
+quantrs2-device = { path = "device", version = "0.1.3", default-features = false }
+quantrs2-ml = { path = "ml", version = "0.1.3" }
+quantrs2-tytan = { path = "tytan", version = "0.1.3" }
 
 # Symbolic computation - Pure Rust only (SciRS2 POLICY: No C/C++ dependencies)
 # quantrs2-symengine and quantrs2-symengine-sys removed - use pure Rust implementation
-quantrs2-symengine-pure = { path = "quantrs2-symengine-pure", version = "0.1.2" }
+quantrs2-symengine-pure = { path = "quantrs2-symengine-pure", version = "0.1.3" }
 
 # Pure Rust symbolic math dependencies (MIT licensed)
 egg = "0.11"
 num-bigint = "0.4"
 num-rational = "0.4"
-ordered-float = "5.1"
+ordered-float = "5.2"
 
 # Common math and linear algebra dependencies
 # num-complex = "0.4.6"         # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
 # ndarray = { version = "0.16.1", features = ["rayon", "serde"] }  # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
-# LIMITED USE: nalgebra for sparse matrix operations (PARTIALLY VIOLATES SciRS2 POLICY)
-# Location: sim/src/scirs2_integration.rs (sparse matrix operations only)
-# TODO: Migrate to scirs2-sparse when API stabilizes (planned for v0.2.0)
-nalgebra = "0.33.2"            # Temporary - sparse operations only
+nalgebra = "0.34.1"            # Used in sim/src/scirs2_integration/types.rs CG solver (advanced_math feature)
 # ndarray-linalg = { version = "0.17", default-features = false, features = ["openblas-system"] }  # REMOVED: Use scirs2_core (SciRS2 POLICY)
 # ndarray-rand = "0.15"          # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
 # ndarray-stats = "0.6"          # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
@@ -147,8 +144,8 @@ approx = "0.5"                   # Test-only usage, acceptable
 
 # Essential SciRS2 dependencies for QuantRS2 - COMPREHENSIVE INTEGRATION
 # Status: Production Ready with SciRS2 foundation
-# Using scirs2 0.1.2+ from crates.io
-scirs2-core = { version = "0.1.2", default-features = false, features = [
+# Using scirs2 0.4.0 from crates.io
+scirs2-core = { version = "0.4.0", default-features = false, features = [
     "serialization",  # Complex<T> serde support
     "linalg",         # ndarray-linalg integration (solve, svd, eigh)
     "simd",           # SIMD acceleration
@@ -161,22 +158,22 @@ scirs2-core = { version = "0.1.2", default-features = false, features = [
 ] }
 
 # HIGHLY LIKELY REQUIRED SciRS2 crates
-scirs2-autograd = { version = "0.1.2", default-features = false }  # Primary source for ndarray types
-scirs2-linalg = { version = "0.1.2", default-features = false }
-scirs2-optimize = { version = "0.1.2", default-features = false }
-scirs2-special = { version = "0.1.2", default-features = false }
-scirs2-sparse = { version = "0.1.2", default-features = false }
-scirs2-fft = { version = "0.1.2", default-features = false }
+scirs2-autograd = { version = "0.4.0", default-features = false }  # Primary source for ndarray types
+scirs2-linalg = { version = "0.4.0", default-features = false }
+scirs2-optimize = { version = "0.4.0", default-features = false }
+scirs2-special = { version = "0.4.0", default-features = false }
+scirs2-sparse = { version = "0.4.0", default-features = false }
+scirs2-fft = { version = "0.4.0", default-features = false, features = ["oxifft"] }
 
 # CONDITIONALLY REQUIRED SciRS2 crates
-scirs2-neural = { version = "0.1.2", default-features = false }
-scirs2-metrics = { version = "0.1.2", default-features = false }
-scirs2-stats = { version = "0.1.2", default-features = false }
-scirs2-cluster = { version = "0.1.2", default-features = false }
-scirs2-graph = { version = "0.1.2", default-features = false }
+scirs2-neural = { version = "0.4.0", default-features = false }
+scirs2-metrics = { version = "0.4.0", default-features = false }
+scirs2-stats = { version = "0.4.0", default-features = false }
+scirs2-cluster = { version = "0.4.0", default-features = false }
+scirs2-graph = { version = "0.4.0", default-features = false }
 
 # OptiRS integration for advanced optimization (VQE, QAOA) 
-optirs-core = { version = "0.1.0", default-features = false }
+optirs-core = { version = "0.3.1", default-features = false }
 
 # Performance and parallel computing
 # rayon = "1.10.0"               # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
@@ -199,30 +196,32 @@ thiserror = "2.0.18"
 # Serialization and data formats
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-oxicode = { version = "0.1.1", features = ["std", "derive", "serde"] }
-zstd = "0.13"
-flate2 = "1.1"
+oxicode = { version = "0.2.1", features = ["std", "derive", "serde"] }
+oxiarc-deflate = "0.2.6"   # Pure Rust DEFLATE/zlib (COOLJAPAN Policy: replaces flate2)
+oxiarc-lz4 = "0.2.6"      # Pure Rust LZ4 (COOLJAPAN Policy: replaces lz4 crate)
+# zstd = "0.13"  # REMOVED: Not used in code (COOLJAPAN Pure Rust Policy)
+# flate2 = "1.1"  # REMOVED: Replaced by oxiarc-deflate (COOLJAPAN Pure Rust Policy)
 md5 = "0.8"
 
 # GPU computing support
-wgpu = { version = "26.0.1" }
-bytemuck = { version = "1.24.0", features = ["derive"] }
+wgpu = { version = "29.0.1" }
+bytemuck = { version = "1.25.0", features = ["derive"] }
 ocl = "0.19.7"
 
 # Async and networking
-reqwest = { version = "0.13.1", default-features = false, features = ["json", "native-tls-vendored"] }
-tokio = { version = "1.49.0", features = ["full"] }
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "blocking", "rustls"] }
+tokio = { version = "1.50.0", features = ["full"] }
 futures = "0.3"
 async-trait = "0.1"
 
 # Python bindings and FFI
-pyo3 = { version = "0.27.2", default-features = false, features = ["extension-module"] }
-scirs2-numpy = { version = "0.1.3", default-features = false }  # SciRS2-compatible numpy bindings
+pyo3 = { version = "0.28.2", default-features = false, features = ["extension-module"] }
+scirs2-numpy = { version = "0.4.0", default-features = false }  # SciRS2-compatible numpy bindings
 
 # Utility libraries
-uuid = { version = "1.19.0", features = ["v4", "serde"] }
+uuid = { version = "1.23.0", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
-regex = "1.12.2"
+regex = "1.12.3"
 colored = "3.1"
 petgraph = "0.8"
 pest = "2.8"
@@ -230,20 +229,20 @@ pest_derive = "2.8"
 
 # Cryptographic functions
 hmac = "0.12.1"
-sha2 = "0.10.9"
+sha2 = "0.10.8"
 hex = "0.4.3"
 
 
 # Advanced math libraries
-ndrustfft = "0.6"
-sprs = "0.11"  
-nalgebra-sparse = "0.11"
+# ndrustfft = "0.6"  # REMOVED: Replaced by scirs2-fft (COOLJAPAN Pure Rust Policy)
+sprs = "0.11"
+# nalgebra-sparse removed: replaced by scirs2-sparse (COOLJAPAN Pure Rust Policy)
 
 # Visualization and plotting
 plotters = "0.3"
 
 # System information
-sysinfo = "0.36"
+sysinfo = "0.38"
 
 # Additional dependencies for workspace members
 libc = "0.2"
@@ -260,11 +259,11 @@ memmap2 = "0.9"
 
 # Development and testing
 criterion = { version = "0.8", features = ["html_reports", "async_tokio"] }
-tempfile = "3.24"
+tempfile = "3.27"
 
 # NumRS2 ecosystem dependencies
-numrs2 = "0.1.1"
-pandrs = "0.1.0"  # Latest available on crates.io
+numrs2 = "0.3.2"
+pandrs = "0.3.0"  # Latest available on crates.io
 
 [profile.dev]
 incremental = true

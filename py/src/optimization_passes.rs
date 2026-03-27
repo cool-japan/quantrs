@@ -378,7 +378,11 @@ impl PyCircuitTranspiler {
     }
 
     /// Optimize a quantum circuit
-    fn optimize(&self, py: Python, circuit: &Bound<'_, PyList>) -> PyResult<(PyObject, PyObject)> {
+    fn optimize(
+        &self,
+        py: Python,
+        circuit: &Bound<'_, PyList>,
+    ) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
         let mut context = OptimizationContext::new(10); // Default to 10 qubits
 
         // Parse input circuit
@@ -513,7 +517,7 @@ impl PyCircuitTranspiler {
     }
 
     /// Count gates by type
-    fn gate_counts(&self, py: Python, circuit: &Bound<'_, PyList>) -> PyResult<PyObject> {
+    fn gate_counts(&self, py: Python, circuit: &Bound<'_, PyList>) -> PyResult<Py<PyAny>> {
         let mut counts = HashMap::new();
 
         for gate_info in circuit {
@@ -562,7 +566,7 @@ impl PyDeviceRouter {
         py: Python,
         circuit: &Bound<'_, PyList>,
         initial_layout: Option<Vec<usize>>,
-    ) -> PyResult<(PyObject, Vec<usize>)> {
+    ) -> PyResult<(Py<PyAny>, Vec<usize>)> {
         // This is a simplified routing algorithm
         // In reality, would use more sophisticated algorithms like SABRE
 

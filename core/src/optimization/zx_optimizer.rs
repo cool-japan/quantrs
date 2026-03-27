@@ -65,11 +65,9 @@ impl OptimizationPass for ZXOptimizationPass {
                 "ZX-Calculus: Optimized to {} gates, {} T-gates ({}% reduction)",
                 optimized.len(),
                 optimized_t,
-                if original_t > 0 {
-                    ((original_t - optimized_t) * 100) / original_t
-                } else {
-                    0
-                }
+                ((original_t - optimized_t) * 100)
+                    .checked_div(original_t)
+                    .unwrap_or(0)
             );
         }
 

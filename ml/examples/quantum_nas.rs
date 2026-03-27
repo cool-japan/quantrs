@@ -320,7 +320,7 @@ fn generate_quantum_data(samples: usize, features: usize) -> Array2<f64> {
     Array2::from_shape_fn((samples, features), |(i, j)| {
         let phase = (i as f64).mul_add(0.1, j as f64 * 0.2).sin();
         let amplitude = (i as f64 / samples as f64).exp() * 0.5;
-        amplitude * phase + 0.1 * fastrand::f64()
+        amplitude.mul_add(phase, 0.1 * fastrand::f64())
     })
 }
 

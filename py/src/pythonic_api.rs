@@ -574,15 +574,21 @@ impl PyCirqCircuit {
                     "CNOT" => circuit.cnot(qubits[0], qubits[1])?,
                     "RX" => circuit.rx(
                         qubits[0],
-                        params.as_ref().expect("RX gate requires parameter")[0],
+                        params.as_ref().ok_or_else(|| {
+                            pyo3::exceptions::PyValueError::new_err("RX gate requires a parameter")
+                        })?[0],
                     )?,
                     "RY" => circuit.ry(
                         qubits[0],
-                        params.as_ref().expect("RY gate requires parameter")[0],
+                        params.as_ref().ok_or_else(|| {
+                            pyo3::exceptions::PyValueError::new_err("RY gate requires a parameter")
+                        })?[0],
                     )?,
                     "RZ" => circuit.rz(
                         qubits[0],
-                        params.as_ref().expect("RZ gate requires parameter")[0],
+                        params.as_ref().ok_or_else(|| {
+                            pyo3::exceptions::PyValueError::new_err("RZ gate requires a parameter")
+                        })?[0],
                     )?,
                     _ => return Err(PyValueError::new_err(format!("Unknown gate: {gate_type}"))),
                 }

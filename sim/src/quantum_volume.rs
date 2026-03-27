@@ -7,7 +7,7 @@
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::random::prelude::*;
-use scirs2_core::random::{ChaCha8Rng, Rng as RngTrait, SeedableRng}; // Rename to avoid conflict
+use scirs2_core::random::{ChaCha8Rng, RngExt as RngTrait, SeedableRng}; // Rename to avoid conflict
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -284,7 +284,7 @@ impl QuantumVolumeCalculator {
         // Generate 15 random parameters (SU(4) has 15 real parameters)
         let mut params = Vec::with_capacity(15);
         for _ in 0..15 {
-            params.push(self.rng.gen::<f64>() * 2.0 * std::f64::consts::PI);
+            params.push(self.rng.random::<f64>() * 2.0 * std::f64::consts::PI);
         }
 
         // Construct SU(4) matrix using parametrization
@@ -295,8 +295,8 @@ impl QuantumVolumeCalculator {
         // Simplified random unitary construction
         for i in 0..4 {
             for j in 0..4 {
-                let real = self.rng.gen::<f64>() - 0.5;
-                let imag = self.rng.gen::<f64>() - 0.5;
+                let real = self.rng.random::<f64>() - 0.5;
+                let imag = self.rng.random::<f64>() - 0.5;
                 matrix[[i, j]] = Complex64::new(real, imag);
             }
         }

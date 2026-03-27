@@ -278,7 +278,7 @@ impl QuantumAnnealingSimulator {
         // Create random number generator
         let mut rng = match self.params.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
 
         // Initialize best result
@@ -477,7 +477,7 @@ impl ClassicalAnnealingSimulator {
         // Create random number generator
         let mut rng = match self.params.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
 
         // Initialize best result

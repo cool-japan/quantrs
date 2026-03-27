@@ -448,7 +448,7 @@ impl EnhancedHybridExecutor {
 
     fn initialize_parameters(&self, num_params: usize) -> Array1<f64> {
         Array1::from_shape_fn(num_params, |_| {
-            thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI
+            thread_rng().random::<f64>() * 2.0 * std::f64::consts::PI
         })
     }
 
@@ -457,10 +457,10 @@ impl EnhancedHybridExecutor {
         Array1::from_shape_fn(2 * num_layers, |i| {
             if i < num_layers {
                 // Beta parameters
-                thread_rng().gen::<f64>() * std::f64::consts::PI
+                thread_rng().random::<f64>() * std::f64::consts::PI
             } else {
                 // Gamma parameters
-                thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI
+                thread_rng().random::<f64>() * 2.0 * std::f64::consts::PI
             }
         })
     }
@@ -741,7 +741,7 @@ impl EnhancedHybridExecutor {
                 if i < params.len() {
                     params[i]
                 } else {
-                    thread_rng().gen::<f64>() * std::f64::consts::PI
+                    thread_rng().random::<f64>() * std::f64::consts::PI
                 }
             });
 
@@ -1066,7 +1066,7 @@ impl EnhancedHybridExecutor {
 
         for _ in 0..samples {
             let perturbation = Array1::from_shape_fn(optimal_params.len(), |_| {
-                (thread_rng().gen::<f64>() - 0.5) * 2.0 * radius
+                (thread_rng().random::<f64>() - 0.5) * 2.0 * radius
             });
             let point = optimal_params + &perturbation;
             let cost = cost_function(&point)?;

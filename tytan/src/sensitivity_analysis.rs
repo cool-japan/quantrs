@@ -226,21 +226,30 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
 
             let mut response_curve = Vec::new();
             let mut objectives = Vec::new();
+            let mut violation_rates = Vec::new();
 
             // Sample parameter values
             for i in 0..num_points {
                 let t = i as f64 / (num_points - 1) as f64;
-                let mut value = min_val + t * (max_val - min_val);
+                let value = min_val + t * (max_val - min_val);
 
                 // Create parameter configuration
                 let mut params = baseline_params.clone();
                 params.insert(param_name.clone(), value);
 
                 // Evaluate
-                let mut result = self.evaluate_configuration(problem, &params)?;
+                let result = self.evaluate_configuration(problem, &params)?;
                 response_curve.push((value, result.best_objective));
                 objectives.push(result.best_objective);
+                violation_rates.push(result.constraint_violations);
             }
+
+            // constraint_impact = mean violation rate across parameter sweep points
+            let constraint_impact = if violation_rates.is_empty() {
+                0.0
+            } else {
+                violation_rates.iter().sum::<f64>() / violation_rates.len() as f64
+            };
 
             // Compute sensitivity metrics
             let gradient = self.compute_gradient(&response_curve);
@@ -257,7 +266,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
                     name: param_name.clone(),
                     sensitivity_index,
                     objective_gradient: gradient,
-                    constraint_impact: 0.0, // TODO: Compute from constraint violations
+                    constraint_impact,
                     optimal_value,
                     confidence_interval: self.compute_confidence_interval(&objectives),
                     response_curve: response_curve.clone(),
@@ -521,14 +530,30 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
 
         // Evaluate all combinations
         let mut results = Vec::new();
+        // Track (config, objective, constraint_violation_rate) for each design point
+        let mut detailed_results: Vec<(HashMap<String, f64>, f64, f64)> = Vec::new();
         for config in &design {
-            let mut result = self.evaluate_configuration(problem, config)?;
+            let result = self.evaluate_configuration(problem, config)?;
             results.push((config.clone(), result.best_objective));
+            detailed_results.push((
+                config.clone(),
+                result.best_objective,
+                result.constraint_violations,
+            ));
         }
 
         // Compute main effects and interactions
         let (main_effects, interaction_effects) =
             self.analyze_factorial_results(&results, levels_per_factor)?;
+
+        // Compute per-parameter mean violation rate for constraint_impact
+        // For each parameter we average the violation rate across all design points
+        let mean_violation_rate = if detailed_results.is_empty() {
+            0.0
+        } else {
+            detailed_results.iter().map(|(_, _, vr)| vr).sum::<f64>()
+                / detailed_results.len() as f64
+        };
 
         // Convert to sensitivity results
         let mut sensitivities = HashMap::new();
@@ -539,7 +564,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
                     name: param_name.clone(),
                     sensitivity_index: effect.abs(),
                     objective_gradient: *effect,
-                    constraint_impact: 0.0,
+                    constraint_impact: mean_violation_rate,
                     optimal_value: 0.0,
                     confidence_interval: (0.0, 0.0),
                     response_curve: Vec::new(),
@@ -588,12 +613,22 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap_or(f64::INFINITY);
 
-        // Compute constraint violations
-        let mut constraint_violations = 0.0; // TODO: Implement constraint checking
+        // Compute constraint violations: fraction of samples that violate at least one constraint
+        let total_samples = solutions.len();
+        let constraint_violations = if total_samples > 0 && problem.num_constraints() > 0 {
+            let violation_count = solutions
+                .iter()
+                .filter(|s| problem.count_constraint_violations(&s.assignments) > 0)
+                .count();
+            violation_count as f64 / total_samples as f64
+        } else {
+            0.0
+        };
 
         Ok(EvaluationResult {
             best_objective,
-            avg_objective: solutions.iter().map(|s| s.energy).sum::<f64>() / solutions.len() as f64,
+            avg_objective: solutions.iter().map(|s| s.energy).sum::<f64>()
+                / solutions.len().max(1) as f64,
             constraint_violations,
             num_feasible: solutions.len(),
         })
@@ -785,8 +820,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
                 let name = self.get_parameter_name(&param);
                 let (min_val, max_val) = self.get_parameter_range(&param);
 
-                params_a.insert(name.clone(), rng.gen_range(min_val..max_val));
-                params_b.insert(name, rng.gen_range(min_val..max_val));
+                params_a.insert(name.clone(), rng.random_range(min_val..max_val));
+                params_b.insert(name, rng.random_range(min_val..max_val));
             }
 
             sample_a.push(params_a);
@@ -889,7 +924,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
                 let (min_val, max_val) = self.get_parameter_range(param);
 
                 let level = permutations[j][i];
-                let value = ((level as f64 + rng.gen::<f64>()) / num_samples as f64)
+                let value = ((level as f64 + rng.random::<f64>()) / num_samples as f64)
                     .mul_add(max_val - min_val, min_val);
 
                 sample.insert(name, value);

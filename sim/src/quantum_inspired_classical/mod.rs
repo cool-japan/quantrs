@@ -1,0 +1,50 @@
+//! Auto-generated module structure
+
+pub mod algorithmconfig_traits;
+pub mod benchmarkingconfig_traits;
+pub mod communitydetectionparams_traits;
+pub mod comparisonstats_traits;
+pub mod convergenceanalysis_traits;
+pub mod executionstats_traits;
+pub mod functions;
+pub mod graphconfig_traits;
+pub mod linalgconfig_traits;
+pub mod mlconfig_traits;
+pub mod networkarchitecture_traits;
+pub mod optimizationconfig_traits;
+pub mod performanceanalysisconfig_traits;
+pub mod quantumadvantagemetrics_traits;
+pub mod quantuminspiredconfig_traits;
+pub mod quantumparameters_traits;
+pub mod quantumwalkparams_traits;
+pub mod runtimestats_traits;
+pub mod samplingconfig_traits;
+pub mod tensornetworkconfig_traits;
+pub mod trainingconfig_traits;
+pub mod types;
+pub mod wavefunctionconfig_traits;
+
+// Re-export all types
+pub use algorithmconfig_traits::*;
+pub use benchmarkingconfig_traits::*;
+pub use communitydetectionparams_traits::*;
+pub use comparisonstats_traits::*;
+pub use convergenceanalysis_traits::*;
+pub use executionstats_traits::*;
+pub use functions::*;
+pub use graphconfig_traits::*;
+pub use linalgconfig_traits::*;
+pub use mlconfig_traits::*;
+pub use networkarchitecture_traits::*;
+pub use optimizationconfig_traits::*;
+pub use performanceanalysisconfig_traits::*;
+pub use quantumadvantagemetrics_traits::*;
+pub use quantuminspiredconfig_traits::*;
+pub use quantumparameters_traits::*;
+pub use quantumwalkparams_traits::*;
+pub use runtimestats_traits::*;
+pub use samplingconfig_traits::*;
+pub use tensornetworkconfig_traits::*;
+pub use trainingconfig_traits::*;
+pub use types::*;
+pub use wavefunctionconfig_traits::*;

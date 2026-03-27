@@ -109,8 +109,10 @@ impl QuantumMemory {
                 for i in 0..num_slots {
                     // Random product state
                     for j in 0..state_dim {
-                        slots[[i, j]] =
-                            Complex64::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0));
+                        slots[[i, j]] = Complex64::new(
+                            rng.random_range(-1.0..1.0),
+                            rng.random_range(-1.0..1.0),
+                        );
                     }
                     // Normalize
                     let norm: f64 = slots
@@ -302,11 +304,11 @@ impl QuantumMemoryController {
         let scale_hidden = (2.0 / hidden_size as f64).sqrt();
 
         let w_input = Array2::from_shape_fn((hidden_size, input_size), |_| {
-            rng.gen_range(-scale_input..scale_input)
+            rng.random_range(-scale_input..scale_input)
         });
 
         let w_hidden = Array2::from_shape_fn((hidden_size, hidden_size), |_| {
-            rng.gen_range(-scale_hidden..scale_hidden)
+            rng.random_range(-scale_hidden..scale_hidden)
         });
 
         let b_hidden = Array1::zeros(hidden_size);
@@ -316,7 +318,7 @@ impl QuantumMemoryController {
         for _ in 0..memory_config.num_read_heads {
             let state_dim = 1 << memory_config.qubits_per_slot;
             w_read_key.push(Array2::from_shape_fn((state_dim, hidden_size), |_| {
-                rng.gen_range(-scale_hidden..scale_hidden)
+                rng.random_range(-scale_hidden..scale_hidden)
             }));
         }
 
@@ -329,18 +331,18 @@ impl QuantumMemoryController {
             let state_dim = 1 << memory_config.qubits_per_slot;
 
             w_write_key.push(Array2::from_shape_fn((state_dim, hidden_size), |_| {
-                rng.gen_range(-scale_hidden..scale_hidden)
+                rng.random_range(-scale_hidden..scale_hidden)
             }));
 
             w_write_add.push(Array2::from_shape_fn((state_dim, hidden_size), |_| {
                 Complex64::new(
-                    rng.gen_range(-scale_hidden..scale_hidden),
-                    rng.gen_range(-scale_hidden..scale_hidden),
+                    rng.random_range(-scale_hidden..scale_hidden),
+                    rng.random_range(-scale_hidden..scale_hidden),
                 )
             }));
 
             w_write_erase.push(Array2::from_shape_fn((state_dim, hidden_size), |_| {
-                rng.gen_range(-scale_hidden..scale_hidden)
+                rng.random_range(-scale_hidden..scale_hidden)
             }));
         }
 

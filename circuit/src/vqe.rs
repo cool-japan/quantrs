@@ -6,10 +6,34 @@
 use crate::builder::Circuit;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
+    gate::single::{RotationX, RotationY, RotationZ},
+    gate::GateOp,
     qubit::QubitId,
 };
 use scirs2_core::Complex64;
 use std::collections::HashMap;
+
+/// Which axis a parameterized rotation gate acts on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RotationAxis {
+    Y,
+    Z,
+    X,
+}
+
+/// Record of a parameterized gate: its position in the circuit's gate list,
+/// the target qubit, the rotation axis, and the parameter index it uses.
+#[derive(Debug, Clone)]
+pub struct ParameterizedGateRecord {
+    /// Position of this gate in `circuit.gates()` (gate list index).
+    pub gate_index: usize,
+    /// Target qubit for the rotation.
+    pub qubit: QubitId,
+    /// Rotation axis.
+    pub axis: RotationAxis,
+    /// Index into `parameters` for the angle.
+    pub param_index: usize,
+}
 
 /// A parameterized quantum circuit for VQE applications
 ///
@@ -27,6 +51,9 @@ pub struct VQECircuit<const N: usize> {
     pub parameter_names: Vec<String>,
     /// Mapping from parameter names to indices
     parameter_map: HashMap<String, usize>,
+    /// Ordered list of parameterized gate records: used by `set_parameters` to
+    /// rebuild the circuit's rotation angles when parameters change.
+    param_gate_records: Vec<ParameterizedGateRecord>,
 }
 
 /// VQE ansatz types for different quantum chemistry problems
@@ -83,6 +110,7 @@ impl<const N: usize> VQECircuit<N> {
         let mut parameters = Vec::new();
         let mut parameter_names = Vec::new();
         let mut parameter_map = HashMap::new();
+        let mut param_gate_records: Vec<ParameterizedGateRecord> = Vec::new();
 
         match ansatz {
             VQEAnsatz::HardwareEfficient { layers } => {
@@ -91,6 +119,7 @@ impl<const N: usize> VQECircuit<N> {
                     &mut parameters,
                     &mut parameter_names,
                     &mut parameter_map,
+                    &mut param_gate_records,
                     layers,
                 )?;
             }
@@ -103,6 +132,7 @@ impl<const N: usize> VQECircuit<N> {
                     &mut parameters,
                     &mut parameter_names,
                     &mut parameter_map,
+                    &mut param_gate_records,
                     occupied_orbitals,
                     virtual_orbitals,
                 )?;
@@ -113,6 +143,7 @@ impl<const N: usize> VQECircuit<N> {
                     &mut parameters,
                     &mut parameter_names,
                     &mut parameter_map,
+                    &mut param_gate_records,
                     &geometry,
                 )?;
             }
@@ -126,6 +157,7 @@ impl<const N: usize> VQECircuit<N> {
             parameters,
             parameter_names,
             parameter_map,
+            param_gate_records,
         })
     }
 
@@ -135,6 +167,7 @@ impl<const N: usize> VQECircuit<N> {
         parameters: &mut Vec<f64>,
         parameter_names: &mut Vec<String>,
         parameter_map: &mut HashMap<String, usize>,
+        param_gate_records: &mut Vec<ParameterizedGateRecord>,
         layers: usize,
     ) -> QuantRS2Result<()> {
         for layer in 0..layers {
@@ -142,19 +175,35 @@ impl<const N: usize> VQECircuit<N> {
             for qubit in 0..N {
                 // RY rotation
                 let param_name = format!("ry_{layer}_q{qubit}");
+                let param_idx = parameters.len();
                 parameter_names.push(param_name.clone());
-                parameter_map.insert(param_name, parameters.len());
-                parameters.push(0.0); // Initialize to 0
+                parameter_map.insert(param_name, param_idx);
+                parameters.push(0.0);
 
-                circuit.ry(QubitId(qubit as u32), 0.0)?; // Placeholder angle
+                let gate_idx = circuit.gates().len();
+                circuit.ry(QubitId(qubit as u32), 0.0)?;
+                param_gate_records.push(ParameterizedGateRecord {
+                    gate_index: gate_idx,
+                    qubit: QubitId(qubit as u32),
+                    axis: RotationAxis::Y,
+                    param_index: param_idx,
+                });
 
                 // RZ rotation
                 let param_name = format!("rz_{layer}_q{qubit}");
+                let param_idx = parameters.len();
                 parameter_names.push(param_name.clone());
-                parameter_map.insert(param_name, parameters.len());
-                parameters.push(0.0); // Initialize to 0
+                parameter_map.insert(param_name, param_idx);
+                parameters.push(0.0);
 
-                circuit.rz(QubitId(qubit as u32), 0.0)?; // Placeholder angle
+                let gate_idx = circuit.gates().len();
+                circuit.rz(QubitId(qubit as u32), 0.0)?;
+                param_gate_records.push(ParameterizedGateRecord {
+                    gate_index: gate_idx,
+                    qubit: QubitId(qubit as u32),
+                    axis: RotationAxis::Z,
+                    param_index: param_idx,
+                });
             }
 
             // Entangling layer (linear connectivity)
@@ -172,6 +221,7 @@ impl<const N: usize> VQECircuit<N> {
         parameters: &mut Vec<f64>,
         parameter_names: &mut Vec<String>,
         parameter_map: &mut HashMap<String, usize>,
+        param_gate_records: &mut Vec<ParameterizedGateRecord>,
         occupied_orbitals: usize,
         virtual_orbitals: usize,
     ) -> QuantRS2Result<()> {
@@ -192,13 +242,20 @@ impl<const N: usize> VQECircuit<N> {
         for i in 0..occupied_orbitals {
             for a in occupied_orbitals..(occupied_orbitals + virtual_orbitals) {
                 let param_name = format!("t1_{i}_{a}");
+                let param_idx = parameters.len();
                 parameter_names.push(param_name.clone());
-                parameter_map.insert(param_name, parameters.len());
+                parameter_map.insert(param_name, param_idx);
                 parameters.push(0.0);
 
-                // Simplified single excitation (real implementation would use more sophisticated operators)
                 circuit.cnot(QubitId(i as u32), QubitId(a as u32))?;
-                circuit.ry(QubitId(a as u32), 0.0)?; // Placeholder
+                let gate_idx = circuit.gates().len();
+                circuit.ry(QubitId(a as u32), 0.0)?;
+                param_gate_records.push(ParameterizedGateRecord {
+                    gate_index: gate_idx,
+                    qubit: QubitId(a as u32),
+                    axis: RotationAxis::Y,
+                    param_index: param_idx,
+                });
                 circuit.cnot(QubitId(i as u32), QubitId(a as u32))?;
             }
         }
@@ -210,14 +267,21 @@ impl<const N: usize> VQECircuit<N> {
                     for b in (a + 1)..(occupied_orbitals + virtual_orbitals) {
                         if a < N && b < N {
                             let param_name = format!("t2_{i}_{j}_{a}_{b}");
+                            let param_idx = parameters.len();
                             parameter_names.push(param_name.clone());
-                            parameter_map.insert(param_name, parameters.len());
+                            parameter_map.insert(param_name, param_idx);
                             parameters.push(0.0);
 
-                            // Simplified double excitation
                             circuit.cnot(QubitId(i as u32), QubitId(a as u32))?;
                             circuit.cnot(QubitId(j as u32), QubitId(b as u32))?;
-                            circuit.ry(QubitId(a as u32), 0.0)?; // Placeholder
+                            let gate_idx = circuit.gates().len();
+                            circuit.ry(QubitId(a as u32), 0.0)?;
+                            param_gate_records.push(ParameterizedGateRecord {
+                                gate_index: gate_idx,
+                                qubit: QubitId(a as u32),
+                                axis: RotationAxis::Y,
+                                param_index: param_idx,
+                            });
                             circuit.cnot(QubitId(j as u32), QubitId(b as u32))?;
                             circuit.cnot(QubitId(i as u32), QubitId(a as u32))?;
                         }
@@ -235,6 +299,7 @@ impl<const N: usize> VQECircuit<N> {
         parameters: &mut Vec<f64>,
         parameter_names: &mut Vec<String>,
         parameter_map: &mut HashMap<String, usize>,
+        param_gate_records: &mut Vec<ParameterizedGateRecord>,
         geometry: &[(f64, f64, f64)],
     ) -> QuantRS2Result<()> {
         if geometry.len() > N {
@@ -254,15 +319,21 @@ impl<const N: usize> VQECircuit<N> {
 
                 // Only include interactions within a cutoff distance
                 if distance < 3.0 {
-                    // Cutoff distance
                     let param_name = format!("j_{i}_{j}");
+                    let param_idx = parameters.len();
                     parameter_names.push(param_name.clone());
-                    parameter_map.insert(param_name, parameters.len());
+                    parameter_map.insert(param_name, param_idx);
                     parameters.push(0.0);
 
-                    // Add parameterized interaction
                     circuit.cnot(QubitId(i as u32), QubitId(j as u32))?;
-                    circuit.rz(QubitId(j as u32), 0.0)?; // Placeholder
+                    let gate_idx = circuit.gates().len();
+                    circuit.rz(QubitId(j as u32), 0.0)?;
+                    param_gate_records.push(ParameterizedGateRecord {
+                        gate_index: gate_idx,
+                        qubit: QubitId(j as u32),
+                        axis: RotationAxis::Z,
+                        param_index: param_idx,
+                    });
                     circuit.cnot(QubitId(i as u32), QubitId(j as u32))?;
                 }
             }
@@ -271,7 +342,12 @@ impl<const N: usize> VQECircuit<N> {
         Ok(())
     }
 
-    /// Update circuit parameters
+    /// Update circuit parameters and rebuild all parameterized rotation gates.
+    ///
+    /// Uses `param_gate_records` to locate each parameterized gate in the gate
+    /// list.  The entire circuit is reconstructed from `gates_as_boxes()`, with
+    /// each parameterized gate replaced by a new rotation gate carrying the
+    /// updated angle.  Non-parameterized gates are kept verbatim.
     pub fn set_parameters(&mut self, new_parameters: &[f64]) -> QuantRS2Result<()> {
         if new_parameters.len() != self.parameters.len() {
             return Err(QuantRS2Error::InvalidInput(format!(
@@ -283,9 +359,45 @@ impl<const N: usize> VQECircuit<N> {
 
         self.parameters = new_parameters.to_vec();
 
-        // TODO: Rebuild circuit with new parameters
-        // This is a simplified implementation - a full version would
-        // track which gates use which parameters and update them accordingly
+        // Build a map from gate_index → ParameterizedGateRecord for fast lookup.
+        let record_map: HashMap<usize, &ParameterizedGateRecord> = self
+            .param_gate_records
+            .iter()
+            .map(|r| (r.gate_index, r))
+            .collect();
+
+        // Collect all existing gates as boxed trait objects.
+        let old_gates = self.circuit.gates_as_boxes();
+
+        // Rebuild a new gate list, substituting updated rotation angles where recorded.
+        let new_gates: Vec<Box<dyn GateOp>> = old_gates
+            .into_iter()
+            .enumerate()
+            .map(|(idx, gate)| -> Box<dyn GateOp> {
+                if let Some(record) = record_map.get(&idx) {
+                    let angle = self.parameters[record.param_index];
+                    match record.axis {
+                        RotationAxis::Y => Box::new(RotationY {
+                            target: record.qubit,
+                            theta: angle,
+                        }),
+                        RotationAxis::Z => Box::new(RotationZ {
+                            target: record.qubit,
+                            theta: angle,
+                        }),
+                        RotationAxis::X => Box::new(RotationX {
+                            target: record.qubit,
+                            theta: angle,
+                        }),
+                    }
+                } else {
+                    gate
+                }
+            })
+            .collect();
+
+        // Replace the circuit with the rebuilt version.
+        self.circuit = Circuit::<N>::from_gates(new_gates)?;
 
         Ok(())
     }
@@ -309,7 +421,9 @@ impl<const N: usize> VQECircuit<N> {
         Ok(())
     }
 
-    /// Add a custom parameterized gate
+    /// Add a custom parameterized RY gate.
+    ///
+    /// Records the gate position so that `set_parameters` can later update its angle.
     pub fn add_parameterized_ry(
         &mut self,
         qubit: QubitId,
@@ -321,16 +435,27 @@ impl<const N: usize> VQECircuit<N> {
             )));
         }
 
+        let param_idx = self.parameters.len();
         self.parameter_names.push(parameter_name.to_string());
         self.parameter_map
-            .insert(parameter_name.to_string(), self.parameters.len());
+            .insert(parameter_name.to_string(), param_idx);
         self.parameters.push(0.0);
 
-        self.circuit.ry(qubit, 0.0)?; // Placeholder angle
+        let gate_idx = self.circuit.gates().len();
+        self.circuit.ry(qubit, 0.0)?;
+        self.param_gate_records.push(ParameterizedGateRecord {
+            gate_index: gate_idx,
+            qubit,
+            axis: RotationAxis::Y,
+            param_index: param_idx,
+        });
+
         Ok(())
     }
 
-    /// Add a custom parameterized gate
+    /// Add a custom parameterized RZ gate.
+    ///
+    /// Records the gate position so that `set_parameters` can later update its angle.
     pub fn add_parameterized_rz(
         &mut self,
         qubit: QubitId,
@@ -342,12 +467,21 @@ impl<const N: usize> VQECircuit<N> {
             )));
         }
 
+        let param_idx = self.parameters.len();
         self.parameter_names.push(parameter_name.to_string());
         self.parameter_map
-            .insert(parameter_name.to_string(), self.parameters.len());
+            .insert(parameter_name.to_string(), param_idx);
         self.parameters.push(0.0);
 
-        self.circuit.rz(qubit, 0.0)?; // Placeholder angle
+        let gate_idx = self.circuit.gates().len();
+        self.circuit.rz(qubit, 0.0)?;
+        self.param_gate_records.push(ParameterizedGateRecord {
+            gate_index: gate_idx,
+            qubit,
+            axis: RotationAxis::Z,
+            param_index: param_idx,
+        });
+
         Ok(())
     }
 
@@ -626,5 +760,69 @@ mod tests {
             .set_parameter("theta1", 0.5)
             .expect("set parameter theta1");
         assert_eq!(circuit.get_parameter("theta1"), Some(0.5));
+    }
+
+    #[test]
+    fn test_set_parameters_updates_circuit_gates() {
+        use std::f64::consts::PI;
+
+        // Build a custom VQE circuit with one RY gate
+        let mut vqe = VQECircuit::<2>::new(VQEAnsatz::Custom).expect("custom VQE");
+        vqe.add_parameterized_ry(QubitId(0), "theta")
+            .expect("add RY");
+        vqe.add_parameterized_rz(QubitId(1), "phi").expect("add RZ");
+
+        assert_eq!(vqe.num_parameters(), 2);
+
+        // Initially parameters are zero
+        assert_eq!(vqe.get_parameter("theta"), Some(0.0));
+        assert_eq!(vqe.get_parameter("phi"), Some(0.0));
+
+        // Update both parameters
+        vqe.set_parameters(&[PI / 4.0, PI / 2.0])
+            .expect("set params");
+
+        // Parameters stored correctly
+        assert!((vqe.get_parameter("theta").unwrap() - PI / 4.0).abs() < 1e-12);
+        assert!((vqe.get_parameter("phi").unwrap() - PI / 2.0).abs() < 1e-12);
+
+        // Circuit was rebuilt: should still have the same number of gates
+        assert_eq!(vqe.circuit.gates().len(), 2);
+
+        // Verify the gates have the updated angles by inspecting their names
+        // (RY and RZ gate names)
+        let gate_names: Vec<&str> = vqe.circuit.gates().iter().map(|g| g.name()).collect();
+        assert_eq!(gate_names, vec!["RY", "RZ"]);
+    }
+
+    #[test]
+    fn test_set_parameters_hardware_efficient() {
+        use std::f64::consts::PI;
+
+        let mut vqe = VQECircuit::<2>::new(VQEAnsatz::HardwareEfficient { layers: 1 })
+            .expect("hardware-efficient VQE");
+
+        let n_params = vqe.num_parameters();
+        assert!(n_params > 0);
+
+        // Create a new parameter vector with all PI/3
+        let new_params: Vec<f64> = vec![PI / 3.0; n_params];
+        vqe.set_parameters(&new_params).expect("set all params");
+
+        // Circuit should be rebuilt with same gate structure
+        for &p in &vqe.parameters {
+            assert!((p - PI / 3.0).abs() < 1e-12);
+        }
+    }
+
+    #[test]
+    fn test_set_parameters_wrong_length_fails() {
+        let mut vqe = VQECircuit::<2>::new(VQEAnsatz::Custom).expect("custom VQE");
+        vqe.add_parameterized_ry(QubitId(0), "theta")
+            .expect("add RY");
+
+        // Providing wrong number of parameters should return an error
+        let result = vqe.set_parameters(&[0.1, 0.2]);
+        assert!(result.is_err());
     }
 }

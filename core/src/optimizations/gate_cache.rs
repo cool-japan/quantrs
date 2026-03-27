@@ -152,7 +152,7 @@ impl QuantumGateCache {
                 0.0
             },
             total_computation_time_us: total_time,
-            average_computation_time_us: if misses > 0 { total_time / misses } else { 0 },
+            average_computation_time_us: total_time.checked_div(misses).unwrap_or(0),
         }
     }
 

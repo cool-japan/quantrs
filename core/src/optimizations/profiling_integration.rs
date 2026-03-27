@@ -200,7 +200,7 @@ impl QuantumProfiler {
 
         // Sort by total execution time
         let mut sorted_profiles: Vec<_> = profiles.values().collect();
-        sorted_profiles.sort_by(|a, b| b.total_time.cmp(&a.total_time));
+        sorted_profiles.sort_by_key(|b| std::cmp::Reverse(b.total_time));
 
         writeln!(
             report,

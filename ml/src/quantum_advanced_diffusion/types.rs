@@ -280,8 +280,8 @@ impl QuantumAdvancedDiffusionModel {
         let data_dim = self.config.data_dim;
         let mut noise = Array1::<Complex64>::zeros(data_dim);
         for i in 0..data_dim {
-            let u1 = rng.gen::<f64>();
-            let u2 = rng.gen::<f64>();
+            let u1 = rng.random::<f64>();
+            let u2 = rng.random::<f64>();
             let real_part = (-2.0f64 * u1.ln()).sqrt() * (2.0f64 * std::f64::consts::PI * u2).cos();
             let imaginary_part =
                 (-2.0f64 * u1.ln()).sqrt() * (2.0f64 * std::f64::consts::PI * u2).sin();
@@ -378,8 +378,8 @@ impl QuantumAdvancedDiffusionModel {
         let mut features = Array1::zeros(num_features);
         let mut rng = thread_rng();
         for i in 0..num_features {
-            let frequency = rng.gen_range(0.1..10.0);
-            let phase = rng.gen_range(0.0..2.0 * PI);
+            let frequency = rng.random_range(0.1..10.0);
+            let phase = rng.random_range(0.0..2.0 * PI);
             let quantum_phase = self.phase_schedule[t].arg();
             let total_phase = phase + quantum_phase;
             let feature_value = x
@@ -779,7 +779,7 @@ impl QuantumAdvancedDiffusionModel {
         for sample_idx in 0..batch_data.nrows() {
             let x0 = batch_data.row(sample_idx).to_owned();
             let mut rng = thread_rng();
-            let t = rng.gen_range(0..self.config.num_timesteps);
+            let t = rng.random_range(0..self.config.num_timesteps);
             let (xt, quantum_noise, quantum_state) = self.quantum_forward_diffusion(&x0, t)?;
             let denoise_output = self.quantum_denoise(&xt, t, None)?;
             let loss_output = self.compute_quantum_loss(
@@ -873,7 +873,7 @@ impl QuantumAdvancedDiffusionModel {
         for sample_idx in 0..validation_data.nrows() {
             let x0 = validation_data.row(sample_idx).to_owned();
             let mut rng = thread_rng();
-            let t = rng.gen_range(0..self.config.num_timesteps);
+            let t = rng.random_range(0..self.config.num_timesteps);
             let (xt, quantum_noise, quantum_state) = self.quantum_forward_diffusion(&x0, t)?;
             let denoise_output = self.quantum_denoise(&xt, t, None)?;
             let loss_output = self.compute_quantum_loss(

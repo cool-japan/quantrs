@@ -89,10 +89,10 @@
 //! This crate provides a comprehensive toolkit for creating, manipulating,
 //! and analyzing quantum circuits with a fluent API and modern Rust patterns.
 //!
-//! ## Recent Updates (v0.1.2)
+//! ## Recent Updates (v0.1.3)
 //!
 //! - Enhanced code quality with clippy warning fixes
-//! - **SciRS2 v0.1.2 Stable Release Integration** with unified patterns
+//! - **SciRS2 v0.1.3 Stable Release Integration** with unified patterns
 //! - Enhanced graph-based circuit optimization algorithms (60+ strategies)
 //! - Improved hardware-aware compilation with `SciRS2` graph algorithms
 //! - Comprehensive policy documentation for quantum circuit development
@@ -130,6 +130,7 @@ pub mod distributed;
 pub mod equivalence;
 pub mod fault_tolerant;
 pub mod formatter;
+pub mod gate_applier;
 pub mod graph_optimizer;
 pub mod linter;
 pub mod measurement;

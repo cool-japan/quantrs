@@ -165,18 +165,18 @@ fn demo_large_circuit() -> Result<(), Box<dyn std::error::Error>> {
     for layer in 0..depth {
         // Single-qubit gates
         for q in 0..n_qubits {
-            match rng.gen_range(0..4) {
+            match rng.random_range(0..4) {
                 0 => circuit.h(QubitId(q as u16)),
-                1 => circuit.rx(QubitId(q as u16), rng.gen_range(0.0..std::f64::consts::TAU)),
-                2 => circuit.ry(QubitId(q as u16), rng.gen_range(0.0..std::f64::consts::TAU)),
-                _ => circuit.rz(QubitId(q as u16), rng.gen_range(0.0..std::f64::consts::TAU)),
+                1 => circuit.rx(QubitId(q as u16), rng.random_range(0.0..std::f64::consts::TAU)),
+                2 => circuit.ry(QubitId(q as u16), rng.random_range(0.0..std::f64::consts::TAU)),
+                _ => circuit.rz(QubitId(q as u16), rng.random_range(0.0..std::f64::consts::TAU)),
             }
         }
 
         // Two-qubit gates (nearest neighbor)
         let start_qubit = if layer % 2 == 0 { 0 } else { 1 };
         for q in (start_qubit..n_qubits-1).step_by(2) {
-            if rng.gen_bool(0.5) {
+            if rng.random_bool(0.5) {
                 circuit.cnot(QubitId(q as u16), QubitId((q + 1) as u16));
             }
         }

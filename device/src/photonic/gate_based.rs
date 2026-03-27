@@ -393,7 +393,7 @@ impl PhotonicGateImpl {
         }
 
         // Determine if gate succeeded (for probabilistic gates)
-        let success = thread_rng().gen::<f64>() < self.success_probability;
+        let success = thread_rng().random::<f64>() < self.success_probability;
 
         Ok(success)
     }
@@ -469,7 +469,7 @@ impl PhotonicGateImpl {
             }
             OpticalElement::PhotonDetector { efficiency, .. } => {
                 // Detection success depends on efficiency
-                if thread_rng().gen::<f64>() > *efficiency {
+                if thread_rng().random::<f64>() > *efficiency {
                     return Err(PhotonicGateError::InsufficientPhotons(
                         "Photon detection failed".to_string(),
                     ));

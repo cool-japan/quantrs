@@ -648,7 +648,7 @@ impl ObjectiveEvaluator {
         let energy = hamiltonian
             .pauli_terms
             .iter()
-            .map(|term| term.coefficient.re * rng.gen_range(-1.0..1.0))
+            .map(|term| term.coefficient.re * rng.random_range(-1.0..1.0))
             .sum::<f64>();
         let variance: f64 = 0.01;
         Ok(ObjectiveResult {
@@ -784,7 +784,7 @@ impl ObjectiveEvaluator {
     ) -> DeviceResult<(f64, f64)> {
         use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
-        let expectation: f64 = rng.gen_range(-1.0..1.0);
+        let expectation: f64 = rng.random_range(-1.0..1.0);
         let variance = expectation.mul_add(-expectation, 1.0);
         Ok((expectation, variance))
     }
@@ -844,11 +844,11 @@ impl ObjectiveEvaluator {
     }
     fn get_classification_prediction(_circuit: &ParametricCircuit) -> DeviceResult<f64> {
         use scirs2_core::random::prelude::*;
-        Ok(thread_rng().gen_range(0.0..1.0))
+        Ok(thread_rng().random_range(0.0..1.0))
     }
     fn get_regression_prediction(_circuit: &ParametricCircuit) -> DeviceResult<f64> {
         use scirs2_core::random::prelude::*;
-        Ok(thread_rng().gen_range(-1.0..1.0))
+        Ok(thread_rng().random_range(-1.0..1.0))
     }
     /// Missing method implementations
     fn evaluate_state_preparation(_circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {

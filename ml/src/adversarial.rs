@@ -496,7 +496,7 @@ impl QuantumAdversarialTrainer {
 
             // Use parameter shift rule: f(x + π/2) - f(x - π/2)
             let shift = shift_magnitude * (PI / 2.0);
-            adversarial_input[i] += shift * (2.0 * thread_rng().gen::<f64>() - 1.0);
+            adversarial_input[i] += shift * (2.0 * thread_rng().random::<f64>() - 1.0);
         }
 
         Ok(adversarial_input.mapv(|x| x.max(0.0).min(1.0)))
@@ -517,7 +517,7 @@ impl QuantumAdversarialTrainer {
                 for i in 0..adversarial_input.len() {
                     let angle = adversarial_input[i] * PI;
                     let perturbed_angle =
-                        angle + perturbation_strength * (2.0 * thread_rng().gen::<f64>() - 1.0);
+                        angle + perturbation_strength * (2.0 * thread_rng().random::<f64>() - 1.0);
                     adversarial_input[i] = perturbed_angle / PI;
                 }
             }
@@ -525,14 +525,14 @@ impl QuantumAdversarialTrainer {
                 // Apply Y-basis perturbations
                 for i in 0..adversarial_input.len() {
                     adversarial_input[i] +=
-                        perturbation_strength * (2.0 * thread_rng().gen::<f64>() - 1.0);
+                        perturbation_strength * (2.0 * thread_rng().random::<f64>() - 1.0);
                 }
             }
             "pauli_z" | _ => {
                 // Apply Z-basis perturbations (default)
                 for i in 0..adversarial_input.len() {
                     let phase_shift =
-                        perturbation_strength * (2.0 * thread_rng().gen::<f64>() - 1.0);
+                        perturbation_strength * (2.0 * thread_rng().random::<f64>() - 1.0);
                     adversarial_input[i] =
                         (adversarial_input[i] + phase_shift / (2.0 * PI)).fract();
                 }
@@ -558,8 +558,8 @@ impl QuantumAdversarialTrainer {
             adversarial_input[i] *= t1_factor;
 
             // Add gate errors
-            if thread_rng().gen::<f64>() < gate_error_rate {
-                adversarial_input[i] += 0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0);
+            if thread_rng().random::<f64>() < gate_error_rate {
+                adversarial_input[i] += 0.1 * (2.0 * thread_rng().random::<f64>() - 1.0);
             }
         }
 
@@ -775,7 +775,8 @@ impl QuantumAdversarialTrainer {
 
                 // Add noise
                 for i in 0..defended_input.len() {
-                    defended_input[i] += noise_addition * (2.0 * thread_rng().gen::<f64>() - 1.0);
+                    defended_input[i] +=
+                        noise_addition * (2.0 * thread_rng().random::<f64>() - 1.0);
                 }
 
                 // Feature squeezing
@@ -794,7 +795,7 @@ impl QuantumAdversarialTrainer {
                 // Add random perturbations to simulate circuit randomization
                 for i in 0..defended_input.len() {
                     let random_shift =
-                        randomization_strength * (2.0 * thread_rng().gen::<f64>() - 1.0);
+                        randomization_strength * (2.0 * thread_rng().random::<f64>() - 1.0);
                     defended_input[i] += random_shift;
                 }
 

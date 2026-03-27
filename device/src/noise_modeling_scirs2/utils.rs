@@ -163,15 +163,15 @@ impl NoiseModelingUtils {
 
         // Simplified feature selection scoring
         for feature in temporal_features {
-            selection_results.insert(feature.clone(), thread_rng().gen::<f64>());
+            selection_results.insert(feature.clone(), thread_rng().random::<f64>());
         }
 
         for feature in spectral_features {
-            selection_results.insert(feature.clone(), thread_rng().gen::<f64>());
+            selection_results.insert(feature.clone(), thread_rng().random::<f64>());
         }
 
         for feature in spatial_features {
-            selection_results.insert(feature.clone(), thread_rng().gen::<f64>());
+            selection_results.insert(feature.clone(), thread_rng().random::<f64>());
         }
 
         Ok(selection_results)

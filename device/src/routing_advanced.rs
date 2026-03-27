@@ -800,7 +800,7 @@ impl AdvancedQubitRouter {
 
                     if !self.are_connected(phys1, phys2) {
                         let dist = self.get_distance(phys1, phys2);
-                        min_swaps_needed += (dist - 1).max(0);
+                        min_swaps_needed += dist.saturating_sub(1);
                     }
                 }
             }
@@ -956,7 +956,7 @@ impl AdvancedQubitRouter {
         let mut best_cost = f64::INFINITY;
 
         for (strategy, weight) in strategies {
-            let mut temp_router = Self::new(self.topology.clone(), strategy, thread_rng().gen());
+            let mut temp_router = Self::new(self.topology.clone(), strategy, thread_rng().random());
 
             if let Ok(result) = match strategy {
                 AdvancedRoutingStrategy::SABRE { heuristic_weight } => temp_router.route_sabre(

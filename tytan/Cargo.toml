@@ -9,6 +9,7 @@ license.workspace = true
 keywords = ["quantum", "computing", "annealing", "tytan", "optimization"]
 categories = ["science", "algorithms"]
 description = "High-level quantum annealing interface inspired by Tytan for the QuantRS2 framework"
+readme = "README.md"
 
 [dependencies]
 quantrs2-core.workspace = true
@@ -30,6 +31,8 @@ regex = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
 num_cpus.workspace = true
+reqwest.workspace = true
+uuid.workspace = true
 plotters = { workspace = true, optional = true }
 colored.workspace = true
 

@@ -34,7 +34,7 @@ pub struct PyMeasurementResult {
 #[pymethods]
 impl PyMeasurementResult {
     /// Get the raw counts dictionary
-    fn get_counts(&self, py: Python) -> PyResult<PyObject> {
+    fn get_counts(&self, py: Python) -> PyResult<Py<PyAny>> {
         let dict = PyDict::new(py);
         for (bitstring, count) in &self.counts {
             dict.set_item(bitstring, count)?;
@@ -43,7 +43,7 @@ impl PyMeasurementResult {
     }
 
     /// Get the measurement probabilities
-    fn get_probabilities(&self, py: Python) -> PyResult<PyObject> {
+    fn get_probabilities(&self, py: Python) -> PyResult<Py<PyAny>> {
         let dict = PyDict::new(py);
         let total = self.shots as f64;
         for (bitstring, count) in &self.counts {
@@ -144,8 +144,11 @@ impl PyMeasurementResult {
         let total = self.shots as f64;
 
         for (bitstring, count) in &self.counts {
-            let index = usize::from_str_radix(bitstring, 2)
-                .expect("Failed to parse binary bitstring in PyMeasurementResult::mitigate_errors");
+            let index = usize::from_str_radix(bitstring, 2).map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!(
+                    "Failed to parse binary bitstring '{bitstring}': {e}"
+                ))
+            })?;
             prob_vec[index] = *count as f64 / total;
         }
 
@@ -190,7 +193,7 @@ impl PyStateTomography {
     }
 
     /// Generate measurement circuits for state tomography
-    fn measurement_circuits(&self, py: Python) -> PyResult<PyObject> {
+    fn measurement_circuits(&self, py: Python) -> PyResult<Py<PyAny>> {
         let bases = ["X", "Y", "Z"];
         let n_bases = bases.len();
         let n_circuits = n_bases.pow(self.n_qubits as u32);
@@ -249,8 +252,22 @@ impl PyStateTomography {
         let mut measurement_data = Vec::new();
         for item in measurements {
             let dict = item.downcast::<PyDict>()?;
-            let basis: String = dict.get_item("basis")?.expect("Missing 'basis' key in measurement data in PyStateTomography::reconstruct_state").extract()?;
-            let result: PyRef<PyMeasurementResult> = dict.get_item("result")?.expect("Missing 'result' key in measurement data in PyStateTomography::reconstruct_state").extract()?;
+            let basis: String = dict
+                .get_item("basis")?
+                .ok_or_else(|| {
+                    pyo3::exceptions::PyValueError::new_err(
+                        "Missing 'basis' key in measurement data",
+                    )
+                })?
+                .extract()?;
+            let result: PyRef<PyMeasurementResult> = dict
+                .get_item("result")?
+                .ok_or_else(|| {
+                    pyo3::exceptions::PyValueError::new_err(
+                        "Missing 'result' key in measurement data",
+                    )
+                })?
+                .extract()?;
             measurement_data.push((basis, result));
         }
 
@@ -262,9 +279,11 @@ impl PyStateTomography {
             if basis.chars().all(|c| c == 'Z') {
                 // Use Z-basis measurements to estimate diagonal elements
                 for (bitstring, count) in &result.counts {
-                    let idx = usize::from_str_radix(bitstring, 2).expect(
-                        "Failed to parse binary bitstring in PyStateTomography::reconstruct_state",
-                    );
+                    let idx = usize::from_str_radix(bitstring, 2).map_err(|e| {
+                        pyo3::exceptions::PyValueError::new_err(format!(
+                            "Failed to parse binary bitstring '{bitstring}': {e}"
+                        ))
+                    })?;
                     let prob = *count as f64 / result.shots as f64;
                     density_matrix[[idx, idx]] = Complex64::new(prob, 0.0);
                 }
@@ -324,7 +343,7 @@ impl PyProcessTomography {
     }
 
     /// Generate input states for process tomography
-    fn input_states(&self, py: Python) -> PyResult<PyObject> {
+    fn input_states(&self, py: Python) -> PyResult<Py<PyAny>> {
         let states = PyList::empty(py);
 
         // Standard input states: |0>, |1>, |+>, |->, |+i>, |-i> per qubit
@@ -458,7 +477,7 @@ impl PyMeasurementSampler {
 
         // Sample measurements
         for _ in 0..shots {
-            let r: f64 = rng.gen();
+            let r: f64 = rng.random();
             let mut cumsum = 0.0;
 
             for (idx, &prob) in probs.iter().enumerate() {
@@ -501,7 +520,7 @@ impl PyMeasurementSampler {
 
         // Sample measurements
         for _ in 0..shots {
-            let r: f64 = rng.gen();
+            let r: f64 = rng.random();
             let mut cumsum = 0.0;
 
             for (idx, &prob) in probs.iter().enumerate() {
@@ -512,7 +531,7 @@ impl PyMeasurementSampler {
                     // Apply readout error
                     let mut chars: Vec<char> = bitstring.chars().collect();
                     for c in &mut chars {
-                        if rng.gen::<f64>() < error_rate {
+                        if rng.random::<f64>() < error_rate {
                             *c = if *c == '0' { '1' } else { '0' };
                         }
                     }

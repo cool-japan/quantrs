@@ -251,7 +251,7 @@ Found a bug or want to add examples? Contributions are welcome!
 
 ## 📝 License
 
-MIT/Apache-2.0 (same as QuantRS2)
+Apache-2.0 (same as QuantRS2)
 
 ---
 

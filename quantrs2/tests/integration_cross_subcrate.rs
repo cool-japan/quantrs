@@ -134,6 +134,7 @@ mod tytan_anneal_integration {
     feature = "device"
 ))]
 mod full_stack_integration {
+    use quantrs2::circuit::builder::Simulator;
     use quantrs2::prelude::full::*;
 
     #[test]

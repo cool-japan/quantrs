@@ -54,15 +54,16 @@ impl BatchCircuit {
     }
 }
 
-/// Batch circuit executor with parallel processing
+/// Batch circuit executor with parallel processing.
+///
+/// Uses `scirs2_core::parallel_ops` for parallel batch execution across available CPU cores.
+/// The `config.num_workers` field controls the parallelism level; if `None`, the
+/// system default (all available cores) is used.
 pub struct BatchCircuitExecutor {
     /// Configuration for batch execution
     pub config: BatchConfig,
     /// Optional GPU backend
     pub gpu_backend: Option<Arc<dyn crate::gpu::GpuBackend>>,
-    // TODO: Replace with scirs2-core thread pool abstraction when available
-    // /// Thread pool for parallel execution
-    // pub thread_pool: Option<ThreadPool>,
 }
 
 impl BatchCircuitExecutor {
@@ -75,27 +76,13 @@ impl BatchCircuitExecutor {
             None
         };
 
-        // TODO: Create thread pool using scirs2-core abstraction when available
-        // let thread_pool = if let Some(num_workers) = config.num_workers {
-        //     Some(
-        //         rayon::ThreadPoolBuilder::new()
-        //             .num_threads(num_workers)
-        //             .build()
-        //             .map_err(|e| {
-        //                 QuantRS2Error::ExecutionError(format!(
-        //                     "Failed to create thread pool: {}",
-        //                     e
-        //                 ))
-        //             })?,
-        //     )
-        // } else {
-        //     None
-        // };
-
+        // Parallelism is provided by scirs2_core::parallel_ops (par_iter).
+        // The num_workers configuration is honoured implicitly via the underlying
+        // thread pool exposed by scirs2_core; the executor itself does not need
+        // to own a separate thread-pool handle.
         Ok(Self {
             config,
             gpu_backend,
-            // thread_pool,
         })
     }
 

@@ -2,13 +2,19 @@
 
 [![Crates.io](https://img.shields.io/crates/v/quantrs2-py.svg)](https://crates.io/crates/quantrs2-py)
 [![PyPI version](https://badge.fury.io/py/quantrs2.svg)](https://badge.fury.io/py/quantrs2)
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
 
 QuantRS2-Py provides Python bindings for the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, allowing Python users to access the high-performance Rust implementation with a user-friendly Python API.
 
-## Version 0.1.2 🎉
+## Version 0.1.3
 
-**Production-Ready Stable Release!** This release benefits from refined [SciRS2](https://github.com/cool-japan/scirs2) v0.1.2 integration and comprehensive platform support:
+Released: 2026-03-27
+
+**Production-Ready Stable Release!** This release benefits from refined [SciRS2](https://github.com/cool-japan/scirs2) v0.1.3 integration and comprehensive platform support:
+
+### What's New in v0.1.3
+- **282 public API items** (15 pyfunction + 100 pymethods): Complete Python bindings covering all core QuantRS2 capabilities
+- Aligned with QuantRS2 v0.1.3 workspace updates across all subcrates
 
 ### 🖥️ Platform Support
 - **macOS Optimization**: Native Apple Silicon and Intel Mac support with optimized performance
@@ -289,9 +295,22 @@ result = optimized_circuit.run()
 - `IsingModel`: Enhanced Ising model optimization
 - `PenaltyOptimizer`: Sophisticated constrained optimization
 
+## Feature Flags
+
+- **gpu**: GPU-accelerated quantum simulation via quantrs2-sim
+- **ml**: Quantum machine learning bindings (default)
+- **anneal**: Quantum annealing bindings (default)
+- **tytan**: QUBO/PUBO optimization bindings (default)
+- **device**: Hardware device backend bindings
+- **numrs**: NumRS2 numerical computing integration
+- **pandrs**: PandRS data analysis integration
+- **full**: Enables ml, anneal, tytan, numrs, and pandrs
+
+Default features: `ml`, `anneal`, `tytan`.
+
 ## Performance
 
-QuantRS2-Py v0.1.2 delivers exceptional performance for production quantum computing:
+QuantRS2-Py v0.1.3 delivers exceptional performance for production quantum computing:
 
 ### Simulation Capabilities
 - **Large-Scale Simulation**: Efficiently simulates 30+ qubits on standard hardware
@@ -335,9 +354,4 @@ We welcome contributions! Please see our [contributing guidelines](CONTRIBUTING.
 
 ## License
 
-This project is licensed under either:
-
-- Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
-
-at your option.
+This project is licensed under the [Apache License, Version 2.0](../LICENSE).

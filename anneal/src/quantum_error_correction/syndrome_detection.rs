@@ -565,7 +565,7 @@ impl SyndromeDetector {
             // In a real implementation, this would measure the stabilizer
             // For simulation, we'll generate syndrome based on noise model
             let error_prob = self.config.noise_model.measurement_error_rate;
-            syndrome[i] = u8::from(rng.gen::<f64>() < error_prob);
+            syndrome[i] = u8::from(rng.random::<f64>() < error_prob);
         }
 
         Ok(syndrome)

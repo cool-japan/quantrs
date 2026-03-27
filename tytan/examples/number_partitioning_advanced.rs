@@ -32,7 +32,7 @@ use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::compile::expr::{constant, Expr};
 
 use scirs2_core::random::rngs::StdRng;
-use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::{Rng, RngExt, SeedableRng};
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -54,14 +54,14 @@ fn generate_instance(n: usize, distribution: &str, seed: u64) -> Vec<i32> {
     let mut rng = StdRng::seed_from_u64(seed);
 
     match distribution {
-        "uniform" => (0..n).map(|_| rng.gen_range(1..100)).collect(),
+        "uniform" => (0..n).map(|_| rng.random_range(1..100)).collect(),
         "exponential" => (0..n).map(|i| 2_i32.pow(i as u32 % 10)).collect(),
         "gaussian" => {
             let mean = 50.0;
             let std = 15.0;
             (0..n)
                 .map(|_| {
-                    let val: f64 = (rng.gen::<f64>() * std).mul_add(2.0, -std) + mean;
+                    let val: f64 = (rng.random::<f64>() * std).mul_add(2.0, -std) + mean;
                     val.max(1.0) as i32
                 })
                 .collect()
@@ -71,9 +71,9 @@ fn generate_instance(n: usize, distribution: &str, seed: u64) -> Vec<i32> {
             (0..n)
                 .map(|i| {
                     if i % 3 == 0 {
-                        rng.gen_range(100..1000)
+                        rng.random_range(100..1000)
                     } else {
-                        rng.gen_range(1..50)
+                        rng.random_range(1..50)
                     }
                 })
                 .collect()

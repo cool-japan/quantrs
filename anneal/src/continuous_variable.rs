@@ -7,6 +7,7 @@
 use scirs2_core::random::prelude::*;
 use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::RngExt;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use thiserror::Error;
@@ -407,7 +408,7 @@ impl ContinuousVariableAnnealer {
     pub fn new(config: ContinuousAnnealingConfig) -> Self {
         let rng = match config.annealing_params.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
 
         Self { config, rng }
@@ -538,7 +539,7 @@ impl ContinuousVariableAnnealer {
         // For now, return a random solution
         let num_vars = 16; // Placeholder
         let solution: Vec<i8> = (0..num_vars)
-            .map(|_| if self.rng.gen_bool(0.5) { 1 } else { -1 })
+            .map(|_| if self.rng.random_bool(0.5) { 1 } else { -1 })
             .collect();
 
         Ok(solution)

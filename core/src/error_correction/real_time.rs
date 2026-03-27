@@ -465,7 +465,7 @@ impl QuantumHardwareInterface for MockQuantumHardware {
         let mut rng = thread_rng();
         let mut syndrome = vec![false; self.syndrome_length];
         for i in 0..self.syndrome_length {
-            if rng.gen::<f64>() < self.error_rate {
+            if rng.random::<f64>() < self.error_rate {
                 syndrome[i] = true;
             }
         }

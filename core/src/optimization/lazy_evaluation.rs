@@ -811,7 +811,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Intermittent multi-minute hangs in CI; cache priming causes excessive runtime.
+    #[ignore = "slow: cache priming causes multi-minute hangs in CI; run manually with: cargo test -- --ignored test_gate_evaluation"]
     fn test_gate_evaluation() {
         let config = LazyEvaluationConfig::default();
         let chain = OptimizationChain::new();
@@ -874,7 +874,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Slow test (>660s) - run explicitly with: cargo test -- --ignored
+    #[ignore = "slow: takes >660s due to SciRS2 optimization overhead; run manually with: cargo test -- --ignored test_optimization_caching"]
     fn test_optimization_caching() {
         let config = LazyEvaluationConfig::default();
         let chain = OptimizationChain::new();

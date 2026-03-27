@@ -940,9 +940,9 @@ impl HardwareBenchmarkSuite {
         let gates = ["H", "X", "Y", "Z", "CNOT", "RZ"];
 
         for _ in 0..depth {
-            let gate_idx = rng.gen_range(0..gates.len());
+            let gate_idx = rng.random_range(0..gates.len());
             let gate = gates[gate_idx];
-            let qubit = rng.gen_range(0..num_qubits) as u32;
+            let qubit = rng.random_range(0..num_qubits) as u32;
 
             match gate {
                 "H" => {
@@ -958,13 +958,13 @@ impl HardwareBenchmarkSuite {
                     let _ = circuit.z(QubitId(qubit));
                 }
                 "CNOT" => {
-                    let target = rng.gen_range(0..num_qubits) as u32;
+                    let target = rng.random_range(0..num_qubits) as u32;
                     if target != qubit {
                         let _ = circuit.cnot(QubitId(qubit), QubitId(target));
                     }
                 }
                 "RZ" => {
-                    let angle = rng.gen_range(-std::f64::consts::PI..std::f64::consts::PI);
+                    let angle = rng.random_range(-std::f64::consts::PI..std::f64::consts::PI);
                     let _ = circuit.rz(QubitId(qubit), angle);
                 }
                 _ => {}

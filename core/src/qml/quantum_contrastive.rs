@@ -128,8 +128,8 @@ impl QuantumAugmenter {
 
         // Apply random single-qubit rotations
         for q in 0..self.num_qubits {
-            let angle = rng.gen_range(-PI..PI) * self.noise_strength;
-            let axis = rng.gen_range(0..3); // X, Y, or Z
+            let angle = rng.random_range(-PI..PI) * self.noise_strength;
+            let axis = rng.random_range(0..3); // X, Y, or Z
 
             new_state = match axis {
                 0 => self.apply_rx(&new_state, q, angle)?,
@@ -149,7 +149,7 @@ impl QuantumAugmenter {
         let mut new_state = state.clone();
 
         // With probability p, replace with maximally mixed state
-        if rng.gen::<f64>() < p {
+        if rng.random::<f64>() < p {
             let uniform_val = Complex64::new(1.0 / (dim as f64).sqrt(), 0.0);
             new_state = Array1::from_elem(dim, uniform_val);
         }
@@ -235,8 +235,8 @@ impl QuantumAugmenter {
         let mut new_state = state.clone();
 
         for q in 0..self.num_qubits {
-            if rng.gen::<f64>() < self.noise_strength {
-                let pauli = rng.gen_range(0..4); // I, X, Y, Z
+            if rng.random::<f64>() < self.noise_strength {
+                let pauli = rng.random_range(0..4); // I, X, Y, Z
                 new_state = match pauli {
                     1 => self.apply_pauli_x(&new_state, q)?,
                     2 => self.apply_pauli_y(&new_state, q)?,
@@ -413,7 +413,7 @@ impl QuantumEncoder {
         let mut rng = thread_rng();
         let num_params = num_qubits * depth * 3; // 3 rotations per qubit per layer
 
-        let params = Array2::from_shape_fn((depth, num_qubits * 3), |_| rng.gen_range(-PI..PI));
+        let params = Array2::from_shape_fn((depth, num_qubits * 3), |_| rng.random_range(-PI..PI));
 
         Self {
             num_qubits,

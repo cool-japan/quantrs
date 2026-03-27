@@ -516,7 +516,7 @@ impl NoiseCharacterizer {
             NoiseModelType::Depolarizing => {
                 // Bernoulli noise
                 Array1::from_shape_fn(num_samples, |_| {
-                    if self.rng.gen::<f64>() < noise_strength {
+                    if self.rng.random::<f64>() < noise_strength {
                         1.0
                     } else {
                         0.0
@@ -528,14 +528,14 @@ impl NoiseCharacterizer {
                 Array1::from_shape_fn(num_samples, |i| {
                     let decay = (-(i as f64) / 50.0).exp();
                     let gaussian_noise =
-                        self.rng.gen::<f64>() * noise_strength - noise_strength / 2.0;
+                        self.rng.random::<f64>() * noise_strength - noise_strength / 2.0;
                     (decay + gaussian_noise).clamp(0.0, 1.0)
                 })
             }
             _ => {
                 // Gaussian noise
                 Array1::from_shape_fn(num_samples, |_| {
-                    (self.rng.gen::<f64>() * noise_strength)
+                    (self.rng.random::<f64>() * noise_strength)
                         .abs()
                         .clamp(0.0, 1.0)
                 })

@@ -166,7 +166,8 @@ fn test_convergence_analysis() {
         let mut iter_samples = Vec::new();
 
         for j in 0..20 {
-            let energy = 0.1f64.mul_add(-f64::from(j), -f64::from(i)) + thread_rng().gen::<f64>();
+            let energy =
+                0.1f64.mul_add(-f64::from(j), -f64::from(i)) + thread_rng().random::<f64>();
 
             iter_samples.push(SampleResult {
                 assignments: HashMap::new(),
@@ -321,7 +322,7 @@ fn example_complete_visualization_workflow() {
         let mut iter_samples = create_test_results(50);
         // Simulate improvement over iterations
         for sample in &mut iter_samples {
-            sample.energy -= f64::from(i) * 0.5;
+            sample.energy = f64::from(i).mul_add(-0.5, sample.energy);
         }
         iteration_results.push(iter_samples);
     }

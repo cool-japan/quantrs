@@ -538,6 +538,25 @@ impl Expression {
     }
 
     // =========================================================================
+    // Symbol collection
+    // =========================================================================
+
+    /// Collect all free symbols (variable names) in this expression.
+    ///
+    /// Returns a `HashSet` of variable names that appear in the expression,
+    /// excluding numeric literals and the special constants `pi`, `e`, and `I`.
+    #[must_use]
+    pub fn free_symbols(&self) -> std::collections::HashSet<String> {
+        let mut symbols = std::collections::HashSet::new();
+        collect_free_symbols(
+            self.expr.as_ref(),
+            self.expr.as_ref().len() - 1,
+            &mut symbols,
+        );
+        symbols
+    }
+
+    // =========================================================================
     // Internal helpers
     // =========================================================================
 
@@ -549,6 +568,30 @@ impl Expression {
     /// Create from RecExpr (for internal use)
     pub(crate) const fn from_rec_expr(expr: RecExpr<ExprLang>) -> Self {
         Self { expr }
+    }
+}
+
+/// Collect all free symbol names (variables) from a RecExpr node, recursively.
+///
+/// Numeric literals and special constants (`pi`, `e`, `I`) are excluded.
+fn collect_free_symbols(
+    nodes: &[ExprLang],
+    idx: usize,
+    symbols: &mut std::collections::HashSet<String>,
+) {
+    match &nodes[idx] {
+        ExprLang::Num(s) => {
+            let name = s.as_str();
+            // Exclude numeric literals and known constants
+            if name.parse::<f64>().is_err() && !matches!(name, "pi" | "e" | "I") {
+                symbols.insert(name.to_string());
+            }
+        }
+        node => {
+            node.for_each(|child_id| {
+                collect_free_symbols(nodes, usize::from(child_id), symbols);
+            });
+        }
     }
 }
 

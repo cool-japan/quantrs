@@ -27,16 +27,19 @@ fn main() {
     }
 
     // Set Rust compiler version
-    let rustc_version = rustc_version::version().unwrap();
-    println!("cargo:rustc-env=VERGEN_RUSTC_SEMVER={rustc_version}");
+    if let Ok(rustc_version) = rustc_version::version() {
+        println!("cargo:rustc-env=VERGEN_RUSTC_SEMVER={rustc_version}");
+    }
 
     // Set target triple
-    let target = env::var("TARGET").unwrap();
-    println!("cargo:rustc-env=VERGEN_CARGO_TARGET_TRIPLE={target}");
+    if let Ok(target) = env::var("TARGET") {
+        println!("cargo:rustc-env=VERGEN_CARGO_TARGET_TRIPLE={target}");
+    }
 
     // Set build profile
-    let profile = env::var("PROFILE").unwrap();
-    println!("cargo:rustc-env=VERGEN_CARGO_PROFILE={profile}");
+    if let Ok(profile) = env::var("PROFILE") {
+        println!("cargo:rustc-env=VERGEN_CARGO_PROFILE={profile}");
+    }
 
     // Rerun if git HEAD changes
     println!("cargo:rerun-if-changed=.git/HEAD");
@@ -51,7 +54,7 @@ fn main() {
 /// Validate SciRS2 dependency versions
 fn validate_scirs2_dependencies() {
     // Expected SciRS2 version from workspace
-    const EXPECTED_SCIRS2_VERSION: &str = "0.1.2";
+    const EXPECTED_SCIRS2_VERSION: &str = "0.4.0";
 
     // This is a compile-time check that the expected version is documented
     println!("cargo:rustc-env=EXPECTED_SCIRS2_VERSION={EXPECTED_SCIRS2_VERSION}");

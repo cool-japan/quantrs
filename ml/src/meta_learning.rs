@@ -442,8 +442,8 @@ impl QuantumMetaLearner {
         params: &Array1<f64>,
     ) -> Result<(f64, f64)> {
         // Placeholder - would evaluate quantum model
-        let loss = 0.5 + 0.5 * thread_rng().gen::<f64>();
-        let acc = 0.5 + 0.3 * thread_rng().gen::<f64>();
+        let loss = 0.5 + 0.5 * thread_rng().random::<f64>();
+        let acc = 0.5 + 0.3 * thread_rng().random::<f64>();
         Ok((loss, acc))
     }
 
@@ -514,7 +514,7 @@ impl QuantumMetaLearner {
         let mut rng = thread_rng();
 
         for _ in 0..batch_size.min(tasks.len()) {
-            let idx = rng.gen_range(0..tasks.len());
+            let idx = rng.random_range(0..tasks.len());
             batch.push(tasks[idx].clone());
         }
 
@@ -669,15 +669,15 @@ impl TaskGenerator {
 
     /// Generate sinusoid regression task
     pub fn generate_sinusoid_task(&self, num_samples: usize) -> MetaTask {
-        let amplitude = 0.1 + 4.9 * thread_rng().gen::<f64>();
-        let phase = 2.0 * std::f64::consts::PI * thread_rng().gen::<f64>();
+        let amplitude = 0.1 + 4.9 * thread_rng().random::<f64>();
+        let phase = 2.0 * std::f64::consts::PI * thread_rng().random::<f64>();
 
         let mut train_data = Vec::new();
         let mut test_data = Vec::new();
 
         // Generate samples
         for i in 0..num_samples {
-            let x = -5.0 + 10.0 * thread_rng().gen::<f64>();
+            let x = -5.0 + 10.0 * thread_rng().random::<f64>();
             let y = amplitude * (x + phase).sin();
 
             let input = Array1::from_vec(vec![x]);
@@ -706,7 +706,7 @@ impl TaskGenerator {
 
     /// Generate classification task with rotated features
     pub fn generate_rotation_task(&self, num_samples: usize) -> MetaTask {
-        let angle = 2.0 * std::f64::consts::PI * thread_rng().gen::<f64>();
+        let angle = 2.0 * std::f64::consts::PI * thread_rng().random::<f64>();
         let cos_a = angle.cos();
         let sin_a = angle.sin();
 
@@ -725,7 +725,7 @@ impl TaskGenerator {
                 } else {
                     0.0
                 };
-                features[j] += 0.1 * thread_rng().gen::<f64>();
+                features[j] += 0.1 * thread_rng().random::<f64>();
             }
 
             // Apply rotation (simplified for first 2 dims)

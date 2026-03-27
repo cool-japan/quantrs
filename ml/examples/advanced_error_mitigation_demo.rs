@@ -779,7 +779,7 @@ fn simulate_training_step_gradients(circuit: &QuantumCircuit, step: usize) -> Re
 
     for i in 0..num_params {
         let step_decay = (-(step as f64) * 0.1).exp();
-        gradients[i] = step_decay * 0.1 + fastrand::f64() * 0.02 - 0.01;
+        gradients[i] = fastrand::f64().mul_add(0.02, step_decay.mul_add(0.1, -0.01));
     }
 
     Ok(gradients)

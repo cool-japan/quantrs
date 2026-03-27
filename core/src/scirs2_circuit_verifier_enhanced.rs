@@ -591,7 +591,7 @@ impl EnhancedCircuitVerifier {
         for _ in 0..self.config.base_config.num_probabilistic_tests {
             // Generate random state
             let mut state: Vec<Complex64> = (0..(1 << num_qubits))
-                .map(|_| Complex64::new(rng.gen::<f64>() - 0.5, rng.gen::<f64>() - 0.5))
+                .map(|_| Complex64::new(rng.random::<f64>() - 0.5, rng.random::<f64>() - 0.5))
                 .collect();
 
             // Normalize

@@ -259,7 +259,7 @@ impl ChainBreakResolver {
                     if self.tie_break_random {
                         use scirs2_core::random::{thread_rng, Rng};
                         let mut rng = thread_rng();
-                        logical_spins[var] = if rng.gen::<bool>() { 1 } else { -1 };
+                        logical_spins[var] = if rng.random::<bool>() { 1 } else { -1 };
                     } else {
                         logical_spins[var] = hardware_solution.spins[chain[0]];
                     }

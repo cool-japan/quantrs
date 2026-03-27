@@ -7,7 +7,7 @@
 use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
 use scirs2_core::random::ChaCha8Rng;
-use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::{RngExt, SeedableRng};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -334,7 +334,7 @@ impl QuantumSampler {
     ) -> Result<f64> {
         // Simplified implementation - return random ±1
         // In practice, would need to transform state to measurement basis
-        if self.rng.gen::<f64>() < 0.5 {
+        if self.rng.random::<f64>() < 0.5 {
             Ok(1.0)
         } else {
             Ok(-1.0)
@@ -343,7 +343,7 @@ impl QuantumSampler {
 
     /// Sample from discrete probability distribution
     fn sample_from_distribution(&mut self, probabilities: &[f64]) -> Result<usize> {
-        let random_value = self.rng.gen::<f64>();
+        let random_value = self.rng.random::<f64>();
         let mut cumulative = 0.0;
 
         for (i, &prob) in probabilities.iter().enumerate() {
@@ -355,6 +355,193 @@ impl QuantumSampler {
 
         // Handle numerical errors - return last index
         Ok(probabilities.len() - 1)
+    }
+
+    /// Multinomial sampling: draw `n_samples` i.i.d. samples from a discrete
+    /// probability distribution.
+    ///
+    /// The result is a count vector of the same length as `probabilities`, where
+    /// `counts[i]` is the number of times outcome `i` was drawn.  Total counts
+    /// sum to `n_samples`.
+    ///
+    /// The implementation uses the inverse-CDF (Alias/sequential) method which
+    /// is O(k · n_samples) in the number of outcomes k, but correct and
+    /// deterministic given the sampler's current RNG state.
+    pub fn sample_multinomial(
+        &mut self,
+        probabilities: &[f64],
+        n_samples: usize,
+    ) -> Result<Vec<usize>> {
+        if probabilities.is_empty() {
+            return Err(SimulatorError::InvalidInput(
+                "probability distribution must be non-empty".to_string(),
+            ));
+        }
+
+        // Validate and normalise the distribution
+        let total: f64 = probabilities.iter().sum();
+        if total <= 0.0 || !total.is_finite() {
+            return Err(SimulatorError::InvalidInput(format!(
+                "probability distribution must sum to a positive finite value, got {total}"
+            )));
+        }
+
+        let normalised: Vec<f64> = probabilities.iter().map(|p| p / total).collect();
+
+        // Build the CDF once for the entire batch
+        let mut cdf = Vec::with_capacity(normalised.len());
+        let mut running = 0.0;
+        for &p in &normalised {
+            running += p;
+            cdf.push(running);
+        }
+        // Force the last entry to exactly 1.0 to avoid floating-point overshoot
+        if let Some(last) = cdf.last_mut() {
+            *last = 1.0;
+        }
+
+        let k = probabilities.len();
+        let mut counts = vec![0usize; k];
+
+        for _ in 0..n_samples {
+            let u: f64 = self.rng.random();
+            // Binary search on the CDF for O(log k) per sample
+            let idx = cdf.partition_point(|&c| c < u).min(k - 1);
+            counts[idx] += 1;
+        }
+
+        Ok(counts)
+    }
+
+    /// Importance sampling: estimate the expectation E_p\[f\] using samples drawn
+    /// from a proposal distribution q.
+    ///
+    /// Given a target distribution `target_probs` (unnormalised is fine) and a
+    /// proposal distribution `proposal_probs` (must be strictly positive wherever
+    /// `target_probs` is non-zero), this method:
+    ///
+    /// 1. Draws `n_samples` indices from `proposal_probs`.
+    /// 2. Evaluates the function values `f_values[i]` at each outcome `i`.
+    /// 3. Computes the self-normalised importance-sampling estimator
+    ///    `Ê = Σ w̃_i f_i` where `w̃_i = w_i / Σ w_j` and `w_i = p_i / q_i`.
+    ///
+    /// Returns `(estimate, effective_sample_size)`.  The effective sample size
+    /// (ESS) measures how many i.i.d. samples from `target_probs` the weighted
+    /// sample is worth: `ESS = (Σ w̃_i)² / Σ w̃_i²`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the distributions have different lengths, if
+    /// `proposal_probs` has a zero entry where `target_probs` is non-zero, or
+    /// if either distribution is empty.
+    pub fn importance_sampling(
+        &mut self,
+        target_probs: &[f64],
+        proposal_probs: &[f64],
+        f_values: &[f64],
+        n_samples: usize,
+    ) -> Result<ImportanceSamplingResult> {
+        let k = target_probs.len();
+        if k == 0 {
+            return Err(SimulatorError::InvalidInput(
+                "distributions must be non-empty".to_string(),
+            ));
+        }
+        if proposal_probs.len() != k || f_values.len() != k {
+            return Err(SimulatorError::InvalidInput(format!(
+                "all arrays must have the same length (got {k}, {}, {})",
+                proposal_probs.len(),
+                f_values.len()
+            )));
+        }
+
+        // Normalise both distributions
+        let p_total: f64 = target_probs.iter().sum();
+        let q_total: f64 = proposal_probs.iter().sum();
+        if p_total <= 0.0 || !p_total.is_finite() {
+            return Err(SimulatorError::InvalidInput(
+                "target distribution must sum to a positive finite value".to_string(),
+            ));
+        }
+        if q_total <= 0.0 || !q_total.is_finite() {
+            return Err(SimulatorError::InvalidInput(
+                "proposal distribution must sum to a positive finite value".to_string(),
+            ));
+        }
+
+        let p_norm: Vec<f64> = target_probs.iter().map(|p| p / p_total).collect();
+        let q_norm: Vec<f64> = proposal_probs.iter().map(|q| q / q_total).collect();
+
+        // Check support condition: p(i) > 0 ⇒ q(i) > 0
+        for i in 0..k {
+            if p_norm[i] > 1e-15 && q_norm[i] < 1e-300 {
+                return Err(SimulatorError::InvalidInput(format!(
+                    "proposal probability at index {i} is zero where target is non-zero; \
+                     importance sampling requires the proposal to cover the target's support"
+                )));
+            }
+        }
+
+        // Draw n_samples from the proposal
+        let samples: Vec<usize> = (0..n_samples)
+            .map(|_| self.sample_from_distribution(&q_norm))
+            .collect::<Result<Vec<_>>>()?;
+
+        // Compute unnormalised importance weights w_i = p(x_i) / q(x_i)
+        let mut raw_weights: Vec<f64> = samples
+            .iter()
+            .map(|&idx| {
+                let q = q_norm[idx];
+                if q < 1e-300 {
+                    0.0
+                } else {
+                    p_norm[idx] / q
+                }
+            })
+            .collect();
+
+        // Self-normalise: w̃_i = w_i / Σ w_j
+        let w_sum: f64 = raw_weights.iter().sum();
+        if w_sum <= 0.0 {
+            return Err(SimulatorError::InvalidInput(
+                "all importance weights are zero; the proposal does not cover the target"
+                    .to_string(),
+            ));
+        }
+        for w in &mut raw_weights {
+            *w /= w_sum;
+        }
+
+        // Compute self-normalised IS estimator
+        let estimate: f64 = samples
+            .iter()
+            .zip(raw_weights.iter())
+            .map(|(&idx, &w)| w * f_values[idx])
+            .sum();
+
+        // Effective sample size = 1 / Σ w̃_i²
+        let w_sq_sum: f64 = raw_weights.iter().map(|w| w * w).sum();
+        let effective_sample_size = if w_sq_sum > 0.0 { 1.0 / w_sq_sum } else { 0.0 };
+
+        // Estimate variance of the estimator using the sample variance of w̃_i f(x_i)
+        let weighted_f: Vec<f64> = samples
+            .iter()
+            .zip(raw_weights.iter())
+            .map(|(&idx, &w)| w * f_values[idx])
+            .collect();
+        let mean_wf: f64 = weighted_f.iter().sum::<f64>() / n_samples as f64;
+        let variance: f64 = weighted_f
+            .iter()
+            .map(|&wf| (wf - mean_wf).powi(2))
+            .sum::<f64>()
+            / (n_samples as f64 - 1.0).max(1.0);
+
+        Ok(ImportanceSamplingResult {
+            estimate,
+            effective_sample_size,
+            variance,
+            n_samples,
+        })
     }
 
     /// Compute measurement statistics
@@ -688,6 +875,19 @@ pub mod analysis {
     }
 }
 
+/// Result of an importance sampling estimation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImportanceSamplingResult {
+    /// Self-normalised importance-sampling estimator Ê = Σ w̃_i f(x_i)
+    pub estimate: f64,
+    /// Effective sample size: ESS = 1 / Σ w̃_i² (higher is better)
+    pub effective_sample_size: f64,
+    /// Sample variance of the weighted estimator values
+    pub variance: f64,
+    /// Number of samples drawn from the proposal distribution
+    pub n_samples: usize,
+}
+
 /// Result of statistical comparison
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComparisonResult {
@@ -751,5 +951,107 @@ mod tests {
     fn test_required_shots_calculation() {
         let shots = analysis::required_shots_for_precision(0.01, 0.95);
         assert!(shots > 9000); // Should need many shots for 1% precision
+    }
+
+    #[test]
+    fn test_sample_multinomial_basic() {
+        let mut config = SamplingConfig::default();
+        config.seed = Some(123);
+        let mut sampler = QuantumSampler::new(config);
+
+        // Deterministic distribution: all probability on outcome 0
+        let probs = vec![1.0, 0.0, 0.0];
+        let counts = sampler
+            .sample_multinomial(&probs, 100)
+            .expect("multinomial sampling should succeed");
+
+        assert_eq!(counts.len(), 3);
+        assert_eq!(counts[0], 100);
+        assert_eq!(counts[1], 0);
+        assert_eq!(counts[2], 0);
+    }
+
+    #[test]
+    fn test_sample_multinomial_uniform() {
+        let mut config = SamplingConfig::default();
+        config.seed = Some(42);
+        let mut sampler = QuantumSampler::new(config);
+
+        let probs = vec![0.5, 0.5];
+        let counts = sampler
+            .sample_multinomial(&probs, 1000)
+            .expect("multinomial sampling should succeed");
+
+        assert_eq!(counts.len(), 2);
+        assert_eq!(counts[0] + counts[1], 1000);
+        // Both outcomes should appear with roughly equal frequency
+        assert!(counts[0] > 400, "outcome 0 should appear >40% of the time");
+        assert!(counts[1] > 400, "outcome 1 should appear >40% of the time");
+    }
+
+    #[test]
+    fn test_sample_multinomial_counts_sum_to_n() {
+        let mut config = SamplingConfig::default();
+        config.seed = Some(7);
+        let mut sampler = QuantumSampler::new(config);
+
+        let probs = vec![0.1, 0.3, 0.2, 0.4];
+        let n = 500;
+        let counts = sampler
+            .sample_multinomial(&probs, n)
+            .expect("multinomial sampling should succeed");
+
+        let total: usize = counts.iter().sum();
+        assert_eq!(total, n, "all counts must sum to n_samples");
+    }
+
+    #[test]
+    fn test_importance_sampling_identity_proposal() {
+        let mut config = SamplingConfig::default();
+        config.seed = Some(99);
+        let mut sampler = QuantumSampler::new(config);
+
+        // When target == proposal, the IS estimator is just the Monte Carlo average.
+        // E[f] under uniform(3) with f = [1, 2, 3] should be ~2.0
+        let probs = vec![1.0 / 3.0; 3];
+        let f = vec![1.0, 2.0, 3.0];
+
+        let result = sampler
+            .importance_sampling(&probs, &probs, &f, 5000)
+            .expect("importance sampling should succeed");
+
+        // The estimate should be close to 2.0 (E[f] under uniform)
+        assert!(
+            (result.estimate - 2.0).abs() < 0.3,
+            "IS estimate should be near 2.0, got {}",
+            result.estimate
+        );
+        assert!(
+            result.effective_sample_size > 100.0,
+            "ESS should be large for matched proposal"
+        );
+    }
+
+    #[test]
+    fn test_importance_sampling_reweighting() {
+        let mut config = SamplingConfig::default();
+        config.seed = Some(55);
+        let mut sampler = QuantumSampler::new(config);
+
+        // target = [0.9, 0.1], proposal = [0.5, 0.5], f = [0, 1]
+        // E_target[f] = 0*0.9 + 1*0.1 = 0.1
+        let target = vec![0.9, 0.1];
+        let proposal = vec![0.5, 0.5];
+        let f = vec![0.0, 1.0];
+
+        let result = sampler
+            .importance_sampling(&target, &proposal, &f, 10_000)
+            .expect("importance sampling should succeed");
+
+        assert!(
+            (result.estimate - 0.1).abs() < 0.05,
+            "IS estimate should be near 0.1, got {}",
+            result.estimate
+        );
     }
 }

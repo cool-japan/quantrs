@@ -41,7 +41,7 @@ use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_tytan::compile::expr::{constant, Expr};
 
 use scirs2_core::random::rngs::StdRng;
-use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::{Rng, RngExt, SeedableRng};
 use std::collections::HashMap;
 use std::fmt::Write;
 
@@ -116,8 +116,8 @@ fn generate_assets(n_assets: usize, seed: u64) -> (Vec<Asset>, Array2<f64>) {
             symbol: format!("ASSET{}", i),
             name: format!("Asset {}", i),
             sector: sector.to_string(),
-            expected_return: base_return + rng.gen_range(-0.03..0.03),
-            volatility: base_vol + rng.gen_range(-0.05..0.05),
+            expected_return: base_return + rng.random_range(-0.03..0.03),
+            volatility: base_vol + rng.random_range(-0.05..0.05),
         };
 
         assets.push(asset);
@@ -131,7 +131,7 @@ fn generate_assets(n_assets: usize, seed: u64) -> (Vec<Asset>, Array2<f64>) {
             // Higher correlation within sectors
             let same_sector = assets[i].sector == assets[j].sector;
             let base_corr = if same_sector { 0.6 } else { 0.3 };
-            let corr = (base_corr + rng.gen_range(-0.2..0.2) as f64).clamp(-0.9, 0.9);
+            let corr = (base_corr + rng.random_range(-0.2..0.2) as f64).clamp(-0.9, 0.9);
 
             correlation[[i, j]] = corr;
             correlation[[j, i]] = corr;
@@ -329,7 +329,7 @@ fn calculate_portfolio_metrics(
     let mut variance = 0.0;
     for i in 0..n {
         for j in 0..n {
-            variance += weights[i] * weights[j] * covariance[[i, j]];
+            variance = (weights[i] * weights[j]).mul_add(covariance[[i, j]], variance);
         }
     }
 

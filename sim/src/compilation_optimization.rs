@@ -471,11 +471,7 @@ impl CompilationOptimizer {
         report.push_str("## Module Statistics\n");
         let total_modules = analysis.module_sizes.len();
         let total_lines: usize = analysis.module_sizes.values().sum();
-        let average_size = if total_modules > 0 {
-            total_lines / total_modules
-        } else {
-            0
-        };
+        let average_size = total_lines.checked_div(total_modules).unwrap_or(0);
 
         // Safety: Writing to String should not fail
         let _ = writeln!(report, "- Total modules: {total_modules}");

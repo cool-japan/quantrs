@@ -7,6 +7,7 @@ use scirs2_core::random::prelude::*;
 use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::random::{Rng, SeedableRng};
 use scirs2_core::Complex64;
+use scirs2_core::RngExt;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::time::{Duration, Instant};
@@ -500,7 +501,7 @@ impl InfiniteDepthQAOA {
 
         // Add biases
         for i in 0..num_qubits {
-            let bias = rng.gen_range(-1.0..1.0);
+            let bias = rng.random_range(-1.0..1.0);
             ising
                 .set_bias(i, bias)
                 .map_err(AdvancedQuantumError::IsingError)?;
@@ -510,8 +511,8 @@ impl InfiniteDepthQAOA {
         let coupling_probability = 0.3;
         for i in 0..num_qubits {
             for j in (i + 1)..num_qubits {
-                if rng.gen::<f64>() < coupling_probability {
-                    let coupling = rng.gen_range(-1.0..1.0);
+                if rng.random::<f64>() < coupling_probability {
+                    let coupling = rng.random_range(-1.0..1.0);
                     ising
                         .set_coupling(i, j, coupling)
                         .map_err(AdvancedQuantumError::IsingError)?;
@@ -632,9 +633,9 @@ impl InfiniteDepthQAOA {
 
         match self.config.initialization_method {
             ParameterInitializationMethod::Random => {
-                let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().gen());
+                let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().random());
                 Ok((0..num_params)
-                    .map(|_| rng.gen_range(0.0..2.0 * PI))
+                    .map(|_| rng.random_range(0.0..2.0 * PI))
                     .collect())
             }
             ParameterInitializationMethod::Heuristic => {
@@ -724,7 +725,7 @@ impl InfiniteDepthQAOA {
         let mut best_params = current_params.clone();
 
         // Simple gradient-free optimization (in practice would use sophisticated methods)
-        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().gen());
+        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().random());
 
         for iteration in 0..self.config.max_iterations_per_depth {
             // Evaluate current parameters
@@ -737,7 +738,7 @@ impl InfiniteDepthQAOA {
 
             // Simple parameter update (placeholder for actual optimization)
             for param in &mut current_params {
-                *param += rng.gen_range(-0.1..0.1);
+                *param += rng.random_range(-0.1..0.1);
                 *param = param.clamp(0.0, 2.0 * PI); // Keep in valid range
             }
 

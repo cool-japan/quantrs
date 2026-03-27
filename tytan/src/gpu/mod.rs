@@ -3,8 +3,8 @@
 //! This module provides GPU-accelerated implementations for
 //! solving QUBO and HOBO problems, using SciRS2 when available.
 
-use scirs2_core::ndarray::{Array, ArrayD, Ix2};
-use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::ndarray::{Array, ArrayD, Dimension, Ix2};
+use scirs2_core::random::{thread_rng, Rng, RngExt};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -238,7 +238,7 @@ pub fn gpu_solve_qubo(
         // Create random binary states
         let mut rng = thread_rng();
         let binary_states: Vec<u8> = (0..shots * n_vars)
-            .map(|_| if rng.gen::<bool>() { 1u8 } else { 0u8 })
+            .map(|_| if rng.random::<bool>() { 1u8 } else { 0u8 })
             .collect();
 
         // Create OCL buffers
@@ -351,10 +351,7 @@ pub fn gpu_solve_hobo(
     shots: usize,
     temperature_steps: usize,
 ) -> GpuResult<Vec<SampleResult>> {
-    use crate::scirs_stub::scirs2_core::gpu::{GpuArray, GpuDevice};
-
     let n_vars = var_map.len();
-    let dim = tensor.ndim();
 
     // Map from indices back to variable names
     let idx_to_var: HashMap<usize, String> = var_map
@@ -362,33 +359,84 @@ pub fn gpu_solve_hobo(
         .map(|(var, &idx)| (idx, var.clone()))
         .collect();
 
-    // Initialize GPU device
-    let device = GpuDevice::new(0).map_err(|e| GpuError::NotAvailable(e.to_string()))?;
+    use scirs2_core::random::{rngs::StdRng, RngExt, SeedableRng};
 
-    // For high-dimensional tensors, use CP decomposition on CPU first
-    let rank = std::cmp::min(n_vars, 50); // Truncate to reasonable rank
+    // Helper: evaluate HOBO energy for a given binary assignment.
+    // For a general order-d tensor T, the energy is:
+    //   E = sum_{i1,...,id} T[i1,...,id] * x[i1] * ... * x[id]
+    // We iterate over all non-zero tensor entries via indexed enumeration.
+    let evaluate_hobo_energy = |tensor: &scirs2_core::ndarray::ArrayD<f64>, x: &[u8]| -> f64 {
+        let mut energy = 0.0_f64;
+        for (idx, &coeff) in tensor.indexed_iter() {
+            if coeff.abs() < 1e-14 {
+                continue;
+            }
+            let index_slice = idx.slice();
+            let contrib: f64 = index_slice
+                .iter()
+                .map(|&i| if i < x.len() { x[i] as f64 } else { 0.0 })
+                .product();
+            energy += coeff * contrib;
+        }
+        energy
+    };
 
-    // Initialize placeholder results
-    // (In a real implementation, would perform tensor operations)
+    // Simulated annealing CPU fallback for HOBO minimization.
+    // Each "shot" is an independent SA run from a fresh random initial state.
     let mut results = Vec::new();
+    let num_sweeps = temperature_steps.max(1);
 
-    for _ in 0..shots {
-        // Generate random solution for placeholder
-        let mut rng = thread_rng();
-        let assignments: HashMap<String, bool> = var_map
-            .keys()
-            .map(|name| (name.clone(), rng.gen::<bool>()))
+    for shot_idx in 0..shots {
+        // Seed each shot deterministically so results are reproducible.
+        let mut rng = StdRng::seed_from_u64(shot_idx as u64 + 1);
+
+        // Random binary initial state.
+        let mut x: Vec<u8> = (0..n_vars).map(|_| rng.random_range(0..2u8)).collect();
+        let mut energy = evaluate_hobo_energy(tensor, &x);
+
+        let initial_temperature = 1.0_f64;
+        let cooling_rate = 0.99_f64;
+        let mut temperature = initial_temperature;
+
+        for _sweep in 0..num_sweeps {
+            for i in 0..n_vars {
+                // Flip bit i
+                x[i] ^= 1;
+                let new_energy = evaluate_hobo_energy(tensor, &x);
+                let delta = new_energy - energy;
+                // Accept if improving, or probabilistically if worsening.
+                let accept = delta < 0.0
+                    || (temperature > 1e-12 && rng.random::<f64>() < (-delta / temperature).exp());
+                if accept {
+                    energy = new_energy;
+                } else {
+                    // Revert the flip.
+                    x[i] ^= 1;
+                }
+            }
+            temperature *= cooling_rate;
+        }
+
+        // Build the assignment map from the final state.
+        let assignments: HashMap<String, bool> = x
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, &bit)| idx_to_var.get(&idx).map(|name| (name.clone(), bit != 0)))
             .collect();
 
-        // Create sample result
-        let result = SampleResult {
+        results.push(SampleResult {
             assignments,
-            energy: 0.0, // This would be an actual energy in real implementation
+            energy,
             occurrences: 1,
-        };
-
-        results.push(result);
+        });
     }
+
+    // Sort by ascending energy (best solutions first).
+    results.sort_by(|a, b| {
+        a.energy
+            .partial_cmp(&b.energy)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     Ok(results)
 }

@@ -357,31 +357,32 @@ impl HardwareBenchmarker {
         // Generate gate execution times (50-200 nanoseconds with noise)
         let gate_times = Array1::from_shape_fn(self.config.num_iterations, |_| {
             let base_time = 100.0;
-            let noise = self.rng.gen::<f64>() * 50.0;
+            let noise = self.rng.random::<f64>() * 50.0;
             base_time + noise
         });
 
         // Generate single-qubit gate fidelities (99.5% - 99.99%)
         let single_qubit_fidelities =
-            Array1::from_shape_fn(num_qubits, |_| 0.995 + self.rng.gen::<f64>() * 0.0049);
+            Array1::from_shape_fn(num_qubits, |_| 0.995 + self.rng.random::<f64>() * 0.0049);
 
         // Generate two-qubit gate fidelities (98% - 99.5%)
         let two_qubit_fidelities = Array1::from_shape_fn(num_qubits.saturating_sub(1), |_| {
-            0.980 + self.rng.gen::<f64>() * 0.015
+            0.980 + self.rng.random::<f64>() * 0.015
         });
 
         // Generate T1 times (30-100 microseconds)
-        let t1_times = Array1::from_shape_fn(num_qubits, |_| 30.0 + self.rng.gen::<f64>() * 70.0);
+        let t1_times =
+            Array1::from_shape_fn(num_qubits, |_| 30.0 + self.rng.random::<f64>() * 70.0);
 
         // Generate T2 times (20-80 microseconds, always <= T1)
         let t2_times = Array1::from_shape_fn(num_qubits, |i| {
             let max_t2 = t1_times[i] * 0.8;
-            20.0 + self.rng.gen::<f64>() * (max_t2 - 20.0).max(0.0)
+            20.0 + self.rng.random::<f64>() * (max_t2 - 20.0).max(0.0)
         });
 
         // Generate readout fidelities (95% - 99%)
         let readout_fidelities =
-            Array1::from_shape_fn(num_qubits, |_| 0.95 + self.rng.gen::<f64>() * 0.04);
+            Array1::from_shape_fn(num_qubits, |_| 0.95 + self.rng.random::<f64>() * 0.04);
 
         // Generate assignment error matrix (simplified 2x2 for binary readout)
         let mut assignment_errors = Array2::zeros((2, 2));

@@ -126,17 +126,9 @@ impl SymbolicExpression {
                 .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Variable '{name}' not found"))),
 
             #[cfg(feature = "symbolic")]
-            Self::SymEngine(expr) => {
-                // For SymEngine evaluation, we would need to substitute variables
-                // This is a simplified implementation
-                if let Ok(value) = expr.to_string().parse::<f64>() {
-                    Ok(value)
-                } else {
-                    Err(QuantRS2Error::UnsupportedOperation(
-                        "SymEngine evaluation not yet implemented".to_string(),
-                    ))
-                }
-            }
+            Self::SymEngine(expr) => expr
+                .eval(variables)
+                .map_err(|e| QuantRS2Error::UnsupportedOperation(e.to_string())),
 
             #[cfg(not(feature = "symbolic"))]
             Self::Simple(simple_expr) => Self::evaluate_simple(simple_expr, variables),
@@ -157,9 +149,10 @@ impl SymbolicExpression {
                 .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Variable '{name}' not found"))),
 
             #[cfg(feature = "symbolic")]
-            Self::SymEngine(_) => Err(QuantRS2Error::UnsupportedOperation(
-                "Complex SymEngine evaluation not yet implemented".to_string(),
-            )),
+            Self::SymEngine(expr) => {
+                quantrs2_symengine_pure::eval::evaluate_complex_with_complex_values(expr, variables)
+                    .map_err(|e| QuantRS2Error::UnsupportedOperation(e.to_string()))
+            }
 
             #[cfg(not(feature = "symbolic"))]
             Self::Simple(simple_expr) => Self::evaluate_simple_complex(simple_expr, variables),
@@ -228,9 +221,10 @@ impl SymbolicExpression {
             Self::Variable(name) => vec![name.clone()],
 
             #[cfg(feature = "symbolic")]
-            Self::SymEngine(_) => {
-                // Would need to implement variable extraction from SymEngine
-                Vec::new()
+            Self::SymEngine(expr) => {
+                let mut vars: Vec<String> = expr.free_symbols().into_iter().collect();
+                vars.sort();
+                vars
             }
 
             #[cfg(not(feature = "symbolic"))]
@@ -260,16 +254,13 @@ impl SymbolicExpression {
     }
 
     /// Check if the expression is constant (has no variables)
-    pub const fn is_constant(&self) -> bool {
+    pub fn is_constant(&self) -> bool {
         match self {
             Self::Constant(_) | Self::ComplexConstant(_) => true,
             Self::Variable(_) => false,
 
             #[cfg(feature = "symbolic")]
-            Self::SymEngine(_) => {
-                // Would need to check if SymEngine expression has variables
-                false
-            }
+            Self::SymEngine(expr) => expr.free_symbols().is_empty(),
 
             #[cfg(not(feature = "symbolic"))]
             Self::Simple(_) => false,
@@ -286,11 +277,14 @@ impl SymbolicExpression {
                 .unwrap_or_else(|| self.clone())),
 
             #[cfg(feature = "symbolic")]
-            Self::SymEngine(_) => {
-                // Would implement SymEngine substitution
-                Err(QuantRS2Error::UnsupportedOperation(
-                    "SymEngine substitution not yet implemented".to_string(),
-                ))
+            Self::SymEngine(expr) => {
+                let mut result = expr.clone();
+                for (name, replacement) in substitutions {
+                    let var_expr = SymEngine::symbol(name);
+                    let value_expr = replacement.to_symengine_expr()?;
+                    result = result.substitute(&var_expr, &value_expr);
+                }
+                Ok(Self::SymEngine(result))
             }
 
             #[cfg(not(feature = "symbolic"))]
@@ -299,6 +293,35 @@ impl SymbolicExpression {
                 Err(QuantRS2Error::UnsupportedOperation(
                     "Simple expression substitution not yet implemented".to_string(),
                 ))
+            }
+        }
+    }
+
+    /// Convert this `SymbolicExpression` into a `quantrs2_symengine_pure::Expression`.
+    ///
+    /// Used internally for routing operations through the SymEngine backend.
+    ///
+    /// # Errors
+    /// Returns `UnsupportedOperation` when the variant cannot be losslessly converted.
+    #[cfg(feature = "symbolic")]
+    pub fn to_symengine_expr(&self) -> QuantRS2Result<SymEngine> {
+        match self {
+            Self::SymEngine(e) => Ok(e.clone()),
+            Self::Constant(c) => Ok(SymEngine::from(*c)),
+            Self::Variable(name) => Ok(SymEngine::symbol(name)),
+            Self::ComplexConstant(c) => Ok(SymEngine::from_complex64(*c)),
+        }
+    }
+
+    /// Parse an expression string using the SymEngine backend (requires `symbolic` feature).
+    ///
+    /// Falls back gracefully to a `Variable` node when parsing fails.
+    #[cfg(feature = "symbolic")]
+    pub fn from_symengine_str(input: &str) -> Self {
+        match quantrs2_symengine_pure::parser::parse(input) {
+            Ok(expr) => Self::SymEngine(expr),
+            Err(_) => {
+                Self::parse_simple(input).unwrap_or_else(|_| Self::Variable(input.to_string()))
             }
         }
     }
@@ -806,9 +829,13 @@ mod tests {
         let b = SymbolicExpression::constant(3.0);
         let sum = a + b;
 
-        match sum {
-            SymbolicExpression::Constant(value) => assert_eq!(value, 5.0),
-            _ => panic!("Expected constant result"),
+        assert!(
+            matches!(sum, SymbolicExpression::Constant(_)),
+            "Expected constant result, got: {:?}",
+            sum
+        );
+        if let SymbolicExpression::Constant(value) = sum {
+            assert_eq!(value, 5.0);
         }
     }
 
@@ -849,5 +876,83 @@ mod tests {
                 assert!(!expr.is_constant());
             }
         }
+    }
+
+    #[cfg(feature = "symbolic")]
+    #[test]
+    fn test_symengine_evaluate() {
+        // Build x^2 + 2*x + 1 symbolically and evaluate at x=3  (expected: 16)
+        let expr = SymbolicExpression::from_symengine_str("x^2 + 2*x + 1");
+        let mut vars = HashMap::new();
+        vars.insert("x".to_string(), 3.0);
+        let result = expr
+            .evaluate(&vars)
+            .expect("evaluate should succeed for x^2+2x+1 at x=3");
+        assert!((result - 16.0).abs() < 1e-10, "expected 16.0, got {result}");
+    }
+
+    #[cfg(feature = "symbolic")]
+    #[test]
+    fn test_symengine_evaluate_complex() {
+        // Evaluate I*x at x=1  =>  0 + 1i
+        let expr = SymbolicExpression::from_symengine_str("I*x");
+        let mut vars = HashMap::new();
+        vars.insert("x".to_string(), Complex64::new(1.0, 0.0));
+        let result = expr
+            .evaluate_complex(&vars)
+            .expect("evaluate_complex should succeed for I*x at x=1");
+        assert!(
+            result.re.abs() < 1e-10,
+            "real part should be 0, got {}",
+            result.re
+        );
+        assert!(
+            (result.im - 1.0).abs() < 1e-10,
+            "imaginary part should be 1, got {}",
+            result.im
+        );
+    }
+
+    #[cfg(feature = "symbolic")]
+    #[test]
+    fn test_symengine_variables() {
+        let expr = SymbolicExpression::from_symengine_str("x + y");
+        let vars = expr.variables();
+        assert_eq!(vars.len(), 2, "expected 2 variables, got {:?}", vars);
+        assert!(vars.contains(&"x".to_string()));
+        assert!(vars.contains(&"y".to_string()));
+    }
+
+    #[cfg(feature = "symbolic")]
+    #[test]
+    fn test_symengine_is_constant() {
+        let const_expr = SymbolicExpression::from_symengine_str("42");
+        assert!(
+            const_expr.is_constant(),
+            "numeric literal should be constant"
+        );
+
+        let var_expr = SymbolicExpression::from_symengine_str("x + 1");
+        assert!(
+            !var_expr.is_constant(),
+            "expression with variable should not be constant"
+        );
+    }
+
+    #[cfg(feature = "symbolic")]
+    #[test]
+    fn test_symengine_substitute() {
+        // Substitute x=2 into x+1, expect 3
+        let expr = SymbolicExpression::from_symengine_str("x + 1");
+        let mut subs = HashMap::new();
+        subs.insert("x".to_string(), SymbolicExpression::constant(2.0));
+        let substituted = expr.substitute(&subs).expect("substitute should succeed");
+        let result = substituted
+            .evaluate(&HashMap::new())
+            .expect("evaluate should succeed after substitution");
+        assert!(
+            (result - 3.0).abs() < 1e-10,
+            "expected 3.0 after substituting x=2 in x+1, got {result}"
+        );
     }
 }

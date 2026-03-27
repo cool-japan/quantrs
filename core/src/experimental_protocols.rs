@@ -187,7 +187,7 @@ impl HamiltonianLearning {
         let mut rng = thread_rng();
         for i in 0..dim {
             for j in i..dim {
-                let val = Complex::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0));
+                let val = Complex::new(rng.random_range(-1.0..1.0), rng.random_range(-1.0..1.0));
                 hamiltonian[(i, j)] = val;
                 hamiltonian[(j, i)] = val.conj();
             }

@@ -541,7 +541,7 @@ fn generate_temporal_sequences(
             } else {
                 0.0
             };
-            delayed_input * 0.8 + fastrand::f64() * 0.1
+            delayed_input.mul_add(0.8, fastrand::f64() * 0.1)
         });
 
         sequences.push((input_seq, output_seq));

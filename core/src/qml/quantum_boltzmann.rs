@@ -81,7 +81,7 @@ impl QuantumRBM {
         let scale = 0.01;
 
         let weights = Array2::from_shape_fn((config.num_visible, config.num_hidden), |_| {
-            rng.gen_range(-scale..scale)
+            rng.random_range(-scale..scale)
         });
 
         let visible_bias = Array1::zeros(config.num_visible);
@@ -214,7 +214,7 @@ impl QuantumRBM {
         let mut samples = Array1::zeros(probs.len());
 
         for i in 0..probs.len() {
-            samples[i] = if rng.gen::<f64>() < probs[i] {
+            samples[i] = if rng.random::<f64>() < probs[i] {
                 1.0
             } else {
                 0.0
@@ -243,7 +243,7 @@ impl QuantumRBM {
 
         // Start with random hidden state
         let mut hidden = Array1::from_shape_fn(self.config.num_hidden, |_| {
-            if rng.gen::<f64>() < 0.5 {
+            if rng.random::<f64>() < 0.5 {
                 0.0
             } else {
                 1.0

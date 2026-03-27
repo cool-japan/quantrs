@@ -4,8 +4,15 @@
 //! to reduce gate count, improve fidelity, and optimize for hardware constraints.
 
 use crate::builder::Circuit;
-use quantrs2_core::qubit::QubitId;
+use quantrs2_core::{
+    gate::{
+        multi::CNOT,
+        single::{PauliX, RotationX, RotationY, RotationZ},
+    },
+    qubit::QubitId,
+};
 use std::collections::{HashMap, HashSet};
+use std::f64::consts::PI;
 
 /// Gate representation for optimization
 #[derive(Debug, Clone, PartialEq)]
@@ -515,11 +522,161 @@ impl Default for TemplateOptimizer {
 impl TemplateOptimizer {
     #[must_use]
     pub fn apply<const N: usize>(&self, ctx: &OptimizationContext<N>) -> PassResult<N> {
-        // TODO: Implement template matching
+        let circuit = &ctx.circuit;
+        let gates = circuit.gates();
+        if gates.len() < 2 {
+            return PassResult {
+                circuit: circuit.clone(),
+                improved: false,
+                improvement: 0.0,
+            };
+        }
+
+        let mut new_circuit = Circuit::<N>::new();
+        let n = gates.len();
+        let mut i = 0;
+        let mut gates_saved: usize = 0;
+
+        while i < n {
+            // ---------------------------------------------------------------
+            // Pattern: RX(θ)·RX(φ) → RX(θ+φ)  (and RY, RZ analogues)
+            // ---------------------------------------------------------------
+            if i + 1 < n {
+                let g0 = gates[i].as_ref();
+                let g1 = gates[i + 1].as_ref();
+
+                if g0.qubits().len() == 1
+                    && g1.qubits().len() == 1
+                    && g0.qubits()[0] == g1.qubits()[0]
+                {
+                    let target = g0.qubits()[0];
+
+                    // RZ(θ)·RZ(φ) → RZ(θ+φ)
+                    if let (Some(rz0), Some(rz1)) = (
+                        g0.as_any().downcast_ref::<RotationZ>(),
+                        g1.as_any().downcast_ref::<RotationZ>(),
+                    ) {
+                        let merged_angle = rz0.theta + rz1.theta;
+                        // Normalise into (-π, π]
+                        let normalised = ((merged_angle + PI).rem_euclid(2.0 * PI)) - PI;
+                        let _ = new_circuit.add_gate(RotationZ {
+                            target,
+                            theta: normalised,
+                        });
+                        i += 2;
+                        gates_saved += 1;
+                        continue;
+                    }
+
+                    // RY(θ)·RY(φ) → RY(θ+φ)
+                    if let (Some(ry0), Some(ry1)) = (
+                        g0.as_any().downcast_ref::<RotationY>(),
+                        g1.as_any().downcast_ref::<RotationY>(),
+                    ) {
+                        let merged_angle = ry0.theta + ry1.theta;
+                        let normalised = ((merged_angle + PI).rem_euclid(2.0 * PI)) - PI;
+                        let _ = new_circuit.add_gate(RotationY {
+                            target,
+                            theta: normalised,
+                        });
+                        i += 2;
+                        gates_saved += 1;
+                        continue;
+                    }
+
+                    // RX(θ)·RX(φ) → RX(θ+φ)
+                    if let (Some(rx0), Some(rx1)) = (
+                        g0.as_any().downcast_ref::<RotationX>(),
+                        g1.as_any().downcast_ref::<RotationX>(),
+                    ) {
+                        let merged_angle = rx0.theta + rx1.theta;
+                        let normalised = ((merged_angle + PI).rem_euclid(2.0 * PI)) - PI;
+                        let _ = new_circuit.add_gate(RotationX {
+                            target,
+                            theta: normalised,
+                        });
+                        i += 2;
+                        gates_saved += 1;
+                        continue;
+                    }
+                }
+            }
+
+            // ---------------------------------------------------------------
+            // Pattern: X · RZ(θ) · X → RZ(-θ)   (conjugation by X)
+            // ---------------------------------------------------------------
+            if i + 2 < n {
+                let g0 = gates[i].as_ref();
+                let g1 = gates[i + 1].as_ref();
+                let g2 = gates[i + 2].as_ref();
+
+                if g0.qubits().len() == 1
+                    && g1.qubits().len() == 1
+                    && g2.qubits().len() == 1
+                    && g0.qubits()[0] == g1.qubits()[0]
+                    && g1.qubits()[0] == g2.qubits()[0]
+                {
+                    let target = g1.qubits()[0];
+
+                    if g0.name() == "X" && g2.name() == "X" {
+                        if let Some(rz) = g1.as_any().downcast_ref::<RotationZ>() {
+                            // X·RZ(θ)·X = RZ(-θ)
+                            let _ = new_circuit.add_gate(RotationZ {
+                                target,
+                                theta: -rz.theta,
+                            });
+                            i += 3;
+                            gates_saved += 2;
+                            continue;
+                        }
+                    }
+                }
+
+                // ---------------------------------------------------------------
+                // Pattern: CNOT · (I ⊗ RZ(θ)) · CNOT → (I ⊗ RZ(θ)) · CNOT · CNOT
+                //          simplified: CNOT commutes with target RZ rotations,
+                //          so emit RZ(θ) first then drop the two CNOTs (they cancel).
+                //          Only applicable when the two CNOTs have the same control/target.
+                // ---------------------------------------------------------------
+                let g0 = gates[i].as_ref();
+                let g1 = gates[i + 1].as_ref();
+                let g2 = gates[i + 2].as_ref();
+
+                if let (Some(cnot0), Some(cnot2)) = (
+                    g0.as_any().downcast_ref::<CNOT>(),
+                    g2.as_any().downcast_ref::<CNOT>(),
+                ) {
+                    if cnot0.control == cnot2.control
+                        && cnot0.target == cnot2.target
+                        && g1.qubits().len() == 1
+                        && g1.qubits()[0] == cnot0.target
+                    {
+                        if let Some(rz) = g1.as_any().downcast_ref::<RotationZ>() {
+                            // RZ on target commutes through CNOT → emit RZ then CNOT·CNOT
+                            // CNOT·CNOT = I, so the two cancel; emit just RZ
+                            let target = rz.target;
+                            let _ = new_circuit.add_gate(RotationZ {
+                                target,
+                                theta: rz.theta,
+                            });
+                            i += 3;
+                            gates_saved += 2;
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            // No pattern matched — emit gate unchanged
+            let _ = new_circuit.add_gate_arc(gates[i].clone());
+            i += 1;
+        }
+
+        let improved = gates_saved > 0;
         PassResult {
-            circuit: ctx.circuit.clone(),
-            improved: false,
-            improvement: 0.0,
+            circuit: new_circuit,
+            improved,
+            improvement: gates_saved as f64,
         }
     }
 
@@ -771,12 +928,98 @@ impl HardwareOptimizer {
 
     #[must_use]
     pub fn apply<const N: usize>(&self, ctx: &OptimizationContext<N>) -> PassResult<N> {
-        // TODO: Implement hardware-aware optimization
-        // This would include qubit routing and native gate decomposition
+        let circuit = &ctx.circuit;
+        let gates = circuit.gates();
+
+        if gates.is_empty() {
+            return PassResult {
+                circuit: circuit.clone(),
+                improved: false,
+                improvement: 0.0,
+            };
+        }
+
+        // Build a set of connected qubit pairs from the connectivity graph
+        let connected_pairs: HashSet<(usize, usize)> = self
+            .connectivity
+            .iter()
+            .flat_map(|&(a, b)| [(a.min(b), a.max(b))])
+            .collect();
+
+        let mut new_circuit = Circuit::<N>::new();
+        let mut gates_decomposed: usize = 0;
+
+        for gate in gates {
+            let gate_ref = gate.as_ref();
+            let name = gate_ref.name();
+
+            // Check if the gate is in the native gate set
+            if self.native_gates.contains(name) {
+                // Native gate — pass through directly
+                let _ = new_circuit.add_gate_arc(gate.clone());
+                continue;
+            }
+
+            // Non-native gate: decompose to native equivalents.
+            // Decomposition table (subset, hardware-independent standard expansions):
+            //   SWAP  → CNOT(a,b) · CNOT(b,a) · CNOT(a,b)
+            //   CZ    → H(b) · CNOT(a,b) · H(b)
+            //   CCX (Toffoli) — too complex; fall through to pass-through
+            match name {
+                "SWAP" if gate_ref.qubits().len() == 2 => {
+                    let a = gate_ref.qubits()[0];
+                    let b = gate_ref.qubits()[1];
+                    let ai = a.id() as usize;
+                    let bi = b.id() as usize;
+
+                    // Prefer the direction that matches hardware connectivity
+                    let (ctrl, tgt) = if connected_pairs.contains(&(ai.min(bi), ai.max(bi))) {
+                        (a, b)
+                    } else {
+                        (b, a)
+                    };
+
+                    // SWAP → CNOT(ctrl, tgt) · CNOT(tgt, ctrl) · CNOT(ctrl, tgt)
+                    let _ = new_circuit.add_gate(CNOT {
+                        control: ctrl,
+                        target: tgt,
+                    });
+                    let _ = new_circuit.add_gate(CNOT {
+                        control: tgt,
+                        target: ctrl,
+                    });
+                    let _ = new_circuit.add_gate(CNOT {
+                        control: ctrl,
+                        target: tgt,
+                    });
+                    gates_decomposed += 1;
+                }
+                "CZ" if gate_ref.qubits().len() == 2 => {
+                    let a = gate_ref.qubits()[0];
+                    let b = gate_ref.qubits()[1];
+                    // CZ(a,b) → H(b) · CNOT(a,b) · H(b)
+                    let _ =
+                        new_circuit.add_gate(quantrs2_core::gate::single::Hadamard { target: b });
+                    let _ = new_circuit.add_gate(CNOT {
+                        control: a,
+                        target: b,
+                    });
+                    let _ =
+                        new_circuit.add_gate(quantrs2_core::gate::single::Hadamard { target: b });
+                    gates_decomposed += 1;
+                }
+                _ => {
+                    // Unknown non-native gate — pass through unchanged
+                    let _ = new_circuit.add_gate_arc(gate.clone());
+                }
+            }
+        }
+
+        let improved = gates_decomposed > 0;
         PassResult {
-            circuit: ctx.circuit.clone(),
-            improved: false,
-            improvement: 0.0,
+            circuit: new_circuit,
+            improved,
+            improvement: gates_decomposed as f64,
         }
     }
 

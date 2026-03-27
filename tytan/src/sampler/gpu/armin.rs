@@ -2,7 +2,7 @@
 
 use scirs2_core::ndarray::{Array, Ix2};
 #[cfg(all(feature = "gpu", feature = "dwave"))]
-use scirs2_core::random::{rngs::StdRng, thread_rng, Rng, SeedableRng};
+use scirs2_core::random::{rngs::StdRng, thread_rng, Rng, RngExt, SeedableRng};
 use std::collections::HashMap;
 
 #[cfg(all(feature = "gpu", feature = "dwave"))]
@@ -196,7 +196,7 @@ impl ArminSampler {
         }
 
         // Create a seed based on input seed or random value
-        let seed_val = self.seed.unwrap_or_else(|| thread_rng().gen());
+        let seed_val = self.seed.unwrap_or_else(|| thread_rng().random());
 
         // Set up and run standard simulated annealing kernel
         let mut kernel = Kernel::builder()
@@ -268,7 +268,7 @@ impl ArminSampler {
         let mut rng = if let Some(seed) = self.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let seed: u64 = thread_rng().gen();
+            let seed: u64 = thread_rng().random();
             StdRng::seed_from_u64(seed)
         };
 
@@ -277,7 +277,7 @@ impl ArminSampler {
         for _ in 0..num_shots {
             let mut solution = Vec::with_capacity(n_vars);
             for _ in 0..n_vars {
-                solution.push(rng.gen_bool(0.5));
+                solution.push(rng.random_bool(0.5));
             }
             solutions.push(solution);
         }
@@ -451,7 +451,7 @@ impl ArminSampler {
             .arg(5000i32) // More sweeps for thorough optimization of a chunk
             .arg(5.0f32)  // Higher initial temperature
             .arg(0.01f32) // Lower final temperature
-            .arg(seed.unwrap_or_else(|| thread_rng().gen()))
+            .arg(seed.unwrap_or_else(|| thread_rng().random()))
             .build()?;
 
         // Execute kernel

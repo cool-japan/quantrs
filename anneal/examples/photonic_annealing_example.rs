@@ -451,14 +451,14 @@ fn realistic_experimental_example() -> Result<(), Box<dyn std::error::Error>> {
     let mut rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(123);
 
     for i in 0..16 {
-        ising.set_bias(i, rng.gen_range(-1.0..1.0))?;
+        ising.set_bias(i, rng.random_range(-1.0..1.0))?;
     }
 
     for i in 0..16 {
         for j in (i + 1)..16 {
-            if rng.gen::<f64>() < 0.3 {
+            if rng.random::<f64>() < 0.3 {
                 // 30% connectivity
-                ising.set_coupling(i, j, rng.gen_range(-1.0..1.0))?;
+                ising.set_coupling(i, j, rng.random_range(-1.0..1.0))?;
             }
         }
     }

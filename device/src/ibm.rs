@@ -448,7 +448,7 @@ impl IBMQuantumClient {
                         let mut rng = thread_rng();
                         let jitter_range =
                             delay.as_millis() as f64 * self.retry_config.jitter_factor;
-                        Duration::from_millis((rng.gen::<f64>() * jitter_range) as u64)
+                        Duration::from_millis((rng.random::<f64>() * jitter_range) as u64)
                     } else {
                         Duration::ZERO
                     };

@@ -2,17 +2,19 @@
 
 [![Crates.io](https://img.shields.io/crates/v/quantrs2-sim.svg)](https://crates.io/crates/quantrs2-sim)
 [![Documentation](https://docs.rs/quantrs2-sim/badge.svg)](https://docs.rs/quantrs2-sim)
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/cool-japan/quantrs)
 
 QuantRS2-Sim is the comprehensive simulation engine of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing state-of-the-art quantum simulation algorithms, error correction codes, and performance optimization techniques for simulating quantum systems up to 30+ qubits on standard hardware.
 
-## Version 0.1.2
+## Version 0.1.3 (2026-03-27)
 
-This release features refined integration with [SciRS2](https://github.com/cool-japan/scirs2) v0.1.2 for unprecedented performance:
+This release features refined integration with [SciRS2](https://github.com/cool-japan/scirs2) v0.1.3 for unprecedented performance. The sim crate now has 3,527 public items with 0 todo/unimplemented stubs.
+
 - **Parallel Operations**: All simulators use `scirs2_core::parallel_ops` for automatic parallelization
 - **SIMD Acceleration**: Vectorized quantum operations via SciRS2 SIMD abstractions
 - **Advanced Linear Algebra**: Leveraging SciRS2's optimized BLAS/LAPACK bindings
 - **Memory Efficiency**: SciRS2's memory management for large-scale quantum simulations
+- **Sparse Matrix Operations**: `scirs2-sparse` replaces nalgebra-sparse for all sparse matrix handling
 
 ## Core Features
 
@@ -435,9 +437,4 @@ fn photonic_simulation() -> Result<()> {
 
 ## License
 
-This project is licensed under either:
-
-- [Apache License, Version 2.0](../LICENSE-APACHE)
-- [MIT License](../LICENSE-MIT)
-
-at your option.
+This project is licensed under the [Apache License, Version 2.0](../LICENSE).

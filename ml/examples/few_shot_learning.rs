@@ -38,7 +38,7 @@ fn main() -> Result<()> {
             // Create class-specific patterns
             for feat in 0..num_features {
                 data[[idx, feat]] = 0.1f64.mul_add(
-                    2.0f64.mul_add(thread_rng().gen::<f64>(), -1.0),
+                    2.0f64.mul_add(thread_rng().random::<f64>(), -1.0),
                     (sample_idx as f64)
                         .mul_add(0.1, (class_id as f64).mul_add(0.5, feat as f64 * 0.3))
                         .sin(),

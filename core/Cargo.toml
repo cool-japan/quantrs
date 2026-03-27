@@ -9,6 +9,7 @@ license.workspace = true
 keywords = ["quantum", "computing", "core", "types", "traits"]
 categories = ["science", "simulation"]
 description = "Core types and traits for the QuantRS2 quantum computing framework"
+readme = "README.md"
 
 [dependencies]
 # num-complex.workspace = true          # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
@@ -31,11 +32,12 @@ optirs-core.workspace = true
 serde.workspace = true
 tokio.workspace = true
 uuid.workspace = true
-zstd.workspace = true
+oxiarc-deflate.workspace = true  # Pure Rust zlib/deflate (COOLJAPAN Policy: replaces flate2+zstd)
 oxicode.workspace = true
 serde_json.workspace = true
 num_cpus.workspace = true
-flate2.workspace = true
+# flate2.workspace = true  # REMOVED: Replaced by oxiarc-deflate (COOLJAPAN Pure Rust Policy)
+# zstd.workspace = true was already replaced above
 sysinfo.workspace = true
 regex.workspace = true
 # Symbolic computation - Pure Rust (SciRS2 POLICY: No C/C++ dependencies)

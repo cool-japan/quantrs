@@ -301,7 +301,7 @@ impl SciRS2ProcessTomographer {
         let mut bootstrap_uncertainties = Vec::new();
 
         for _ in 0..data_size {
-            let idx = rng.gen_range(0..data_size);
+            let idx = rng.random_range(0..data_size);
             bootstrap_results.push(data.measurement_results[idx]);
             bootstrap_uncertainties.push(data.measurement_uncertainties[idx]);
         }

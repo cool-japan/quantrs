@@ -263,7 +263,10 @@ impl AwsSignatureV4 {
 
     /// Compute HMAC-SHA256
     fn hmac_sha256(key: &[u8], data: &[u8]) -> Vec<u8> {
-        let mut mac = HmacSha256::new_from_slice(key).expect("HMAC can take key of any size");
+        let mut mac = match HmacSha256::new_from_slice(key) {
+            Ok(m) => m,
+            Err(_) => return vec![],
+        };
         mac.update(data);
         mac.finalize().into_bytes().to_vec()
     }
