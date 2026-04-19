@@ -263,7 +263,7 @@ tempfile = "3.27"
 
 # NumRS2 ecosystem dependencies
 numrs2 = "0.3.2"
-pandrs = "0.3.0"  # Latest available on crates.io
+pandrs = "0.3.1"  # Latest available on crates.io
 
 [profile.dev]
 incremental = true
