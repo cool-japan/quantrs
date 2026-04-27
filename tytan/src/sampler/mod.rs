@@ -8,7 +8,10 @@ pub mod errors;
 pub mod genetic_algorithm;
 pub mod gpu;
 pub mod hardware;
+pub mod population_annealing;
 pub mod simulated_annealing;
+pub mod simulated_bifurcation;
+pub mod tabu_search;
 
 use scirs2_core::ndarray::Array;
 use std::collections::HashMap;
@@ -116,4 +119,7 @@ pub(crate) fn evaluate_qubo_energy(
 pub use genetic_algorithm::GASampler;
 pub use gpu::ArminSampler;
 pub use hardware::{DWaveSampler, MIKASAmpler};
+pub use population_annealing::PopulationAnnealingSampler;
 pub use simulated_annealing::SASampler;
+pub use simulated_bifurcation::{SBSampler, SBVariant};
+pub use tabu_search::TabuSampler;

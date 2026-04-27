@@ -256,7 +256,10 @@ pub use optimize::{calculate_energy, optimize_hobo, optimize_qubo};
 pub use quantum_adiabatic_path_optimization::{
     AdiabaticPathConfig, PathInterpolation, QuantumAdiabaticPathOptimizer, QuantumAdiabaticSampler,
 };
-pub use sampler::{ArminSampler, DWaveSampler, GASampler, MIKASAmpler, SASampler};
+pub use sampler::{
+    ArminSampler, DWaveSampler, GASampler, MIKASAmpler, PopulationAnnealingSampler, SASampler,
+    SBSampler, SBVariant, TabuSampler,
+};
 pub use scirs_stub::SCIRS2_AVAILABLE;
 #[cfg(feature = "dwave")]
 pub use symbol::{symbols, symbols_define, symbols_list, symbols_nbit};

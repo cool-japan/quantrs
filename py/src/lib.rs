@@ -13,6 +13,9 @@
 
 use pyo3::prelude::*;
 
+// Include the QEC module
+mod qec;
+
 // Include the visualization module
 mod visualization;
 use visualization::PyCircuitVisualizer;
@@ -144,6 +147,9 @@ fn quantrs2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Register the simulators module
     simulators::register_simulators_module(m)?;
+
+    // Register the QEC submodule
+    qec::register_qec_module(m)?;
 
     // Add metadata
     m.setattr(
