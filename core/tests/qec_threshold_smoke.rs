@@ -1,10 +1,10 @@
 //! Integration tests for the QEC surface code pipeline.
 
-use quantrs2_core::Pauli;
 use quantrs2_core::error_correction::{
     MwpmSurfaceDecoder, PauliFrame, PauliString, RotatedSurfaceCode, SyndromeDecoder,
     UnionFindDecoder,
 };
+use quantrs2_core::Pauli;
 
 /// Check whether the composed Pauli (error * correction) is a logical error.
 /// A logical error anticommutes with at least one of the logical operators.
@@ -31,7 +31,11 @@ fn test_qec_smoke_d3_zero_errors() {
 
     let uf = UnionFindDecoder::new(code);
     let uf_correction = uf.decode(&syndrome).expect("uf decode failed");
-    assert_eq!(uf_correction.weight(), 0, "UF: Zero errors → identity correction");
+    assert_eq!(
+        uf_correction.weight(),
+        0,
+        "UF: Zero errors → identity correction"
+    );
 }
 
 #[test]
@@ -47,7 +51,10 @@ fn test_qec_smoke_d3_single_x_error() {
 
         let syndrome = code.syndrome(&error).expect("syndrome failed");
         let defect_count = syndrome.iter().filter(|&&s| s).count();
-        assert!(defect_count > 0, "X error on qubit {qubit} must produce defects");
+        assert!(
+            defect_count > 0,
+            "X error on qubit {qubit} must produce defects"
+        );
 
         let mwpm = MwpmSurfaceDecoder::new(code.clone());
         let correction = mwpm.decode(&syndrome).expect("decode failed");
@@ -71,7 +78,10 @@ fn test_qec_smoke_d3_single_z_error() {
 
         let syndrome = code.syndrome(&error).expect("syndrome failed");
         let defect_count = syndrome.iter().filter(|&&s| s).count();
-        assert!(defect_count > 0, "Z error on qubit {qubit} must produce defects");
+        assert!(
+            defect_count > 0,
+            "Z error on qubit {qubit} must produce defects"
+        );
 
         let mwpm = MwpmSurfaceDecoder::new(code.clone());
         let correction = mwpm.decode(&syndrome).expect("decode failed");
@@ -120,7 +130,10 @@ fn test_qec_pauli_frame_no_errors() {
     let mut frame = PauliFrame::new(n);
     frame.apply_pauli_string(&correction);
 
-    assert!(frame.is_identity(), "No-error case: PauliFrame should remain identity");
+    assert!(
+        frame.is_identity(),
+        "No-error case: PauliFrame should remain identity"
+    );
     assert!(
         !frame.measure_logical_x(&code.logical_x_qubits()),
         "No logical X error"

@@ -500,9 +500,12 @@ impl TabuSampler {
                     "QUBO matrix must be square".to_string(),
                 ));
             }
-            let q_flat: Vec<f64> = q2.as_slice().ok_or_else(|| {
-                SamplerError::InvalidParameter("Non-contiguous QUBO matrix".to_string())
-            })?.to_vec();
+            let q_flat: Vec<f64> = q2
+                .as_slice()
+                .ok_or_else(|| {
+                    SamplerError::InvalidParameter("Non-contiguous QUBO matrix".to_string())
+                })?
+                .to_vec();
 
             for shot_idx in 0..shots {
                 let seed = match self.seed {
@@ -513,8 +516,7 @@ impl TabuSampler {
                     }
                 };
                 let mut rng = StdRng::seed_from_u64(seed);
-                let (best_state, best_energy) =
-                    self.run_single_qubo(&q_flat, n, &mut rng);
+                let (best_state, best_energy) = self.run_single_qubo(&q_flat, n, &mut rng);
 
                 let entry = solution_counts
                     .entry(best_state)
@@ -656,9 +658,7 @@ mod tests {
         let r1 = s1
             .run_qubo(&(q.clone(), var_map.clone()), 10)
             .expect("Run 1 failed");
-        let r2 = s2
-            .run_qubo(&(q, var_map), 10)
-            .expect("Run 2 failed");
+        let r2 = s2.run_qubo(&(q, var_map), 10).expect("Run 2 failed");
 
         assert_eq!(r1.len(), r2.len(), "Result lengths differ");
         for (a, b) in r1.iter().zip(r2.iter()) {

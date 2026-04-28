@@ -337,10 +337,7 @@ fn build_partition_qubo(
 /// Evaluate QUBO energy for a binary state (upper-triangular or symmetric Q).
 ///
 /// E(x) = Σ_{i,j} Q[i,j] * x[i] * x[j]
-fn eval_qubo_energy(
-    q: &scirs2_core::ndarray::Array2<f64>,
-    state: &[bool],
-) -> f64 {
+fn eval_qubo_energy(q: &scirs2_core::ndarray::Array2<f64>, state: &[bool]) -> f64 {
     let n = state.len();
     let mut energy = 0.0;
     for i in 0..n {
@@ -360,10 +357,7 @@ fn eval_qubo_energy(
 ///
 /// Returns `(min_energy, best_state_as_vec_bool)`.
 /// Only feasible for n ≤ 20.
-fn brute_force_qubo(
-    q: &scirs2_core::ndarray::Array2<f64>,
-    n: usize,
-) -> (f64, Vec<bool>) {
+fn brute_force_qubo(q: &scirs2_core::ndarray::Array2<f64>, n: usize) -> (f64, Vec<bool>) {
     let total = 1u64 << n;
     let mut best_energy = f64::INFINITY;
     let mut best_state = vec![false; n];
@@ -382,10 +376,7 @@ fn brute_force_qubo(
 ///
 /// Uses a simple LCG seeded with `seed` so tests can be fully reproducible
 /// without adding a rand dependency (scirs2_core::random uses StdRng).
-fn generate_random_qubo(
-    n: usize,
-    seed: u64,
-) -> scirs2_core::ndarray::Array2<f64> {
+fn generate_random_qubo(n: usize, seed: u64) -> scirs2_core::ndarray::Array2<f64> {
     // LCG parameters (Numerical Recipes)
     const A: u64 = 1664525;
     const C: u64 = 1013904223;
@@ -415,9 +406,7 @@ fn generate_random_qubo(
 /// Tests for each sampler on classic QUBO problems with known optima.
 mod canonical_problems {
     use super::*;
-    use quantrs2_tytan::sampler::{
-        PopulationAnnealingSampler, SBSampler, SBVariant, TabuSampler,
-    };
+    use quantrs2_tytan::sampler::{PopulationAnnealingSampler, SBSampler, SBVariant, TabuSampler};
 
     /// Max-Cut on K4 (4-node complete graph).
     ///
@@ -596,10 +585,7 @@ mod canonical_problems {
             (bf_energy - (-6.0)).abs() < 1e-9,
             "Unexpected brute-force optimum: {bf_energy}"
         );
-        assert!(
-            bf_state.iter().all(|&b| b),
-            "Expected (1,1,1) as optimum"
-        );
+        assert!(bf_state.iter().all(|&b| b), "Expected (1,1,1) as optimum");
 
         let sampler = TabuSampler::new()
             .with_seed(42)
@@ -683,9 +669,7 @@ mod canonical_problems {
 /// All samplers should find the same minimum energy on the same small QUBO.
 mod cross_sampler_agreement {
     use super::*;
-    use quantrs2_tytan::sampler::{
-        PopulationAnnealingSampler, SBSampler, SBVariant, TabuSampler,
-    };
+    use quantrs2_tytan::sampler::{PopulationAnnealingSampler, SBSampler, SBVariant, TabuSampler};
 
     /// K3 Max-Cut: unique optimum at energy -2.0.
     ///
@@ -887,12 +871,14 @@ mod cross_sampler_agreement {
 /// Running a sampler twice with the same seed must produce identical results.
 mod determinism {
     use super::*;
-    use quantrs2_tytan::sampler::{
-        PopulationAnnealingSampler, SBSampler, SBVariant, TabuSampler,
-    };
+    use quantrs2_tytan::sampler::{PopulationAnnealingSampler, SBSampler, SBVariant, TabuSampler};
 
     /// Compare two result vectors field by field (no PartialEq on SampleResult).
-    fn assert_results_equal(name: &str, r1: &[quantrs2_tytan::sampler::SampleResult], r2: &[quantrs2_tytan::sampler::SampleResult]) {
+    fn assert_results_equal(
+        name: &str,
+        r1: &[quantrs2_tytan::sampler::SampleResult],
+        r2: &[quantrs2_tytan::sampler::SampleResult],
+    ) {
         assert_eq!(
             r1.len(),
             r2.len(),
@@ -1114,9 +1100,7 @@ mod hobo_smoke {
         var_map.insert("c".to_string(), 2);
 
         let sampler = TabuSampler::new().with_seed(7).with_max_iter(200);
-        let results = sampler
-            .run_hobo(&(q.into_dyn(), var_map), 10)
-            .unwrap();
+        let results = sampler.run_hobo(&(q.into_dyn(), var_map), 10).unwrap();
         assert!(!results.is_empty());
         // Minimum: all three = 1, E = -3
         assert!(
@@ -1142,9 +1126,7 @@ mod hobo_smoke {
         let sampler = PopulationAnnealingSampler::new()
             .with_seed(42)
             .with_population(30);
-        let results = sampler
-            .run_hobo(&(q.into_dyn(), var_map), 10)
-            .unwrap();
+        let results = sampler.run_hobo(&(q.into_dyn(), var_map), 10).unwrap();
         assert!(!results.is_empty());
         // Optimal: exactly one of (x=1,y=0) or (x=0,y=1), E = -1
         assert!(
@@ -1163,9 +1145,7 @@ mod hobo_smoke {
 /// must find the brute-force optimum across a range of seeds.
 mod property_tests {
     use super::*;
-    use quantrs2_tytan::sampler::{
-        PopulationAnnealingSampler, SBSampler, SBVariant, TabuSampler,
-    };
+    use quantrs2_tytan::sampler::{PopulationAnnealingSampler, SBSampler, SBVariant, TabuSampler};
 
     /// TabuSampler must find the optimum on random 4-variable QUBOs for seeds 0..20.
     #[test]
@@ -1217,10 +1197,16 @@ mod property_tests {
                 .with_variant(SBVariant::Discrete)
                 .with_time_steps(2000);
             let results = sampler.run_qubo(&(q, var_map), 30).unwrap();
-            assert!(!results.is_empty(), "seed={seed}: SB Discrete returned no results");
+            assert!(
+                !results.is_empty(),
+                "seed={seed}: SB Discrete returned no results"
+            );
             let best = results[0].energy;
             // Must always return a finite energy
-            assert!(best.is_finite(), "seed={seed}: SB Discrete returned infinite energy");
+            assert!(
+                best.is_finite(),
+                "seed={seed}: SB Discrete returned infinite energy"
+            );
             // Must always return a solution at least as good as the worst possible
             // (energy below 0 for negative-energy QUBOs with at least one variable)
             if (best - bf_energy).abs() < 1e-6 {
@@ -1255,9 +1241,15 @@ mod property_tests {
                 .with_variant(SBVariant::Ballistic)
                 .with_time_steps(2000);
             let results = sampler.run_qubo(&(q, var_map), 30).unwrap();
-            assert!(!results.is_empty(), "seed={seed}: SB Ballistic returned no results");
+            assert!(
+                !results.is_empty(),
+                "seed={seed}: SB Ballistic returned no results"
+            );
             let best = results[0].energy;
-            assert!(best.is_finite(), "seed={seed}: SB Ballistic returned infinite energy");
+            assert!(
+                best.is_finite(),
+                "seed={seed}: SB Ballistic returned infinite energy"
+            );
             if (best - bf_energy).abs() < 1e-6 {
                 found_count += 1;
             }
@@ -1339,7 +1331,9 @@ mod property_tests {
         );
 
         // PA: directly computes QUBO energy
-        let pa = PopulationAnnealingSampler::new().with_seed(0).with_population(10);
+        let pa = PopulationAnnealingSampler::new()
+            .with_seed(0)
+            .with_population(10);
         let pa_r = pa.run_qubo(&(q.clone(), var_map.clone()), 5).unwrap();
         assert!(!pa_r.is_empty(), "PA single var: returned no results");
         assert!(

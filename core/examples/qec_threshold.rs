@@ -28,7 +28,9 @@ fn main() {
     // ---- Test 1: No error ----
     {
         let identity = PauliString::identity(n);
-        let syndrome = code.syndrome(&identity).expect("syndrome computation failed");
+        let syndrome = code
+            .syndrome(&identity)
+            .expect("syndrome computation failed");
         let any_defect = syndrome.iter().any(|&s| s);
         assert!(!any_defect, "Identity error should give all-zero syndrome");
         println!("Test 1 PASSED: Identity error → zero syndrome");
@@ -42,7 +44,10 @@ fn main() {
 
         let syndrome = code.syndrome(&error).expect("syndrome failed");
         let defect_count = syndrome.iter().filter(|&&s| s).count();
-        assert!(defect_count > 0, "Single X error must produce syndrome defects");
+        assert!(
+            defect_count > 0,
+            "Single X error must produce syndrome defects"
+        );
 
         let mwpm = MwpmSurfaceDecoder::new(code.clone());
         let correction = mwpm.decode(&syndrome).expect("MWPM decode failed");

@@ -70,11 +70,15 @@ impl GateRegistry {
     }
 
     fn get(&self, name: &str) -> Option<GateDefinition> {
-        self.gates.lock().map_or_else(|_| None, |gates| gates.get(name).cloned())
+        self.gates
+            .lock()
+            .map_or_else(|_| None, |gates| gates.get(name).cloned())
     }
 
     fn list_gates(&self) -> Vec<String> {
-        self.gates.lock().map_or_else(|_| Vec::new(), |gates| gates.keys().cloned().collect())
+        self.gates
+            .lock()
+            .map_or_else(|_| Vec::new(), |gates| gates.keys().cloned().collect())
     }
 }
 
@@ -414,7 +418,10 @@ impl PyGateRegistry {
 
     /// Check if a gate is registered
     fn contains(&self, name: &str) -> bool {
-        self.registry.gates.lock().is_ok_and(|gates| gates.contains_key(name))
+        self.registry
+            .gates
+            .lock()
+            .is_ok_and(|gates| gates.contains_key(name))
     }
 }
 

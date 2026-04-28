@@ -55,10 +55,7 @@ fn phase_to_color(phase: f64) -> String {
 /// The sphere surface is rendered as a background mesh; each non-zero
 /// amplitude is plotted as a 3D scatter marker whose size encodes
 /// `|a|²` and colour encodes `arg(a)`.
-pub fn qsphere_plotly_json(
-    state: &Array1<Complex64>,
-    n_qubits: usize,
-) -> QuantRS2Result<String> {
+pub fn qsphere_plotly_json(state: &Array1<Complex64>, n_qubits: usize) -> QuantRS2Result<String> {
     let dim = 1usize << n_qubits;
     if state.len() != dim {
         return Err(QuantRS2Error::InvalidInput(format!(
@@ -133,11 +130,7 @@ pub fn qsphere_plotly_json(
 
         // Marker colour encodes phase
         let phase = amp.im.atan2(amp.re);
-        let phase = if phase < 0.0 {
-            phase + 2.0 * pi
-        } else {
-            phase
-        };
+        let phase = if phase < 0.0 { phase + 2.0 * pi } else { phase };
         marker_colors.push(phase_to_color(phase));
 
         // Binary string label, e.g. "|101⟩"
@@ -145,10 +138,7 @@ pub fn qsphere_plotly_json(
             .rev()
             .map(|bit| if (x >> bit) & 1 == 1 { '1' } else { '0' })
             .collect();
-        hover_texts.push(format!(
-            "|{}⟩  p={:.4}  arg={:.3}rad",
-            label, prob, phase
-        ));
+        hover_texts.push(format!("|{}⟩  p={:.4}  arg={:.3}rad", label, prob, phase));
     }
 
     // Background sphere surface

@@ -69,11 +69,11 @@ fn main() {
 
     println!("Top 5 results:");
     for (i, r) in results.iter().take(5).enumerate() {
-        let mut assignments: Vec<(String, bool)> = r.assignments.iter()
-            .map(|(k, &v)| (k.clone(), v))
-            .collect();
+        let mut assignments: Vec<(String, bool)> =
+            r.assignments.iter().map(|(k, &v)| (k.clone(), v)).collect();
         assignments.sort_by_key(|(k, _)| k.clone());
-        let assignment_str: Vec<String> = assignments.iter()
+        let assignment_str: Vec<String> = assignments
+            .iter()
             .map(|(k, v)| format!("{k}={}", i32::from(*v)))
             .collect();
         println!(

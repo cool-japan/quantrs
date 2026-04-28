@@ -265,7 +265,7 @@ mod tests {
     fn test_measure_logical_x() {
         let mut frame = PauliFrame::new(3);
         frame.z_frame[0] = true; // Z error on logical X support qubit
-        // logical X support = [0] → odd parity of z_frame → logical Z error detected
+                                 // logical X support = [0] → odd parity of z_frame → logical Z error detected
         assert!(frame.measure_logical_x(&[0]));
         assert!(!frame.measure_logical_x(&[1]));
     }

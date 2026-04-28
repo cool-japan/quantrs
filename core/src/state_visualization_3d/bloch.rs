@@ -201,10 +201,7 @@ pub fn bloch_array_plotly_json(
     }
 
     if let Value::Object(ref mut layout_map) = layout {
-        layout_map.insert(
-            "title".to_string(),
-            json!("Bloch Sphere Array"),
-        );
+        layout_map.insert("title".to_string(), json!("Bloch Sphere Array"));
         layout_map.insert("showlegend".to_string(), json!(false));
         layout_map.insert("height".to_string(), json!(400 * rows));
     }

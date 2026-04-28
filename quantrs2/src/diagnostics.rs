@@ -22,6 +22,7 @@
 use crate::config::Config;
 use crate::version::{check_compatibility, VersionInfo};
 use std::fmt;
+use std::sync::OnceLock;
 
 /// Diagnostic severity level
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -168,9 +169,22 @@ pub struct SystemCapabilities {
     pub has_neon: bool,
 }
 
+/// Global cache for system capabilities (expensive to detect repeatedly)
+static SYSTEM_CAPABILITIES_CACHE: OnceLock<SystemCapabilities> = OnceLock::new();
+
 impl SystemCapabilities {
-    /// Detect system capabilities
+    /// Detect system capabilities, caching the result for subsequent calls.
+    ///
+    /// The first call performs the full detection (including subprocess spawning on macOS).
+    /// All subsequent calls return a clone of the cached result at near-zero cost.
     pub fn detect() -> Self {
+        SYSTEM_CAPABILITIES_CACHE
+            .get_or_init(Self::detect_uncached)
+            .clone()
+    }
+
+    /// Perform a fresh (uncached) detection of system capabilities.
+    fn detect_uncached() -> Self {
         // Detect CPU cores
         let cpu_cores = num_cpus::get();
 

@@ -152,9 +152,8 @@ mod tests {
 
     #[test]
     fn test_odd_n_returns_none() {
-        let result =
-            min_weight_perfect_matching(3, &[(0, 1, 1.0), (1, 2, 2.0), (0, 2, 3.0)])
-                .expect("should succeed (not error)");
+        let result = min_weight_perfect_matching(3, &[(0, 1, 1.0), (1, 2, 2.0), (0, 2, 3.0)])
+            .expect("should succeed (not error)");
         assert_eq!(result, None, "Odd n must return None");
     }
 
@@ -192,13 +191,20 @@ mod tests {
             .expect("should succeed")
             .expect("matching exists");
         assert_eq!(result.len(), 2);
-        let total_weight: f64 = result.iter().map(|&(u, v)| {
-            edges.iter()
-                .find(|&&(a, b, _)| (a==u && b==v) || (a==v && b==u))
-                .map(|&(_, _, w)| w)
-                .unwrap_or(f64::INFINITY)
-        }).sum();
-        assert!((total_weight - 2.0).abs() < 1e-9, "Optimal cost should be 2.0, got {total_weight}");
+        let total_weight: f64 = result
+            .iter()
+            .map(|&(u, v)| {
+                edges
+                    .iter()
+                    .find(|&&(a, b, _)| (a == u && b == v) || (a == v && b == u))
+                    .map(|&(_, _, w)| w)
+                    .unwrap_or(f64::INFINITY)
+            })
+            .sum();
+        assert!(
+            (total_weight - 2.0).abs() < 1e-9,
+            "Optimal cost should be 2.0, got {total_weight}"
+        );
     }
 
     #[test]
@@ -211,8 +217,12 @@ mod tests {
             (1, 3, 2.0),
             (2, 3, 6.0),
         ];
-        let r1 = min_weight_perfect_matching(4, &edges).expect("ok").expect("match");
-        let r2 = min_weight_perfect_matching(4, &edges).expect("ok").expect("match");
+        let r1 = min_weight_perfect_matching(4, &edges)
+            .expect("ok")
+            .expect("match");
+        let r2 = min_weight_perfect_matching(4, &edges)
+            .expect("ok")
+            .expect("match");
         assert_eq!(r1, r2, "Same input must produce same output");
     }
 
@@ -230,7 +240,7 @@ mod tests {
         let n = 6;
         let mut edges = Vec::new();
         for i in 0..n {
-            for j in i+1..n {
+            for j in i + 1..n {
                 edges.push((i, j, weights[i][j]));
             }
         }
@@ -238,7 +248,7 @@ mod tests {
         let dp_result = min_weight_perfect_matching(n, &edges)
             .expect("should succeed")
             .expect("matching exists");
-        let dp_cost: f64 = dp_result.iter().map(|&(u,v)| weights[u][v]).sum();
+        let dp_cost: f64 = dp_result.iter().map(|&(u, v)| weights[u][v]).sum();
 
         // Brute-force: enumerate all 15 perfect matchings of 6 vertices
         // A perfect matching of {0,1,2,3,4,5}: fix vertex 0, pair with each of 1..5,
@@ -260,9 +270,11 @@ mod tests {
     fn test_no_matching_disconnected() {
         // n=4 with only one edge 0-1: vertices 2,3 are isolated → no perfect matching
         let edges = vec![(0, 1, 1.0)];
-        let result = min_weight_perfect_matching(4, &edges)
-            .expect("should succeed");
-        assert_eq!(result, None, "Disconnected graph should have no perfect matching");
+        let result = min_weight_perfect_matching(4, &edges).expect("should succeed");
+        assert_eq!(
+            result, None,
+            "Disconnected graph should have no perfect matching"
+        );
     }
 
     fn brute_force_min_matching(n: usize, weights: &[[f64; 6]]) -> f64 {

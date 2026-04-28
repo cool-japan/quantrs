@@ -227,12 +227,7 @@ impl SBSampler {
     }
 
     /// Run a single SB trajectory on a QUBO problem
-    fn run_single_qubo(
-        &self,
-        q_flat: &[f64],
-        n: usize,
-        rng: &mut StdRng,
-    ) -> (Vec<bool>, f64) {
+    fn run_single_qubo(&self, q_flat: &[f64], n: usize, rng: &mut StdRng) -> (Vec<bool>, f64) {
         if n == 0 {
             return (vec![], 0.0);
         }
@@ -250,12 +245,8 @@ impl SBSampler {
         let time_steps = self.params.time_steps;
 
         // Initialize x and y with small random values
-        let mut x_vec: Vec<f64> = (0..n)
-            .map(|_| rng.random_range(-0.1f64..0.1f64))
-            .collect();
-        let mut y_vec: Vec<f64> = (0..n)
-            .map(|_| rng.random_range(-0.1f64..0.1f64))
-            .collect();
+        let mut x_vec: Vec<f64> = (0..n).map(|_| rng.random_range(-0.1f64..0.1f64)).collect();
+        let mut y_vec: Vec<f64> = (0..n).map(|_| rng.random_range(-0.1f64..0.1f64)).collect();
 
         for t in 0..time_steps {
             let a = a_init + (a_final - a_init) * t as f64 / time_steps as f64;
@@ -350,9 +341,12 @@ impl SBSampler {
             ));
         }
 
-        let q_flat: Vec<f64> = q2.as_slice().ok_or_else(|| {
-            SamplerError::InvalidParameter("Non-contiguous QUBO matrix".to_string())
-        })?.to_vec();
+        let q_flat: Vec<f64> = q2
+            .as_slice()
+            .ok_or_else(|| {
+                SamplerError::InvalidParameter("Non-contiguous QUBO matrix".to_string())
+            })?
+            .to_vec();
 
         let mut solution_counts: HashMap<Vec<bool>, (f64, usize)> = HashMap::new();
 
@@ -496,9 +490,7 @@ mod tests {
         let r1 = s1
             .run_qubo(&(q.clone(), var_map.clone()), 10)
             .expect("Run 1 failed");
-        let r2 = s2
-            .run_qubo(&(q, var_map), 10)
-            .expect("Run 2 failed");
+        let r2 = s2.run_qubo(&(q, var_map), 10).expect("Run 2 failed");
 
         assert_eq!(r1.len(), r2.len(), "Result lengths differ");
         for (a, b) in r1.iter().zip(r2.iter()) {
@@ -508,7 +500,10 @@ mod tests {
                 a.energy,
                 b.energy
             );
-            assert_eq!(a.assignments, b.assignments, "Assignments differ for same seed");
+            assert_eq!(
+                a.assignments, b.assignments,
+                "Assignments differ for same seed"
+            );
         }
     }
 

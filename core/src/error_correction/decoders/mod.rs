@@ -17,11 +17,11 @@ pub use mwpm::MwpmSurfaceDecoder;
 pub use union_find::UnionFindDecoder;
 
 // Re-export legacy decoder for backward compatibility
+use crate::error::{QuantRS2Error, QuantRS2Result};
 use crate::error_correction::pauli::{Pauli, PauliString};
 use crate::error_correction::stabilizer::StabilizerCode;
 use crate::error_correction::surface_code::SurfaceCode;
 use crate::error_correction::SyndromeDecoder;
-use crate::error::{QuantRS2Error, QuantRS2Result};
 
 /// Minimum Weight Perfect Matching decoder for surface codes (legacy).
 ///

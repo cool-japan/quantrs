@@ -24,8 +24,7 @@ fn coherent_state_tensor(theta: f64, phi: f64, n_qubits: usize) -> Array1<Comple
     let dim = 1usize << n_qubits;
     // Single-qubit coherent-state amplitudes
     let c0 = Complex64::new((theta / 2.0).cos(), 0.0);
-    let c1 =
-        Complex64::from_polar((theta / 2.0).sin(), phi);
+    let c1 = Complex64::from_polar((theta / 2.0).sin(), phi);
 
     let mut state = Array1::zeros(dim);
     // Each basis index encodes n bits; the k-th qubit contributes c0 or c1
@@ -44,12 +43,7 @@ fn coherent_state_tensor(theta: f64, phi: f64, n_qubits: usize) -> Array1<Comple
 
 /// Compute Q(θ, φ) = |⟨α(θ,φ)|ψ⟩|²  (no extra 1/π factor needed here
 /// since we only use Q for visualisation, not for phase-space integrals).
-fn husimi_q(
-    state: &Array1<Complex64>,
-    theta: f64,
-    phi: f64,
-    n_qubits: usize,
-) -> f64 {
+fn husimi_q(state: &Array1<Complex64>, theta: f64, phi: f64, n_qubits: usize) -> f64 {
     let coherent = coherent_state_tensor(theta, phi, n_qubits);
     let inner: Complex64 = coherent
         .iter()
@@ -63,10 +57,7 @@ fn husimi_q(
 ///
 /// The Q-function is evaluated on a 64×64 grid of (θ, φ) angles
 /// and rendered as a 3D surface.
-pub fn husimi_plotly_json(
-    state: &Array1<Complex64>,
-    n_qubits: usize,
-) -> QuantRS2Result<String> {
+pub fn husimi_plotly_json(state: &Array1<Complex64>, n_qubits: usize) -> QuantRS2Result<String> {
     let dim = 1usize << n_qubits;
     if state.len() != dim {
         return Err(QuantRS2Error::InvalidInput(format!(
@@ -85,9 +76,7 @@ pub fn husimi_plotly_json(
     let pi = std::f64::consts::PI;
     let n = GRID_SIZE;
 
-    let theta_vals: Vec<f64> = (0..n)
-        .map(|i| pi * (i as f64) / ((n - 1) as f64))
-        .collect();
+    let theta_vals: Vec<f64> = (0..n).map(|i| pi * (i as f64) / ((n - 1) as f64)).collect();
     let phi_vals: Vec<f64> = (0..n)
         .map(|j| 2.0 * pi * (j as f64) / ((n - 1) as f64))
         .collect();

@@ -82,9 +82,7 @@ impl UnionFindDecoder {
         // A stabilizer ancilla is a BOUNDARY ancilla if and only if it is a half-plaquette
         // (weight 2). Interior plaquettes have weight 4.
         // Boundary neutrality: a defect cluster is "neutral" if it contains a boundary ancilla.
-        let is_boundary_stab: Vec<bool> = (0..n_stabs)
-            .map(|i| stabilizers[i].len() < 4)
-            .collect();
+        let is_boundary_stab: Vec<bool> = (0..n_stabs).map(|i| stabilizers[i].len() < 4).collect();
 
         let n_defects = defects.len();
 
@@ -160,7 +158,14 @@ impl UnionFindDecoder {
                         let (r2, c2) = defect_coords[j];
                         let dist = (r1 - r2).abs() + (c1 - c2).abs();
                         if dist <= threshold {
-                            union(&mut parent, &mut rank, &mut neutral, &mut cluster_defects, i, j);
+                            union(
+                                &mut parent,
+                                &mut rank,
+                                &mut neutral,
+                                &mut cluster_defects,
+                                i,
+                                j,
+                            );
                             merged = true;
                             // After merging, update neutrality for the new root:
                             // a cluster is neutral if any of its defects is a boundary ancilla.
@@ -241,12 +246,7 @@ impl UnionFindDecoder {
                 // Pair remaining defects within the cluster.
                 let paired = greedy_pair(&remaining, &defect_coords);
                 for (a, b) in paired {
-                    let path = manhattan_path_between_stabs(
-                        stabilizers,
-                        defects[a],
-                        defects[b],
-                        d,
-                    );
+                    let path = manhattan_path_between_stabs(stabilizers, defects[a], defects[b], d);
                     for qubit in path {
                         corrections.push((qubit, correction_type));
                     }
@@ -255,12 +255,7 @@ impl UnionFindDecoder {
                 // Even cluster: pair all defects internally.
                 let paired = greedy_pair(cluster, &defect_coords);
                 for (a, b) in paired {
-                    let path = manhattan_path_between_stabs(
-                        stabilizers,
-                        defects[a],
-                        defects[b],
-                        d,
-                    );
+                    let path = manhattan_path_between_stabs(stabilizers, defects[a], defects[b], d);
                     for qubit in path {
                         corrections.push((qubit, correction_type));
                     }
@@ -377,21 +372,37 @@ fn boundary_path(
     let mut path = vec![target_qubit];
     if use_row_boundary {
         // Move to row 0 or row d-1
-        let target_row = if qr <= (d as isize / 2) { 0 } else { d as isize - 1 };
+        let target_row = if qr <= (d as isize / 2) {
+            0
+        } else {
+            d as isize - 1
+        };
         let mut cur_r = qr;
         let cur_c = qc;
         while cur_r != target_row {
-            if cur_r > target_row { cur_r -= 1; } else { cur_r += 1; }
+            if cur_r > target_row {
+                cur_r -= 1;
+            } else {
+                cur_r += 1;
+            }
             if cur_r >= 0 && cur_r < d as isize {
                 path.push((cur_r as usize) * d + cur_c as usize);
             }
         }
     } else {
-        let target_col = if qc <= (d as isize / 2) { 0 } else { d as isize - 1 };
+        let target_col = if qc <= (d as isize / 2) {
+            0
+        } else {
+            d as isize - 1
+        };
         let cur_r = qr;
         let mut cur_c = qc;
         while cur_c != target_col {
-            if cur_c > target_col { cur_c -= 1; } else { cur_c += 1; }
+            if cur_c > target_col {
+                cur_c -= 1;
+            } else {
+                cur_c += 1;
+            }
             if cur_c >= 0 && cur_c < d as isize {
                 path.push(cur_r as usize * d + cur_c as usize);
             }
@@ -476,11 +487,19 @@ fn manhattan_path_between_stabs(
 
     while r != r_end {
         path.push((r as usize) * d + (c as usize));
-        if r < r_end { r += 1; } else { r -= 1; }
+        if r < r_end {
+            r += 1;
+        } else {
+            r -= 1;
+        }
     }
     while c != c_end {
         path.push((r as usize) * d + (c as usize));
-        if c < c_end { c += 1; } else { c -= 1; }
+        if c < c_end {
+            c += 1;
+        } else {
+            c -= 1;
+        }
     }
     path.push((r as usize) * d + (c as usize));
 

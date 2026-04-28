@@ -59,9 +59,34 @@ fn bar_mesh(
     width: f64,
     depth: f64,
     height: f64,
-) -> ([f64; 8], [f64; 8], [f64; 8], [usize; 12], [usize; 12], [usize; 12]) {
-    let x = [xi, xi + width, xi + width, xi, xi, xi + width, xi + width, xi];
-    let y = [yi, yi, yi + depth, yi + depth, yi, yi, yi + depth, yi + depth];
+) -> (
+    [f64; 8],
+    [f64; 8],
+    [f64; 8],
+    [usize; 12],
+    [usize; 12],
+    [usize; 12],
+) {
+    let x = [
+        xi,
+        xi + width,
+        xi + width,
+        xi,
+        xi,
+        xi + width,
+        xi + width,
+        xi,
+    ];
+    let y = [
+        yi,
+        yi,
+        yi + depth,
+        yi + depth,
+        yi,
+        yi,
+        yi + depth,
+        yi + depth,
+    ];
     // Bottom face z=0, top face z=height; ensure non-degenerate for tiny heights
     let z_top = if height.abs() < 1e-15 { 1e-15 } else { height };
     let z = [0.0, 0.0, 0.0, 0.0, z_top, z_top, z_top, z_top];
@@ -76,20 +101,13 @@ fn bar_mesh(
 /// Build all mesh3d data for a d×d matrix as accumulated bar mesh.
 ///
 /// Returns a Plotly `mesh3d` trace value.
-fn matrix_to_mesh3d(
-    values: &Array2<f64>,
-    scene: &str,
-    title: &str,
-) -> Value {
+fn matrix_to_mesh3d(values: &Array2<f64>, scene: &str, title: &str) -> Value {
     let d = values.nrows();
     let bar_size = 0.7f64; // width/depth of each bar (leaves gap between bars)
     let gap = 1.0f64; // spacing between bar centres
 
     // Find max absolute value for colour scaling
-    let vmax = values
-        .iter()
-        .map(|v| v.abs())
-        .fold(0.0_f64, f64::max);
+    let vmax = values.iter().map(|v| v.abs()).fold(0.0_f64, f64::max);
 
     // Accumulate all bars into a single mesh3d trace
     let mut all_x: Vec<f64> = Vec::new();
@@ -181,9 +199,7 @@ pub fn density_matrix_bars_plotly_json(
     let im_trace = matrix_to_mesh3d(&im_matrix, "scene2", "Im(ρ)");
 
     // Tick configuration for axes
-    let tick_vals: Vec<f64> = (0..dim)
-        .map(|k| (k as f64) * 1.0 + 0.35)
-        .collect();
+    let tick_vals: Vec<f64> = (0..dim).map(|k| (k as f64) * 1.0 + 0.35).collect();
     let tick_text: Vec<String> = labels.clone();
 
     let axis_def = json!({

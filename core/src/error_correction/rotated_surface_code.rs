@@ -49,9 +49,8 @@ impl RotatedSurfaceCode {
         assert!(d >= 2, "Surface code distance must be at least 2");
 
         // Data qubits: d² positions in row-major order
-        let data_qubits: Vec<(usize, usize)> = (0..d)
-            .flat_map(|r| (0..d).map(move |c| (r, c)))
-            .collect();
+        let data_qubits: Vec<(usize, usize)> =
+            (0..d).flat_map(|r| (0..d).map(move |c| (r, c))).collect();
 
         // We represent ancilla positions in 2× integer coordinates to avoid floats.
         // A real-coordinate position (r + 0.5, c + 0.5) becomes (2r+1, 2c+1).
@@ -237,9 +236,7 @@ impl RotatedSurfaceCode {
     /// left column commutes with all stabilizers and anticommutes with the logical Z
     /// (top row) at qubit 0.
     pub fn logical_x_qubits(&self) -> Vec<usize> {
-        (0..self.distance)
-            .map(|r| r * self.distance)
-            .collect()
+        (0..self.distance).map(|r| r * self.distance).collect()
     }
 
     /// Logical Z operator: top row of data qubits, indices `[0, 1, ..., d-1]`.
@@ -284,17 +281,17 @@ impl RotatedSurfaceCode {
 
         // X stabilizer anticommutes with Z and Y errors
         for (i, stab) in x_stabs.iter().enumerate() {
-            let anti = stab.iter().any(|&q| {
-                q < error.paulis.len() && matches!(error.paulis[q], Pauli::Z | Pauli::Y)
-            });
+            let anti = stab
+                .iter()
+                .any(|&q| q < error.paulis.len() && matches!(error.paulis[q], Pauli::Z | Pauli::Y));
             syndrome[i] = anti;
         }
 
         // Z stabilizer anticommutes with X and Y errors
         for (i, stab) in z_stabs.iter().enumerate() {
-            let anti = stab.iter().any(|&q| {
-                q < error.paulis.len() && matches!(error.paulis[q], Pauli::X | Pauli::Y)
-            });
+            let anti = stab
+                .iter()
+                .any(|&q| q < error.paulis.len() && matches!(error.paulis[q], Pauli::X | Pauli::Y));
             syndrome[n_x + i] = anti;
         }
 
@@ -403,9 +400,7 @@ mod tests {
         let lz = code.logical_z_operator();
         // Logical X (top row) and logical Z (left column) share qubit (0,0).
         // X on qubit 0 and Z on qubit 0 anticommute → overall anticommutation.
-        let commutes = lx
-            .commutes_with(&lz)
-            .expect("commutes_with should succeed");
+        let commutes = lx.commutes_with(&lz).expect("commutes_with should succeed");
         assert!(
             !commutes,
             "Logical X and logical Z should anticommute for surface code"
@@ -465,19 +460,32 @@ mod tests {
         let z_stabs = code.z_stabilizers();
         let x_boundary_count = x_stabs.iter().filter(|s| s.len() == 2).count();
         let z_boundary_count = z_stabs.iter().filter(|s| s.len() == 2).count();
-        assert_eq!(x_boundary_count, 2, "d=3 should have 2 X boundary (weight-2) stabilizers");
-        assert_eq!(z_boundary_count, 2, "d=3 should have 2 Z boundary (weight-2) stabilizers");
+        assert_eq!(
+            x_boundary_count, 2,
+            "d=3 should have 2 X boundary (weight-2) stabilizers"
+        );
+        assert_eq!(
+            z_boundary_count, 2,
+            "d=3 should have 2 Z boundary (weight-2) stabilizers"
+        );
     }
 
     #[test]
     fn test_all_stabilizers_cover_valid_qubits_d3() {
         let code = RotatedSurfaceCode::new(3);
         let n = code.n_data_qubits();
-        for stab in code.x_stabilizers().iter().chain(code.z_stabilizers().iter()) {
+        for stab in code
+            .x_stabilizers()
+            .iter()
+            .chain(code.z_stabilizers().iter())
+        {
             for &q in stab {
                 assert!(q < n, "Stabilizer qubit index {q} out of bounds for n={n}");
             }
-            assert!(stab.len() >= 2 && stab.len() <= 4, "Stabilizer weight must be 2 or 4");
+            assert!(
+                stab.len() >= 2 && stab.len() <= 4,
+                "Stabilizer weight must be 2 or 4"
+            );
         }
     }
 

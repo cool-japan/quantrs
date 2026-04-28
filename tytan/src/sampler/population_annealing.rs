@@ -169,13 +169,7 @@ impl PopulationAnnealingSampler {
     }
 
     /// Update influence vector after flipping bit k
-    fn update_influence_flat(
-        g: &mut [f64],
-        q_matrix: &[f64],
-        k: usize,
-        new_val: bool,
-        n: usize,
-    ) {
+    fn update_influence_flat(g: &mut [f64], q_matrix: &[f64], k: usize, new_val: bool, n: usize) {
         let delta = if new_val { 1.0 } else { -1.0 };
         for i in 0..n {
             if i != k {
@@ -329,8 +323,7 @@ impl PopulationAnnealingSampler {
 
                 for _ in 0..sweeps_per_step {
                     for i in 0..n {
-                        let delta_e =
-                            (1.0 - 2.0 * if state[i] { 1.0 } else { 0.0 }) * g[i];
+                        let delta_e = (1.0 - 2.0 * if state[i] { 1.0 } else { 0.0 }) * g[i];
                         // Metropolis acceptance: flip with probability 1 / (1 + exp(beta * delta_e))
                         let accept = if delta_e <= 0.0 {
                             true
@@ -352,8 +345,7 @@ impl PopulationAnnealingSampler {
 
             // Compute importance weights w_r = exp(-delta_beta * E_r)
             // Use log-sum-exp trick for numerical stability
-            let log_weights: Vec<f64> =
-                energies.iter().map(|&e| -delta_beta * e).collect();
+            let log_weights: Vec<f64> = energies.iter().map(|&e| -delta_beta * e).collect();
             let max_log_w = log_weights
                 .iter()
                 .cloned()
@@ -476,8 +468,7 @@ impl PopulationAnnealingSampler {
                 energies[r] = energy;
             }
 
-            let log_weights: Vec<f64> =
-                energies.iter().map(|&e| -delta_beta * e).collect();
+            let log_weights: Vec<f64> = energies.iter().map(|&e| -delta_beta * e).collect();
             let max_log_w = log_weights
                 .iter()
                 .cloned()
@@ -572,9 +563,12 @@ impl PopulationAnnealingSampler {
                 ));
             }
 
-            let q_flat: Vec<f64> = q2.as_slice().ok_or_else(|| {
-                SamplerError::InvalidParameter("Non-contiguous QUBO matrix".to_string())
-            })?.to_vec();
+            let q_flat: Vec<f64> = q2
+                .as_slice()
+                .ok_or_else(|| {
+                    SamplerError::InvalidParameter("Non-contiguous QUBO matrix".to_string())
+                })?
+                .to_vec();
 
             self.run_pa_qubo(&q_flat, n, shots, run_seed)
         } else {
@@ -700,9 +694,7 @@ mod tests {
         let r1 = s1
             .run_qubo(&(q.clone(), var_map.clone()), 10)
             .expect("Run 1 failed");
-        let r2 = s2
-            .run_qubo(&(q, var_map), 10)
-            .expect("Run 2 failed");
+        let r2 = s2.run_qubo(&(q, var_map), 10).expect("Run 2 failed");
 
         assert_eq!(r1.len(), r2.len(), "Result lengths differ");
         for (a, b) in r1.iter().zip(r2.iter()) {
@@ -749,9 +741,7 @@ mod tests {
             .with_seed(5)
             .with_population(30);
 
-        let results = sampler
-            .run_qubo(&(q, var_map), 30)
-            .expect("PA run failed");
+        let results = sampler.run_qubo(&(q, var_map), 30).expect("PA run failed");
 
         // Verify ascending energy order
         for window in results.windows(2) {

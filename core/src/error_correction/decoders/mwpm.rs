@@ -214,9 +214,7 @@ impl MwpmSurfaceDecoder {
         // Run MWPM
         let matching = min_weight_perfect_matching(total_mwpm, &mwpm_edges)
             .map_err(|e| QuantRS2Error::InvalidInput(format!("MWPM failed: {e}")))?
-            .ok_or_else(|| {
-                QuantRS2Error::InvalidInput("No perfect matching found".to_string())
-            })?;
+            .ok_or_else(|| QuantRS2Error::InvalidInput("No perfect matching found".to_string()))?;
 
         // Lift matching to data qubit corrections
         let mut corrections: Vec<(usize, Pauli)> = Vec::new();
@@ -236,7 +234,8 @@ impl MwpmSurfaceDecoder {
             if let Some(real_v) = real_v_opt {
                 // Pair between two real defects
                 let b = defects[real_v];
-                let path_qubits = self.path_between_nodes(a, b, &parent, &qubit_edge, n_qubits, total_nodes);
+                let path_qubits =
+                    self.path_between_nodes(a, b, &parent, &qubit_edge, n_qubits, total_nodes);
                 for q in path_qubits {
                     corrections.push((q, correction_type));
                 }
@@ -252,7 +251,14 @@ impl MwpmSurfaceDecoder {
                     })
                     .unwrap_or(v_top);
 
-                let path_qubits = self.path_between_nodes(a, nearest_virt, &parent, &qubit_edge, n_qubits, total_nodes);
+                let path_qubits = self.path_between_nodes(
+                    a,
+                    nearest_virt,
+                    &parent,
+                    &qubit_edge,
+                    n_qubits,
+                    total_nodes,
+                );
                 for q in path_qubits {
                     corrections.push((q, correction_type));
                 }
@@ -418,7 +424,11 @@ mod tests {
         let n_z = decoder.code.z_stabilizers().len();
         let syndrome = vec![false; n_x + n_z];
         let correction = decoder.decode(&syndrome).expect("Decoding should succeed");
-        assert_eq!(correction.weight(), 0, "No-error syndrome should yield identity correction");
+        assert_eq!(
+            correction.weight(),
+            0,
+            "No-error syndrome should yield identity correction"
+        );
     }
 
     #[test]

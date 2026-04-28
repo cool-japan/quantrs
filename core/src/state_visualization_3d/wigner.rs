@@ -191,10 +191,7 @@ fn wigner_n2(state: &Array1<Complex64>) -> QuantRS2Result<[[f64; 4]; 4]> {
 ///
 /// Returns an `Err` for n ≥ 3 — the GF(2^n) construction is out of
 /// scope for this version.
-pub fn wigner_plotly_json(
-    state: &Array1<Complex64>,
-    n_qubits: usize,
-) -> QuantRS2Result<String> {
+pub fn wigner_plotly_json(state: &Array1<Complex64>, n_qubits: usize) -> QuantRS2Result<String> {
     match n_qubits {
         0 => Err(QuantRS2Error::InvalidInput(
             "n_qubits must be ≥ 1".to_string(),
@@ -240,13 +237,7 @@ fn build_wigner_heatmap_n1(w: &[[f64; 2]; 2]) -> QuantRS2Result<String> {
     let hovertext: Vec<Vec<String>> = (0..2)
         .map(|q| {
             (0..2)
-                .map(|p| {
-                    format!(
-                        "{} W={:.4}",
-                        labels[2 * q + p],
-                        w[q][p]
-                    )
-                })
+                .map(|p| format!("{} W={:.4}", labels[2 * q + p], w[q][p]))
                 .collect()
         })
         .collect();
@@ -293,9 +284,7 @@ fn build_wigner_heatmap_n2(w: &[[f64; 4]; 4]) -> QuantRS2Result<String> {
                 .map(|p| {
                     format!(
                         "q={} p={} W={:.4}",
-                        coord_labels[q],
-                        coord_labels[p],
-                        w[q][p]
+                        coord_labels[q], coord_labels[p], w[q][p]
                     )
                 })
                 .collect()

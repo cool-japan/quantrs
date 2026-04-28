@@ -3,9 +3,7 @@
 //! Demonstrates that all five visualization renderers produce valid
 //! Plotly JSON for the Bell state |Φ+⟩ = (|00⟩+|11⟩)/√2.
 
-use quantrs2_core::state_visualization_3d::{
-    bloch, density_bars, husimi, qsphere, wigner,
-};
+use quantrs2_core::state_visualization_3d::{bloch, density_bars, husimi, qsphere, wigner};
 use scirs2_core::ndarray::Array1;
 use scirs2_core::Complex64;
 
@@ -21,31 +19,25 @@ fn main() {
     let n_qubits = 2usize;
 
     // Bloch sphere array
-    let bloch_json = bloch::bloch_array_plotly_json(&bell, n_qubits)
-        .expect("Bloch array JSON failed");
-    let _: serde_json::Value =
-        serde_json::from_str(&bloch_json).expect("Bloch JSON not valid");
+    let bloch_json =
+        bloch::bloch_array_plotly_json(&bell, n_qubits).expect("Bloch array JSON failed");
+    let _: serde_json::Value = serde_json::from_str(&bloch_json).expect("Bloch JSON not valid");
     println!("  [OK] Bloch array — {} bytes", bloch_json.len());
 
     // Q-sphere
-    let qsphere_json = qsphere::qsphere_plotly_json(&bell, n_qubits)
-        .expect("Q-sphere JSON failed");
+    let qsphere_json = qsphere::qsphere_plotly_json(&bell, n_qubits).expect("Q-sphere JSON failed");
     let _: serde_json::Value =
         serde_json::from_str(&qsphere_json).expect("Q-sphere JSON not valid");
     println!("  [OK] Q-sphere — {} bytes", qsphere_json.len());
 
     // Wigner (n=2)
-    let wigner_json = wigner::wigner_plotly_json(&bell, n_qubits)
-        .expect("Wigner JSON failed");
-    let _: serde_json::Value =
-        serde_json::from_str(&wigner_json).expect("Wigner JSON not valid");
+    let wigner_json = wigner::wigner_plotly_json(&bell, n_qubits).expect("Wigner JSON failed");
+    let _: serde_json::Value = serde_json::from_str(&wigner_json).expect("Wigner JSON not valid");
     println!("  [OK] Wigner n=2 — {} bytes", wigner_json.len());
 
     // Husimi
-    let husimi_json = husimi::husimi_plotly_json(&bell, n_qubits)
-        .expect("Husimi JSON failed");
-    let _: serde_json::Value =
-        serde_json::from_str(&husimi_json).expect("Husimi JSON not valid");
+    let husimi_json = husimi::husimi_plotly_json(&bell, n_qubits).expect("Husimi JSON failed");
+    let _: serde_json::Value = serde_json::from_str(&husimi_json).expect("Husimi JSON not valid");
     println!("  [OK] Husimi — {} bytes", husimi_json.len());
 
     // Density matrix bars
