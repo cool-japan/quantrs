@@ -22,6 +22,9 @@ use scirs2_core::random::prelude::*;
 use scirs2_core::random::rngs::StdRng;
 use std::collections::HashMap;
 
+use super::energy::{
+    compute_influence_simd, energy_full_simd, update_influence_simd,
+};
 use super::{SampleResult, Sampler, SamplerError, SamplerResult};
 
 /// Parameters for the Tabu Search algorithm
@@ -128,47 +131,28 @@ impl TabuSampler {
 
     /// Compute QUBO energy: E(x) = sum_{i,j} Q[i,j] * x[i] * x[j]
     ///
-    /// Uses the full matrix (symmetric or upper-triangular).
+    /// Delegates to [`energy_full_simd`] which uses 4-wide f64 SIMD for n >= 32.
+    #[inline]
     fn compute_qubo_energy(q_matrix: &[f64], state: &[bool], n: usize) -> f64 {
-        let mut energy = 0.0;
-        for i in 0..n {
-            if !state[i] {
-                continue;
-            }
-            for j in 0..n {
-                if state[j] {
-                    energy += q_matrix[i * n + j];
-                }
-            }
-        }
-        energy
+        energy_full_simd(state, q_matrix, n)
     }
 
-    /// Initialize the influence vector g[i] = sum_j (Q[i,j] + Q[j,i]) * x[j] - Q[i,i] * x[i]
+    /// Initialize the influence vector g[i] = Q[i,i] + sum_{j!=i} (Q[i,j] + Q[j,i]) * x[j]
     ///
-    /// g[i] represents the effective field on bit i:
     /// ΔE from flipping bit i = (1 - 2*x[i]) * g[i]
-    /// where g[i] = Q[i,i] + sum_{j!=i} (Q[i,j] + Q[j,i]) * x[j]
+    ///
+    /// Delegates to [`compute_influence_simd`] which uses SIMD for n >= 32.
+    #[inline]
     fn compute_influence_vector(q_matrix: &[f64], state: &[bool], n: usize) -> Vec<f64> {
-        let mut g = vec![0.0f64; n];
-        for i in 0..n {
-            // Diagonal term
-            g[i] += q_matrix[i * n + i];
-            // Off-diagonal terms: sum over j != i of (Q[i,j] + Q[j,i]) * x[j]
-            for j in 0..n {
-                if j != i && state[j] {
-                    g[i] += q_matrix[i * n + j] + q_matrix[j * n + i];
-                }
-            }
-        }
-        g
+        compute_influence_simd(state, q_matrix, n)
     }
 
-    /// Update the influence vector after flipping bit k
+    /// Update the influence vector after flipping bit k.
     ///
-    /// After flipping x[k]: x[k] changes by delta = new_x[k] - old_x[k] in {-1, +1}.
     /// g[i] += (Q[i,k] + Q[k,i]) * delta  for i != k
-    /// g[k]: recompute fully or adjust: new g[k] remains same formula with new x[k] implicitly
+    ///
+    /// Delegates to [`update_influence_simd`] which uses SIMD for n >= 32.
+    #[inline]
     fn update_influence_vector(
         g: &mut [f64],
         q_matrix: &[f64],
@@ -176,14 +160,7 @@ impl TabuSampler {
         flipped_to: bool,
         n: usize,
     ) {
-        let delta = if flipped_to { 1.0 } else { -1.0 };
-        for i in 0..n {
-            if i != k {
-                g[i] += (q_matrix[i * n + k] + q_matrix[k * n + i]) * delta;
-            }
-        }
-        // g[k] itself: diagonal term is constant, off-diagonals depend on other bits (not x[k])
-        // No change needed for g[k] from flipping k itself
+        update_influence_simd(g, q_matrix, n, k, flipped_to);
     }
 
     /// Run a single tabu search on a QUBO problem encoded as flat matrix

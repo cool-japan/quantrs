@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — v0.2.0
+
+### Added
+
+- **Contribution Governance**: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md` — project contribution guidelines, community conduct policy, and security-disclosure workflow (responsible disclosure via `kitahata@gmail.com`, embargo/coordinated-disclosure policy, supported-version table).
+
+- **Quantum Error Correction — Surface Codes**: Production-grade QEC stack in `core/src/error_correction/`:
+  - `RotatedSurfaceCode` — `d × d` rotated planar surface code with data/X-ancilla/Z-ancilla qubit layout, stabilizer schedule, logical operator extraction; supports d=3, 5, 7.
+  - `MwpmSurfaceDecoder` — bitmask-DP minimum-weight perfect matching (O(n²·2^n), optimal for ≤24 defects, i.e. d≤7 surface code); Dijkstra over rotated lattice for syndrome-graph edge weights.
+  - `UnionFindDecoder` — Delfosse-Nickerson weighted union-find decoder with peeling.
+  - `PauliFrame` — Clifford-conjugation Pauli-frame tracker (H/S/CNOT propagation rules).
+  - Python bindings via `py::qec` (`PyRotatedSurfaceCode`, `PyMwpmSurfaceDecoder`, `PyUnionFindDecoder`, `PyPauliFrame`).
+
+- **3D Quantum State Visualization** (`core/src/state_visualization_3d/`): five Plotly-JSON renderers:
+  - Multi-qubit Bloch-sphere array (per-qubit reduced density matrix via `partial_trace`).
+  - Q-sphere (Qiskit-style, latitude ∝ Hamming weight, phase-colored markers).
+  - Discrete Wigner function (Wootters 1987 displacement operators for n=1,2; explicit error for n≥3).
+  - Husimi-Q distribution (spin-coherent state projection on 64×64 grid).
+  - Density-matrix 3D bar plot (Re/Im side-by-side, basis labels).
+  - Python bindings via `PyQuantumState3DVisualizer` with `{bloch_array,qsphere,wigner,husimi,density_bars}_html()`.
+
+- **Tytan Advanced Samplers** (`tytan/src/sampler/`): three new native-Rust QUBO/PUBO samplers:
+  - `TabuSampler` — FIFO-ring tabu search with O(n) incremental ΔE, aspiration criterion, restart-from-best strategy.
+  - `SBSampler` — Toshiba Simulated Bifurcation (Goto-Tatsumura-Dixon 2019) in two variants: Ballistic (bSB) and Discrete (dSB); symplectic Euler dynamics.
+  - `PopulationAnnealingSampler` — Hukushima-Iba population annealing with importance-weighted resampling and log-sum-exp ESS threshold.
+  - All three implement the canonical `Sampler` trait (`run_qubo`, `run_hobo`).
+
+- **Tytan Sampler Test Coverage** (`tytan/tests/sampler_tests.rs`): expanded from 278 to 1429 lines:
+  - Canonical problem suite: K4 Max-Cut, number partitioning, 3-SAT-as-QUBO.
+  - Cross-sampler agreement: SA, GA, PT, Tabu, SB (bSB+dSB), PA — all must find the same minimum on shared instances.
+  - Determinism tests: same seed → identical results.
+  - HOBO smoke tests: 3-body PUBO instances for all new samplers.
+  - Random-QUBO property tests: 20-seed sweep over n=4 instances with brute-force optimal verification.
+
+---
+
 ## [0.1.3] - 2026-03-27
 
 ### Further Enhancements (2026-03-27)

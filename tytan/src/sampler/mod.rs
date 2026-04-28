@@ -3,7 +3,11 @@
 //! This module provides various samplers (solvers) for QUBO and HOBO
 //! problems, including simulated annealing, genetic algorithms, and
 //! specialized hardware samplers.
+//!
+//! The [`energy`] submodule provides SIMD-accelerated QUBO energy evaluation
+//! functions that serve as the shared inner loop for all samplers.
 
+pub mod energy;
 pub mod errors;
 pub mod genetic_algorithm;
 pub mod gpu;
@@ -123,3 +127,10 @@ pub use population_annealing::PopulationAnnealingSampler;
 pub use simulated_annealing::SASampler;
 pub use simulated_bifurcation::{SBSampler, SBVariant};
 pub use tabu_search::TabuSampler;
+
+// Re-export energy module public interface
+pub use energy::{
+    build_dense_q, build_dense_q_from_array, compute_influence, compute_influence_simd,
+    energy_delta, energy_delta_from_array, energy_delta_simd, energy_full, energy_full_from_array,
+    energy_full_simd, update_influence, update_influence_simd,
+};

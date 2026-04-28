@@ -434,6 +434,23 @@ cargo test --features "parallel,scirs,plotters"
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) - Standards for respectful participation in the project
 - [SECURITY.md](SECURITY.md) - How to report security vulnerabilities responsibly
 
+### Tutorials
+
+Learn by example in `py/python/quantrs2/tutorials/`:
+
+| # | Tutorial | Topic |
+|---|----------|-------|
+| 01 | `01_bell_state` | Bell state preparation and measurement |
+| 02 | `02_vqe_h2` | VQE for H2 ground state energy |
+| 03 | `03_qaoa_maxcut` | QAOA for Max-Cut optimization |
+| 04 | `04_qec_surface_code` | QEC surface code threshold simulation |
+| 05 | `05_qubo_sampling` | QUBO sampling with multiple samplers |
+| 06 | `06_3d_state_visualization` | 3D quantum state visualization |
+| 07 | `07_parameterized_circuits` | Parameterized circuits and gradients |
+| 08 | `08_error_mitigation` | Probabilistic error cancellation |
+
+Run any tutorial with: `python -m quantrs2.tutorials.01_bell_state`
+
 ## License
 
 This project is licensed under the [Apache License, Version 2.0](../LICENSE).

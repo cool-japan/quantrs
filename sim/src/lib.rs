@@ -187,6 +187,7 @@ pub mod sparse;
 pub mod specialized_gates;
 pub mod specialized_simulator;
 pub mod stabilizer;
+pub mod state_vector_simd;
 pub mod statevector;
 pub mod stim_dem;
 pub mod stim_executor;

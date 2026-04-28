@@ -34,10 +34,6 @@
 - [ ] Add comprehensive examples for all major features
 - [x] Add contribution guidelines
 
-## Infrastructure
-
-- [ ] Publish Python package to PyPI
-
 ## SymEngine Integration (quantrs2-symengine-pure — 5,739 LoC, 333 public APIs)
 
 - [x] Complete SymEngine pure-Rust implementation (parser, eval, diff, simplify, quantum, matrix)
