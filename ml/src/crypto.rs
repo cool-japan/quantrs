@@ -1,3 +1,9 @@
+//! Quantum cryptography: QKD protocols and post-quantum key exchange.
+//!
+//! Provides simulations of BB84, E91, and B92 quantum key distribution
+//! protocols, plus lattice-based post-quantum key encapsulation suitable
+//! for integration with quantum-secured network protocols.
+
 use crate::error::{MLError, Result};
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_sim::statevector::StateVectorSimulator;

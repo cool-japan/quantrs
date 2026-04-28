@@ -29,9 +29,27 @@
 
 ## 1.0 Release Goals
 
-- [ ] Finalize public API for 1.0 release
-- [ ] Complete documentation for all public interfaces
-- [ ] Add comprehensive examples for all major features
+- [x] Finalize public API for 1.0 release (completed 2026-04-28)
+  - **Goal:** Concrete 1.0 API surface hardening: (a) add `#[non_exhaustive]` to all public enums/structs likely to gain variants; (b) fix naming-convention violations across the workspace; (c) audit and annotate `quantrs2/src/lib.rs` re-exports with doc comments and `#[doc(hidden)]` where appropriate; (d) add crate-level `//!` rustdoc to every `lib.rs` that lacks one; (e) ensure all `pub use` re-exports in the top-level aggregator crate have accompanying documentation.
+  - **Design:** Error enum sweep across core/sim/anneal/tytan/circuit/ml/device — add `#[non_exhaustive]` to extensible enums. Naming audit via clippy. Crate `//!` sweep for core/sim/anneal/circuit/ml/device. `quantrs2/src/lib.rs` audit with `#[doc(hidden)]` on internal-but-pub items.
+  - **Files:** `quantrs2/src/lib.rs`, `core/src/lib.rs`, `sim/src/lib.rs`, `anneal/src/lib.rs`, `tytan/src/lib.rs`, `circuit/src/lib.rs`, `ml/src/lib.rs`, `device/src/lib.rs` — targeted attribute + doc additions. No new files.
+  - **Prerequisites:** None.
+  - **Tests:** `cargo clippy --all-features --all-targets -- -D warnings` green. `cargo doc --no-deps -p quantrs2` zero warnings.
+  - **Risk:** `#[non_exhaustive]` may break exhaustive `match` in tests — add wildcard arms where needed.
+- [~] Complete documentation for all public interfaces (planned 2026-04-27)
+  - **Goal:** Zero rustdoc warnings workspace-wide. Every `pub fn`, `pub struct`, `pub enum`, and `pub trait` across all 10 crates must have at least one `///` doc line. Top 10 most-used public APIs per crate get runnable `# Examples` blocks.
+  - **Design:** Per-crate grep for bare `pub` items without preceding `///`. Add missing doc comments and `//!` module-level blocks. Add compilable `# Examples` for the 10 most-important types/functions per crate.
+  - **Files:** Doc-comment additions across all module source files. No new files.
+  - **Prerequisites:** Item 1 (API finalization) — complete first to stabilize the pub surface.
+  - **Tests:** `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` zero warnings. `cargo test --doc --workspace --all-features` all examples pass.
+  - **Risk:** Large mechanical scope — hundreds of pub items; mitigated by systematic per-crate approach.
+- [x] Add comprehensive examples for all major features (completed 2026-04-28)
+  - **Goal:** 15 runnable `examples/*.rs` binaries across 6 crates (core, sim, anneal, tytan, circuit, ml), each 100–200 lines demonstrating a key capability. Runnable via `cargo run --example <name> -p quantrs2-<crate>`.
+  - **Design:** core (bell_pair, grover_search, quantum_phase_estimation), sim (state_vector_demo, mps_ghz, noisy_circuit), anneal (ising_ground_state, max_cut_annealing), tytan (number_partition, max_cut_qubo, knapsack_pubo), circuit (compile_and_route, zx_optimize), ml (qnn_xor, amplitude_encoding).
+  - **Files:** 15 new `examples/*.rs` across 6 crates (~2500 LoC). Modify each crate's `Cargo.toml` for `[[example]]` stanzas as needed.
+  - **Prerequisites:** None — uses stable existing APIs only.
+  - **Tests:** All 15 examples run exit-0 via `cargo run --example <name> -p quantrs2-<crate> --all-features`.
+  - **Risk:** Examples may expose latent API bugs — fix any found rather than working around them.
 - [x] Add contribution guidelines
 
 ## SymEngine Integration (quantrs2-symengine-pure — 5,739 LoC, 333 public APIs)

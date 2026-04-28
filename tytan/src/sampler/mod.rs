@@ -1,11 +1,69 @@
 //! Samplers for solving QUBO/HOBO problems.
 //!
-//! This module provides various samplers (solvers) for QUBO and HOBO
-//! problems, including simulated annealing, genetic algorithms, and
-//! specialized hardware samplers.
+//! QuantRS2 Tytan provides five pure-Rust metaheuristic samplers for solving
+//! QUBO (Quadratic Unconstrained Binary Optimization) and HOBO (Higher-Order
+//! Binary Optimization) problems. All samplers implement the [`Sampler`] trait,
+//! which exposes a uniform `run_qubo` / `run_hobo` interface.
 //!
 //! The [`energy`] submodule provides SIMD-accelerated QUBO energy evaluation
 //! functions that serve as the shared inner loop for all samplers.
+//!
+//! # Sampler Comparison
+//!
+//! | Sampler | Type | Strengths | Typical problem size | Citation |
+//! |---------|------|-----------|----------------------|----------|
+//! | [`SASampler`] | Local search | Versatile, easy to tune | Small–large | Kirkpatrick 1983 |
+//! | [`GASampler`] | Evolutionary | Population diversity | Medium | Holland 1975 |
+//! | [`TabuSampler`] | Tabu search | Structured combinatorial | Small–medium | Glover 1989 |
+//! | [`SBSampler`] | Bifurcation dynamics | Large dense QUBO | Large | Goto 2019 |
+//! | [`PopulationAnnealingSampler`] | Population annealing | Ensemble, near-ground-state | Medium–large | Hukushima 2003 |
+//!
+//! # Choosing a Sampler
+//!
+//! - **Start with [`SASampler`]** for most problems. It is robust, has sensible
+//!   defaults, and handles both small and large instances.
+//! - **Use [`TabuSampler`]** for scheduling, routing, or other problems that have
+//!   a structured neighbourhood where recently-visited moves should be forbidden.
+//! - **Use [`SBSampler`]** for large, dense QUBO matrices (n ≥ 200) where SA is
+//!   too slow. The ballistic (`SBVariant::Ballistic`) variant converges faster;
+//!   discrete (`SBVariant::Discrete`) gives crisper spin assignments.
+//! - **Use [`PopulationAnnealingSampler`]** when you need an ensemble of
+//!   near-ground-state solutions or when the problem has a complex low-energy
+//!   landscape and you want thermodynamic statistics.
+//! - **Use [`GASampler`]** when the problem structure maps naturally to bitstring
+//!   chromosomes and crossover is likely to be productive (e.g., scheduling
+//!   problems with independent sub-problems).
+//!
+//! # Quick Example
+//!
+//! The following example solves a 3-variable Max-Cut QUBO (K3 graph) with the
+//! Simulated Annealing sampler:
+//!
+//! ```
+//! use quantrs2_tytan::sampler::{SASampler, Sampler};
+//! use scirs2_core::ndarray::Array;
+//! use std::collections::HashMap;
+//!
+//! // K3 Max-Cut: minimise -x0 - x1 - x2 + 2*x0*x1 + 2*x0*x2 + 2*x1*x2
+//! let mut q = Array::<f64, _>::zeros((3, 3));
+//! q[[0, 0]] = -1.0;
+//! q[[1, 1]] = -1.0;
+//! q[[2, 2]] = -1.0;
+//! q[[0, 1]] = 2.0;
+//! q[[0, 2]] = 2.0;
+//! q[[1, 2]] = 2.0;
+//!
+//! let mut var_map = HashMap::new();
+//! var_map.insert("x0".to_string(), 0);
+//! var_map.insert("x1".to_string(), 1);
+//! var_map.insert("x2".to_string(), 2);
+//!
+//! let sampler = SASampler::new(Some(42));
+//! let samples = sampler.run_qubo(&(q, var_map), 5).expect("SA sampler failed");
+//! assert!(!samples.is_empty());
+//! // Best solution is at index 0 (sorted by energy ascending)
+//! println!("Best energy: {}", samples[0].energy);
+//! ```
 
 pub mod energy;
 pub mod errors;

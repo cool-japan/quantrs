@@ -1,3 +1,9 @@
+//! Parametric gate support: symbolic and numeric parameter values.
+//!
+//! Defines [`Parameter`] and [`ParametricGate`] for circuits whose gate angles
+//! can be symbolic (for variational algorithms) or concrete numeric constants.
+//! Supports binding, differentiation, and parameter sweeps.
+
 use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::ops::{Add, Div, Mul, Sub};

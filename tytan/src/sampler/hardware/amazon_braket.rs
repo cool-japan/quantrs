@@ -13,6 +13,7 @@ use super::super::{SampleResult, Sampler, SamplerError, SamplerResult};
 
 /// Amazon Braket device types
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum BraketDevice {
     /// Local simulator (SV1)
     LocalSimulator,

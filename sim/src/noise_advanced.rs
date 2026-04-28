@@ -1,3 +1,9 @@
+//! Advanced noise models beyond simple single-qubit depolarising channels.
+//!
+//! Provides two-qubit correlated noise, crosstalk, leakage to higher energy
+//! levels, and time-dependent amplitude / phase damping noise channels for
+//! realistic device simulation.
+
 #![allow(clippy::needless_range_loop)]
 
 use scirs2_core::Complex64;

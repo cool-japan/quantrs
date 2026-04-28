@@ -1,7 +1,7 @@
 //! Husimi Q-distribution visualization for quantum states.
 //!
 //! Evaluates Q(θ, φ) = |⟨α(θ,φ)|^⊗n |ψ⟩|² on a 64×64 grid over
-//! the sphere (θ ∈ [0,π], φ ∈ [0,2π]), where |α(θ,φ)⟩ is the
+//! the sphere (θ ∈ \[0,π\], φ ∈ \[0,2π\]), where |α(θ,φ)⟩ is the
 //! single-qubit SU(2) coherent state and the n-qubit coherent state
 //! is the tensor product |α⟩^⊗n.
 

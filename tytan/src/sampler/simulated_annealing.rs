@@ -1,4 +1,77 @@
-//! Simulated Annealing Sampler Implementation
+//! # Simulated Annealing (SA) Sampler
+//!
+//! Simulated Annealing (SA) is a probabilistic optimization algorithm inspired by
+//! the annealing process in metallurgy, where controlled cooling reduces crystal
+//! defects. In combinatorial optimization, SA accepts worse solutions with a
+//! decreasing probability as a "temperature" parameter T decreases, allowing
+//! the search to escape local optima early in the run.
+//!
+//! ## Algorithm
+//!
+//! At each step:
+//!
+//! 1. Select a random bit flip (neighbour).
+//! 2. Compute ΔE = energy(flipped) − energy(current).
+//! 3. Accept the flip if ΔE < 0 (improvement), or with probability
+//!    `exp(-ΔE / T)` otherwise (Metropolis criterion).
+//! 4. Decrease T according to the cooling schedule.
+//!
+//! Geometric cooling: `T_k = T₀ · α^k`, where α ∈ (0, 1) is the cooling rate.
+//!
+//! ## Mathematical Formulation
+//!
+//! Given a QUBO matrix Q, the objective is to minimise:
+//!
+//! ```text
+//! E(x) = Σ_{i,j} Q[i,j] · x[i] · x[j],   x[i] ∈ {0, 1}
+//! ```
+//!
+//! The acceptance probability at temperature T for a move with energy change ΔE:
+//!
+//! ```text
+//! P(accept) = min(1, exp(-ΔE / T))
+//! ```
+//!
+//! ## Citation
+//!
+//! Kirkpatrick, S., Gelatt, C. D., & Vecchi, M. P. (1983).
+//! Optimization by Simulated Annealing.
+//! *Science*, 220(4598), 671–680.
+//! <https://doi.org/10.1126/science.220.4598.671>
+//!
+//! ## Parameters
+//!
+//! See [`quantrs2_anneal::simulator::AnnealingParams`] for all tunable parameters
+//! (initial temperature, cooling schedule, number of sweeps).
+//!
+//! ## When to Use
+//!
+//! - **Best for**: general-purpose QUBO/HOBO problems of any size.
+//! - **Strengths**: robust, easy to tune, works out of the box.
+//! - **Limitations**: slow on very large dense matrices compared to [`crate::sampler::SBSampler`].
+//!
+//! ## Usage
+//!
+//! ```
+//! use quantrs2_tytan::sampler::{SASampler, Sampler};
+//! use scirs2_core::ndarray::Array;
+//! use std::collections::HashMap;
+//!
+//! // Minimise: -x0 - x1 + 2*x0*x1  (mutual exclusion problem)
+//! let mut q = Array::<f64, _>::zeros((2, 2));
+//! q[[0, 0]] = -1.0;
+//! q[[1, 1]] = -1.0;
+//! q[[0, 1]] = 2.0;
+//!
+//! let mut var_map = HashMap::new();
+//! var_map.insert("x0".to_string(), 0);
+//! var_map.insert("x1".to_string(), 1);
+//!
+//! let sampler = SASampler::new(Some(42));
+//! let results = sampler.run_qubo(&(q, var_map), 5).expect("SA sampler failed");
+//! assert!(!results.is_empty());
+//! println!("Best energy: {}", results[0].energy);
+//! ```
 
 use scirs2_core::ndarray::{Array, Ix2};
 use scirs2_core::random::prelude::*;
@@ -17,9 +90,32 @@ use scirs2_core::parallel_ops::*;
 
 /// Simulated Annealing Sampler
 ///
-/// This sampler uses simulated annealing to find solutions to
-/// QUBO/HOBO problems. It is a local search method that uses
-/// temperature to control the acceptance of worse solutions.
+/// Probabilistic metaheuristic for QUBO/HOBO optimisation that uses a
+/// temperature schedule to control the probability of accepting worse
+/// solutions, allowing escape from local optima.
+///
+/// # Example
+///
+/// ```
+/// use quantrs2_tytan::sampler::{SASampler, Sampler};
+/// use scirs2_core::ndarray::Array;
+/// use std::collections::HashMap;
+///
+/// // Minimise: -x0 - x1 + 2*x0*x1  (mutual exclusion)
+/// let mut q = Array::<f64, _>::zeros((2, 2));
+/// q[[0, 0]] = -1.0;
+/// q[[1, 1]] = -1.0;
+/// q[[0, 1]] = 2.0;
+///
+/// let mut var_map = HashMap::new();
+/// var_map.insert("x0".to_string(), 0);
+/// var_map.insert("x1".to_string(), 1);
+///
+/// let sampler = SASampler::new(Some(42));
+/// let results = sampler.run_qubo(&(q, var_map), 5).expect("SA sampler failed");
+/// assert!(!results.is_empty());
+/// println!("Best energy: {}", results[0].energy);
+/// ```
 #[derive(Clone)]
 pub struct SASampler {
     /// Random number generator seed
@@ -116,7 +212,15 @@ impl SASampler {
             .map(|(var, &idx)| (idx, var.clone()))
             .collect();
 
-        // For QUBO problems, convert to quantrs-anneal format
+        // For QUBO problems, convert to quantrs-anneal format.
+        //
+        // Note: SASampler cannot use the SIMD energy functions from `super::energy` because
+        // it delegates all inner-loop computation to `quantrs2_anneal::ClassicalAnnealingSimulator`,
+        // which manages its own internal state representation and energy bookkeeping.
+        // The SIMD functions (energy_full_simd, energy_delta_simd, etc.) are designed for
+        // samplers that own a flat Vec<f64> q_matrix and iterate over bool states directly
+        // (see TabuSampler, PASampler, SBSampler). Integrating them here would require
+        // rewriting SA from scratch and abandoning the well-tested anneal crate backend.
         if matrix_or_tensor.ndim() == 2 {
             // Convert ndarray to a QuboModel
             let mut qubo = QuboModel::new(n_vars);

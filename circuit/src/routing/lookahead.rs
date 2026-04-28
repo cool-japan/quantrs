@@ -8,7 +8,7 @@ use crate::dag::{circuit_to_dag, CircuitDag, DagNode};
 use crate::routing::{CouplingMap, RoutedCircuit, RoutingResult};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
-    gate::{multi::SWAP, GateOp},
+    gate::{multi::SWAP, single::{RotationX, RotationY, RotationZ}, GateOp},
     qubit::QubitId,
 };
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -548,6 +548,30 @@ impl LookaheadRouter {
                 qubit1: new_qubits[0],
                 qubit2: new_qubits[1],
             })),
+            ("RZ", 1) => {
+                let theta = gate
+                    .as_any()
+                    .downcast_ref::<RotationZ>()
+                    .map(|g| g.theta)
+                    .unwrap_or(0.0);
+                Ok(Box::new(RotationZ { target: new_qubits[0], theta }))
+            }
+            ("RY", 1) => {
+                let theta = gate
+                    .as_any()
+                    .downcast_ref::<RotationY>()
+                    .map(|g| g.theta)
+                    .unwrap_or(0.0);
+                Ok(Box::new(RotationY { target: new_qubits[0], theta }))
+            }
+            ("RX", 1) => {
+                let theta = gate
+                    .as_any()
+                    .downcast_ref::<RotationX>()
+                    .map(|g| g.theta)
+                    .unwrap_or(0.0);
+                Ok(Box::new(RotationX { target: new_qubits[0], theta }))
+            }
             _ => Err(QuantRS2Error::UnsupportedOperation(format!(
                 "Cannot route gate {} with {} qubits",
                 gate.name(),

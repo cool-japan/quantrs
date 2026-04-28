@@ -556,6 +556,7 @@ mod benchmarks {
     use std::time::Instant;
 
     #[test]
+    #[ignore = "Benchmark test: run with cargo test -- --ignored in --release mode"]
     fn benchmark_sequence_generation() -> Result<(), crate::DeviceError> {
         let target_qubits = vec![quantrs2_core::qubit::QubitId(0)];
         let iterations = 1000;

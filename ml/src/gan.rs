@@ -1,3 +1,9 @@
+//! Quantum Generative Adversarial Networks (qGANs).
+//!
+//! Provides hybrid classical-quantum and fully-quantum GAN architectures.
+//! The generator and discriminator can each be classical networks, quantum
+//! circuits, or hybrid combinations, trained via adversarial min-max optimisation.
+
 use crate::error::{MLError, Result};
 use crate::qnn::QuantumNeuralNetwork;
 use quantrs2_circuit::prelude::Circuit;

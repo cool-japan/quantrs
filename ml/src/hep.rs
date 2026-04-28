@@ -1,3 +1,9 @@
+//! Quantum machine learning for high-energy physics (HEP) data analysis.
+//!
+//! Provides specialised data encodings and [`HEPQuantumClassifier`] for
+//! particle-physics datasets, supporting amplitude, angle, and IQP
+//! circuit-based feature maps tailored to HEP event topologies.
+
 use crate::classification::{ClassificationMetrics, Classifier};
 use crate::error::{MLError, Result};
 use crate::qnn::QuantumNeuralNetwork;

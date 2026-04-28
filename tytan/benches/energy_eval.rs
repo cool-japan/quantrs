@@ -1,4 +1,9 @@
-#![allow(clippy::pedantic)]
+#![allow(
+    clippy::pedantic,
+    clippy::unreadable_literal,
+    clippy::suboptimal_flops,
+    clippy::doc_lazy_continuation,
+)]
 //! Criterion benchmarks for SIMD-accelerated QUBO energy evaluation.
 //!
 //! Measures throughput of scalar vs SIMD implementations of:

@@ -62,6 +62,8 @@ python = ["dep:pyo3", "dep:scirs2-numpy"]  # Enable Python bindings with PyO3 an
 
 [dev-dependencies]
 criterion.workspace = true
+approx.workspace = true
+scirs2-core.workspace = true
 
 [[bench]]
 name = "simd_performance"

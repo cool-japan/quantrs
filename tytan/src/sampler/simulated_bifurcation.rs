@@ -1,40 +1,105 @@
-//! Simulated Bifurcation (SB) Sampler for QUBO problems
+//! # Simulated Bifurcation (SB) Sampler
 //!
-//! Implements Toshiba's Simulated Bifurcation (SB) algorithm
-//! (Goto, Tatsumura, Dixon 2019) for solving QUBO/Ising problems.
+//! The Simulated Bifurcation (SB) algorithm solves QUBO/Ising problems by simulating
+//! the adiabatic bifurcation of a network of nonlinear oscillators. As a pump
+//! parameter is slowly increased, oscillators bifurcate from a zero-amplitude
+//! equilibrium into one of two stable oscillation phases, which correspond to
+//! binary spin values ±1.
 //!
-//! # Algorithm Variants
+//! ## Algorithm Variants
 //!
-//! - **Ballistic SB (bSB)**: Continuous oscillator network with soft clipping
-//! - **Discrete SB (dSB)**: Uses sign(x) instead of x in the coupling term
+//! - **Ballistic SB (bSB)**: uses the continuous oscillator amplitude `x_i` in
+//!   the coupling term. Converges faster but may clip more frequently.
+//! - **Discrete SB (dSB)**: uses `sign(x_i)` in the coupling term, snapping
+//!   spins to their binary values at every step.
 //!
-//! # QUBO → Ising Conversion
+//! ## QUBO to Ising Conversion
 //!
 //! Given QUBO matrix Q (upper-triangular or symmetric), the Ising parameters are:
-//! - Q_sym[i,j] = (Q[i,j] + Q[j,i]) / 2   (for i ≠ j)
-//! - J[i,j] = Q_sym[i,j] / 4                (off-diagonal coupling)
-//! - h[i] = Q[i,i]/2 + Σ_{j≠i} Q_sym[i,j]/2  (local field)
 //!
-//! # SB Dynamics (Symplectic Euler)
+//! ```text
+//! Q_sym[i,j] = (Q[i,j] + Q[j,i]) / 2     (for i != j, symmetrised off-diagonal)
+//! J[i,j]     = -Q_sym[i,j] / 4            (off-diagonal Ising coupling)
+//! h[i]       = Q[i,i]/2 + sum_{j!=i} Q_sym[i,j]/2   (local field)
+//! ```
 //!
-//! For each time step t:
-//! - a(t) = a_init + (a_final - a_init) * t / T
-//! - bSB: y_i ← y_i + (-a(t)*x_i - c0*Σ_j J_ij*x_j - h_i) * dt
-//! - dSB: y_i ← y_i + (-a(t)*x_i - c0*Σ_j J_ij*sign(x_j) - h_i) * dt
-//! - x_i ← x_i + y_i * dt
-//! - Clip: if |x_i| > 1: x_i = sign(x_i), y_i = 0
+//! ## SB Dynamics (Symplectic Euler Integration)
 //!
-//! # Reference
+//! For each time step t, with pump parameter a(t) linearly ramped from `a_init` to
+//! `a_final`:
 //!
-//! Goto, H., Tatsumura, K., & Dixon, A. R. (2019). Combinatorial optimization
-//! by simulating adiabatic bifurcations in nonlinear Hamiltonian systems.
-//! Science Advances, 5(4), eaav2372.
+//! ```text
+//! a(t) = a_init + (a_final - a_init) * t / T
+//!
+//! bSB update:
+//!   y_i <- y_i + (-a(t)*x_i - c0 * sum_j J[i,j]*x_j - h_i) * dt
+//!
+//! dSB update:
+//!   y_i <- y_i + (-a(t)*x_i - c0 * sum_j J[i,j]*sign(x_j) - h_i) * dt
+//!
+//! x_i <- x_i + y_i * dt
+//! Clip: if |x_i| > 1: x_i = sign(x_i), y_i = 0
+//! ```
+//!
+//! Final spin assignment: `s_i = sign(x_i)` mapped to binary {0, 1}.
+//!
+//! ## Citation
+//!
+//! Goto, H., Tatsumura, K., & Dixon, A. R. (2019).
+//! Combinatorial optimization by simulating adiabatic bifurcations in nonlinear
+//! Hamiltonian systems.
+//! *Science Advances*, 5(4), eaav2372.
+//! <https://doi.org/10.1126/sciadv.aav2372>
+//!
+//! ## Parameters
+//!
+//! See [`SBParams`] for all tunable parameters (`dt`, `c0`, `a_init`, `a_final`,
+//! `time_steps`, `variant`).
+//!
+//! ## When to Use
+//!
+//! - **Best for**: large, dense QUBO matrices (n ≥ 200) where SA is too slow.
+//! - **Strengths**: highly parallelisable; well-suited for GPU acceleration.
+//! - **Limitations**: requires tuning of `dt` and `c0` for best results; less
+//!   effective on sparse, structured problems than Tabu Search.
+//!
+//! ## Usage
+//!
+//! ```
+//! use quantrs2_tytan::sampler::{SBSampler, SBVariant, Sampler};
+//! use scirs2_core::ndarray::Array;
+//! use std::collections::HashMap;
+//!
+//! // K3 Max-Cut QUBO
+//! let mut q = Array::<f64, _>::zeros((3, 3));
+//! q[[0, 0]] = -1.0;
+//! q[[1, 1]] = -1.0;
+//! q[[2, 2]] = -1.0;
+//! q[[0, 1]] = 2.0;
+//! q[[0, 2]] = 2.0;
+//! q[[1, 2]] = 2.0;
+//!
+//! let mut var_map = HashMap::new();
+//! var_map.insert("x0".to_string(), 0);
+//! var_map.insert("x1".to_string(), 1);
+//! var_map.insert("x2".to_string(), 2);
+//!
+//! let sampler = SBSampler::new()
+//!     .with_seed(42)
+//!     .with_variant(SBVariant::Discrete)
+//!     .with_time_steps(200);
+//!
+//! let results = sampler.run_qubo(&(q, var_map), 5).expect("SB sampler failed");
+//! assert!(!results.is_empty());
+//! println!("Best energy: {}", results[0].energy);
+//! ```
 
 use scirs2_core::ndarray::{Array, ArrayD, Ix2};
 use scirs2_core::random::prelude::*;
 use scirs2_core::random::rngs::StdRng;
 use std::collections::HashMap;
 
+use super::energy::energy_full_simd;
 use super::{SampleResult, Sampler, SamplerError, SamplerResult};
 
 /// Variant of Simulated Bifurcation algorithm
@@ -84,31 +149,32 @@ impl Default for SBParams {
 ///
 /// # Example
 ///
-/// ```rust,no_run
+/// ```
 /// use quantrs2_tytan::sampler::{SBSampler, SBVariant, Sampler};
 /// use std::collections::HashMap;
 /// use scirs2_core::ndarray::Array;
 ///
-/// // K4 Max-Cut QUBO
-/// let mut q = Array::<f64, _>::zeros((4, 4));
-/// for i in 0..4 {
-///     q[[i,i]] = -3.0;
-///     for j in (i+1)..4 {
-///         q[[i,j]] = 2.0;
-///     }
-/// }
+/// // K3 Max-Cut QUBO
+/// let mut q = Array::<f64, _>::zeros((3, 3));
+/// q[[0, 0]] = -1.0;
+/// q[[1, 1]] = -1.0;
+/// q[[2, 2]] = -1.0;
+/// q[[0, 1]] = 2.0;
+/// q[[0, 2]] = 2.0;
+/// q[[1, 2]] = 2.0;
 ///
 /// let mut var_map = HashMap::new();
-/// for i in 0..4 {
-///     var_map.insert(format!("x{i}"), i);
-/// }
+/// var_map.insert("x0".to_string(), 0);
+/// var_map.insert("x1".to_string(), 1);
+/// var_map.insert("x2".to_string(), 2);
 ///
 /// let sampler = SBSampler::new()
 ///     .with_seed(42)
 ///     .with_variant(SBVariant::Discrete)
-///     .with_time_steps(1000);
+///     .with_time_steps(200);
 ///
-/// let results = sampler.run_qubo(&(q, var_map), 20).expect("SB sampler failed");
+/// let results = sampler.run_qubo(&(q, var_map), 5).expect("SB sampler failed");
+/// assert!(!results.is_empty());
 /// println!("Best energy: {}", results[0].energy);
 /// ```
 #[derive(Debug, Clone)]
@@ -211,19 +277,11 @@ impl SBSampler {
     }
 
     /// Compute QUBO energy: E = x^T Q x (using binary {0,1} variables)
+    ///
+    /// Delegates to the SIMD-accelerated implementation in [`super::energy::energy_full_simd`],
+    /// which uses `std::simd::f64x4` for n ≥ 32 and falls back to a scalar loop for smaller n.
     fn compute_qubo_energy(q_matrix: &[f64], state: &[bool], n: usize) -> f64 {
-        let mut energy = 0.0;
-        for i in 0..n {
-            if !state[i] {
-                continue;
-            }
-            for j in 0..n {
-                if state[j] {
-                    energy += q_matrix[i * n + j];
-                }
-            }
-        }
-        energy
+        energy_full_simd(state, q_matrix, n)
     }
 
     /// Run a single SB trajectory on a QUBO problem

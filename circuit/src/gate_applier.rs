@@ -28,14 +28,32 @@ use crate::builder::{BarrierInfo, Circuit, Measure};
 impl<const N: usize> Circuit<N> {
     // ============ Single-Qubit Gates ============
 
-    /// Apply a Hadamard gate to a qubit
+    /// Apply a Hadamard gate to a qubit.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use quantrs2_circuit::builder::Circuit;
+    /// let mut circ: Circuit<2> = Circuit::new();
+    /// circ.h(0).expect("h gate failed");
+    /// assert_eq!(circ.num_gates(), 1);
+    /// ```
     pub fn h(&mut self, target: impl Into<QubitId>) -> QuantRS2Result<&mut Self> {
         self.add_gate(Hadamard {
             target: target.into(),
         })
     }
 
-    /// Apply a Pauli-X gate to a qubit
+    /// Apply a Pauli-X gate to a qubit (bit-flip / NOT gate).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use quantrs2_circuit::builder::Circuit;
+    /// let mut circ: Circuit<1> = Circuit::new();
+    /// circ.x(0).expect("x gate failed");
+    /// assert_eq!(circ.num_gates(), 1);
+    /// ```
     pub fn x(&mut self, target: impl Into<QubitId>) -> QuantRS2Result<&mut Self> {
         self.add_gate(PauliX {
             target: target.into(),
@@ -162,7 +180,18 @@ impl<const N: usize> Circuit<N> {
 
     // ============ Two-Qubit Gates ============
 
-    /// Apply a CNOT gate
+    /// Apply a CNOT gate (controlled-X).
+    ///
+    /// Flips `target` when `control` is |1⟩.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use quantrs2_circuit::builder::Circuit;
+    /// let mut circ: Circuit<2> = Circuit::new();
+    /// circ.h(0).expect("h failed").cnot(0, 1).expect("cnot failed");
+    /// assert_eq!(circ.num_gates(), 2);
+    /// ```
     pub fn cnot(
         &mut self,
         control: impl Into<QubitId>,

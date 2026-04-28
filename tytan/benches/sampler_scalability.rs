@@ -22,7 +22,7 @@ fn generate_random_qubo(n: usize, seed: u64) -> scirs2_core::ndarray::Array2<f64
 
     let mut lcg_next = || -> f64 {
         lcg_state = lcg_state.wrapping_mul(A).wrapping_add(C);
-        (lcg_state as f64 / u64::MAX as f64) * 4.0 - 2.0
+        (lcg_state as f64 / u64::MAX as f64).mul_add(4.0, -2.0)
     };
 
     let mut q = scirs2_core::ndarray::Array2::<f64>::zeros((n, n));

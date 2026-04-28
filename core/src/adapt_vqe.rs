@@ -1,3 +1,9 @@
+//! ADAPT-VQE: Adaptive Derivative-Assembled Pseudo-Trotter ansatz for quantum chemistry.
+//!
+//! Implements the ADAPT-VQE algorithm (Grimsley et al., 2019) which adaptively
+//! builds a compact ansatz from a fermionic operator pool, avoiding barren
+//! plateaus and minimising circuit depth relative to fixed-depth approaches.
+
 // ADAPT-VQE: Adaptive Derivative-Assembled Pseudo-Trotter VQE
 //
 // A state-of-the-art quantum chemistry algorithm that adaptively constructs

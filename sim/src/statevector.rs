@@ -1,3 +1,10 @@
+//! State-vector quantum circuit simulator.
+//!
+//! [`StateVectorSimulator`] stores the full 2^N complex amplitude vector and
+//! applies unitary gates via direct matrix-vector products.  It is the default
+//! exact simulator in QuantRS2 and supports up to ~30 qubits on a typical
+//! workstation.
+
 use scirs2_core::parallel_ops::{
     IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator,
 };

@@ -209,6 +209,7 @@ pub type DeviceResult<T> = Result<T, DeviceError>;
 
 /// Errors that can occur during device operations
 #[derive(Error, Debug, Clone)]
+#[non_exhaustive]
 pub enum DeviceError {
     #[error("Authentication error: {0}")]
     Authentication(String),

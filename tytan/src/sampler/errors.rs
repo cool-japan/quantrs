@@ -5,6 +5,7 @@ use thiserror::Error;
 
 /// Errors that can occur during sampling
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum SamplerError {
     /// Error when the input parameters are invalid
     #[error("Invalid parameter: {0}")]

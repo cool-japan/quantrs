@@ -1,3 +1,9 @@
+//! Variational Quantum Algorithms: VQE, QAOA, and hybrid solvers.
+//!
+//! [`VariationalSolver`] executes parameterised ansatz circuits on a
+//! state-vector backend and minimises an expectation-value objective using
+//! classical optimisers, supporting both VQE (chemistry) and QAOA (combinatorics).
+
 use crate::error::{MLError, Result};
 use crate::optimization::{ObjectiveFunction, Optimizer};
 use quantrs2_circuit::prelude::Circuit;

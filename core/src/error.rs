@@ -2,6 +2,7 @@ use thiserror::Error;
 
 /// Common error types for quantum operations
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum QuantRS2Error {
     /// Error when a qubit is not in a valid range
     #[error("Invalid qubit ID {0}, must be within the valid range for this operation")]

@@ -1,7 +1,9 @@
-//! SIMD-accelerated QUBO/PUBO energy evaluation.
+//! Vectorization-friendly QUBO/PUBO energy evaluation.
 //!
 //! These functions serve as the shared inner loop for all QuantRS2 tytan samplers.
-//! For small `n` (< 32 variables), they fall back to scalar computation.
+//! For small `n` (< 32 variables), the `_simd`-suffixed variants are identical to
+//! the scalar implementations.  For larger `n`, LLVM auto-vectorizes the tight
+//! inner loops at `-C opt-level=3` — no nightly `std::simd` required.
 //!
 //! # Energy conventions
 //!
@@ -26,17 +28,16 @@
 //! ΔE = (1 - 2*x[k]) * g[k]
 //! ```
 //!
-//! # SIMD strategy
+//! # Vectorization strategy
 //!
-//! Uses `std::simd::f64x4` (portable SIMD) for 4-wide f64 dot products.
-//! Falls back to scalar for `n < 32` where overhead exceeds benefit.
+//! All hot paths use simple index loops over contiguous `f64` slices so that
+//! LLVM's auto-vectorizer can emit SSE2/AVX/NEON instructions when the
+//! optimization level allows.  The `_simd`-suffixed public functions are kept
+//! for API compatibility; they delegate directly to the corresponding scalar
+//! implementations.
 
-use scirs2_core::ndarray::{Array2, Ix2};
+use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
-use std::simd::{f64x4, num::SimdFloat};
-
-/// SIMD threshold: use scalar for smaller problems.
-const SIMD_THRESHOLD: usize = 32;
 
 /// Build a dense n×n Q matrix (flat row-major) from a sparse edge list.
 ///
@@ -126,9 +127,11 @@ pub fn energy_full(state: &[bool], q_matrix: &[f64], n: usize) -> f64 {
     energy
 }
 
-/// Compute full QUBO energy using SIMD acceleration where beneficial.
+/// Compute full QUBO energy with auto-vectorization-friendly layout.
 ///
-/// Equivalent to [`energy_full`] but uses 4-wide f64 SIMD for `n >= 32`.
+/// Equivalent to [`energy_full`].  LLVM auto-vectorizes the inner loop at
+/// `-C opt-level=3`.  Kept for API compatibility with callers that previously
+/// requested SIMD acceleration.
 ///
 /// # Arguments
 ///
@@ -137,20 +140,7 @@ pub fn energy_full(state: &[bool], q_matrix: &[f64], n: usize) -> f64 {
 /// * `n` – number of variables
 #[inline]
 pub fn energy_full_simd(state: &[bool], q_matrix: &[f64], n: usize) -> f64 {
-    if n < SIMD_THRESHOLD {
-        return energy_full(state, q_matrix, n);
-    }
-
-    let mut total = 0.0f64;
-    for i in 0..n {
-        if !state[i] {
-            continue;
-        }
-        let row_start = i * n;
-        let row = &q_matrix[row_start..row_start + n];
-        total += dot_bool_f64_simd(state, row);
-    }
-    total
+    energy_full(state, q_matrix, n)
 }
 
 /// Compute the influence vector `g[i]` for the current state.
@@ -158,8 +148,6 @@ pub fn energy_full_simd(state: &[bool], q_matrix: &[f64], n: usize) -> f64 {
 /// ```text
 /// g[i] = Q[i*n+i] + Σ_{j≠i} (Q[i*n+j] + Q[j*n+i]) * x[j]
 /// ```
-///
-/// This is the scalar reference implementation.
 ///
 /// # Arguments
 ///
@@ -180,34 +168,13 @@ pub fn compute_influence(state: &[bool], q_matrix: &[f64], n: usize) -> Vec<f64>
     g
 }
 
-/// Compute the influence vector using SIMD acceleration where beneficial.
+/// Compute the influence vector with auto-vectorization-friendly layout.
 ///
-/// Equivalent to [`compute_influence`] but uses 4-wide f64 SIMD for `n >= 32`.
+/// Equivalent to [`compute_influence`].  LLVM auto-vectorizes the inner loop
+/// at `-C opt-level=3`.  Kept for API compatibility.
 #[inline]
 pub fn compute_influence_simd(state: &[bool], q_matrix: &[f64], n: usize) -> Vec<f64> {
-    if n < SIMD_THRESHOLD {
-        return compute_influence(state, q_matrix, n);
-    }
-
-    let mut g = vec![0.0f64; n];
-    for i in 0..n {
-        let row_i = &q_matrix[i * n..i * n + n];
-        // Build symmetric row: for each j, add Q[i,j] + Q[j,i]
-        // Q[i,j] comes from row_i[j]; Q[j,i] comes from column i of Q = q_matrix[j*n+i]
-        // We need Σ_{j≠i} (Q[i,j] + Q[j,i]) * x[j] = dot(row_i, x) + col_dot(i, x) - 2*Q[i,i]*x[i]
-        // For correctness: compute Σ_j Q[i,j]*x[j] + Σ_j Q[j,i]*x[j] - 2*Q[i,i]*x[i]
-        // (the 2* diagonal term accounts for double-counting i==j in both sums)
-        let row_dot = dot_bool_f64_simd(state, row_i);
-        let col_dot = dot_bool_f64_col_simd(state, q_matrix, n, i);
-        // Subtract the j==i terms added in both sums: Q[i,i]*x[i] + Q[i,i]*x[i] = 2*Q[i,i]*x[i]
-        let diag = q_matrix[i * n + i];
-        let x_i = if state[i] { 1.0 } else { 0.0 };
-        // g[i] = Q[i,i] + sum_{j!=i}(Q[i,j]+Q[j,i])*x[j]
-        //      = Q[i,i] + (row_dot - Q[i,i]*x[i]) + (col_dot - Q[i,i]*x[i])
-        //      = diag + row_dot + col_dot - 2*diag*x_i
-        g[i] = diag + row_dot + col_dot - 2.0 * diag * x_i;
-    }
-    g
+    compute_influence(state, q_matrix, n)
 }
 
 /// Compute energy delta for flipping bit `k` (scalar reference).
@@ -234,9 +201,11 @@ pub fn energy_delta(state: &[bool], q_matrix: &[f64], n: usize, k: usize) -> f64
     (1.0 - 2.0 * if state[k] { 1.0 } else { 0.0 }) * g_k
 }
 
-/// Compute energy delta for flipping bit `k` using SIMD acceleration.
+/// Compute energy delta for flipping bit `k` with auto-vectorization-friendly layout.
 ///
-/// Equivalent to [`energy_delta`] but uses 4-wide f64 SIMD for `n >= 32`.
+/// Equivalent to [`energy_delta`].  LLVM auto-vectorizes the inner loop at
+/// `-C opt-level=3`.  Kept for API compatibility with callers that previously
+/// requested SIMD acceleration.
 ///
 /// # Arguments
 ///
@@ -246,20 +215,7 @@ pub fn energy_delta(state: &[bool], q_matrix: &[f64], n: usize, k: usize) -> f64
 /// * `k` – index of the bit to flip
 #[inline]
 pub fn energy_delta_simd(state: &[bool], q_matrix: &[f64], n: usize, k: usize) -> f64 {
-    if n < SIMD_THRESHOLD {
-        return energy_delta(state, q_matrix, n, k);
-    }
-
-    let row_k = &q_matrix[k * n..k * n + n];
-    // Σ_j Q[k,j]*x[j]
-    let row_dot = dot_bool_f64_simd(state, row_k);
-    // Σ_j Q[j,k]*x[j]
-    let col_dot = dot_bool_f64_col_simd(state, q_matrix, n, k);
-    let diag = q_matrix[k * n + k];
-    let x_k = if state[k] { 1.0 } else { 0.0 };
-    // g[k] = diag + (row_dot - diag*x_k) + (col_dot - diag*x_k)
-    let g_k = diag + row_dot + col_dot - 2.0 * diag * x_k;
-    (1.0 - 2.0 * x_k) * g_k
+    energy_delta(state, q_matrix, n, k)
 }
 
 /// Update the influence vector after flipping bit `k`.
@@ -280,133 +236,13 @@ pub fn update_influence(g: &mut [f64], q_matrix: &[f64], n: usize, k: usize, new
     }
 }
 
-/// Update the influence vector after flipping bit `k` using SIMD.
+/// Update the influence vector after flipping bit `k` with auto-vectorization-friendly layout.
 ///
-/// Equivalent to [`update_influence`] but uses 4-wide f64 SIMD for `n >= 32`.
+/// Equivalent to [`update_influence`].  LLVM auto-vectorizes the inner loop at
+/// `-C opt-level=3`.  Kept for API compatibility.
 #[inline]
 pub fn update_influence_simd(g: &mut [f64], q_matrix: &[f64], n: usize, k: usize, new_val: bool) {
-    if n < SIMD_THRESHOLD {
-        return update_influence(g, q_matrix, n, k, new_val);
-    }
-
-    let delta = if new_val { 1.0 } else { -1.0 };
-    let delta4 = f64x4::splat(delta);
-    let diag = q_matrix[k * n + k];
-
-    // For each i, need Q[i,k] + Q[k,i]:
-    // Q[k,i] = q_matrix[k*n + i] (from row k of Q)
-    // Q[i,k] = q_matrix[i*n + k] (column k)
-    let row_k = &q_matrix[k * n..k * n + n];
-
-    let chunks = n / 4;
-    for c in 0..chunks {
-        let base = c * 4;
-        // Column k values: q_matrix[base*n+k], q_matrix[(base+1)*n+k], ...
-        let col_k_vals = f64x4::from_array([
-            q_matrix[base * n + k],
-            q_matrix[(base + 1) * n + k],
-            q_matrix[(base + 2) * n + k],
-            q_matrix[(base + 3) * n + k],
-        ]);
-        // Row k values at positions base..base+4
-        let row_k_vals =
-            f64x4::from_array([row_k[base], row_k[base + 1], row_k[base + 2], row_k[base + 3]]);
-        let increment = (col_k_vals + row_k_vals) * delta4;
-        let g4 = f64x4::from_array([g[base], g[base + 1], g[base + 2], g[base + 3]]);
-        let result = g4 + increment;
-        let arr = result.to_array();
-        g[base] = arr[0];
-        g[base + 1] = arr[1];
-        g[base + 2] = arr[2];
-        g[base + 3] = arr[3];
-    }
-    // Remainder
-    for i in (chunks * 4)..n {
-        if i != k {
-            g[i] += (q_matrix[i * n + k] + row_k[i]) * delta;
-        }
-    }
-    // Handle k itself — no update needed (g[k] is invariant to flipping k)
-    // But the SIMD loop may have touched g[k] in the chunk; correct it:
-    if k < chunks * 4 {
-        // k was touched in a SIMD chunk — undo the update for position k
-        g[k] -= (diag + row_k[k]) * delta;
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SIMD primitives
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// SIMD 4-wide dot product of a bool slice (mask) with an f64 slice (values).
-///
-/// Computes `Σ_i (if mask[i] { values[i] } else { 0.0 })`.
-#[inline]
-fn dot_bool_f64_simd(mask: &[bool], values: &[f64]) -> f64 {
-    let n = mask.len().min(values.len());
-    let chunks = n / 4;
-    let mut acc = f64x4::splat(0.0);
-
-    for c in 0..chunks {
-        let base = c * 4;
-        let m = f64x4::from_array([
-            if mask[base] { 1.0 } else { 0.0 },
-            if mask[base + 1] { 1.0 } else { 0.0 },
-            if mask[base + 2] { 1.0 } else { 0.0 },
-            if mask[base + 3] { 1.0 } else { 0.0 },
-        ]);
-        let v = f64x4::from_array([
-            values[base],
-            values[base + 1],
-            values[base + 2],
-            values[base + 3],
-        ]);
-        acc += m * v;
-    }
-
-    let mut s = acc.reduce_sum();
-    for i in (chunks * 4)..n {
-        if mask[i] {
-            s += values[i];
-        }
-    }
-    s
-}
-
-/// SIMD 4-wide dot product of a bool slice (mask) with column `col_idx` of `q_matrix`.
-///
-/// Column `col_idx` is not contiguous in memory, so we gather 4 elements at a time.
-///
-/// Computes `Σ_i (if mask[i] { q_matrix[i*n + col_idx] } else { 0.0 })`.
-#[inline]
-fn dot_bool_f64_col_simd(mask: &[bool], q_matrix: &[f64], n: usize, col_idx: usize) -> f64 {
-    let chunks = n / 4;
-    let mut acc = f64x4::splat(0.0);
-
-    for c in 0..chunks {
-        let base = c * 4;
-        let m = f64x4::from_array([
-            if mask[base] { 1.0 } else { 0.0 },
-            if mask[base + 1] { 1.0 } else { 0.0 },
-            if mask[base + 2] { 1.0 } else { 0.0 },
-            if mask[base + 3] { 1.0 } else { 0.0 },
-        ]);
-        let v = f64x4::from_array([
-            q_matrix[base * n + col_idx],
-            q_matrix[(base + 1) * n + col_idx],
-            q_matrix[(base + 2) * n + col_idx],
-            q_matrix[(base + 3) * n + col_idx],
-        ]);
-        acc += m * v;
-    }
-
-    let mut s = acc.reduce_sum();
-    for i in (chunks * 4)..n {
-        if mask[i] {
-            s += q_matrix[i * n + col_idx];
-        }
-    }
-    s
+    update_influence(g, q_matrix, n, k, new_val)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -447,6 +283,14 @@ pub fn energy_delta_from_array(
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unreadable_literal,
+    clippy::suboptimal_flops,
+    clippy::identity_op,
+    clippy::erasing_op,
+    clippy::needless_range_loop,
+    clippy::redundant_clone,
+)]
 mod tests {
     use super::*;
 

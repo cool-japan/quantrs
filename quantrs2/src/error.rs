@@ -176,6 +176,9 @@ impl QuantRS2ErrorExt for QuantRS2Error {
             | Self::AccessDenied(_)
             | Self::LockPoisoned(_)
             | Self::IndexOutOfBounds { .. } => ErrorCategory::Runtime,
+
+            // Catch-all for future variants added due to #[non_exhaustive]
+            _ => ErrorCategory::Unknown,
         }
     }
 
@@ -258,6 +261,8 @@ impl QuantRS2ErrorExt for QuantRS2Error {
 /// ```
 #[must_use]
 pub fn with_context(error: QuantRS2Error, context: &str) -> QuantRS2Error {
+    // Pre-compute string representation for the catch-all arm
+    let error_string = error.to_string();
     match error {
         QuantRS2Error::InvalidQubitId(id) => {
             QuantRS2Error::InvalidQubitId(id) // Can't add context to this variant
@@ -365,6 +370,8 @@ pub fn with_context(error: QuantRS2Error, context: &str) -> QuantRS2Error {
         QuantRS2Error::IndexOutOfBounds { index, len } => {
             QuantRS2Error::IndexOutOfBounds { index, len } // Can't add context to this variant
         }
+        // Catch-all for any future variants added due to #[non_exhaustive]
+        _ => QuantRS2Error::RuntimeError(format!("{context}: {error_string}")),
     }
 }
 

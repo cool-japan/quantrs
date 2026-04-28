@@ -1,3 +1,8 @@
+//! AWS Braket cloud backend connector.
+//!
+//! Implements job submission and result retrieval against the Amazon Braket
+//! REST API.  Requires the `aws` Cargo feature and valid AWS credentials.
+
 use quantrs2_circuit::prelude::Circuit;
 use std::collections::HashMap;
 #[cfg(feature = "aws")]
@@ -151,6 +156,7 @@ pub struct AWSTaskResult {
 
 /// Errors specific to AWS Braket
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum AWSBraketError {
     #[error("Authentication error: {0}")]
     Authentication(String),

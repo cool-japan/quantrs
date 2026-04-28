@@ -1,5 +1,3 @@
-// Enable portable_simd for SIMD-accelerated QUBO energy evaluation
-#![feature(portable_simd)]
 // Architectural decisions - these are intentional design patterns
 #![allow(clippy::unnecessary_wraps)] // Result return types for API consistency
 #![allow(clippy::unused_self)] // Trait implementations require &self

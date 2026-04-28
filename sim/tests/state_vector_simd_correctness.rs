@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic)]
 //! Correctness tests: SIMD vs scalar gate application on random states.
 //!
 //! For each gate and each combination of (n_qubits, target) we apply:
@@ -24,17 +25,19 @@ fn lcg_random_state(n_qubits: usize, seed: u64) -> Vec<Complex64> {
             rng = rng
                 .wrapping_mul(6_364_136_223_846_793_005)
                 .wrapping_add(1_442_695_040_888_963_407);
-            let re = (rng as f64) / (u64::MAX as f64) * 2.0 - 1.0;
+            let re = ((rng as f64) / (u64::MAX as f64)).mul_add(2.0, -1.0);
             rng = rng
                 .wrapping_mul(6_364_136_223_846_793_005)
                 .wrapping_add(1_442_695_040_888_963_407);
-            let im = (rng as f64) / (u64::MAX as f64) * 2.0 - 1.0;
+            let im = ((rng as f64) / (u64::MAX as f64)).mul_add(2.0, -1.0);
             Complex64::new(re, im)
         })
         .collect();
 
     let norm: f64 = state.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
-    state.iter_mut().for_each(|c| *c /= norm);
+    for c in &mut state {
+        *c /= norm;
+    }
     state
 }
 
@@ -75,10 +78,7 @@ fn test_h_gate_correctness_all_targets() {
             let diff = max_diff(&simd_state, &scalar_state);
             assert!(
                 diff < 1e-12,
-                "H gate SIMD vs scalar mismatch: n={}, target={}, diff={}",
-                n,
-                target,
-                diff
+                "H gate SIMD vs scalar mismatch: n={n}, target={target}, diff={diff}"
             );
         }
     }
@@ -107,10 +107,7 @@ fn test_x_gate_correctness_all_targets() {
             let diff = max_diff(&simd_state, &scalar_state);
             assert!(
                 diff < 1e-12,
-                "X gate SIMD vs scalar mismatch: n={}, target={}, diff={}",
-                n,
-                target,
-                diff
+                "X gate SIMD vs scalar mismatch: n={n}, target={target}, diff={diff}"
             );
         }
     }
@@ -139,10 +136,7 @@ fn test_y_gate_correctness_all_targets() {
             let diff = max_diff(&simd_state, &scalar_state);
             assert!(
                 diff < 1e-12,
-                "Y gate SIMD vs scalar mismatch: n={}, target={}, diff={}",
-                n,
-                target,
-                diff
+                "Y gate SIMD vs scalar mismatch: n={n}, target={target}, diff={diff}"
             );
         }
     }
@@ -171,10 +165,7 @@ fn test_z_gate_correctness_all_targets() {
             let diff = max_diff(&simd_state, &scalar_state);
             assert!(
                 diff < 1e-12,
-                "Z gate SIMD vs scalar mismatch: n={}, target={}, diff={}",
-                n,
-                target,
-                diff
+                "Z gate SIMD vs scalar mismatch: n={n}, target={target}, diff={diff}"
             );
         }
     }
@@ -203,10 +194,7 @@ fn test_s_gate_correctness_all_targets() {
             let diff = max_diff(&simd_state, &scalar_state);
             assert!(
                 diff < 1e-12,
-                "S gate SIMD vs scalar mismatch: n={}, target={}, diff={}",
-                n,
-                target,
-                diff
+                "S gate SIMD vs scalar mismatch: n={n}, target={target}, diff={diff}"
             );
         }
     }
@@ -239,10 +227,7 @@ fn test_t_gate_correctness_all_targets() {
             let diff = max_diff(&simd_state, &scalar_state);
             assert!(
                 diff < 1e-12,
-                "T gate SIMD vs scalar mismatch: n={}, target={}, diff={}",
-                n,
-                target,
-                diff
+                "T gate SIMD vs scalar mismatch: n={n}, target={target}, diff={diff}"
             );
         }
     }
@@ -273,10 +258,7 @@ fn test_rx_gate_correctness_all_targets() {
             let diff = max_diff(&simd_state, &scalar_state);
             assert!(
                 diff < 1e-12,
-                "RX gate SIMD vs scalar mismatch: n={}, target={}, diff={}",
-                n,
-                target,
-                diff
+                "RX gate SIMD vs scalar mismatch: n={n}, target={target}, diff={diff}"
             );
         }
     }
@@ -307,10 +289,7 @@ fn test_ry_gate_correctness_all_targets() {
             let diff = max_diff(&simd_state, &scalar_state);
             assert!(
                 diff < 1e-12,
-                "RY gate SIMD vs scalar mismatch: n={}, target={}, diff={}",
-                n,
-                target,
-                diff
+                "RY gate SIMD vs scalar mismatch: n={n}, target={target}, diff={diff}"
             );
         }
     }
@@ -341,10 +320,7 @@ fn test_rz_gate_correctness_all_targets() {
             let diff = max_diff(&simd_state, &scalar_state);
             assert!(
                 diff < 1e-12,
-                "RZ gate SIMD vs scalar mismatch: n={}, target={}, diff={}",
-                n,
-                target,
-                diff
+                "RZ gate SIMD vs scalar mismatch: n={n}, target={target}, diff={diff}"
             );
         }
     }
@@ -381,10 +357,7 @@ fn test_generic_gate_2x2_simd_correctness() {
             let diff = max_diff(&simd_state, &scalar_state);
             assert!(
                 diff < 1e-12,
-                "Generic 2x2 gate SIMD vs scalar mismatch: n={}, target={}, diff={}",
-                n,
-                target,
-                diff
+                "Generic 2x2 gate SIMD vs scalar mismatch: n={n}, target={target}, diff={diff}"
             );
         }
     }
@@ -415,7 +388,6 @@ fn test_unitary_gates_preserve_norm() {
     let norm_sq: f64 = state.iter().map(|c| c.norm_sqr()).sum();
     assert!(
         (norm_sq - 1.0).abs() < 1e-10,
-        "Norm not preserved after gate chain: norm_sq={}",
-        norm_sq
+        "Norm not preserved after gate chain: norm_sq={norm_sq}"
     );
 }

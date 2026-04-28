@@ -18,6 +18,7 @@ use std::f64::consts::PI;
 
 /// Types of optimization problems for adiabatic quantum computing
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ProblemType {
     /// Quadratic Unconstrained Binary Optimization
     QUBO,
@@ -37,6 +38,7 @@ pub enum ProblemType {
 
 /// Annealing schedule types
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub enum AnnealingSchedule {
     /// Linear annealing: s(t) = t/T
     Linear,

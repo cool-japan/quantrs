@@ -1,3 +1,9 @@
+//! Dynamic circuit dispatch for circuits of varying qubit counts.
+//!
+//! [`DynamicCircuit`] and [`DynamicSimulator`] wrap concrete const-generic
+//! types behind an enum so circuits of different sizes can be handled
+//! uniformly at runtime without heap allocation overhead.
+
 use crate::simulator::Simulator; // Local simulator trait
 #[cfg(feature = "python")]
 use pyo3::exceptions::PyValueError;

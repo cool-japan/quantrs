@@ -1,21 +1,45 @@
+//! Qubit identifier types for type-safe quantum circuit construction.
+//!
+//! Provides [`QubitId`], a zero-cost transparent wrapper around a `u32` that
+//! uniquely identifies a qubit within a circuit or register.
+
 use serde::{Deserialize, Serialize};
 
-/// A transparent wrapper around a qubit identifier
+/// A transparent wrapper around a qubit identifier.
 ///
 /// This provides type safety for qubit references while
 /// maintaining zero-cost abstraction.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_core::qubit::QubitId;
+///
+/// let q0 = QubitId::new(0);
+/// let q1 = QubitId::new(1);
+/// assert_eq!(q0.id(), 0);
+/// assert!(q0 < q1);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[repr(transparent)]
 pub struct QubitId(pub u32);
 
 impl QubitId {
-    /// Create a new qubit identifier
+    /// Create a new qubit identifier.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use quantrs2_core::qubit::QubitId;
+    /// let q = QubitId::new(3);
+    /// assert_eq!(q.id(), 3);
+    /// ```
     #[inline]
     pub const fn new(id: u32) -> Self {
         Self(id)
     }
 
-    /// Get the raw identifier value
+    /// Get the raw identifier value.
     #[inline]
     pub const fn id(&self) -> u32 {
         self.0

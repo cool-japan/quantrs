@@ -1,4 +1,74 @@
-//! Genetic Algorithm Sampler Implementation
+//! # Genetic Algorithm (GA) Sampler
+//!
+//! The Genetic Algorithm (GA) sampler evolves a population of binary solutions
+//! through successive generations of selection, crossover, and mutation to find
+//! low-energy configurations of QUBO/HOBO problems.
+//!
+//! ## Algorithm
+//!
+//! Each generation:
+//!
+//! 1. **Evaluation**: compute the QUBO energy for every individual in the population.
+//! 2. **Selection**: tournament selection — two random individuals compete; the
+//!    one with lower energy survives as a parent.
+//! 3. **Crossover**: produce offspring from two parents using one of:
+//!    - *Uniform* — each gene is taken from parent 1 or 2 with equal probability.
+//!    - *Single-point* — split at a random point and swap the tails.
+//!    - *Two-point* — swap the middle segment between two random split points.
+//!    - *Adaptive* — strategy chosen based on Hamming distance of parents.
+//! 4. **Mutation**: flip bits with probability `p_mut` (fixed, annealed, or
+//!    adaptive based on population diversity).
+//! 5. **Elitism**: the best individual of the current generation is always
+//!    preserved in the next generation.
+//!
+//! ## Mathematical Formulation
+//!
+//! Given a QUBO matrix Q, the objective is to minimise:
+//!
+//! ```text
+//! E(x) = Σ_{i,j} Q[i,j] · x[i] · x[j],   x[i] ∈ {0, 1}
+//! ```
+//!
+//! Fitness of individual x equals E(x) (lower is better).
+//!
+//! ## Citation
+//!
+//! Holland, J. H. (1975). *Adaptation in Natural and Artificial Systems*.
+//! University of Michigan Press. ISBN: 978-0-472-08460-9.
+//!
+//! ## When to Use
+//!
+//! - **Best for**: medium-size problems (n ≤ 200) where crossover is constructive.
+//! - **Strengths**: maintains population diversity, explores multiple basins.
+//! - **Limitations**: slower per-iteration than SA; may converge prematurely
+//!   without sufficient population size.
+//!
+//! ## Usage
+//!
+//! ```
+//! use quantrs2_tytan::sampler::{GASampler, Sampler};
+//! use scirs2_core::ndarray::Array;
+//! use std::collections::HashMap;
+//!
+//! // Minimise: -x0 - x1 - x2 + 2*x0*x1 + 2*x0*x2  (independence problem)
+//! let mut q = Array::<f64, _>::zeros((3, 3));
+//! q[[0, 0]] = -1.0;
+//! q[[1, 1]] = -1.0;
+//! q[[2, 2]] = -1.0;
+//! q[[0, 1]] = 2.0;
+//! q[[0, 2]] = 2.0;
+//!
+//! let mut var_map = HashMap::new();
+//! var_map.insert("x0".to_string(), 0);
+//! var_map.insert("x1".to_string(), 1);
+//! var_map.insert("x2".to_string(), 2);
+//!
+//! // Use small population/generations for a fast doc-test
+//! let sampler = GASampler::with_params(Some(42), 20, 20);
+//! let results = sampler.run_qubo(&(q, var_map), 5).expect("GA sampler failed");
+//! assert!(!results.is_empty());
+//! println!("Best energy: {}", results[0].energy);
+//! ```
 
 use scirs2_core::ndarray::{Array, Dimension, Ix2};
 use scirs2_core::random::prelude::*;
@@ -9,9 +79,36 @@ use super::{SampleResult, Sampler, SamplerResult};
 
 /// Genetic Algorithm Sampler
 ///
-/// This sampler uses a genetic algorithm to find solutions to
-/// QUBO/HOBO problems. It maintains a population of potential
-/// solutions and evolves them through selection, crossover, and mutation.
+/// Evolutionary metaheuristic for QUBO/HOBO optimisation that maintains a
+/// population of binary solutions and evolves them through selection,
+/// crossover (uniform, single-point, two-point, or adaptive), and mutation.
+///
+/// # Example
+///
+/// ```
+/// use quantrs2_tytan::sampler::{GASampler, Sampler};
+/// use scirs2_core::ndarray::Array;
+/// use std::collections::HashMap;
+///
+/// // Minimise: -x0 - x1 - x2 + 2*x0*x1 + 2*x0*x2
+/// let mut q = Array::<f64, _>::zeros((3, 3));
+/// q[[0, 0]] = -1.0;
+/// q[[1, 1]] = -1.0;
+/// q[[2, 2]] = -1.0;
+/// q[[0, 1]] = 2.0;
+/// q[[0, 2]] = 2.0;
+///
+/// let mut var_map = HashMap::new();
+/// var_map.insert("x0".to_string(), 0);
+/// var_map.insert("x1".to_string(), 1);
+/// var_map.insert("x2".to_string(), 2);
+///
+/// // Small population/generations for a fast doc-test
+/// let sampler = GASampler::with_params(Some(42), 20, 20);
+/// let results = sampler.run_qubo(&(q, var_map), 5).expect("GA sampler failed");
+/// assert!(!results.is_empty());
+/// println!("Best energy: {}", results[0].energy);
+/// ```
 pub struct GASampler {
     /// Random number generator seed
     seed: Option<u64>,

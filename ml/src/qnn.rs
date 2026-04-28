@@ -1,3 +1,9 @@
+//! Quantum Neural Networks (QNNs) with parameterised quantum circuits.
+//!
+//! [`QuantumNeuralNetwork`] wraps a parameterised quantum circuit as a
+//! differentiable layer, supporting forward passes, parameter-shift gradient
+//! computation, and stochastic gradient descent-based training.
+
 use crate::error::{MLError, Result};
 use crate::optimization::Optimizer;
 use quantrs2_circuit::builder::Simulator;

@@ -36,6 +36,7 @@ pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"] }
 scirs2-numpy = { workspace = true, default-features = false }  # SciRS2-compatible numpy bindings (no auto-initialize)
 # rand.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
 thiserror.workspace = true
+serde_json.workspace = true
 
 # SciRS2 dependencies (SCIRS2 POLICY)
 scirs2-core.workspace = true

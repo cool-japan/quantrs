@@ -10,6 +10,7 @@ use crate::ising::{IsingError, QuboModel};
 
 /// Errors that can occur when formulating QUBO problems
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum QuboError {
     /// Error in the underlying Ising model
     #[error("Ising error: {0}")]
@@ -50,10 +51,25 @@ impl Variable {
     }
 }
 
-/// A builder for creating QUBO problems
+/// A builder for creating QUBO problems.
 ///
 /// This provides a more convenient interface for formulating optimization problems
 /// than directly working with the `QuboModel`.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_anneal::qubo::QuboBuilder;
+///
+/// let mut builder = QuboBuilder::new();
+/// let x0 = builder.add_variable("x0").expect("add x0");
+/// let x1 = builder.add_variable("x1").expect("add x1");
+/// // Penalise x0 + x1 (both set to 1)
+/// builder.set_linear_term(&x0, 1.0).expect("linear x0");
+/// builder.set_linear_term(&x1, 1.0).expect("linear x1");
+/// let model = builder.build();
+/// assert_eq!(model.num_variables, 2);
+/// ```
 #[derive(Debug, Clone)]
 pub struct QuboBuilder {
     /// Current number of variables

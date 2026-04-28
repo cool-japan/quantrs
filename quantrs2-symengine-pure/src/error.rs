@@ -11,6 +11,7 @@ pub type SymEngineResult<T> = Result<T, SymEngineError>;
 
 /// Errors that can occur during symbolic computation
 #[derive(Error, Debug, Clone)]
+#[non_exhaustive]
 pub enum SymEngineError {
     /// Failed to parse an expression from a string
     #[error("Parse error: {0}")]

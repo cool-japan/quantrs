@@ -71,6 +71,7 @@ pub trait QuantumHardwareBackend: Send + Sync + std::fmt::Debug {
 }
 
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum HardwareType {
     Superconducting,
     TrappedIon,
@@ -97,6 +98,7 @@ pub struct HardwareCapabilities {
 }
 
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum HardwareStatus {
     Online,
     Offline,

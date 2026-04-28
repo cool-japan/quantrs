@@ -1,3 +1,9 @@
+//! Quantum-secured blockchain primitives.
+//!
+//! Implements quantum-safe consensus mechanisms, quantum-signed transactions,
+//! and a simulated quantum blockchain ledger using post-quantum and
+//! QKD-based cryptographic primitives from the `crypto` module.
+
 use crate::crypto::QuantumSignature;
 use crate::error::{MLError, Result};
 use std::collections::HashMap;

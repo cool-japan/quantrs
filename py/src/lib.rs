@@ -70,6 +70,12 @@ mod tytan;
 // Include the multi-GPU module
 mod multi_gpu;
 
+// Include the quantum networking module
+mod networking;
+
+// Include the ecosystem integration module (QASM 2.0 + PennyLane)
+mod ecosystem;
+
 // Include the simulators module
 mod simulators;
 
@@ -90,7 +96,7 @@ pub(crate) use simulation_result::PySimulationResult;
 
 /// Python module for `QuantRS2`
 #[pymodule]
-fn quantrs2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn quantrs2(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.setattr("__version__", env!("CARGO_PKG_VERSION"))?;
 
     // Add classes to the module
@@ -148,6 +154,9 @@ fn quantrs2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Register the multi-GPU module
     multi_gpu::register_multi_gpu_module(m)?;
 
+    // Register the ecosystem module (QASM 2.0 + PennyLane)
+    ecosystem::register_ecosystem_module(m)?;
+
     // Register the simulators module
     simulators::register_simulators_module(m)?;
 
@@ -156,6 +165,9 @@ fn quantrs2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Register the 3D state visualization submodule
     state_viz_3d::register_state_viz_3d_module(m)?;
+
+    // Register the networking module (BB84, E91, Teleportation)
+    networking::register_networking_module(py, m)?;
 
     // Add metadata
     m.setattr(

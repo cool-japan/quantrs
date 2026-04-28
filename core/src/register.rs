@@ -1,3 +1,8 @@
+//! Quantum register types for holding the full state of N qubits.
+//!
+//! A [`Register<N>`] stores complex amplitude vectors of dimension 2^N and
+//! supports measurement sampling and amplitude manipulation.
+
 use scirs2_core::Complex64;
 use std::marker::PhantomData;
 

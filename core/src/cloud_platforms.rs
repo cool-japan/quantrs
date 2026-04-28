@@ -35,6 +35,7 @@ use std::time::{Duration, SystemTime};
 
 /// Supported quantum cloud platforms
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum CloudPlatform {
     /// IBM Quantum
     IBM,
@@ -194,6 +195,7 @@ impl DeviceInfo {
 
 /// Job status
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum JobStatus {
     /// Job is queued
     Queued,

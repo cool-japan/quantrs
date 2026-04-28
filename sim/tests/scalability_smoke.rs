@@ -168,8 +168,13 @@ fn test_20q_stabilizer_bell_chain() {
 // Correctness of each gate is tested individually elsewhere; this test
 // ensures that chaining many gates at scale does not accumulate errors
 // large enough to break the norm invariant.
+//
+// Takes ~38 s in debug mode (2^12 = 4096 amplitudes × multiple gate layers
+// with per-layer RZ sprinkling through the dispatch machinery).
+// Run with: cargo nextest run -p quantrs2-sim -- --ignored
 // ---------------------------------------------------------------------------
 #[test]
+#[ignore] // cargo nextest run -- --ignored  (38 s in debug mode)
 fn test_12q_random_circuit_norm() {
     const N: usize = 12;
     const DEPTH: usize = 5;

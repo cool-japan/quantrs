@@ -1,25 +1,32 @@
+//! # quantrs2-core
+//!
 //! Core types and traits for the QuantRS2 quantum computing framework.
 //!
-//! This crate provides the foundational types and traits used throughout
-//! the QuantRS2 ecosystem, including qubit identifiers, quantum gates,
-//! and register representations.
+//! This crate is part of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing
+//! framework. It provides the foundational types and traits used throughout the QuantRS2 ecosystem,
+//! including qubit identifiers, quantum gates, register representations, and error types.
 //!
 //! ## Key Features
 //!
+//! - **Qubit Types**: [`qubit::QubitId`] and register primitives for type-safe circuit construction
+//! - **Gate Library**: Comprehensive quantum gate set — Pauli, Clifford, rotation, and multi-qubit gates
+//! - **Error Handling**: Unified [`error::QuantRS2Error`] type with rich context
 //! - **Platform-Aware Optimization**: Automatic detection of CPU/GPU capabilities for optimal performance
-//! - **SIMD Acceleration**: Fully migrated to `scirs2_core::simd_ops` for vectorized quantum operations
-//! - **GPU Support**: CUDA, OpenCL, and Metal (macOS) backends with forward-compatible SciRS2 integration
+//! - **SIMD Acceleration**: Vectorized quantum operations via `scirs2_core::simd_ops`
+//! - **GPU Support**: CUDA, OpenCL, and Metal (macOS) backends
 //! - **Adaptive Algorithms**: Runtime selection of optimal implementations based on hardware capabilities
 //!
-//! ## Recent Updates (v0.1.3)
+//! ## Quick Start
 //!
-//! - **SciRS2 v0.1.3 Stable Release Integration**: Updated from RC to stable versions
-//! - **NumRS2 Integration**: Numerical computing library at stable release
-//! - **OptiRS Integration**: Advanced optimization algorithms at stable release
-//! - Comprehensive policy documentation (SCIRS2_INTEGRATION_POLICY.md)
-//! - Enhanced random number generation with `UnifiedNormal`, `UnifiedBeta`
-//! - Consistent SciRS2 usage: `scirs2_core::ndarray::*`, `scirs2_core::random::prelude::*`
-//! - Improved developer experience with CLAUDE.md development guidelines
+//! ```rust,ignore
+//! use quantrs2_core::qubit::QubitId;
+//! use quantrs2_core::error::QuantRS2Result;
+//!
+//! // Create qubit identifiers for a 2-qubit register
+//! let q0 = QubitId::new(0);
+//! let q1 = QubitId::new(1);
+//! println!("Qubits: {q0:?} and {q1:?}");
+//! ```
 
 #![allow(clippy::ptr_eq)]
 #![warn(clippy::all)]
@@ -172,6 +179,7 @@ pub mod matrix_ops;
 pub mod mbqc;
 pub mod memory_efficient;
 pub mod ml_error_mitigation;
+pub mod networking;
 pub mod neutral_atom;
 pub mod noise_characterization;
 pub mod operations;

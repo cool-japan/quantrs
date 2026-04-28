@@ -1,21 +1,85 @@
-//! Tabu Search Sampler for QUBO/HOBO problems
+//! # Tabu Search (TS) Sampler
 //!
-//! Implements a classical Tabu Search metaheuristic for binary optimization.
-//! Tabu Search uses a short-term memory (tabu list) to avoid revisiting
-//! recently explored solutions, allowing escape from local optima.
+//! Tabu Search (TS) is a local-search metaheuristic that uses a short-term
+//! *tabu list* (forbidden-move memory) to avoid revisiting solutions it has
+//! recently explored. This allows the search to escape local optima that would
+//! trap a simple steepest-descent solver.
 //!
-//! # Algorithm
+//! ## Algorithm
 //!
-//! 1. Start from a random binary assignment
-//! 2. Maintain a FIFO ring tabu list of recently-flipped variable indices
-//! 3. Each iteration: compute ΔE for all single-bit flips using O(n) incremental formula
-//! 4. Pick best non-tabu flip (aspiration: allow tabu if better than best-ever)
-//! 5. Track best-ever assignment
-//! 6. After `restart_threshold` non-improving iterations, restart from best + perturbation
+//! 1. Start from a random binary assignment x.
+//! 2. Maintain a FIFO ring buffer (the *tabu list*) of the `tenure` most recently
+//!    flipped variable indices — these flips are forbidden.
+//! 3. Each iteration: (a) compute ΔE for every single-bit flip using the O(n) incremental
+//!    formula; (b) pick the best non-tabu flip (*aspiration criterion*: override tabu if
+//!    the move achieves a new global best); (c) apply the flip; push the index onto the tabu list.
+//! 4. Track the best-ever assignment (global best).
+//! 5. After `restart_threshold` consecutive non-improving iterations, restart from
+//!    the global best with a random perturbation.
 //!
-//! # Reference
+//! ## Mathematical Formulation
 //!
-//! Glover, F. (1989). Tabu Search—Part I. ORSA Journal on Computing, 1(3), 190-206.
+//! Given a QUBO matrix Q, the objective is to minimise:
+//!
+//! ```text
+//! E(x) = sum_{i,j} Q[i,j] * x[i] * x[j],   x[i] in {0, 1}
+//! ```
+//!
+//! The incremental energy change for flipping bit k:
+//!
+//! ```text
+//! ΔE(k) = (1 - 2·x[k]) · g[k]
+//! g[k] = sum_j (Q[k,j] + Q[j,k]) · x[j]  (influence vector, updated in O(n))
+//! ```
+//!
+//! ## Citations
+//!
+//! Glover, F. (1989). Tabu Search—Part I.
+//! *ORSA Journal on Computing*, 1(3), 190–206.
+//! <https://doi.org/10.1287/ijoc.1.3.190>
+//!
+//! Glover, F. (1990). Tabu Search—Part II.
+//! *ORSA Journal on Computing*, 2(1), 4–32.
+//! <https://doi.org/10.1287/ijoc.2.1.4>
+//!
+//! ## Parameters
+//!
+//! See [`TabuParams`] for all tunable parameters (tenure, max\_iter,
+//! restart\_threshold, aspiration).
+//!
+//! ## When to Use
+//!
+//! - **Best for**: structured combinatorial problems (scheduling, routing) where
+//!   forbidden-move memory is natural (e.g., do not undo the last assignment).
+//! - **Strengths**: fast per-iteration O(n) energy update; deterministic when seeded.
+//! - **Limitations**: sensitive to tabu tenure choice; may cycle on small instances.
+//!
+//! ## Usage
+//!
+//! ```
+//! use quantrs2_tytan::sampler::{TabuSampler, Sampler};
+//! use scirs2_core::ndarray::Array;
+//! use std::collections::HashMap;
+//!
+//! // K3 Max-Cut QUBO: minimise -x0 - x1 - x2 + 2*x0*x1 + 2*x0*x2 + 2*x1*x2
+//! let mut q = Array::<f64, _>::zeros((3, 3));
+//! q[[0, 0]] = -1.0;
+//! q[[1, 1]] = -1.0;
+//! q[[2, 2]] = -1.0;
+//! q[[0, 1]] = 2.0;
+//! q[[0, 2]] = 2.0;
+//! q[[1, 2]] = 2.0;
+//!
+//! let mut var_map = HashMap::new();
+//! var_map.insert("x0".to_string(), 0);
+//! var_map.insert("x1".to_string(), 1);
+//! var_map.insert("x2".to_string(), 2);
+//!
+//! let sampler = TabuSampler::new().with_seed(42).with_max_iter(200);
+//! let results = sampler.run_qubo(&(q, var_map), 5).expect("Tabu search failed");
+//! assert!(!results.is_empty());
+//! println!("Best energy: {}", results[0].energy);
+//! ```
 
 use scirs2_core::ndarray::{Array, ArrayD, Ix2};
 use scirs2_core::random::prelude::*;
@@ -58,22 +122,27 @@ impl Default for TabuParams {
 ///
 /// # Example
 ///
-/// ```rust,no_run
+/// ```
 /// use quantrs2_tytan::sampler::{TabuSampler, Sampler};
 /// use std::collections::HashMap;
 /// use scirs2_core::ndarray::Array;
 ///
 /// let mut q = Array::<f64, _>::zeros((3, 3));
-/// q[[0,0]] = -1.0; q[[1,1]] = -1.0; q[[2,2]] = -1.0;
-/// q[[0,1]] = 2.0;  q[[0,2]] = 2.0;  q[[1,2]] = 2.0;
+/// q[[0, 0]] = -1.0;
+/// q[[1, 1]] = -1.0;
+/// q[[2, 2]] = -1.0;
+/// q[[0, 1]] = 2.0;
+/// q[[0, 2]] = 2.0;
+/// q[[1, 2]] = 2.0;
 ///
 /// let mut var_map = HashMap::new();
 /// var_map.insert("x0".to_string(), 0);
 /// var_map.insert("x1".to_string(), 1);
 /// var_map.insert("x2".to_string(), 2);
 ///
-/// let sampler = TabuSampler::new().with_seed(42);
-/// let results = sampler.run_qubo(&(q, var_map), 50).expect("Tabu search failed");
+/// let sampler = TabuSampler::new().with_seed(42).with_max_iter(100);
+/// let results = sampler.run_qubo(&(q, var_map), 5).expect("Tabu search failed");
+/// assert!(!results.is_empty());
 /// println!("Best energy: {}", results[0].energy);
 /// ```
 #[derive(Debug, Clone)]

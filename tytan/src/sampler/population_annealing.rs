@@ -1,24 +1,89 @@
-//! Population Annealing Sampler for QUBO/HOBO problems
+//! # Population Annealing (PA) Sampler
 //!
-//! Implements the Population Annealing (PA) algorithm by Hukushima and Iba (2003).
-//! Population Annealing maintains a population of replicas that are annealed
-//! simultaneously, with resampling steps to focus computational effort on
-//! low-energy regions of the search space.
+//! Population Annealing (PA) maintains a population of R replicas that are
+//! annealed simultaneously through a sequence of inverse temperatures β₁ < β₂ < … < β_K.
+//! After each temperature step the replicas are resampled by importance weights,
+//! concentrating computational effort on the lowest-energy region of the search space
+//! while preserving the correct thermodynamic ensemble.
 //!
-//! # Algorithm
+//! ## Algorithm
 //!
-//! 1. Initialize: `population` replicas with random binary assignments
-//! 2. For each β in beta_schedule:
-//!    a. MC sweeps: single-spin Metropolis on each replica
-//!    b. Importance weights: w_r = exp(-(β_new - β_old) * E_r)
-//!    c. Effective Sample Size (ESS): (Σw_r)² / Σw_r²
-//!    d. If ESS/population < threshold: multinomial resample
-//! 3. Return `shots` samples from final population
+//! 1. **Initialise**: create R replicas with independent random binary assignments.
+//! 2. **For each β_k in the schedule**, run `sweeps_per_step` Metropolis sweeps on
+//!    every replica, then:
+//!    - Compute importance weights `w_r = exp(-(β_{k+1} - β_k) * E_r)`.
+//!    - Compute ESS = `(Σ w_r)² / Σ w_r²`.
+//!    - If `ESS / R < resample_threshold`, multinomial-resample R replicas by weight.
+//! 3. Return `shots` samples drawn from the final population.
 //!
-//! # Reference
+//! ## Mathematical Formulation
 //!
-//! Hukushima, K., & Iba, Y. (2003). Population annealing and its application
-//! to a spin glass model. AIP Conference Proceedings, 690(1), 200-206.
+//! Given a QUBO matrix Q, the objective is to minimise:
+//!
+//! ```text
+//! E(x) = sum_{i,j} Q[i,j] * x[i] * x[j],   x[i] in {0, 1}
+//! ```
+//!
+//! The Metropolis acceptance probability at inverse temperature β for a move
+//! with energy change ΔE:
+//!
+//! ```text
+//! P(accept) = min(1, exp(-β * ΔE))
+//! ```
+//!
+//! ## Citation
+//!
+//! Hukushima, K., & Iba, Y. (2003).
+//! Population Annealing and Its Application to a Spin Glass.
+//! *AIP Conference Proceedings*, 690(1), 200–206.
+//! <https://doi.org/10.1063/1.1632130>
+//!
+//! ## Parameters
+//!
+//! See [`PAParams`] for all tunable parameters (`population`, `beta_schedule`,
+//! `sweeps_per_step`, `resample_threshold`).
+//!
+//! ## When to Use
+//!
+//! - **Best for**: problems where you need an ensemble of near-ground-state solutions
+//!   or accurate estimates of low-temperature thermodynamic observables.
+//! - **Strengths**: provides diversity across the low-energy landscape; ESS-based
+//!   resampling avoids weight collapse.
+//! - **Limitations**: higher memory usage (R replicas stored simultaneously);
+//!   slower per-shot than SA for single-solution queries.
+//!
+//! ## Usage
+//!
+//! ```
+//! use quantrs2_tytan::sampler::{PopulationAnnealingSampler, Sampler};
+//! use scirs2_core::ndarray::Array;
+//! use std::collections::HashMap;
+//!
+//! // K3 Max-Cut QUBO
+//! let mut q = Array::<f64, _>::zeros((3, 3));
+//! q[[0, 0]] = -1.0;
+//! q[[1, 1]] = -1.0;
+//! q[[2, 2]] = -1.0;
+//! q[[0, 1]] = 2.0;
+//! q[[0, 2]] = 2.0;
+//! q[[1, 2]] = 2.0;
+//!
+//! let mut var_map = HashMap::new();
+//! var_map.insert("x0".to_string(), 0);
+//! var_map.insert("x1".to_string(), 1);
+//! var_map.insert("x2".to_string(), 2);
+//!
+//! // Small schedule for a fast doc-test
+//! let betas: Vec<f64> = (0..10).map(|i| 0.1 + 2.9 * i as f64 / 9.0).collect();
+//! let sampler = PopulationAnnealingSampler::new()
+//!     .with_seed(42)
+//!     .with_population(20)
+//!     .with_beta_schedule(betas);
+//!
+//! let results = sampler.run_qubo(&(q, var_map), 5).expect("PA sampler failed");
+//! assert!(!results.is_empty());
+//! println!("Best energy: {}", results[0].energy);
+//! ```
 
 use scirs2_core::ndarray::{Array, ArrayD, Ix2};
 use scirs2_core::random::prelude::*;
@@ -66,25 +131,33 @@ impl Default for PAParams {
 ///
 /// # Example
 ///
-/// ```rust,no_run
+/// ```
 /// use quantrs2_tytan::sampler::{PopulationAnnealingSampler, Sampler};
 /// use std::collections::HashMap;
 /// use scirs2_core::ndarray::Array;
 ///
 /// let mut q = Array::<f64, _>::zeros((3, 3));
-/// q[[0,0]] = -2.0; q[[1,1]] = -2.0; q[[2,2]] = -2.0;
-/// q[[0,1]] = 2.0;  q[[0,2]] = 2.0;  q[[1,2]] = 2.0;
+/// q[[0, 0]] = -1.0;
+/// q[[1, 1]] = -1.0;
+/// q[[2, 2]] = -1.0;
+/// q[[0, 1]] = 2.0;
+/// q[[0, 2]] = 2.0;
+/// q[[1, 2]] = 2.0;
 ///
 /// let mut var_map = HashMap::new();
 /// var_map.insert("x0".to_string(), 0);
 /// var_map.insert("x1".to_string(), 1);
 /// var_map.insert("x2".to_string(), 2);
 ///
+/// // Small schedule for a fast doc-test
+/// let betas: Vec<f64> = (0..10).map(|i| 0.1 + 2.9 * i as f64 / 9.0).collect();
 /// let sampler = PopulationAnnealingSampler::new()
 ///     .with_seed(42)
-///     .with_population(50);
+///     .with_population(20)
+///     .with_beta_schedule(betas);
 ///
-/// let results = sampler.run_qubo(&(q, var_map), 20).expect("Population annealing failed");
+/// let results = sampler.run_qubo(&(q, var_map), 5).expect("Population annealing failed");
+/// assert!(!results.is_empty());
 /// println!("Best energy: {}", results[0].energy);
 /// ```
 #[derive(Debug, Clone)]

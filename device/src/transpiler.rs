@@ -1,3 +1,8 @@
+//! Circuit transpilation utilities for hardware device connectivity.
+//!
+//! Converts QuantRS2 circuits to QASM and transpiles them to match device
+//! qubit connectivity graphs, basis gate sets, and physical qubit mappings.
+
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::prelude::QubitId;
 use std::collections::{HashMap, VecDeque};
