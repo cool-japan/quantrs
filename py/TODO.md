@@ -7,10 +7,10 @@
 
 - [ ] Quantum hardware integration: Direct integration with more providers
 - [ ] Documentation expansion: Enhanced tutorials and examples
-- [ ] Quantum error correction: Advanced QEC with surface codes
+- [x] Quantum error correction: Advanced QEC with surface codes (implemented 2026-04-27)
 - [ ] Quantum networking: Extended communication protocols
 - [ ] Hybrid algorithms: More quantum-classical hybrid approaches
-- [ ] Advanced visualization: 3D quantum state visualization
+- [x] Advanced visualization: 3D quantum state visualization
 - [ ] Quantum compilers: Advanced circuit compilation
 - [ ] Enterprise security: Enhanced security features
 - [ ] Scalability testing: Large-scale simulation validation

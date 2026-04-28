@@ -7,4 +7,4 @@
 - [x] TODO/FIXME resolution — 0 `todo!/unimplemented!` stubs remain; 1,874 public items fully implemented
 - [ ] Performance optimizations
 - [ ] Documentation enhancements
-- [ ] Testing improvements
+- [x] Testing improvements — sampler property + integration tests (2026-04-27)

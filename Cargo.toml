@@ -238,8 +238,8 @@ hex = "0.4.3"
 sprs = "0.11"
 # nalgebra-sparse removed: replaced by scirs2-sparse (COOLJAPAN Pure Rust Policy)
 
-# Visualization and plotting
-plotters = "0.3"
+# Visualization and plotting (default-features = false to avoid font-kit/pathfinder_simd on nightly ARM)
+plotters = { version = "0.3", default-features = false, features = ["bitmap_backend", "bitmap_encoder", "svg_backend", "ab_glyph", "all_series", "all_elements", "full_palette", "colormaps"] }
 
 # System information
 sysinfo = "0.38"
@@ -258,7 +258,7 @@ tokio-test = "0.4"
 memmap2 = "0.9"
 
 # Development and testing
-criterion = { version = "0.8", features = ["html_reports", "async_tokio"] }
+criterion = { version = "0.8", default-features = false, features = ["async_tokio", "cargo_bench_support", "rayon"] }
 tempfile = "3.27"
 
 # NumRS2 ecosystem dependencies

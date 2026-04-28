@@ -16,6 +16,9 @@ use pyo3::prelude::*;
 // Include the QEC module
 mod qec;
 
+// Include the 3D state visualization module
+mod state_viz_3d;
+
 // Include the visualization module
 mod visualization;
 use visualization::PyCircuitVisualizer;
@@ -150,6 +153,9 @@ fn quantrs2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Register the QEC submodule
     qec::register_qec_module(m)?;
+
+    // Register the 3D state visualization submodule
+    state_viz_3d::register_state_viz_3d_module(m)?;
 
     // Add metadata
     m.setattr(

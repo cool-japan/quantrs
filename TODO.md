@@ -32,11 +32,10 @@
 - [ ] Finalize public API for 1.0 release
 - [ ] Complete documentation for all public interfaces
 - [ ] Add comprehensive examples for all major features
-- [ ] Add contribution guidelines
+- [x] Add contribution guidelines
 
 ## Infrastructure
 
-- [ ] Implement automated testing in CI pipeline
 - [ ] Publish Python package to PyPI
 
 ## SymEngine Integration (quantrs2-symengine-pure — 5,739 LoC, 333 public APIs)

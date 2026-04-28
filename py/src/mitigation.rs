@@ -656,12 +656,11 @@ fn count_pauli_gates(circuit: &PyCircuit, gate_name: &str) -> usize {
     circuit
         .get_operations()
         .iter()
-        .filter(|op| match (gate_name, op) {
-            ("X", CircuitOp::PauliX(_)) => true,
-            ("Y", CircuitOp::PauliY(_)) => true,
-            ("Z", CircuitOp::PauliZ(_)) => true,
-            _ => false,
-        })
+        .filter(|op| matches!((gate_name, op),
+            ("X", CircuitOp::PauliX(_))
+            | ("Y", CircuitOp::PauliY(_))
+            | ("Z", CircuitOp::PauliZ(_))
+        ))
         .count()
 }
 
@@ -672,17 +671,17 @@ fn all_rotations_are_clifford(circuit: &PyCircuit) -> bool {
     circuit.get_operations().iter().all(|op| {
         let check_angle = |theta: f64| -> bool {
             let frac = (theta / PI).fract().abs();
-            frac < 1e-9 || frac > 1.0 - 1e-9
+            !(1e-9..=1.0 - 1e-9).contains(&frac)
         };
         match *op {
             CircuitOp::Rx(_, theta)
             | CircuitOp::Ry(_, theta)
             | CircuitOp::Rz(_, theta)
-            | CircuitOp::P(_, theta) => check_angle(theta),
-            CircuitOp::CRX(_, _, theta)
+            | CircuitOp::P(_, theta)
+            | CircuitOp::CRX(_, _, theta)
             | CircuitOp::CRY(_, _, theta)
-            | CircuitOp::CRZ(_, _, theta) => check_angle(theta),
-            CircuitOp::RXX(_, _, theta)
+            | CircuitOp::CRZ(_, _, theta)
+            | CircuitOp::RXX(_, _, theta)
             | CircuitOp::RYY(_, _, theta)
             | CircuitOp::RZZ(_, _, theta)
             | CircuitOp::RZX(_, _, theta) => check_angle(theta),
@@ -783,13 +782,13 @@ impl PyProbabilisticErrorCancellation {
     /// average of expectation values measured from each variant.
     ///
     /// Sampling overhead: γ = (1 + 2·noise_strength/3)^n_qubits.
+    #[staticmethod]
     #[pyo3(signature = (circuit, noise_strength = 0.01))]
     fn quasi_probability_decomposition(
-        &self,
         circuit: &PyCircuit,
         noise_strength: f64,
     ) -> PyResult<Vec<(f64, PyCircuit)>> {
-        if noise_strength < 0.0 || noise_strength > 1.0 {
+        if !(0.0..=1.0).contains(&noise_strength) {
             return Err(PyValueError::new_err("noise_strength must be in [0, 1]"));
         }
 
@@ -884,7 +883,8 @@ impl PyVirtualDistillation {
     /// * length 1 → passthrough (returns a copy of the single circuit).
     /// * length 2 → M = 2 SWAP-test circuit with `2n + 1` qubits.
     /// * length > 2 → returns `PyValueError` (not yet supported).
-    fn distill(&self, circuits: Vec<PyRef<PyCircuit>>) -> PyResult<PyCircuit> {
+    #[staticmethod]
+    fn distill(circuits: Vec<PyRef<PyCircuit>>) -> PyResult<PyCircuit> {
         match circuits.len() {
             0 => Err(PyValueError::new_err("circuits list must not be empty")),
             1 => rebuild_circuit(&circuits[0]),
@@ -970,7 +970,8 @@ impl PySymmetryVerification {
     ///
     /// Returns `true` if the symmetry check passes, `false` if it is
     /// violated, or a `ValueError` if the symmetry label is unknown.
-    fn verify_symmetry(&self, circuit: &PyCircuit, symmetry: &str) -> PyResult<bool> {
+    #[staticmethod]
+    fn verify_symmetry(circuit: &PyCircuit, symmetry: &str) -> PyResult<bool> {
         match symmetry {
             // Z2 parity: total single-qubit X count must be even.
             "parity" | "z2" | "Z2" => {
@@ -1149,9 +1150,7 @@ mod tests {
     #[test]
     fn pec_zero_noise_returns_single_term_with_unit_coefficient() {
         let circuit = bell_circuit();
-        let pec = PyProbabilisticErrorCancellation::new();
-        let decomp = pec
-            .quasi_probability_decomposition(&circuit, 0.0)
+        let decomp = PyProbabilisticErrorCancellation::quasi_probability_decomposition(&circuit, 0.0)
             .expect("decompose");
         assert_eq!(decomp.len(), 1);
         assert!((decomp[0].0 - 1.0).abs() < 1e-12, "coefficient should be 1");
@@ -1160,9 +1159,7 @@ mod tests {
     #[test]
     fn pec_nonzero_noise_term_count_is_one_plus_three_n() {
         let circuit = bell_circuit();
-        let pec = PyProbabilisticErrorCancellation::new();
-        let decomp = pec
-            .quasi_probability_decomposition(&circuit, 0.01)
+        let decomp = PyProbabilisticErrorCancellation::quasi_probability_decomposition(&circuit, 0.01)
             .expect("decompose");
         // 2 qubits: 1 original + 3 * 2 = 7 terms
         assert_eq!(decomp.len(), 1 + 3 * circuit.n_qubits);
@@ -1171,9 +1168,7 @@ mod tests {
     #[test]
     fn pec_first_coefficient_is_positive_rest_are_negative() {
         let circuit = bell_circuit();
-        let pec = PyProbabilisticErrorCancellation::new();
-        let decomp = pec
-            .quasi_probability_decomposition(&circuit, 0.05)
+        let decomp = PyProbabilisticErrorCancellation::quasi_probability_decomposition(&circuit, 0.05)
             .expect("decompose");
         assert!(decomp[0].0 > 0.0, "first coeff should be positive");
         for (coeff, _) in &decomp[1..] {
@@ -1185,9 +1180,7 @@ mod tests {
     fn pec_positive_coefficient_is_one_plus_four_thirds_epsilon() {
         let eps = 0.03;
         let circuit = bell_circuit();
-        let pec = PyProbabilisticErrorCancellation::new();
-        let decomp = pec
-            .quasi_probability_decomposition(&circuit, eps)
+        let decomp = PyProbabilisticErrorCancellation::quasi_probability_decomposition(&circuit, eps)
             .expect("decompose");
         let expected = 1.0 + 4.0 * eps / 3.0;
         assert!(
@@ -1201,9 +1194,7 @@ mod tests {
     fn pec_negative_coefficient_magnitude_is_epsilon_over_three() {
         let eps = 0.06;
         let circuit = bell_circuit();
-        let pec = PyProbabilisticErrorCancellation::new();
-        let decomp = pec
-            .quasi_probability_decomposition(&circuit, eps)
+        let decomp = PyProbabilisticErrorCancellation::quasi_probability_decomposition(&circuit, eps)
             .expect("decompose");
         let expected_neg = -eps / 3.0;
         for (coeff, _) in &decomp[1..] {
@@ -1217,15 +1208,13 @@ mod tests {
     #[test]
     fn pec_rejects_negative_noise_strength() {
         let circuit = bell_circuit();
-        let pec = PyProbabilisticErrorCancellation::new();
-        assert!(pec.quasi_probability_decomposition(&circuit, -0.1).is_err());
+        assert!(PyProbabilisticErrorCancellation::quasi_probability_decomposition(&circuit, -0.1).is_err());
     }
 
     #[test]
     fn pec_rejects_noise_strength_above_one() {
         let circuit = bell_circuit();
-        let pec = PyProbabilisticErrorCancellation::new();
-        assert!(pec.quasi_probability_decomposition(&circuit, 1.5).is_err());
+        assert!(PyProbabilisticErrorCancellation::quasi_probability_decomposition(&circuit, 1.5).is_err());
     }
 
     #[test]
@@ -1267,8 +1256,7 @@ mod tests {
             .expect("X0");
         c.apply_op(CircuitOp::PauliX(quantrs2_core::qubit::QubitId::new(1)))
             .expect("X1");
-        assert!(PySymmetryVerification::new()
-            .verify_symmetry(&c, "parity")
+        assert!(PySymmetryVerification::verify_symmetry(&c, "parity")
             .expect("verify"));
     }
 
@@ -1277,16 +1265,14 @@ mod tests {
         let mut c = PyCircuit::new(2).expect("create");
         c.apply_op(CircuitOp::PauliX(quantrs2_core::qubit::QubitId::new(0)))
             .expect("X");
-        assert!(!PySymmetryVerification::new()
-            .verify_symmetry(&c, "parity")
+        assert!(!PySymmetryVerification::verify_symmetry(&c, "parity")
             .expect("verify"));
     }
 
     #[test]
     fn sv_particle_number_no_x_gates_preserved() {
         let circuit = bell_circuit(); // H + CNOT: no X
-        assert!(PySymmetryVerification::new()
-            .verify_symmetry(&circuit, "particle_number")
+        assert!(PySymmetryVerification::verify_symmetry(&circuit, "particle_number")
             .expect("verify"));
     }
 
@@ -1295,16 +1281,14 @@ mod tests {
         let mut c = PyCircuit::new(2).expect("create");
         c.apply_op(CircuitOp::PauliX(quantrs2_core::qubit::QubitId::new(0)))
             .expect("X");
-        assert!(!PySymmetryVerification::new()
-            .verify_symmetry(&c, "particle_number")
+        assert!(!PySymmetryVerification::verify_symmetry(&c, "particle_number")
             .expect("verify"));
     }
 
     #[test]
     fn sv_time_reversal_clifford_circuit_preserved() {
         let circuit = bell_circuit(); // H and CNOT have no continuous rotation
-        assert!(PySymmetryVerification::new()
-            .verify_symmetry(&circuit, "time_reversal")
+        assert!(PySymmetryVerification::verify_symmetry(&circuit, "time_reversal")
             .expect("verify"));
     }
 
@@ -1317,8 +1301,7 @@ mod tests {
             std::f64::consts::FRAC_PI_4,
         ))
         .expect("Rx");
-        assert!(!PySymmetryVerification::new()
-            .verify_symmetry(&c, "time_reversal")
+        assert!(!PySymmetryVerification::verify_symmetry(&c, "time_reversal")
             .expect("verify"));
     }
 
@@ -1331,35 +1314,31 @@ mod tests {
             std::f64::consts::PI,
         ))
         .expect("Rx(pi)");
-        assert!(PySymmetryVerification::new()
-            .verify_symmetry(&c, "time_reversal")
+        assert!(PySymmetryVerification::verify_symmetry(&c, "time_reversal")
             .expect("verify"));
     }
 
     #[test]
     fn sv_unknown_symmetry_returns_error() {
         let circuit = bell_circuit();
-        assert!(PySymmetryVerification::new()
-            .verify_symmetry(&circuit, "su2")
+        assert!(PySymmetryVerification::verify_symmetry(&circuit, "su2")
             .is_err());
     }
 
     #[test]
     fn sv_z2_aliases_agree_with_parity() {
         let circuit = bell_circuit();
-        let sv = PySymmetryVerification::new();
-        let via_parity = sv.verify_symmetry(&circuit, "parity").expect("parity");
-        assert_eq!(via_parity, sv.verify_symmetry(&circuit, "z2").expect("z2"));
-        assert_eq!(via_parity, sv.verify_symmetry(&circuit, "Z2").expect("Z2"));
+        let via_parity = PySymmetryVerification::verify_symmetry(&circuit, "parity").expect("parity");
+        assert_eq!(via_parity, PySymmetryVerification::verify_symmetry(&circuit, "z2").expect("z2"));
+        assert_eq!(via_parity, PySymmetryVerification::verify_symmetry(&circuit, "Z2").expect("Z2"));
     }
 
     #[test]
     fn sv_u1_aliases_agree_with_particle_number() {
         let circuit = bell_circuit();
-        let sv = PySymmetryVerification::new();
-        let via_pn = sv.verify_symmetry(&circuit, "particle_number").expect("pn");
-        assert_eq!(via_pn, sv.verify_symmetry(&circuit, "U1").expect("U1"));
-        assert_eq!(via_pn, sv.verify_symmetry(&circuit, "u1").expect("u1"));
+        let via_pn = PySymmetryVerification::verify_symmetry(&circuit, "particle_number").expect("pn");
+        assert_eq!(via_pn, PySymmetryVerification::verify_symmetry(&circuit, "U1").expect("U1"));
+        assert_eq!(via_pn, PySymmetryVerification::verify_symmetry(&circuit, "u1").expect("u1"));
     }
 
     #[test]

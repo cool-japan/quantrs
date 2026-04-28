@@ -50,7 +50,7 @@ impl PyRotatedSurfaceCode {
     }
 
     /// Code distance.
-    pub fn distance(&self) -> usize {
+    pub const fn distance(&self) -> usize {
         self.inner.distance
     }
 

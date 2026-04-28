@@ -241,6 +241,7 @@ pub mod scirs2_resource_estimator_enhanced;
 pub mod shannon;
 pub mod silicon_quantum_dots;
 pub mod simd_enhanced;
+pub mod state_visualization_3d;
 pub mod simd_ops;
 pub mod simd_ops_stubs;
 pub mod symbolic;

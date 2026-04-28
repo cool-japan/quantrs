@@ -21,7 +21,7 @@ doc = false   # Exclude from rustdoc to avoid collision with main quantrs2 crate
 test = false  # Exclude from cargo test/nextest: cdylib PyO3 extension modules cannot link Python symbols in test binaries (macOS SIGABRT / dyld _PyExc_BaseException)
 
 [dependencies]
-quantrs2-core.workspace = true
+quantrs2-core = { workspace = true, features = ["python"] }
 quantrs2-circuit = { workspace = true, features = ["python"] }
 quantrs2-sim = { workspace = true, features = ["python"] }
 quantrs2-device = { workspace = true, default-features = false, features = ["scheduling", "scirs2", "security"], optional = true }

@@ -428,6 +428,12 @@ cargo test --features "parallel,scirs,plotters"
 - **GPU features**: Require compatible hardware (WGPU-supported GPU)
 - **IBM Quantum**: Requires valid API credentials for integration tests
 
+## Community
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Development workflow, coding policies, and how to submit pull requests
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) - Standards for respectful participation in the project
+- [SECURITY.md](SECURITY.md) - How to report security vulnerabilities responsibly
+
 ## License
 
 This project is licensed under the [Apache License, Version 2.0](../LICENSE).

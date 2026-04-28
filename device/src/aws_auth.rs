@@ -1,6 +1,6 @@
 #[cfg(feature = "aws")]
 use chrono::{DateTime, Utc};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, Mac, KeyInit};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;

@@ -74,7 +74,7 @@ fn main() {
             .collect();
         assignments.sort_by_key(|(k, _)| k.clone());
         let assignment_str: Vec<String> = assignments.iter()
-            .map(|(k, v)| format!("{k}={}", if *v { 1 } else { 0 }))
+            .map(|(k, v)| format!("{k}={}", i32::from(*v)))
             .collect();
         println!(
             "  [{}] energy={:.3}, occurrences={}, assignments=[{}]",

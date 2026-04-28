@@ -208,6 +208,12 @@ try:
 except ImportError:
     pass
 
+# Try to import QEC module
+try:
+    from . import qec
+except ImportError:
+    pass
+
 # Try to import tytan visualization module (only available with tytan feature)
 try:
     from . import tytan_viz
