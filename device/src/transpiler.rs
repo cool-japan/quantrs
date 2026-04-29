@@ -23,7 +23,25 @@ pub struct QasmCircuit {
     pub gate_counts: HashMap<String, usize>,
 }
 
-/// Circuit transpiler that converts between different quantum circuit representations
+/// Circuit transpiler that converts between different quantum circuit representations.
+///
+/// Converts QuantRS2 [`Circuit`] instances to OpenQASM 2.0 text format and
+/// performs physical qubit remapping for hardware connectivity constraints.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_device::transpiler::CircuitTranspiler;
+/// use quantrs2_circuit::builder::Circuit;
+///
+/// let mut circ: Circuit<2> = Circuit::new();
+/// circ.h(0).expect("h").cnot(0, 1).expect("cnot");
+///
+/// let qasm = CircuitTranspiler::circuit_to_qasm(&circ, None)
+///     .expect("transpile failed");
+/// assert!(qasm.content.contains("OPENQASM 2.0"));
+/// assert_eq!(qasm.qubit_count, 2);
+/// ```
 pub struct CircuitTranspiler;
 
 impl CircuitTranspiler {

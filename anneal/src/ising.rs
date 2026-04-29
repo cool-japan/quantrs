@@ -161,7 +161,18 @@ impl Coupling {
     }
 }
 
-/// Represents an Ising model for quantum annealing
+/// Represents an Ising model for quantum annealing.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_anneal::ising::IsingModel;
+///
+/// let mut model = IsingModel::new(2);
+/// model.set_bias(0, -1.0).expect("set bias");
+/// model.set_coupling(0, 1, 0.5).expect("set coupling");
+/// assert_eq!(model.num_qubits, 2);
+/// ```
 ///
 /// The Ising model is defined by:
 /// H = Σ `h_i` `σ_i^z` + Σ `J_ij` `σ_i^z` `σ_j^z`

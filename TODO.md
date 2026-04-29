@@ -36,7 +36,7 @@
   - **Prerequisites:** None.
   - **Tests:** `cargo clippy --all-features --all-targets -- -D warnings` green. `cargo doc --no-deps -p quantrs2` zero warnings.
   - **Risk:** `#[non_exhaustive]` may break exhaustive `match` in tests — add wildcard arms where needed.
-- [~] Complete documentation for all public interfaces (planned 2026-04-27)
+- [x] Complete documentation for all public interfaces (completed 2026-04-28)
   - **Goal:** Zero rustdoc warnings workspace-wide. Every `pub fn`, `pub struct`, `pub enum`, and `pub trait` across all 10 crates must have at least one `///` doc line. Top 10 most-used public APIs per crate get runnable `# Examples` blocks.
   - **Design:** Per-crate grep for bare `pub` items without preceding `///`. Add missing doc comments and `//!` module-level blocks. Add compilable `# Examples` for the 10 most-important types/functions per crate.
   - **Files:** Doc-comment additions across all module source files. No new files.

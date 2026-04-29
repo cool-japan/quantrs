@@ -24,10 +24,24 @@ use crate::optimized_simd;
 use crate::scirs2_integration::{SciRS2Backend, SciRS2Matrix, SciRS2Vector, BLAS};
 use crate::utils::{flip_bit, gate_vec_to_array2};
 
-/// A state vector simulator for quantum circuits
+/// A state vector simulator for quantum circuits.
 ///
 /// This simulator implements the state vector approach, where the full quantum
 /// state is represented as a complex vector of dimension 2^N for N qubits.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_sim::statevector::StateVectorSimulator;
+/// use quantrs2_circuit::builder::Circuit;
+/// use quantrs2_circuit::builder::Simulator;
+///
+/// let mut circ: Circuit<2> = Circuit::new();
+/// circ.h(0).expect("h").cnot(0, 1).expect("cnot");
+/// let sim = StateVectorSimulator::new();
+/// let result = sim.run(&circ).expect("simulation failed");
+/// assert_eq!(result.num_qubits(), 2);
+/// ```
 #[derive(Debug)]
 pub struct StateVectorSimulator {
     /// Use parallel execution

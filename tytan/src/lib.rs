@@ -135,17 +135,16 @@
 //!
 //! Basic example without the `dwave` feature (no symbolic math):
 //!
-//! ```rust,no_run
+//! ```rust
 //! use quantrs2_tytan::sampler::{SASampler, Sampler};
 //! use std::collections::HashMap;
 //! use scirs2_core::ndarray::Array;
 //!
-//! // Create a simple QUBO matrix manually
+//! // Create a simple QUBO matrix manually (minimise x XOR y)
 //! let mut matrix = Array::<f64, _>::zeros((2, 2));
 //! matrix[[0, 0]] = -1.0;  // Linear term for x
 //! matrix[[1, 1]] = -1.0;  // Linear term for y
-//! matrix[[0, 1]] = 2.0;   // Quadratic term for x*y
-//! matrix[[1, 0]] = 2.0;   // Symmetric
+//! matrix[[0, 1]] = 2.0;   // Quadratic coupling x*y
 //!
 //! // Create variable map
 //! let mut var_map = HashMap::new();
@@ -153,16 +152,11 @@
 //! var_map.insert("y".to_string(), 1);
 //!
 //! // Choose a sampler
-//! let solver = SASampler::new(None);
+//! let solver = SASampler::new(Some(42));
 //!
-//! // Sample by converting to the dynamic format for hobo
-//! let matrix_dyn = matrix.into_dyn();
-//! let mut result = solver.run_hobo(&(matrix_dyn, var_map), 100).expect("Failed to run HOBO sampler");
-//!
-//! // Display results
-//! for r in &result {
-//!     println!("{:?}", r);
-//! }
+//! // Sample using the QUBO interface
+//! let result = solver.run_qubo(&(matrix, var_map), 10).expect("Failed to run QUBO sampler");
+//! assert!(!result.is_empty());
 //! ```
 
 // Export modules

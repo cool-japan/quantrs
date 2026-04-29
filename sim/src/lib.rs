@@ -95,15 +95,18 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust,ignore
+//! ```rust
 //! use quantrs2_sim::statevector::StateVectorSimulator;
+//! use quantrs2_circuit::builder::{Circuit, Simulator};
 //!
-//! // Create a 2-qubit simulator
-//! let mut sim = StateVectorSimulator::new(2);
-//! // Apply a Hadamard gate to qubit 0
-//! sim.h(0).expect("failed to apply H gate");
-//! // Measure and read results
-//! let results = sim.measure_all().expect("measurement failed");
+//! // Build a 2-qubit Bell state circuit
+//! let mut circ: Circuit<2> = Circuit::new();
+//! circ.h(0).expect("h").cnot(0, 1).expect("cnot");
+//!
+//! // Simulate and inspect the resulting register
+//! let sim = StateVectorSimulator::new();
+//! let reg = sim.run(&circ).expect("simulation failed");
+//! assert_eq!(reg.num_qubits(), 2);
 //! ```
 
 pub mod adaptive_gate_fusion;

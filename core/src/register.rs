@@ -9,7 +9,22 @@ use std::marker::PhantomData;
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use crate::qubit::QubitId;
 
-/// A quantum register that holds the state of N qubits
+/// A quantum register that holds the full quantum state of N qubits.
+///
+/// The state is stored as a 2^N complex amplitude vector where index `i`
+/// corresponds to the computational basis state |i⟩.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_core::register::Register;
+///
+/// // Start in |00⟩ state
+/// let reg: Register<2> = Register::new();
+/// assert_eq!(reg.num_qubits(), 2);
+/// // Ground state has amplitude 1 at index 0
+/// assert!((reg.amplitudes()[0].re - 1.0).abs() < 1e-10);
+/// ```
 #[derive(Debug, Clone)]
 pub struct Register<const N: usize> {
     /// Complex amplitudes for each basis state

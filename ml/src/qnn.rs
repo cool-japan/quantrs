@@ -70,7 +70,25 @@ pub struct TrainingResult {
     pub optimal_parameters: Array1<f64>,
 }
 
-/// Represents a quantum neural network
+/// Represents a quantum neural network.
+///
+/// A QNN consists of an ordered sequence of [`QNNLayerType`] layers that map
+/// classical input vectors to output predictions via a parameterised quantum
+/// circuit evaluated on a state-vector simulator.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_ml::qnn::{QuantumNeuralNetwork, QNNLayerType};
+///
+/// let layers = vec![
+///     QNNLayerType::EncodingLayer { num_features: 2 },
+///     QNNLayerType::VariationalLayer { num_params: 4 },
+/// ];
+/// let qnn = QuantumNeuralNetwork::new(layers, 2, 2, 1)
+///     .expect("failed to create QNN");
+/// assert_eq!(qnn.num_qubits, 2);
+/// ```
 #[derive(Debug, Clone)]
 pub struct QuantumNeuralNetwork {
     /// The layers that make up the network

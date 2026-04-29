@@ -18,13 +18,13 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust,ignore
+//! ```rust
 //! use quantrs2_core::qubit::QubitId;
-//! use quantrs2_core::error::QuantRS2Result;
 //!
 //! // Create qubit identifiers for a 2-qubit register
 //! let q0 = QubitId::new(0);
 //! let q1 = QubitId::new(1);
+//! assert!(q0 < q1);
 //! println!("Qubits: {q0:?} and {q1:?}");
 //! ```
 

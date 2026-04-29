@@ -118,6 +118,19 @@
 //! - **Hardware**: `transpiler`, `routing`, `pulse`, `crosstalk`
 //! - **Analysis**: `profiler`, `debugger`, `equivalence`, `validation`
 //! - **Advanced**: `synthesis`, `zx_calculus`, `tensor_network`, `topological`
+//!
+//! ## Quick Start
+//!
+//! ```rust
+//! use quantrs2_circuit::builder::Circuit;
+//!
+//! // Build a 3-qubit GHZ state circuit
+//! let mut circ: Circuit<3> = Circuit::new();
+//! circ.h(0).expect("h")
+//!     .cnot(0, 1).expect("cnot 0-1")
+//!     .cnot(0, 2).expect("cnot 0-2");
+//! assert_eq!(circ.num_gates(), 3);
+//! ```
 pub mod buffer_manager;
 pub mod builder;
 pub mod circuit_cache;
