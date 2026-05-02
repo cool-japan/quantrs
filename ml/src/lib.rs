@@ -122,6 +122,12 @@ pub mod tutorials;
 // Utilities module for calibration, metrics, preprocessing, etc.
 pub mod utils;
 
+// QAOA warm-start initialisation via spectral relaxation
+pub mod qaoa_warm_start;
+
+// VQE Natural Gradient entry point (wraps autodiff::QuantumAutoDiff)
+pub mod vqe_natural_gradient;
+
 // Advanced Quantum-Classical Hybrid AutoML Engine
 pub mod hybrid_automl_engine;
 

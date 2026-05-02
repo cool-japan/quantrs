@@ -5,7 +5,13 @@
 
 ## Future Enhancements
 
-- [ ] Quantum hardware integration: Direct integration with more providers
+- [x] Quantum hardware integration: Direct integration with more providers (implemented 2026-04-29)
+  - **Goal:** Unified job tracking API across IBM/AWS/Azure providers; provider capability discovery module; mock backend for full-pipeline integration tests without real credentials. IBM/AWS/Azure REST clients already exist (feature-gated).
+  - **Design:** `device/src/mock_backend.rs` — MockQuantumBackend (configurable latency/error/fail rates, deterministic result generation). `device/tests/integration_tests.rs` — 20+ tests of circuit→compile→submit→result pipeline without real cloud connections. Provider capability discovery: query supported gates/qubits per backend.
+  - **Files:** New `device/src/mock_backend.rs`. New `device/tests/integration_tests.rs`. Modify `device/src/lib.rs`.
+  - **Prerequisites:** None — mock-based, no real credentials needed.
+  - **Tests:** All integration tests pass without real cloud credentials.
+  - **Risk:** Format adapters may expose gaps in IBM/AWS/Azure conversion — fix any found.
 - [x] Documentation expansion: Enhanced tutorials and examples (implemented 2026-04-27)
   - **Goal:** New `py/python/quantrs2/tutorials/` package with 8 standalone Python tutorial scripts covering every major QuantRS2 feature surface. Each tutorial: 150–300 lines, extensive in-line commentary explaining quantum-computing concepts, runnable as `python -m quantrs2.tutorials.NN_topic`. Tutorials double as integration tests via a single pytest harness. Plus README.md tutorials index.
   - **Design:** tutorials/__init__.py + 01_bell_state.py + 02_vqe_h2.py + 03_qaoa_maxcut.py + 04_qec_surface_code.py + 05_qubo_sampling.py + 06_3d_state_visualization.py + 07_parameterized_circuits.py + 08_error_mitigation.py. Each guards optional imports (matplotlib, scipy) with try/except.
@@ -20,24 +26,48 @@
   - **Prerequisites:** `ndarray::Array2<Complex64>`, `rand` — both already in workspace.
   - **Tests:** `core/tests/networking_tests.rs` (new, ~300 lines): BB84 QBER≈0 at p=0; QBER≈0.25 at 100% eavesdrop; E91 CHSH≈2√2 at noise=0; teleportation fidelity=1 at noise=0; n-hop fidelity monotone-decreasing. `py/tests/test_networking.py` (new, ~80 lines) smoke tests.
   - **Risk:** CHSH estimators need large n — use n=1000 with tolerance ±0.1 in unit tests; n=10000 for accuracy demos.
-- [ ] Hybrid algorithms: More quantum-classical hybrid approaches
+- [x] Hybrid algorithms: More quantum-classical hybrid approaches (implemented 2026-04-29)
+  - **Goal:** (a) QAOA warm-start using spectral relaxation for MaxCut initialization. (b) VQE with quantum natural gradient via proper QFIM — fix stubs in autodiff.rs (compute_fisher_element returns random values; solve_linear_system just returns rhs). (c) Hybrid kernel SVM enhancement.
+  - **Design:** `ml/src/qaoa_warm_start.rs` — WarmStartQAOAOptimizer with graph Laplacian Fiedler-vector initialization. `ml/src/vqe_natural_gradient.rs` — QFIMEstimator using 4-point parameter-shift rule (F_ij = (E(++)+E(--)-E(+-)-E(-+))/4). Gaussian elimination solve for natural gradient step. Fix autodiff.rs stubs; wire QuantumNaturalGradient branch in optimization.rs.
+  - **Files:** New `ml/src/qaoa_warm_start.rs`, new `ml/src/vqe_natural_gradient.rs`. Modify `ml/src/autodiff.rs`, `ml/src/optimization.rs`, `ml/src/lib.rs`.
+  - **Prerequisites:** scirs2-linalg (already in workspace).
+  - **Tests:** QAOA warm-start: 4-vertex MaxCut, warm angles give lower initial energy than random. VQE natural gradient: 2-qubit Hamiltonian converges in ≤ 20 steps.
+  - **Risk:** QFIM needs O(n²) evaluations — cap n=20 in tests.
 - [x] Advanced visualization: 3D quantum state visualization
-- [ ] Quantum compilers: Advanced circuit compilation
-- [ ] Enterprise security: Enhanced security features
+- [x] Quantum compilers: Advanced circuit compilation (implemented 2026-04-29)
+  - **Goal:** (a) Solovay-Kitaev algorithm — approximate arbitrary SU(2) with {H,T,T†} sequences. (b) Template matching pass — reduce gate count via precomputed equivalence patterns (HH=I, XX=I, TT=S, CNOT·CNOT=I, etc.).
+  - **Design:** `circuit/src/solovay_kitaev.rs` (~500 lines) — SU2 struct (2x2 complex), BasicApproximation table (depth-9 sequences), SOKDecomposer::decompose(u, ε) using balanced commutator recursion per Dawson-Nielsen 2005. `circuit/src/template_matching.rs` (~400 lines) — TemplateLibrary with 20+ patterns, DAG-based matching, TemplateMatchingPass::run(circuit) → Circuit.
+  - **Files:** New `circuit/src/solovay_kitaev.rs`, new `circuit/src/template_matching.rs`. Modify `circuit/src/lib.rs`.
+  - **Prerequisites:** scirs2-linalg (SU2 operations).
+  - **Tests:** SK: decompose RZ(0.3) to ε=0.01, verify ‖approx - exact‖ ≤ 0.01. Template: Bell circuit with redundant H reduced by ≥ 2 gates.
+  - **Risk:** SK precomputed table (~7000 elements) built at first use via once_cell. Depth capped at 5 recursion levels for tests.
+- [x] Enterprise security: Enhanced security features (implemented 2026-04-29)
+  - **Goal:** Complete `device/src/security/` (directory exists but is empty). Implement: (a) structured JSON audit logging. (b) credential vault trait + env-var + file-based implementations. (c) token bucket rate limiter for cloud API calls.
+  - **Design:** `device/src/security/audit.rs` — AuditEvent {id, timestamp, operation: OperationType, backend_id, circuit_hash, user_id, success, duration_ms, error}; AuditLogger trait; FileAuditLogger + InMemoryAuditLogger. `device/src/security/credentials.rs` — SecretString (zeroed on drop); CredentialProvider trait; EnvVarCredentialProvider + FileCredentialProvider (checks 0o600 mode). `device/src/security/rate_limit.rs` — TokenBucket + RateLimiter (per-provider buckets). `device/src/security/mod.rs` — re-exports.
+  - **Files:** New `device/src/security/audit.rs`, `credentials.rs`, `rate_limit.rs`, `mod.rs`.
+  - **Prerequisites:** Check if `zeroize` is in workspace; add if missing.
+  - **Tests:** AuditLogger: write 100 events, verify JSON roundtrip. CredentialProvider: env-var round-trip. RateLimiter: exhaust tokens, verify refill after delay.
+  - **Risk:** File permission checks are Unix-only (#[cfg(unix)]). Sandboxing deferred.
 - [x] Scalability testing: Large-scale simulation validation (implemented 2026-04-27)
   - **Goal:** Scalability test + bench suite for state-vector sim, MPS sim, and QUBO sampling at real-world problem sizes. Smoke tests < 60s; heavy benches behind `--ignored`.
   - **Design:** sim/tests/scalability_smoke.rs (5 smoke tests: 15q SV, 18q QFT, 20q MPS GHZ, 25q MPS random, 30q stabilizer), sim/benches/large_scale_simulation.rs (criterion), tytan/tests/sampler_scalability_smoke.rs (50/100/200-var QUBO smokes), tytan/benches/sampler_scalability.rs (criterion), py/tests/test_scalability.py.
   - **Files:** 6 new files across sim/, tytan/, py/tests/.
   - **Tests:** nextest smoke tests + bench compile-check.
   - **Risk:** MPS bond-dim explosion on deep random circuits — fallback to depth 5.
-- [ ] Integration testing: Comprehensive external system testing
+- [x] Integration testing: Comprehensive external system testing (implemented 2026-04-29)
+  - **Goal:** Mock backend for credential-free full-pipeline integration tests. Exercises IBM/AWS/Azure format adapters, error handling, and job tracking without real cloud.
+  - **Design:** `device/src/mock_backend.rs` — MockQuantumBackend {config: MockBackendConfig {latency_ms, error_rate, fail_rate, max_qubits, gate_set, connectivity}, job_records: Arc<Mutex<Vec<MockJobRecord>>>, rng_seed}. Generates deterministic measurement results from circuit structure. `device/tests/integration_tests.rs` — 20+ tests: pipeline, format adapters, timeout, failure injection.
+  - **Files:** New `device/src/mock_backend.rs`. New `device/tests/integration_tests.rs`. Modify `device/src/lib.rs`.
+  - **Prerequisites:** None.
+  - **Tests:** All 20+ integration tests pass without real credentials.
+  - **Risk:** IBM/AWS/Azure format adapter gaps may surface — fix in-place.
 - [x] Performance optimization: Further SIMD and GPU optimizations (planned 2026-04-27)
   - **Goal:** SIMD-accelerated single-qubit-gate kernels in `sim/` crate. Target ≥ 2× over scalar for H/X/Y/Z/S/T/RX/RY/RZ on q=0. Pure-Rust via `wide` crate (no nightly std::simd).
   - **Design:** sim/src/state_vector_simd.rs (~600 lines, 9 gate kernels), dispatch in sim/src/state_vector.rs, sim/benches/simd_state_vector.rs (criterion scalar vs SIMD), sim/tests/state_vector_simd_correctness.rs (L2 < 1e-12 correctness suite).
   - **Files:** 3 new files in sim/; modify sim/src/state_vector.rs, sim/Cargo.toml (add `wide`).
   - **Tests:** correctness suite for every gate at n ∈ {3,5,7}, each target qubit.
   - **Risk:** Floating-point non-determinism across SIMD lanes — tolerance 1e-12 in tests.
-- [~] Ecosystem integration: Enhanced quantum software stack compatibility (planned 2026-04-27)
+- [x] Ecosystem integration: Enhanced quantum software stack compatibility (implemented 2026-04-28)
   - **Goal:** OpenQASM 2.0 bidirectional round-trip (QuantRS2 Circuit ↔ QASM string) and a PennyLane-compatible execution backend. Both exposed via Python bindings.
   - **Design:** `circuit/src/qasm/error.rs` (~50 lines) — QasmError enum. `circuit/src/qasm/export.rs` (~400 lines) — `circuit_to_qasm` with full gate mapping table (H/X/Y/Z/S/T/CNOT/CZ/SWAP/CCX/RX/RY/RZ/U3). `circuit/src/qasm/import.rs` (~600 lines) — hand-written recursive-descent parser for OPENQASM 2.0 (no external parser crate); handles qreg/creg/standard gates/measurements/barriers; `Err(UnsupportedFeature)` for `if`/custom gate defs. `circuit/src/pennylane/wire.rs` (~250 lines) — PennyLane JSON wire format serde. `circuit/src/pennylane/device.rs` (~350 lines) — QuantrsDevice: `capabilities()`, `execute(circuit_json)`, `batch_execute`. `py/src/ecosystem.rs` (~220 lines) — `circuit_to_qasm`, `qasm_to_circuit` Python functions; `PyQuantrsDevice` class; submodule `quantrs2.ecosystem`.
   - **Files:** New `circuit/src/qasm/` (4 files, ~1080 LoC). New `circuit/src/pennylane/` (3 files, ~630 LoC). New `py/src/ecosystem.rs` (~220 lines). Modify `circuit/src/lib.rs`, `circuit/Cargo.toml`, `py/src/lib.rs`.

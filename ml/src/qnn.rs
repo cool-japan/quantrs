@@ -229,6 +229,25 @@ impl QuantumNeuralNetwork {
 }
 
 /// Builder for quantum neural networks
+///
+/// Provides a fluent API to construct a [`QuantumNeuralNetwork`] by adding
+/// encoding, variational, entanglement, and measurement layers.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_ml::qnn::QNNBuilder;
+///
+/// let qnn = QNNBuilder::new()
+///     .with_qubits(2)
+///     .with_input_dim(2)
+///     .with_output_dim(1)
+///     .add_encoding_layer(2)
+///     .add_variational_layer(4)
+///     .build()
+///     .expect("valid QNN configuration");
+/// assert_eq!(qnn.num_qubits, 2);
+/// ```
 #[derive(Debug, Clone)]
 pub struct QNNBuilder {
     layers: Vec<QNNLayerType>,
@@ -356,6 +375,19 @@ impl fmt::Display for QNNLayerType {
 }
 
 /// Quantum neural network layer for use in other modules
+///
+/// A single dense-like layer in a hybrid quantum-classical network, mapping
+/// `input_dim` features to `output_dim` features through a chosen activation.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_ml::qnn::{QNNLayer, ActivationType};
+///
+/// let layer = QNNLayer::new(4, 2, ActivationType::ReLU);
+/// assert_eq!(layer.input_dim, 4);
+/// assert_eq!(layer.output_dim, 2);
+/// ```
 #[derive(Debug, Clone)]
 pub struct QNNLayer {
     /// Input dimension

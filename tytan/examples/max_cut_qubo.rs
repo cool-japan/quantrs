@@ -17,7 +17,7 @@ use quantrs2_tytan::sampler::{SASampler, Sampler, TabuSampler};
 use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     println!("=== Max-Cut on Cycle C_8 via QUBO ===\n");
 
     // ---- Graph definition: cycle C_8 with 8 vertices ----
@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let edges: Vec<(usize, usize)> = (0..n).map(|i| (i, (i + 1) % n)).collect();
 
     println!("Graph : cycle C_{n}");
-    println!("Edges : {:?}", edges);
+    println!("Edges : {edges:?}");
     println!("Max possible cut : {n}  (alternating colouring)\n");
 
     // ---- Build QUBO ----
@@ -81,8 +81,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Expected to find a cut of at least 7 on C_8"
     );
     println!("OK");
-
-    Ok(())
 }
 
 /// Count how many edges cross the cut defined by the boolean assignment

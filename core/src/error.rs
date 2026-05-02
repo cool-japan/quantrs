@@ -1,6 +1,25 @@
 use thiserror::Error;
 
-/// Common error types for quantum operations
+/// Common error types for quantum operations.
+///
+/// All fallible QuantRS2 operations return `Result<T, QuantRS2Error>` (aliased
+/// as [`QuantRS2Result<T>`]). Use `?` to propagate errors through call stacks.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
+///
+/// fn validate_qubit(id: u32, num_qubits: u32) -> QuantRS2Result<()> {
+///     if id >= num_qubits {
+///         return Err(QuantRS2Error::InvalidQubitId(id));
+///     }
+///     Ok(())
+/// }
+///
+/// assert!(validate_qubit(0, 2).is_ok());
+/// assert!(validate_qubit(5, 2).is_err());
+/// ```
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum QuantRS2Error {

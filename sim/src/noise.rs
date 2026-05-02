@@ -512,6 +512,25 @@ impl NoiseChannel for PhaseDampingChannel {
 }
 
 /// Noise model that combines multiple noise channels
+///
+/// A `NoiseModel` collects [`NoiseChannelType`] channels and applies them to a
+/// quantum state vector.  Set `per_gate = true` to apply noise after every gate;
+/// set it to `false` to apply once at the end of a circuit.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_sim::noise::{NoiseModel, BitFlipChannel};
+/// use quantrs2_core::qubit::QubitId;
+///
+/// // 1 % bit-flip error on qubit 0, applied after every gate
+/// let mut model = NoiseModel::new(true);
+/// model.add_bit_flip(BitFlipChannel {
+///     target: QubitId::new(0),
+///     probability: 0.01,
+/// });
+/// assert_eq!(model.num_channels(), 1);
+/// ```
 #[derive(Debug, Clone)]
 pub struct NoiseModel {
     /// List of noise channels
@@ -588,6 +607,22 @@ impl Default for NoiseModel {
 }
 
 /// Builder for common noise models
+///
+/// Provides a fluent API to construct [`NoiseModel`] instances with standard
+/// noise channels such as depolarizing or bit-flip noise.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_sim::noise::NoiseModelBuilder;
+/// use quantrs2_core::qubit::QubitId;
+///
+/// let qubits = vec![QubitId::new(0), QubitId::new(1)];
+/// let model = NoiseModelBuilder::new(true)
+///     .with_depolarizing_noise(&qubits, 0.01)
+///     .build();
+/// assert_eq!(model.num_channels(), 2);
+/// ```
 pub struct NoiseModelBuilder {
     model: NoiseModel,
 }

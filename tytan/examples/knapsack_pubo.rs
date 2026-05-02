@@ -17,7 +17,7 @@ use quantrs2_tytan::sampler::{SBSampler, Sampler};
 use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     println!("=== 0/1 Knapsack Problem via QUBO (Simulated Bifurcation) ===\n");
 
     // ---- Problem data ----
@@ -90,10 +90,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Add penalty terms
     for i in 0..n_total {
         // Linear part: P * (c_i^2 - 2*W*c_i)
-        q[(i, i)] += penalty * (coeffs[i] * coeffs[i] - 2.0 * capacity * coeffs[i]);
+        q[(i, i)] = (2.0 * capacity).mul_add(-coeffs[i], coeffs[i] * coeffs[i]).mul_add(penalty, q[(i, i)]);
         for j in (i + 1)..n_total {
             // Quadratic part: P * 2 * c_i * c_j (upper triangle)
-            q[(i, j)] += penalty * 2.0 * coeffs[i] * coeffs[j];
+            q[(i, j)] = (penalty * 2.0 * coeffs[i]).mul_add(coeffs[j], q[(i, j)]);
         }
     }
 
@@ -110,24 +110,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut selected_weight = 0.0f64;
     let mut selected_items: Vec<usize> = Vec::new();
 
-    for i in 0..n_items {
+    for (i, &(val, wt)) in items.iter().enumerate().take(n_items) {
         let key = format!("x{i}");
         if *best.assignments.get(&key).expect("key missing") {
             selected_items.push(i);
-            selected_value += items[i].0;
-            selected_weight += items[i].1;
+            selected_value += val;
+            selected_weight += wt;
         }
     }
 
     println!("Best QUBO energy  : {:.4}", best.energy);
-    println!("Selected items    : {:?}", selected_items);
+    println!("Selected items    : {selected_items:?}");
     println!("Total value       : {selected_value}");
     println!("Total weight      : {selected_weight} / {capacity}");
 
     // ---- Brute-force optimal for comparison ----
     let (opt_val, opt_weight, opt_items) = brute_force_knapsack(&items, capacity);
     println!("\nBrute-force optimum:");
-    println!("  Items   : {:?}", opt_items);
+    println!("  Items   : {opt_items:?}");
     println!("  Value   : {opt_val}");
     println!("  Weight  : {opt_weight} / {capacity}");
 
@@ -147,8 +147,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             opt_val - selected_value
         );
     }
-
-    Ok(())
 }
 
 /// Brute-force exact solution for verification
@@ -164,10 +162,10 @@ fn brute_force_knapsack(
     for mask in 0..(1usize << n) {
         let mut value = 0.0f64;
         let mut weight = 0.0f64;
-        for i in 0..n {
+        for (i, &(v, w)) in items.iter().enumerate().take(n) {
             if (mask >> i) & 1 == 1 {
-                value += items[i].0;
-                weight += items[i].1;
+                value += v;
+                weight += w;
             }
         }
         if weight <= capacity && value > best_value {

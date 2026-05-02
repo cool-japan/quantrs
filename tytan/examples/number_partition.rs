@@ -15,7 +15,7 @@ use quantrs2_tytan::sampler::{Sampler, SBSampler, TabuSampler};
 use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     println!("=== Number Partitioning via QUBO (Tabu Search) ===\n");
 
     // ---- Problem definition ----
@@ -32,10 +32,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Q[i,i] = w_i * (w_i - total)
     // Q[i,j] = 2 * w_i * w_j   (i < j; upper triangle)
     let mut q = Array2::<f64>::zeros((n, n));
-    for i in 0..n {
-        q[(i, i)] = weights[i] * (weights[i] - total);
+    for (i, &wi) in weights.iter().enumerate().take(n) {
+        q[(i, i)] = wi * (wi - total);
         for j in (i + 1)..n {
-            q[(i, j)] = 2.0 * weights[i] * weights[j];
+            q[(i, j)] = 2.0 * wi * weights[j];
         }
     }
 
@@ -59,12 +59,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Reconstruct the two subsets from the best assignment
     let mut set_a: Vec<f64> = Vec::new();
     let mut set_b: Vec<f64> = Vec::new();
-    for i in 0..n {
+    for (i, &wi) in weights.iter().enumerate().take(n) {
         let key = format!("x{i}");
         if *best.assignments.get(&key).expect("key missing") {
-            set_a.push(weights[i]);
+            set_a.push(wi);
         } else {
-            set_b.push(weights[i]);
+            set_b.push(wi);
         }
     }
 
@@ -93,6 +93,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (sum_a - sum_b).abs()
     );
     println!("\nOK — perfect partition found.");
-
-    Ok(())
 }

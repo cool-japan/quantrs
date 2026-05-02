@@ -64,6 +64,20 @@ pub enum Optimizer {
         perturbation: f64,
     },
 
+    /// Quantum Natural Gradient optimizer.
+    ///
+    /// This variant stores the scalar hyper-parameters only.  Callers are expected
+    /// to pre-condition gradients through `QuantumAutoDiff::natural_gradients()`
+    /// (which requires a circuit executor closure) and then pass the resulting
+    /// natural-gradient vector to `update_parameters`.  The `regularization` field
+    /// is used as additive damping: `Δθ_i = −lr · g_i / (1 + reg)`.
+    QuantumNaturalGradient {
+        /// Learning rate
+        learning_rate: f64,
+        /// Tikhonov regularisation added to the QFIM diagonal before inversion
+        regularization: f64,
+    },
+
     /// SciRS2-based optimizers (placeholder for integration)
     SciRS2 {
         /// Optimizer method
@@ -100,12 +114,9 @@ impl Optimizer {
                 }
             }
             OptimizationMethod::QuantumNaturalGradient => {
-                // Default to Adam as QNG is not implemented yet
-                Optimizer::Adam {
+                Optimizer::QuantumNaturalGradient {
                     learning_rate: 0.01,
-                    beta1: 0.9,
-                    beta2: 0.999,
-                    epsilon: 1e-8,
+                    regularization: 1e-3,
                 }
             }
             OptimizationMethod::SciRS2Adam => {
@@ -176,6 +187,19 @@ impl Optimizer {
                 // Simplified SPSA update
                 for i in 0..parameters.len() {
                     parameters[i] -= learning_rate * gradients[i];
+                }
+                Ok(())
+            }
+            Optimizer::QuantumNaturalGradient {
+                learning_rate,
+                regularization,
+            } => {
+                // Gradients are expected to be pre-conditioned natural gradients
+                // (computed via `QuantumAutoDiff::natural_gradients()`).
+                // Apply Tikhonov-damped update: Δθ = -lr * g / (1 + reg).
+                let damp = 1.0 + regularization;
+                for i in 0..parameters.len() {
+                    parameters[i] -= learning_rate * gradients[i] / damp;
                 }
                 Ok(())
             }
@@ -282,6 +306,16 @@ impl fmt::Display for Optimizer {
                     f,
                     "SPSA (learning_rate: {}, perturbation: {})",
                     learning_rate, perturbation
+                )
+            }
+            Optimizer::QuantumNaturalGradient {
+                learning_rate,
+                regularization,
+            } => {
+                write!(
+                    f,
+                    "Quantum Natural Gradient (learning_rate: {}, regularization: {})",
+                    learning_rate, regularization
                 )
             }
             Optimizer::SciRS2 { method, config } => {

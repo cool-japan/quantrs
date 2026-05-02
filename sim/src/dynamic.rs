@@ -30,6 +30,27 @@ use std::collections::HashMap;
 use crate::gpu::GpuStateVectorSimulator;
 
 /// A dynamic circuit that encapsulates circuits of different qubit counts
+///
+/// Wraps the const-generic [`quantrs2_circuit::builder::Circuit`] types behind an
+/// enum so circuits of different sizes can be handled at runtime without heap
+/// allocation overhead.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_sim::dynamic::DynamicCircuit;
+/// use quantrs2_core::gate::functions::single::Hadamard;
+/// use quantrs2_core::qubit::QubitId;
+///
+/// // Create a 2-qubit circuit dynamically
+/// let mut dc = DynamicCircuit::new(2).expect("2 qubits supported");
+/// assert_eq!(dc.num_qubits(), 2);
+///
+/// // Apply a Hadamard gate
+/// let q0 = QubitId::new(0);
+/// dc.apply_gate(Hadamard { target: q0 }).expect("H gate applied");
+/// assert_eq!(dc.gates().len(), 1);
+/// ```
 pub enum DynamicCircuit {
     /// 2-qubit circuit
     Q2(Circuit<2>),

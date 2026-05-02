@@ -243,6 +243,27 @@ pub struct AnnealingSolution {
 ///
 /// This uses path integral Monte Carlo to simulate quantum annealing,
 /// which can be used to find low-energy states of Ising models.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_anneal::ising::IsingModel;
+/// use quantrs2_anneal::simulator::{QuantumAnnealingSimulator, AnnealingParams};
+///
+/// let mut model = IsingModel::new(2);
+/// model.set_bias(0, -1.0).expect("bias");
+/// model.set_coupling(0, 1, -0.5).expect("coupling");
+///
+/// let mut params = AnnealingParams::new();
+/// params.num_sweeps = 30;
+/// params.num_repetitions = 1;
+/// params.trotter_slices = 4;
+/// params.seed = Some(0);
+///
+/// let sim = QuantumAnnealingSimulator::new(params).expect("valid params");
+/// let result = sim.solve(&model).expect("simulation succeeded");
+/// assert!(result.best_energy <= 0.0);
+/// ```
 #[derive(Debug, Clone)]
 pub struct QuantumAnnealingSimulator {
     /// Parameters for the annealing process
@@ -442,6 +463,29 @@ impl QuantumAnnealingSimulator {
 ///
 /// This uses Metropolis-Hastings algorithm for simulated annealing,
 /// which can be used to find low-energy states of Ising models.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_anneal::ising::IsingModel;
+/// use quantrs2_anneal::simulator::{ClassicalAnnealingSimulator, AnnealingParams};
+///
+/// // Build a ferromagnetic Ising chain (prefers aligned spins)
+/// let mut model = IsingModel::new(3);
+/// model.set_coupling(0, 1, -1.0).expect("coupling 0-1");
+/// model.set_coupling(1, 2, -1.0).expect("coupling 1-2");
+///
+/// // Run with fast (small) parameters for doctest speed
+/// let mut params = AnnealingParams::new();
+/// params.num_sweeps = 50;
+/// params.num_repetitions = 2;
+/// params.seed = Some(42);
+///
+/// let sim = ClassicalAnnealingSimulator::new(params).expect("valid params");
+/// let result = sim.solve(&model).expect("annealing succeeded");
+/// // The ground state should have all spins aligned (energy ≈ -2.0)
+/// assert!(result.best_energy <= 0.0);
+/// ```
 #[derive(Debug, Clone)]
 pub struct ClassicalAnnealingSimulator {
     /// Parameters for the annealing process

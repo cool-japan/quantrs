@@ -149,6 +149,7 @@ pub mod job_scheduling;
 pub mod mapping_scirs2;
 pub mod mid_circuit_measurements;
 pub mod ml_optimization;
+pub mod mock_backend;
 #[cfg(feature = "neutral_atom")]
 pub mod neutral_atom;
 pub mod noise_model;
@@ -207,7 +208,26 @@ pub mod aws_conversion;
 /// Result type for device operations
 pub type DeviceResult<T> = Result<T, DeviceError>;
 
-/// Errors that can occur during device operations
+/// Errors that can occur during device operations.
+///
+/// Covers authentication, connection, job lifecycle, routing, and conversion
+/// failures when interacting with quantum hardware backends.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_device::{DeviceError, DeviceResult};
+///
+/// fn submit_job(token: &str) -> DeviceResult<()> {
+///     if token.is_empty() {
+///         return Err(DeviceError::Authentication("empty API token".to_string()));
+///     }
+///     Ok(())
+/// }
+///
+/// assert!(submit_job("valid-token").is_ok());
+/// assert!(submit_job("").is_err());
+/// ```
 #[derive(Error, Debug, Clone)]
 #[non_exhaustive]
 pub enum DeviceError {
