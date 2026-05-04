@@ -145,7 +145,7 @@ approx = "0.5"                   # Test-only usage, acceptable
 # Essential SciRS2 dependencies for QuantRS2 - COMPREHENSIVE INTEGRATION
 # Status: Production Ready with SciRS2 foundation
 # Using scirs2 0.4.0 from crates.io
-scirs2-core = { version = "0.4.2", default-features = false, features = [
+scirs2-core = { version = "0.4.3", default-features = false, features = [
     "serialization",  # Complex<T> serde support
     "linalg",         # ndarray-linalg integration (solve, svd, eigh)
     "simd",           # SIMD acceleration
@@ -158,19 +158,19 @@ scirs2-core = { version = "0.4.2", default-features = false, features = [
 ] }
 
 # HIGHLY LIKELY REQUIRED SciRS2 crates
-scirs2-autograd = { version = "0.4.2", default-features = false }  # Primary source for ndarray types
-scirs2-linalg = { version = "0.4.2", default-features = false }
-scirs2-optimize = { version = "0.4.2", default-features = false }
-scirs2-special = { version = "0.4.2", default-features = false }
-scirs2-sparse = { version = "0.4.2", default-features = false }
-scirs2-fft = { version = "0.4.2", default-features = false, features = ["oxifft"] }
+scirs2-autograd = { version = "0.4.3", default-features = false }  # Primary source for ndarray types
+scirs2-linalg = { version = "0.4.3", default-features = false }
+scirs2-optimize = { version = "0.4.3", default-features = false }
+scirs2-special = { version = "0.4.3", default-features = false }
+scirs2-sparse = { version = "0.4.3", default-features = false }
+scirs2-fft = { version = "0.4.3", default-features = false, features = ["oxifft"] }
 
 # CONDITIONALLY REQUIRED SciRS2 crates
-scirs2-neural = { version = "0.4.2", default-features = false }
-scirs2-metrics = { version = "0.4.2", default-features = false }
-scirs2-stats = { version = "0.4.2", default-features = false }
-scirs2-cluster = { version = "0.4.2", default-features = false }
-scirs2-graph = { version = "0.4.2", default-features = false }
+scirs2-neural = { version = "0.4.3", default-features = false }
+scirs2-metrics = { version = "0.4.3", default-features = false }
+scirs2-stats = { version = "0.4.3", default-features = false }
+scirs2-cluster = { version = "0.4.3", default-features = false }
+scirs2-graph = { version = "0.4.3", default-features = false }
 
 # OptiRS integration for advanced optimization (VQE, QAOA) 
 optirs-core = { version = "0.3.1", default-features = false }
@@ -196,7 +196,7 @@ thiserror = "2.0.18"
 # Serialization and data formats
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-oxicode = { version = "0.2.1", features = ["std", "derive", "serde"] }
+oxicode = { version = "0.2.2", features = ["std", "derive", "serde"] }
 oxiarc-deflate = "0.2.6"   # Pure Rust DEFLATE/zlib (COOLJAPAN Policy: replaces flate2)
 oxiarc-lz4 = "0.2.6"      # Pure Rust LZ4 (COOLJAPAN Policy: replaces lz4 crate)
 # zstd = "0.13"  # REMOVED: Not used in code (COOLJAPAN Pure Rust Policy)
