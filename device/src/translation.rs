@@ -771,10 +771,43 @@ impl GateTranslator {
     }
 
     /// Extract parameters from a gate
+    ///
+    /// Returns the rotation angles (or other real parameters) carried by a
+    /// parameterized gate. Common single-qubit rotation gates store an angle
+    /// in `theta`; we recover those by `as_any` downcasts. Non-parameterized
+    /// gates produce an empty `Vec`.
     fn extract_parameters(&self, gate: &dyn GateOp) -> QuantRS2Result<Vec<f64>> {
-        // This would need to be implemented based on gate type
-        // For now, return empty vector
-        Ok(vec![])
+        if !gate.is_parameterized() {
+            return Ok(Vec::new());
+        }
+
+        // Concrete downcasts for the parameterized single-qubit rotations
+        // exported by quantrs2-core. The order matches the gate's natural
+        // matrix representation (single rotation angle).
+        let any = gate.as_any();
+        if let Some(g) = any.downcast_ref::<RotationX>() {
+            return Ok(vec![g.theta]);
+        }
+        if let Some(g) = any.downcast_ref::<RotationY>() {
+            return Ok(vec![g.theta]);
+        }
+        if let Some(g) = any.downcast_ref::<RotationZ>() {
+            return Ok(vec![g.theta]);
+        }
+        if let Some(g) = any.downcast_ref::<CRX>() {
+            return Ok(vec![g.theta]);
+        }
+        if let Some(g) = any.downcast_ref::<CRY>() {
+            return Ok(vec![g.theta]);
+        }
+        if let Some(g) = any.downcast_ref::<CRZ>() {
+            return Ok(vec![g.theta]);
+        }
+
+        // Fallback: gate reports as parameterized but we don't have a known
+        // concrete representation. Return an empty vector rather than fail
+        // so the caller can continue with synthesis on the matrix.
+        Ok(Vec::new())
     }
 
     /// Remap qubits in decomposition

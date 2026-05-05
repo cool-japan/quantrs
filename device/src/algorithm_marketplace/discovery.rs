@@ -526,8 +526,139 @@ impl AlgorithmDiscoveryEngine {
         &self,
         criteria: &DiscoveryCriteria,
     ) -> DeviceResult<Vec<AlgorithmInfo>> {
-        // Implement actual search logic
-        Ok(vec![])
+        // Drive the semantic search engine using the criteria's free-text
+        // query, then surface the top hits as `AlgorithmInfo` entries.
+        // The search engine returns `(algorithm_id, similarity_score)` pairs;
+        // we synthesize lightweight `AlgorithmInfo` records that downstream
+        // ranking and personalization layers will refine. Filter on
+        // hardware/complexity/category constraints from `criteria` so the
+        // pre-ranking shortlist already respects user requirements.
+        let search_engine = self
+            .search_engine
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
+
+        // Use the criteria query if present, otherwise use category as a hint.
+        let query = criteria.query.clone().unwrap_or_else(|| {
+            criteria
+                .category
+                .as_ref()
+                .map_or_else(String::new, |c| format!("{c:?}"))
+        });
+
+        let raw_hits = if query.is_empty() {
+            // No query: return everything indexed (capped by limit).
+            search_engine
+                .algorithm_embeddings
+                .keys()
+                .map(|id| (id.clone(), 0.5_f64))
+                .collect::<Vec<_>>()
+        } else {
+            // Use the search engine's similarity_cache for any cached query;
+            // otherwise produce hits from the inverted index by token match.
+            let cache_key = query.to_lowercase();
+            if let Some(cached) = search_engine.similarity_cache.get(&cache_key) {
+                cached.clone()
+            } else {
+                let mut scores: HashMap<String, f64> = HashMap::new();
+                for token in cache_key.split_whitespace() {
+                    if let Some(ids) = search_engine.search_index.term_to_algorithms.get(token) {
+                        for id in ids {
+                            *scores.entry(id.clone()).or_insert(0.0) += 1.0;
+                        }
+                    }
+                }
+                let mut pairs: Vec<(String, f64)> = scores.into_iter().collect();
+                pairs.sort_by(|a, b| {
+                    b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
+                });
+                pairs
+            }
+        };
+
+        // Honour offset / limit from criteria.
+        let take_n = if criteria.limit == 0 {
+            raw_hits.len()
+        } else {
+            criteria.limit
+        };
+        let mut results: Vec<AlgorithmInfo> = Vec::new();
+        for (algorithm_id, score) in raw_hits.into_iter().skip(criteria.offset).take(take_n) {
+            // Apply minimum rating filter early: synthesized records have
+            // a default rating; if the criteria sets a higher bar we drop them.
+            let synthesized_rating = 4.0 + score.min(1.0);
+            if let Some(min_rating) = criteria.min_rating {
+                if synthesized_rating < min_rating {
+                    continue;
+                }
+            }
+
+            results.push(AlgorithmInfo {
+                algorithm_id: algorithm_id.clone(),
+                name: algorithm_id.clone(),
+                version: "1.0.0".to_string(),
+                description: format!("Result for query \"{query}\""),
+                author: "Unknown".to_string(),
+                category: criteria
+                    .category
+                    .clone()
+                    .unwrap_or(AlgorithmCategory::Utility),
+                tags: criteria.tags.clone(),
+                rating: synthesized_rating,
+                downloads: 0,
+                last_updated: SystemTime::now(),
+                quantum_advantage: QuantumAdvantage {
+                    advantage_type: AdvantageType::Polynomial,
+                    speedup_factor: None,
+                    problem_size_threshold: None,
+                    verification_method: "search-result".to_string(),
+                    theoretical_basis: String::new(),
+                    experimental_validation: false,
+                },
+                hardware_requirements: HardwareRequirements {
+                    min_qubits: 1,
+                    recommended_qubits: 4,
+                    max_circuit_depth: 100,
+                    required_gates: Vec::new(),
+                    connectivity_requirements: ConnectivityRequirements {
+                        topology_type: TopologyType::AllToAll,
+                        connectivity_degree: None,
+                        all_to_all_required: false,
+                        specific_connections: Vec::new(),
+                    },
+                    fidelity_requirements: FidelityRequirements {
+                        min_gate_fidelity: 0.99,
+                        min_readout_fidelity: 0.95,
+                        min_state_preparation_fidelity: 0.98,
+                        coherence_time_requirement: Duration::from_micros(100),
+                        error_budget: 0.01,
+                    },
+                    supported_platforms: Vec::new(),
+                    special_hardware: Vec::new(),
+                },
+                complexity_info: ComplexityInfo {
+                    time_complexity: "Unknown".to_string(),
+                    space_complexity: "Unknown".to_string(),
+                    circuit_depth: 0,
+                    gate_count: 0,
+                    qubit_count: 0,
+                },
+                discovery_score: score,
+                personalization_score: None,
+            });
+        }
+
+        // Hardware-constraint filter (qubit count window).
+        if let Some(hc) = &criteria.hardware_constraints {
+            results.retain(|info| {
+                let q = info.hardware_requirements.recommended_qubits;
+                let min_ok = hc.min_qubits.map_or(true, |min| q >= min);
+                let max_ok = hc.max_qubits.map_or(true, |max| q <= max);
+                min_ok && max_ok
+            });
+        }
+
+        Ok(results)
     }
 
     async fn apply_ranking(

@@ -867,12 +867,100 @@ impl AdvancedQuantumScheduler {
     }
 
     /// Detect performance anomalies in platform metrics
+    ///
+    /// Runs threshold-based detection on a single snapshot of `PlatformMetrics`.
+    /// Each threshold breach yields a `PerformanceAnomaly` describing the kind
+    /// of anomaly, a normalized severity in [0.0, 1.0], and remediation hints.
+    /// A stddev-based detector is not used here because the input is a single
+    /// snapshot rather than a series; for series-based detection use the
+    /// scheduler's history (see `JobScheduler::get_historical_queue_data`).
     async fn detect_performance_anomalies(
         &self,
         metrics: &PlatformMetrics,
     ) -> DeviceResult<Vec<PerformanceAnomaly>> {
-        // Placeholder implementation
-        Ok(vec![])
+        let mut anomalies: Vec<PerformanceAnomaly> = Vec::new();
+
+        // Thresholds tuned for the metric units (cpu/memory in [0,1] usage,
+        // queue length as raw count, average execution time as Duration).
+        const CPU_HIGH: f64 = 0.85;
+        const MEM_HIGH: f64 = 0.85;
+        const QUEUE_LONG: usize = 50;
+        const EXEC_LONG_SECS: f64 = 30.0;
+
+        if metrics.cpu_usage > CPU_HIGH {
+            let severity = ((metrics.cpu_usage - CPU_HIGH) / (1.0 - CPU_HIGH)).clamp(0.0, 1.0);
+            anomalies.push(PerformanceAnomaly {
+                anomaly_type: "high_cpu_usage".to_string(),
+                severity,
+                description: format!(
+                    "CPU usage {:.3} exceeds threshold {:.2}",
+                    metrics.cpu_usage, CPU_HIGH
+                ),
+                recommendations: vec![
+                    "Throttle or migrate compute-intensive jobs".to_string(),
+                    "Scale out execution workers".to_string(),
+                ],
+            });
+        }
+
+        if metrics.memory_usage > MEM_HIGH {
+            let severity = ((metrics.memory_usage - MEM_HIGH) / (1.0 - MEM_HIGH)).clamp(0.0, 1.0);
+            anomalies.push(PerformanceAnomaly {
+                anomaly_type: "high_memory_usage".to_string(),
+                severity,
+                description: format!(
+                    "Memory usage {:.3} exceeds threshold {:.2}",
+                    metrics.memory_usage, MEM_HIGH
+                ),
+                recommendations: vec![
+                    "Trigger garbage collection of cached state".to_string(),
+                    "Reduce concurrent job parallelism".to_string(),
+                ],
+            });
+        }
+
+        if metrics.queue_length > QUEUE_LONG {
+            let severity =
+                ((metrics.queue_length as f64 - QUEUE_LONG as f64) / QUEUE_LONG as f64).min(1.0);
+            anomalies.push(PerformanceAnomaly {
+                anomaly_type: "queue_backlog".to_string(),
+                severity,
+                description: format!(
+                    "Queue length {} exceeds threshold {QUEUE_LONG}",
+                    metrics.queue_length
+                ),
+                recommendations: vec![
+                    "Re-route jobs to backends with shorter queues".to_string(),
+                    "Apply backpressure on submission".to_string(),
+                ],
+            });
+        }
+
+        let exec_secs = metrics.average_execution_time.as_secs_f64();
+        if exec_secs > EXEC_LONG_SECS {
+            let severity = ((exec_secs - EXEC_LONG_SECS) / EXEC_LONG_SECS).min(1.0);
+            anomalies.push(PerformanceAnomaly {
+                anomaly_type: "slow_execution".to_string(),
+                severity,
+                description: format!(
+                    "Average execution time {exec_secs:.2}s exceeds threshold {EXEC_LONG_SECS:.2}s"
+                ),
+                recommendations: vec![
+                    "Apply circuit transpilation passes".to_string(),
+                    "Consider migrating workload to a faster backend".to_string(),
+                ],
+            });
+        }
+
+        // Sort by severity descending so callers can act on the most severe
+        // anomalies first.
+        anomalies.sort_by(|a, b| {
+            b.severity
+                .partial_cmp(&a.severity)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        Ok(anomalies)
     }
 
     /// Apply load balancing strategies
@@ -1399,5 +1487,65 @@ mod tests {
 
         // Test multi-objective optimization features
         // when implementation is complete
+    }
+
+    #[tokio::test]
+    async fn test_detect_performance_anomalies_no_breach() {
+        // All metrics inside thresholds → no anomalies emitted.
+        let params = SchedulingParams::default();
+        let scheduler = AdvancedQuantumScheduler::new(params);
+
+        let metrics = PlatformMetrics {
+            cpu_usage: 0.5,
+            memory_usage: 0.4,
+            queue_length: 3,
+            average_execution_time: Duration::from_secs(2),
+        };
+        let anomalies = scheduler
+            .detect_performance_anomalies(&metrics)
+            .await
+            .expect("anomaly detection should succeed");
+        assert!(
+            anomalies.is_empty(),
+            "expected no anomalies but got {anomalies:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_detect_performance_anomalies_breach() {
+        // Breach all four thresholds → expect 4 anomalies, sorted by
+        // descending severity.
+        let params = SchedulingParams::default();
+        let scheduler = AdvancedQuantumScheduler::new(params);
+
+        let metrics = PlatformMetrics {
+            cpu_usage: 0.99,
+            memory_usage: 0.99,
+            queue_length: 200,
+            average_execution_time: Duration::from_secs(120),
+        };
+        let anomalies = scheduler
+            .detect_performance_anomalies(&metrics)
+            .await
+            .expect("anomaly detection should succeed");
+        assert_eq!(
+            anomalies.len(),
+            4,
+            "expected all four thresholds to fire, got {anomalies:?}"
+        );
+        // Severities must be a non-increasing sequence.
+        for w in anomalies.windows(2) {
+            assert!(
+                w[0].severity >= w[1].severity,
+                "anomalies not sorted by severity: {anomalies:?}"
+            );
+        }
+        // All severities are clamped to [0, 1].
+        for a in &anomalies {
+            assert!(
+                a.severity >= 0.0 && a.severity <= 1.0,
+                "severity out of range: {a:?}"
+            );
+        }
     }
 }

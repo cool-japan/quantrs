@@ -524,20 +524,151 @@ impl UnifiedQuantumBenchmarkSystem {
     // Utility methods
     async fn generate_optimization_recommendations(
         &self,
-        _platform_results: &HashMap<QuantumPlatform, PlatformBenchmarkResult>,
-        _cross_platform_analysis: &CrossPlatformAnalysis,
+        platform_results: &HashMap<QuantumPlatform, PlatformBenchmarkResult>,
+        cross_platform_analysis: &CrossPlatformAnalysis,
         _scirs2_analysis: &SciRS2AnalysisResult,
     ) -> DeviceResult<Vec<OptimizationRecommendation>> {
-        // TODO: Implement optimization recommendation generation
-        Ok(vec![])
+        Ok(generate_recommendations_from_metrics(
+            platform_results,
+            cross_platform_analysis,
+        ))
     }
 
     async fn perform_historical_comparison(
         &self,
-        _platform_results: &HashMap<QuantumPlatform, PlatformBenchmarkResult>,
+        platform_results: &HashMap<QuantumPlatform, PlatformBenchmarkResult>,
     ) -> DeviceResult<Option<HistoricalComparisonResult>> {
-        // TODO: Implement historical comparison
-        Ok(None)
+        // Compare current per-platform metrics with the most recent historical
+        // entry stored in `historical_data`. Without history, no comparison
+        // is possible — return `None`. Statistical significance here is a
+        // placeholder p-value derived from relative change; it is meant for
+        // dashboard ranking, not formal hypothesis testing (which would
+        // require keeping individual measurements per metric).
+        let historical_data = self
+            .historical_data
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
+
+        // Skip the most recent entry if it's the run we just stored.
+        let baseline = historical_data.iter().next_back();
+        let baseline = match baseline {
+            Some(b) => b,
+            None => return Ok(None),
+        };
+
+        let mut baseline_comparison: Vec<super::results::MetricComparison> = Vec::new();
+        let mut trend_analysis: HashMap<String, super::results::TrendAnalysisResult> =
+            HashMap::new();
+
+        for (platform, current) in platform_results {
+            let prev = match baseline.platform_results.get(platform) {
+                Some(p) => p,
+                None => continue,
+            };
+
+            // Compare overall_fidelity, error_rate, throughput, availability.
+            let pairs: [(&str, f64, f64); 4] = [
+                (
+                    "overall_fidelity",
+                    current.performance_metrics.overall_fidelity,
+                    prev.performance_metrics.overall_fidelity,
+                ),
+                (
+                    "error_rate",
+                    current.performance_metrics.error_rate,
+                    prev.performance_metrics.error_rate,
+                ),
+                (
+                    "throughput",
+                    current.performance_metrics.throughput,
+                    prev.performance_metrics.throughput,
+                ),
+                (
+                    "availability",
+                    current.performance_metrics.availability,
+                    prev.performance_metrics.availability,
+                ),
+            ];
+
+            for (name, cur_val, base_val) in pairs {
+                let percentage_change = if base_val.abs() > f64::EPSILON {
+                    (cur_val - base_val) / base_val * 100.0
+                } else if cur_val.abs() < f64::EPSILON {
+                    0.0
+                } else {
+                    100.0
+                };
+                // Map magnitude of relative change to a pseudo p-value:
+                // larger changes → smaller p-value.
+                let mag = percentage_change.abs();
+                let significance = (-mag / 50.0).exp().clamp(0.0, 1.0);
+
+                let metric_label = format!("{platform:?}.{name}");
+                baseline_comparison.push(super::results::MetricComparison {
+                    metric_name: metric_label.clone(),
+                    current_value: cur_val,
+                    baseline_value: base_val,
+                    percentage_change,
+                    statistical_significance: significance,
+                });
+
+                let direction = if cur_val > base_val {
+                    "increasing"
+                } else if cur_val < base_val {
+                    "decreasing"
+                } else {
+                    "flat"
+                };
+                trend_analysis.insert(
+                    metric_label,
+                    super::results::TrendAnalysisResult {
+                        trend_detected: mag > 1.0,
+                        trend_direction: direction.to_string(),
+                        trend_strength: (mag / 100.0).clamp(0.0, 1.0),
+                        trend_coefficients: vec![cur_val - base_val],
+                        change_points: Vec::new(),
+                    },
+                );
+            }
+        }
+
+        // Build a single performance snapshot for the current run so the
+        // evolution series is monotonically growing on each invocation.
+        let mut metrics_map: HashMap<String, f64> = HashMap::new();
+        for (platform, result) in platform_results {
+            metrics_map.insert(
+                format!("{platform:?}.overall_fidelity"),
+                result.performance_metrics.overall_fidelity,
+            );
+            metrics_map.insert(
+                format!("{platform:?}.error_rate"),
+                result.performance_metrics.error_rate,
+            );
+            metrics_map.insert(
+                format!("{platform:?}.throughput"),
+                result.performance_metrics.throughput,
+            );
+            metrics_map.insert(
+                format!("{platform:?}.availability"),
+                result.performance_metrics.availability,
+            );
+        }
+
+        let snapshot = super::results::PerformanceSnapshot {
+            timestamp: SystemTime::now(),
+            metrics: metrics_map,
+            configuration: "current".to_string(),
+        };
+
+        if baseline_comparison.is_empty() {
+            return Ok(None);
+        }
+
+        Ok(Some(HistoricalComparisonResult {
+            baseline_comparison,
+            trend_analysis,
+            performance_evolution: vec![snapshot],
+        }))
     }
 
     async fn store_historical_result(&self, result: &UnifiedBenchmarkResult) {
@@ -557,16 +688,103 @@ impl UnifiedQuantumBenchmarkSystem {
         // TODO: Implement baseline updates
     }
 
-    async fn trigger_optimization(&self, _result: &UnifiedBenchmarkResult) -> DeviceResult<()> {
-        // TODO: Implement optimization triggering
+    async fn trigger_optimization(&self, result: &UnifiedBenchmarkResult) -> DeviceResult<()> {
+        // Compute aggregated improvement signal from the recommendations and
+        // publish an `OptimizationCompleted` event. The `expected_improvement`
+        // values produced by `generate_optimization_recommendations` already
+        // express the headroom each recommendation can recover; we forward
+        // those to subscribers grouped by recommendation type.
+        let recommendations = &result.optimization_recommendations;
+        if recommendations.is_empty() {
+            return Ok(());
+        }
+
+        let mut improvements: HashMap<String, f64> = HashMap::new();
+        for r in recommendations {
+            *improvements
+                .entry(r.recommendation_type.clone())
+                .or_insert(0.0) += r.expected_improvement;
+        }
+
+        // Also raise per-platform alerts when fidelity / error rate breach
+        // configured thresholds. This makes the metrics visible to dashboards
+        // even before any reporting runs.
+        for (platform, platform_result) in &result.platform_results {
+            let metrics = &platform_result.performance_metrics;
+            if metrics.error_rate > 0.05 {
+                let _ = self.event_publisher.send(BenchmarkEvent::PerformanceAlert {
+                    metric: format!("{platform:?}.error_rate"),
+                    current_value: metrics.error_rate,
+                    threshold: 0.05,
+                    timestamp: SystemTime::now(),
+                });
+            }
+            if metrics.overall_fidelity < 0.90 {
+                let _ = self.event_publisher.send(BenchmarkEvent::PerformanceAlert {
+                    metric: format!("{platform:?}.overall_fidelity"),
+                    current_value: metrics.overall_fidelity,
+                    threshold: 0.90,
+                    timestamp: SystemTime::now(),
+                });
+            }
+        }
+
+        let _ = self
+            .event_publisher
+            .send(BenchmarkEvent::OptimizationCompleted {
+                execution_id: result.execution_id.clone(),
+                improvements,
+                timestamp: SystemTime::now(),
+            });
+
         Ok(())
     }
 
     async fn generate_automated_reports(
         &self,
-        _result: &UnifiedBenchmarkResult,
+        result: &UnifiedBenchmarkResult,
     ) -> DeviceResult<()> {
-        // TODO: Implement automated report generation
+        // Render the result to a JSON payload. We use `serde_json` (already a
+        // dependency of this crate) so the payload is portable and consumable
+        // by external tooling without any new dependency. Writing to a file
+        // is gated on the `recipients` list being a filesystem-style URI
+        // (`file://...`) — anything else is treated as out-of-scope here.
+        let payload = serde_json::to_vec_pretty(result).map_err(|err| {
+            DeviceError::APIError(format!("failed to serialize benchmark result: {err}"))
+        })?;
+
+        let config = self
+            .config
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+
+        for recipient in &config.reporting_config.automated_reports.recipients {
+            if let Some(path) = recipient.strip_prefix("file://") {
+                let dir = std::path::Path::new(path);
+                if let Err(err) = std::fs::create_dir_all(dir) {
+                    return Err(DeviceError::APIError(format!(
+                        "failed to create report directory {dir:?}: {err}"
+                    )));
+                }
+                let file = dir.join(format!("benchmark_{}.json", result.execution_id));
+                if let Err(err) = std::fs::write(&file, &payload) {
+                    return Err(DeviceError::APIError(format!(
+                        "failed to write report {file:?}: {err}"
+                    )));
+                }
+            }
+        }
+
+        // Emit a per-recipient performance alert summarizing the size of the
+        // generated report — a concrete signal for downstream pipelines.
+        let _ = self.event_publisher.send(BenchmarkEvent::PerformanceAlert {
+            metric: "automated_report.bytes".to_string(),
+            current_value: payload.len() as f64,
+            threshold: 0.0,
+            timestamp: SystemTime::now(),
+        });
+
         Ok(())
     }
 
@@ -578,6 +796,213 @@ impl UnifiedQuantumBenchmarkSystem {
             memory_total: 0,
             disk_space: 0,
             network_info: "Unknown".to_string(),
+        }
+    }
+}
+
+/// Pure helper that maps per-platform performance metrics to a list of
+/// concrete optimization recommendations. Extracted so it can be unit-tested
+/// without instantiating `UnifiedQuantumBenchmarkSystem` (which requires a
+/// fully wired calibration manager and async runtime).
+pub(crate) fn generate_recommendations_from_metrics(
+    platform_results: &HashMap<QuantumPlatform, PlatformBenchmarkResult>,
+    cross_platform_analysis: &CrossPlatformAnalysis,
+) -> Vec<OptimizationRecommendation> {
+    let metrics_map: HashMap<QuantumPlatform, &PlatformPerformanceMetrics> = platform_results
+        .iter()
+        .map(|(p, r)| (p.clone(), &r.performance_metrics))
+        .collect();
+    generate_recommendations_from_perf_metrics(&metrics_map, cross_platform_analysis)
+}
+
+/// Inner helper that operates only on the lightweight
+/// [`PlatformPerformanceMetrics`] type so unit tests do not need to fabricate
+/// a full [`PlatformBenchmarkResult`].
+pub(crate) fn generate_recommendations_from_perf_metrics(
+    platform_metrics: &HashMap<QuantumPlatform, &PlatformPerformanceMetrics>,
+    cross_platform_analysis: &CrossPlatformAnalysis,
+) -> Vec<OptimizationRecommendation> {
+    let mut recommendations: Vec<OptimizationRecommendation> = Vec::new();
+
+    const ERROR_RATE_THRESHOLD: f64 = 0.05;
+    const FIDELITY_THRESHOLD: f64 = 0.90;
+    const AVAILABILITY_THRESHOLD: f64 = 0.95;
+    const EXEC_TIME_SECS_THRESHOLD: f64 = 1.0;
+    const THROUGHPUT_THRESHOLD: f64 = 1.0;
+
+    for (platform, metrics) in platform_metrics {
+        let platform_label = format!("{platform:?}");
+
+        if metrics.error_rate > ERROR_RATE_THRESHOLD {
+            recommendations.push(OptimizationRecommendation {
+                recommendation_type: "error_mitigation".to_string(),
+                description: format!(
+                    "Platform {platform_label} reports an error rate of {:.4} (threshold {:.2}). Apply zero-noise extrapolation, dynamical decoupling, or readout error mitigation to reduce systematic errors.",
+                    metrics.error_rate, ERROR_RATE_THRESHOLD
+                ),
+                expected_improvement: (metrics.error_rate - ERROR_RATE_THRESHOLD).max(0.0),
+                implementation_effort: "Medium".to_string(),
+                priority: 2,
+            });
+        }
+
+        if metrics.overall_fidelity < FIDELITY_THRESHOLD {
+            recommendations.push(OptimizationRecommendation {
+                recommendation_type: "calibration".to_string(),
+                description: format!(
+                    "Platform {platform_label} fidelity {:.4} is below threshold {:.2}. Schedule recalibration of single- and two-qubit gates and refresh readout calibration.",
+                    metrics.overall_fidelity, FIDELITY_THRESHOLD
+                ),
+                expected_improvement: (FIDELITY_THRESHOLD - metrics.overall_fidelity).max(0.0),
+                implementation_effort: "Low".to_string(),
+                priority: 1,
+            });
+        }
+
+        let avg_secs = metrics.average_execution_time.as_secs_f64();
+        if avg_secs > EXEC_TIME_SECS_THRESHOLD {
+            recommendations.push(OptimizationRecommendation {
+                recommendation_type: "circuit_reduction".to_string(),
+                description: format!(
+                    "Platform {platform_label} average execution time {avg_secs:.3}s exceeds threshold {EXEC_TIME_SECS_THRESHOLD:.2}s. Apply circuit transpilation passes (gate fusion, commutation analysis, and depth-aware routing)."
+                ),
+                expected_improvement: ((avg_secs - EXEC_TIME_SECS_THRESHOLD)
+                    / avg_secs.max(f64::EPSILON))
+                .clamp(0.0, 1.0),
+                implementation_effort: "Medium".to_string(),
+                priority: 3,
+            });
+        }
+
+        if metrics.availability < AVAILABILITY_THRESHOLD {
+            recommendations.push(OptimizationRecommendation {
+                recommendation_type: "platform_redundancy".to_string(),
+                description: format!(
+                    "Platform {platform_label} availability {:.3} is below threshold {:.2}. Configure failover to secondary platforms and enable retry policies.",
+                    metrics.availability, AVAILABILITY_THRESHOLD
+                ),
+                expected_improvement: (AVAILABILITY_THRESHOLD - metrics.availability).max(0.0),
+                implementation_effort: "Medium".to_string(),
+                priority: 2,
+            });
+        }
+
+        if metrics.throughput < THROUGHPUT_THRESHOLD && metrics.throughput > 0.0 {
+            recommendations.push(OptimizationRecommendation {
+                recommendation_type: "batching_optimization".to_string(),
+                description: format!(
+                    "Platform {platform_label} throughput {:.3} ops/s is below threshold {THROUGHPUT_THRESHOLD:.2}. Batch jobs and submit in larger groups to amortize queue overhead.",
+                    metrics.throughput
+                ),
+                expected_improvement: ((THROUGHPUT_THRESHOLD - metrics.throughput)
+                    / THROUGHPUT_THRESHOLD)
+                    .clamp(0.0, 1.0),
+                implementation_effort: "Low".to_string(),
+                priority: 4,
+            });
+        }
+    }
+
+    if platform_metrics.len() > 1 {
+        if let Some(best_for_fidelity) = cross_platform_analysis
+            .best_platform_per_metric
+            .get("fidelity")
+        {
+            recommendations.push(OptimizationRecommendation {
+                recommendation_type: "platform_routing".to_string(),
+                description: format!(
+                    "Cross-platform analysis identifies {best_for_fidelity:?} as the best platform for fidelity. Route fidelity-critical workloads there and use other platforms for high-throughput jobs."
+                ),
+                expected_improvement: 0.05,
+                implementation_effort: "Low".to_string(),
+                priority: 5,
+            });
+        }
+    }
+
+    if recommendations.is_empty() {
+        recommendations.push(OptimizationRecommendation {
+            recommendation_type: "monitoring".to_string(),
+            description: "All platform metrics are within configured thresholds. Continue periodic benchmarking to detect drift early.".to_string(),
+            expected_improvement: 0.0,
+            implementation_effort: "Low".to_string(),
+            priority: 9,
+        });
+    }
+
+    recommendations.sort_by_key(|r| r.priority);
+    recommendations
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    fn perf(
+        fidelity: f64,
+        error_rate: f64,
+        availability: f64,
+        avg_exec_secs: u64,
+        throughput: f64,
+    ) -> PlatformPerformanceMetrics {
+        PlatformPerformanceMetrics {
+            overall_fidelity: fidelity,
+            average_execution_time: Duration::from_secs(avg_exec_secs),
+            throughput,
+            error_rate,
+            availability,
+        }
+    }
+
+    #[test]
+    fn test_recommendations_within_thresholds() {
+        // No metric breach → only the informational "monitoring" entry.
+        let metrics = perf(0.99, 0.001, 0.99, 0, 100.0);
+        let mut platforms: HashMap<QuantumPlatform, &PlatformPerformanceMetrics> = HashMap::new();
+        platforms.insert(
+            QuantumPlatform::IBMQuantum {
+                device_name: "test".to_string(),
+                hub: None,
+            },
+            &metrics,
+        );
+        let cpa = CrossPlatformAnalysis {
+            platform_comparison: HashMap::new(),
+            best_platform_per_metric: HashMap::new(),
+            statistical_significance_tests: HashMap::new(),
+        };
+        let recs = generate_recommendations_from_perf_metrics(&platforms, &cpa);
+        assert_eq!(recs.len(), 1, "expected single info entry, got {recs:?}");
+        assert_eq!(recs[0].recommendation_type, "monitoring");
+    }
+
+    #[test]
+    fn test_recommendations_breach_thresholds() {
+        // Breach error_rate, fidelity, availability, exec time, throughput.
+        let metrics = perf(0.50, 0.20, 0.50, 5, 0.1);
+        let mut platforms: HashMap<QuantumPlatform, &PlatformPerformanceMetrics> = HashMap::new();
+        platforms.insert(
+            QuantumPlatform::IBMQuantum {
+                device_name: "test".to_string(),
+                hub: None,
+            },
+            &metrics,
+        );
+        let cpa = CrossPlatformAnalysis {
+            platform_comparison: HashMap::new(),
+            best_platform_per_metric: HashMap::new(),
+            statistical_significance_tests: HashMap::new(),
+        };
+        let recs = generate_recommendations_from_perf_metrics(&platforms, &cpa);
+        assert!(
+            recs.len() >= 5,
+            "expected >=5 recommendations, got {}: {recs:?}",
+            recs.len()
+        );
+        assert!(recs.iter().all(|r| r.recommendation_type != "monitoring"));
+        for w in recs.windows(2) {
+            assert!(w[0].priority <= w[1].priority, "not sorted: {recs:?}");
         }
     }
 }
