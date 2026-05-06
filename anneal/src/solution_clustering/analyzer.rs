@@ -60,7 +60,13 @@ impl SolutionClusteringAnalyzer {
         let featured_points = self.extract_features(solution_points)?;
 
         // Perform clustering
-        let clusters = self.perform_clustering(&featured_points)?;
+        let mut clusters = self.perform_clustering(&featured_points)?;
+
+        // Post-pass: compute global quality metrics that require seeing all clusters
+        // simultaneously (silhouette, Davies-Bouldin, Calinski-Harabasz). The per-cluster
+        // computation in `calculate_cluster_quality_metrics` only fills in `inertia` —
+        // global metrics are written back into each cluster's `quality_metrics` here.
+        self.update_global_quality_metrics(&mut clusters)?;
 
         // Perform landscape analysis
         let landscape_analysis = self.analyze_landscape(&featured_points, &clusters)?;
@@ -470,7 +476,7 @@ impl SolutionClusteringAnalyzer {
                 .collect();
 
             if !cluster_solutions.is_empty() {
-                let centroid = self.calculate_centroid(&cluster_solutions);
+                let centroid = self.calculate_centroid(&cluster_solutions)?;
                 let statistics = self.calculate_cluster_statistics(&cluster_solutions);
                 let quality_metrics =
                     self.calculate_cluster_quality_metrics(&cluster_solutions, &centroid);
@@ -549,7 +555,7 @@ impl SolutionClusteringAnalyzer {
                 .collect();
 
             if !cluster_solutions.is_empty() {
-                let centroid = self.calculate_centroid(&cluster_solutions);
+                let centroid = self.calculate_centroid(&cluster_solutions)?;
                 let statistics = self.calculate_cluster_statistics(&cluster_solutions);
                 let quality_metrics =
                     self.calculate_cluster_quality_metrics(&cluster_solutions, &centroid);
@@ -690,23 +696,37 @@ impl SolutionClusteringAnalyzer {
     }
 
     /// Calculate centroid of a cluster
-    fn calculate_centroid(&self, cluster_solutions: &[SolutionPoint]) -> Vec<f64> {
+    fn calculate_centroid(
+        &self,
+        cluster_solutions: &[SolutionPoint],
+    ) -> ClusteringResult<Vec<f64>> {
         if cluster_solutions.is_empty() {
-            return Vec::new();
+            return Ok(Vec::new());
         }
 
         let features_dim = cluster_solutions[0]
             .features
             .as_ref()
-            .expect("solution point should have features for centroid calculation")
+            .ok_or_else(|| {
+                ClusteringError::DataError(
+                    "Solution point missing features for centroid calculation".to_string(),
+                )
+            })?
             .len();
         let mut centroid = vec![0.0; features_dim];
 
         for solution in cluster_solutions {
-            let features = solution
-                .features
-                .as_ref()
-                .expect("solution point should have features for centroid calculation");
+            let features = solution.features.as_ref().ok_or_else(|| {
+                ClusteringError::DataError(
+                    "Solution point missing features for centroid calculation".to_string(),
+                )
+            })?;
+            if features.len() != features_dim {
+                return Err(ClusteringError::DimensionMismatch {
+                    expected: features_dim,
+                    actual: features.len(),
+                });
+            }
             for (i, &value) in features.iter().enumerate() {
                 centroid[i] += value;
             }
@@ -716,7 +736,7 @@ impl SolutionClusteringAnalyzer {
             *value /= cluster_solutions.len() as f64;
         }
 
-        centroid
+        Ok(centroid)
     }
 
     /// Calculate cluster statistics
@@ -917,13 +937,25 @@ impl SolutionClusteringAnalyzer {
         }
     }
 
-    /// Detect energy basins in the landscape
-    fn detect_energy_basins(
+    /// Detect energy basins in the landscape.
+    ///
+    /// Each cluster is treated as a basin. Per-basin depth is computed against
+    /// the global minimum energy across `solution_points` (so the deepest basin
+    /// has depth `0`, and shallower basins have positive depth — interpreted as
+    /// "energy above the global minimum"). Width is the basin's energy range.
+    /// `escape_barrier` is left at `0.0` since a real estimate requires an
+    /// inter-basin transition graph that is not maintained here.
+    pub(crate) fn detect_energy_basins(
         &self,
-        _solution_points: &[SolutionPoint],
+        solution_points: &[SolutionPoint],
         clusters: &[SolutionCluster],
     ) -> Vec<EnergyBasin> {
         let mut basins = Vec::new();
+
+        let global_min = solution_points
+            .iter()
+            .map(|s| s.energy)
+            .fold(f64::INFINITY, f64::min);
 
         for (basin_id, cluster) in clusters.iter().enumerate() {
             let energies: Vec<f64> = cluster.solutions.iter().map(|s| s.energy).collect();
@@ -931,15 +963,20 @@ impl SolutionClusteringAnalyzer {
             if !energies.is_empty() {
                 let min_energy = energies.iter().fold(f64::INFINITY, |a, &b| a.min(b));
                 let max_energy = energies.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+                let depth = if global_min.is_finite() {
+                    (min_energy - global_min).max(0.0)
+                } else {
+                    0.0
+                };
 
                 basins.push(EnergyBasin {
                     id: basin_id,
                     solutions: cluster.solutions.iter().map(|s| s.metadata.id).collect(),
                     min_energy,
                     size: cluster.solutions.len(),
-                    depth: 0.0, // Would need global minimum to calculate
+                    depth,
                     width: max_energy - min_energy,
-                    escape_barrier: 0.0, // Simplified
+                    escape_barrier: 0.0, // Requires an inter-basin transition graph.
                 });
             }
         }
@@ -947,48 +984,285 @@ impl SolutionClusteringAnalyzer {
         basins
     }
 
-    /// Analyze connectivity of the solution landscape
-    const fn analyze_connectivity(
+    /// Analyze connectivity of the solution landscape via single-link clustering
+    /// over an epsilon-Hamming-neighbour graph.
+    ///
+    /// Two solutions are considered "connected" when the Hamming distance between
+    /// their spin vectors is at most `eps_hamming`. Connected components are then
+    /// found with a union-find pass, yielding `num_components` and
+    /// `largest_component_size`. `average_path_length`, `clustering_coefficient`,
+    /// and `diameter` are still simplified estimates.
+    pub(crate) fn analyze_connectivity(
         &self,
         solution_points: &[SolutionPoint],
     ) -> ConnectivityAnalysis {
-        // Simplified connectivity analysis
+        let n = solution_points.len();
+        if n == 0 {
+            return ConnectivityAnalysis {
+                num_components: 0,
+                largest_component_size: 0,
+                average_path_length: 0.0,
+                clustering_coefficient: 0.0,
+                diameter: 0,
+            };
+        }
+        if n == 1 {
+            return ConnectivityAnalysis {
+                num_components: 1,
+                largest_component_size: 1,
+                average_path_length: 0.0,
+                clustering_coefficient: 0.0,
+                diameter: 0,
+            };
+        }
+
+        // Use a Hamming-neighbour threshold of 1 by default. Any two solutions
+        // differing in a single spin are direct neighbours; chains of such
+        // single-flip moves form a connected component.
+        let eps_hamming: usize = 1;
+
+        let mut parent: Vec<usize> = (0..n).collect();
+        fn find(parent: &mut [usize], mut x: usize) -> usize {
+            while parent[x] != x {
+                parent[x] = parent[parent[x]];
+                x = parent[x];
+            }
+            x
+        }
+
+        for i in 0..n {
+            for j in (i + 1)..n {
+                let a = &solution_points[i].solution;
+                let b = &solution_points[j].solution;
+                if a.len() != b.len() {
+                    continue;
+                }
+                let hd = a.iter().zip(b.iter()).filter(|(x, y)| x != y).count();
+                if hd <= eps_hamming {
+                    let ra = find(&mut parent, i);
+                    let rb = find(&mut parent, j);
+                    if ra != rb {
+                        parent[ra] = rb;
+                    }
+                }
+            }
+        }
+
+        let mut sizes: HashMap<usize, usize> = HashMap::new();
+        for i in 0..n {
+            let r = find(&mut parent, i);
+            *sizes.entry(r).or_insert(0) += 1;
+        }
+
+        let num_components = sizes.len();
+        let largest_component_size = sizes.values().copied().max().unwrap_or(0);
+
+        // Conservative simplified estimates for the remaining fields.
+        let average_path_length = if num_components == 0 {
+            0.0
+        } else {
+            (n as f64 / num_components as f64).sqrt()
+        };
+
         ConnectivityAnalysis {
-            num_components: 1, // Simplified
-            largest_component_size: solution_points.len(),
-            average_path_length: 2.0,    // Simplified
-            clustering_coefficient: 0.3, // Simplified
-            diameter: 10,                // Simplified
+            num_components,
+            largest_component_size,
+            average_path_length,
+            clustering_coefficient: 0.3, // Heuristic — full computation is out of scope here.
+            diameter: largest_component_size.saturating_sub(1),
         }
     }
 
-    /// Analyze multi-modality of the landscape
-    fn analyze_multi_modality(&self, solution_points: &[SolutionPoint]) -> MultiModalityAnalysis {
-        // Simplified multi-modality analysis
+    /// Analyze multi-modality of the energy landscape via 1D histogram peak detection.
+    ///
+    /// The energy values are bucketed into `min(20, ceil(sqrt(n)))` equal-width
+    /// bins between `min(E)` and `max(E)`. A bin is a mode when its count is
+    /// strictly greater than both neighbour bins; the first and last bins are
+    /// modes when their count exceeds their single neighbour. The mode energy
+    /// is the bin centre; mode strength is the bin's relative population.
+    /// Inter-mode distances use the centre-to-centre absolute energy gap.
+    pub(crate) fn analyze_multi_modality(
+        &self,
+        solution_points: &[SolutionPoint],
+    ) -> MultiModalityAnalysis {
         let energies: Vec<f64> = solution_points.iter().map(|s| s.energy).collect();
+        let n = energies.len();
+
+        if n == 0 {
+            return MultiModalityAnalysis {
+                num_modes: 0,
+                mode_energies: Vec::new(),
+                mode_strengths: Vec::new(),
+                inter_mode_distances: Vec::new(),
+                multi_modality_index: 0.0,
+            };
+        }
+
+        let min_e = energies.iter().cloned().fold(f64::INFINITY, f64::min);
+        let max_e = energies.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+
+        // Degenerate range: a single mode at the common energy.
+        if (max_e - min_e).abs() < 1e-12 {
+            return MultiModalityAnalysis {
+                num_modes: 1,
+                mode_energies: vec![min_e],
+                mode_strengths: vec![1.0],
+                inter_mode_distances: vec![vec![0.0]],
+                multi_modality_index: 0.0,
+            };
+        }
+
+        let num_bins = ((n as f64).sqrt().ceil() as usize).clamp(2, 20);
+        let bin_width = (max_e - min_e) / num_bins as f64;
+        let mut counts = vec![0usize; num_bins];
+        for &e in &energies {
+            let mut idx = ((e - min_e) / bin_width).floor() as isize;
+            if idx < 0 {
+                idx = 0;
+            }
+            let mut idx = idx as usize;
+            if idx >= num_bins {
+                idx = num_bins - 1;
+            }
+            counts[idx] += 1;
+        }
+
+        // Detect peaks (strict local maxima with non-zero population).
+        let mut mode_bins: Vec<usize> = Vec::new();
+        for i in 0..num_bins {
+            if counts[i] == 0 {
+                continue;
+            }
+            let left_ok = i == 0 || counts[i] > counts[i - 1];
+            let right_ok = i + 1 == num_bins || counts[i] > counts[i + 1];
+            if left_ok && right_ok {
+                mode_bins.push(i);
+            }
+        }
+
+        // If the histogram is perfectly flat or monotone, fall back to "the
+        // single most populous bin is the (only) mode" — guarantees at least one.
+        if mode_bins.is_empty() {
+            let (best_idx, _) = counts
+                .iter()
+                .enumerate()
+                .max_by_key(|(_, c)| **c)
+                .unwrap_or((0, &0));
+            mode_bins.push(best_idx);
+        }
+
+        let mode_energies: Vec<f64> = mode_bins
+            .iter()
+            .map(|&b| min_e + (b as f64 + 0.5) * bin_width)
+            .collect();
+        let total = n as f64;
+        let mode_strengths: Vec<f64> = mode_bins
+            .iter()
+            .map(|&b| counts[b] as f64 / total)
+            .collect();
+
+        // Symmetric inter-mode distance matrix in energy units.
+        let m = mode_energies.len();
+        let mut inter_mode_distances = vec![vec![0.0; m]; m];
+        for i in 0..m {
+            for j in 0..m {
+                inter_mode_distances[i][j] = (mode_energies[i] - mode_energies[j]).abs();
+            }
+        }
+
+        // Multi-modality index: (m - 1) / m saturates toward 1 as more modes
+        // are detected, 0 when there is just one. Capped at 1.
+        let multi_modality_index = if m <= 1 {
+            0.0
+        } else {
+            ((m - 1) as f64 / m as f64).min(1.0)
+        };
 
         MultiModalityAnalysis {
-            num_modes: 2, // Simplified
-            mode_energies: if energies.len() >= 2 {
-                vec![energies[0], energies[energies.len() / 2]]
-            } else {
-                energies
-            },
-            mode_strengths: vec![0.6, 0.4], // Simplified
-            inter_mode_distances: vec![vec![0.0, 1.0], vec![1.0, 0.0]], // Simplified
-            multi_modality_index: 0.3,      // Simplified
+            num_modes: m,
+            mode_energies,
+            mode_strengths,
+            inter_mode_distances,
+            multi_modality_index,
         }
     }
 
-    /// Calculate ruggedness metrics
-    fn calculate_ruggedness_metrics(&self, solution_points: &[SolutionPoint]) -> RuggednessMetrics {
-        // Simplified ruggedness calculation
+    /// Calculate ruggedness metrics for the solution landscape.
+    ///
+    /// Computes the lag-k autocorrelation of the energy sequence (treating the
+    /// solution index order as a synthetic walk through the landscape) up to
+    /// `max_lag = min(5, n - 1)`:
+    ///
+    /// ```text
+    ///                Σ_{i=0}^{n-1-k} (e_i - μ)(e_{i+k} - μ)
+    /// rho(k)  =  ─────────────────────────────────────────
+    ///                       Σ_{i=0}^{n-1} (e_i - μ)^2
+    /// ```
+    ///
+    /// The ruggedness coefficient is `1 - rho(1)`: smooth landscapes have
+    /// `rho(1) ~= 1` and small ruggedness; rugged landscapes have low/negative
+    /// `rho(1)` and ruggedness near or above 1.
+    ///
+    /// `epistasis` and `neutrality` are heuristic placeholders pending a true
+    /// landscape walk infrastructure.
+    pub(crate) fn calculate_ruggedness_metrics(
+        &self,
+        solution_points: &[SolutionPoint],
+    ) -> RuggednessMetrics {
+        let n = solution_points.len();
+        if n < 2 {
+            return RuggednessMetrics {
+                autocorrelation: Vec::new(),
+                ruggedness_coefficient: 0.0,
+                num_local_optima: 0,
+                epistasis: 0.0,
+                neutrality: 0.0,
+            };
+        }
+
+        let energies: Vec<f64> = solution_points.iter().map(|s| s.energy).collect();
+        let mean = energies.iter().sum::<f64>() / n as f64;
+        let denom: f64 = energies.iter().map(|e| (e - mean).powi(2)).sum();
+
+        let max_lag = 5.min(n - 1);
+        let mut autocorrelation = Vec::with_capacity(max_lag);
+        if denom < 1e-12 {
+            // Constant energy series — autocorrelation is conventionally 1 at every lag.
+            for _ in 0..max_lag {
+                autocorrelation.push(1.0);
+            }
+        } else {
+            for k in 1..=max_lag {
+                let mut num = 0.0;
+                for i in 0..(n - k) {
+                    num += (energies[i] - mean) * (energies[i + k] - mean);
+                }
+                autocorrelation.push(num / denom);
+            }
+        }
+
+        let ruggedness_coefficient = autocorrelation
+            .first()
+            .map(|rho1| (1.0 - rho1).max(0.0))
+            .unwrap_or(0.0);
+
+        // Local optima along the index-ordered walk: positions where the energy
+        // is strictly less than both neighbours (a 1D minimum). This is a real
+        // count over the available data, not a placeholder.
+        let mut num_local_optima = 0;
+        for i in 1..(n - 1) {
+            if energies[i] < energies[i - 1] && energies[i] < energies[i + 1] {
+                num_local_optima += 1;
+            }
+        }
+
         RuggednessMetrics {
-            autocorrelation: vec![1.0, 0.8, 0.6, 0.4, 0.2], // Simplified
-            ruggedness_coefficient: 0.5,                    // Simplified
-            num_local_optima: solution_points.len() / 10,   // Simplified
-            epistasis: 0.3,                                 // Simplified
-            neutrality: 0.1,                                // Simplified
+            autocorrelation,
+            ruggedness_coefficient,
+            num_local_optima,
+            // Pending a proper neighbour-graph walk; left as documented heuristics.
+            epistasis: 0.3,
+            neutrality: 0.1,
         }
     }
 
@@ -1057,17 +1331,33 @@ impl SolutionClusteringAnalyzer {
         })
     }
 
-    /// Calculate overall clustering quality
+    /// Calculate overall clustering quality.
+    ///
+    /// The overall silhouette score is the size-weighted mean of the per-cluster
+    /// silhouette coefficients (which are themselves means of per-point
+    /// silhouettes), matching scikit-learn's `silhouette_score` convention. This
+    /// is fed by the real values written by [`Self::update_global_quality_metrics`].
     fn calculate_overall_quality(
         &self,
         clusters: &[SolutionCluster],
         solution_points: &[SolutionPoint],
     ) -> ClusteringResult<OverallClusteringQuality> {
-        let silhouette_score = clusters
-            .iter()
-            .map(|c| c.quality_metrics.silhouette_coefficient)
-            .sum::<f64>()
-            / clusters.len() as f64;
+        let silhouette_score = if clusters.is_empty() {
+            0.0
+        } else {
+            let total_points: usize = clusters.iter().map(|c| c.solutions.len()).sum();
+            if total_points == 0 {
+                0.0
+            } else {
+                clusters
+                    .iter()
+                    .map(|c| {
+                        c.quality_metrics.silhouette_coefficient * c.solutions.len() as f64
+                    })
+                    .sum::<f64>()
+                    / total_points as f64
+            }
+        };
 
         let inter_cluster_separation = self.calculate_inter_cluster_separation(clusters)?;
         let cluster_cohesion = self.calculate_cluster_cohesion(clusters);
@@ -1216,5 +1506,248 @@ impl SolutionClusteringAnalyzer {
         }
 
         Ok(recommendations)
+    }
+
+    /// Update global cluster quality metrics in a post-pass over all clusters.
+    ///
+    /// Silhouette, Davies-Bouldin, and Calinski-Harabasz indices all require
+    /// inter-cluster information that is unavailable when each cluster is built
+    /// in isolation by [`Self::kmeans_clustering`], [`Self::hierarchical_clustering`]
+    /// or [`Self::dbscan_clustering`]. This pass walks every cluster simultaneously
+    /// and writes the real values back into each cluster's
+    /// [`super::types::ClusterQualityMetrics`].
+    ///
+    /// Definitions used:
+    /// * Silhouette `s(i) = (b - a) / max(a, b)` where `a` is the mean intra-cluster
+    ///   distance from point `i` and `b` is the smallest mean distance from `i` to
+    ///   any other cluster. The per-cluster `silhouette_coefficient` is the mean of
+    ///   `s(i)` over points in the cluster.
+    /// * Davies-Bouldin per-cluster: `max_{j != i} ((sigma_i + sigma_j) / d(c_i, c_j))`
+    ///   where `sigma_k` is the cluster's mean distance to its centroid and
+    ///   `d(c_i, c_j)` is the distance between centroids.
+    /// * Calinski-Harabasz: a single global value
+    ///   `(BSS / (k - 1)) / (WSS / (n - k))` written into every cluster — this is the
+    ///   conventional convention since the index is global, not per-cluster.
+    pub(crate) fn update_global_quality_metrics(
+        &self,
+        clusters: &mut [SolutionCluster],
+    ) -> ClusteringResult<()> {
+        let k = clusters.len();
+        if k == 0 {
+            return Ok(());
+        }
+
+        // Single-cluster degenerate case: silhouette and DB are undefined; leave
+        // sensible neutral values and CH at 0.
+        if k == 1 {
+            for c in clusters.iter_mut() {
+                c.quality_metrics.silhouette_coefficient = 0.0;
+                c.quality_metrics.davies_bouldin_index = 0.0;
+                c.quality_metrics.calinski_harabasz_index = 0.0;
+            }
+            return Ok(());
+        }
+
+        // ---- Silhouette coefficient ----
+        let mut per_cluster_silhouettes = vec![0.0f64; k];
+        let mut per_cluster_counts = vec![0usize; k];
+
+        for ci in 0..k {
+            for point in &clusters[ci].solutions {
+                let features = point.features.as_ref().ok_or_else(|| {
+                    ClusteringError::DataError(
+                        "Solution point missing features for silhouette calculation".to_string(),
+                    )
+                })?;
+
+                // Mean intra-cluster distance `a`. Singletons contribute s(i)=0.
+                let a = if clusters[ci].solutions.len() <= 1 {
+                    0.0
+                } else {
+                    let mut sum = 0.0;
+                    let mut count = 0usize;
+                    for other in &clusters[ci].solutions {
+                        if std::ptr::eq(other as *const _, point as *const _) {
+                            continue;
+                        }
+                        let other_feat = other.features.as_ref().ok_or_else(|| {
+                            ClusteringError::DataError(
+                                "Solution point missing features for silhouette calculation"
+                                    .to_string(),
+                            )
+                        })?;
+                        sum += self.calculate_distance(features, other_feat)?;
+                        count += 1;
+                    }
+                    if count == 0 {
+                        0.0
+                    } else {
+                        sum / count as f64
+                    }
+                };
+
+                // Minimum mean distance to any other cluster `b`.
+                let mut b = f64::INFINITY;
+                for cj in 0..k {
+                    if cj == ci || clusters[cj].solutions.is_empty() {
+                        continue;
+                    }
+                    let mut sum = 0.0;
+                    let mut count = 0usize;
+                    for other in &clusters[cj].solutions {
+                        let other_feat = other.features.as_ref().ok_or_else(|| {
+                            ClusteringError::DataError(
+                                "Solution point missing features for silhouette calculation"
+                                    .to_string(),
+                            )
+                        })?;
+                        sum += self.calculate_distance(features, other_feat)?;
+                        count += 1;
+                    }
+                    if count > 0 {
+                        let mean = sum / count as f64;
+                        if mean < b {
+                            b = mean;
+                        }
+                    }
+                }
+
+                let s = if !b.is_finite() {
+                    0.0
+                } else if clusters[ci].solutions.len() <= 1 {
+                    // Convention: singleton silhouette is 0.
+                    0.0
+                } else {
+                    let denom = a.max(b);
+                    if denom < 1e-12 { 0.0 } else { (b - a) / denom }
+                };
+
+                per_cluster_silhouettes[ci] += s;
+                per_cluster_counts[ci] += 1;
+            }
+        }
+
+        for ci in 0..k {
+            let mean_s = if per_cluster_counts[ci] == 0 {
+                0.0
+            } else {
+                per_cluster_silhouettes[ci] / per_cluster_counts[ci] as f64
+            };
+            clusters[ci].quality_metrics.silhouette_coefficient = mean_s;
+        }
+
+        // ---- Davies-Bouldin index ----
+        // sigma_i = mean distance from each point in cluster i to that cluster's centroid.
+        let mut sigma = vec![0.0f64; k];
+        for ci in 0..k {
+            if clusters[ci].solutions.is_empty() {
+                continue;
+            }
+            let centroid = clusters[ci].centroid.clone();
+            if centroid.is_empty() {
+                continue;
+            }
+            let mut sum = 0.0;
+            let mut count = 0usize;
+            for point in &clusters[ci].solutions {
+                let features = point.features.as_ref().ok_or_else(|| {
+                    ClusteringError::DataError(
+                        "Solution point missing features for Davies-Bouldin calculation"
+                            .to_string(),
+                    )
+                })?;
+                if features.len() == centroid.len() {
+                    sum += self.calculate_distance(features, &centroid)?;
+                    count += 1;
+                }
+            }
+            sigma[ci] = if count == 0 { 0.0 } else { sum / count as f64 };
+        }
+
+        for ci in 0..k {
+            let mut max_ratio = 0.0f64;
+            let centroid_i = &clusters[ci].centroid;
+            if centroid_i.is_empty() {
+                clusters[ci].quality_metrics.davies_bouldin_index = 0.0;
+                continue;
+            }
+            for cj in 0..k {
+                if cj == ci {
+                    continue;
+                }
+                let centroid_j = &clusters[cj].centroid;
+                if centroid_j.is_empty() || centroid_i.len() != centroid_j.len() {
+                    continue;
+                }
+                let d_ij = self.calculate_distance(centroid_i, centroid_j)?;
+                if d_ij < 1e-12 {
+                    // Coincident centroids: treat as the worst case to penalise.
+                    max_ratio = f64::INFINITY;
+                    break;
+                }
+                let ratio = (sigma[ci] + sigma[cj]) / d_ij;
+                if ratio > max_ratio {
+                    max_ratio = ratio;
+                }
+            }
+            clusters[ci].quality_metrics.davies_bouldin_index =
+                if max_ratio.is_finite() { max_ratio } else { 0.0 };
+        }
+
+        // ---- Calinski-Harabasz index ----
+        // BSS = sum_i n_i * d(c_i, overall_centroid)^2
+        // WSS = sum_i sum_x in C_i d(x, c_i)^2  (== sum of inertias)
+        // CH  = (BSS / (k - 1)) / (WSS / (n - k))
+        let n_total: usize = clusters.iter().map(|c| c.solutions.len()).sum();
+        let dim = clusters
+            .iter()
+            .find(|c| !c.centroid.is_empty())
+            .map(|c| c.centroid.len())
+            .unwrap_or(0);
+
+        let ch_value = if dim == 0 || n_total <= k {
+            0.0
+        } else {
+            // Overall centroid is the size-weighted average of cluster centroids.
+            let mut overall = vec![0.0f64; dim];
+            for c in clusters.iter() {
+                if c.centroid.len() == dim {
+                    let w = c.solutions.len() as f64;
+                    for d in 0..dim {
+                        overall[d] += c.centroid[d] * w;
+                    }
+                }
+            }
+            if n_total > 0 {
+                for d in 0..dim {
+                    overall[d] /= n_total as f64;
+                }
+            }
+
+            let mut bss = 0.0f64;
+            for c in clusters.iter() {
+                if c.centroid.len() != dim {
+                    continue;
+                }
+                let dist = self.calculate_distance(&c.centroid, &overall)?;
+                bss += (c.solutions.len() as f64) * dist * dist;
+            }
+
+            let wss: f64 = clusters.iter().map(|c| c.quality_metrics.inertia).sum();
+
+            let denom_top = (k as f64 - 1.0).max(1.0);
+            let denom_bot = (n_total as f64 - k as f64).max(1.0);
+            if wss < 1e-12 {
+                0.0
+            } else {
+                (bss / denom_top) / (wss / denom_bot)
+            }
+        };
+
+        for c in clusters.iter_mut() {
+            c.quality_metrics.calinski_harabasz_index = ch_value;
+        }
+
+        Ok(())
     }
 }

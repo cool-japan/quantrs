@@ -30,6 +30,13 @@ use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 
 use crate::{job_scheduling::*, translation::HardwareBackend, DeviceError, DeviceResult};
 
+/// Foundational scheduling primitives — see `advanced_scheduling_priority.rs`.
+///
+/// Pure, side-effect-free building blocks for priority computation, deadline
+/// arithmetic, throughput estimation, EDF sort keys, and resource fit checks.
+#[path = "advanced_scheduling_priority.rs"]
+pub(crate) mod priority;
+
 // Placeholder types for missing complex types
 type AnomalyDetector = String;
 type CapacityPlanner = String;
@@ -1197,14 +1204,42 @@ impl AdvancedQuantumScheduler {
         })
     }
 
-    /// Predict optimal retries
+    /// Predict optimal retries based on the job's classified priority.
+    ///
+    /// Critical jobs may be retried aggressively (5 attempts) because their
+    /// SLA penalty dwarfs the cost of recomputation; BestEffort jobs are kept
+    /// to a single attempt to avoid cluttering queues with redundant work.
+    /// Mapping is read off `JobFeatures::priority`, which is materialised from
+    /// `JobConfig::priority` upstream.
     async fn predict_optimal_retries(&self, features: &JobFeatures) -> DeviceResult<u32> {
-        Ok(3)
+        // priority is encoded as i32 (Critical=0 … BestEffort=4) per the
+        // `JobPriority as i32` cast used during feature extraction.
+        let retries = match features.priority {
+            x if x <= JobPriority::Critical as i32 => 5,
+            x if x == JobPriority::High as i32 => 4,
+            x if x == JobPriority::Normal as i32 => 3,
+            x if x == JobPriority::Low as i32 => 2,
+            _ => 1, // BestEffort and any unknown value
+        };
+        Ok(retries)
     }
 
-    /// Predict optimal timeout
+    /// Predict optimal execution timeout from circuit complexity.
+    ///
+    /// Heuristic: 1 ms per (gate × shots) plus a 60 s baseline, capped at
+    /// 6 hours. Returns at least the baseline so trivial circuits retain a
+    /// sensible deadline. Uses `f64` arithmetic and `Duration::from_secs_f64`
+    /// to avoid overflow on large shot counts and stays away from saturating
+    /// integer multiplication.
     async fn predict_optimal_timeout(&self, features: &JobFeatures) -> DeviceResult<Duration> {
-        Ok(Duration::from_secs(1800))
+        const BASELINE_SECS: f64 = 60.0;
+        const PER_GATE_SHOT_SECS: f64 = 1.0e-3;
+        const MAX_TIMEOUT_SECS: f64 = 6.0 * 3600.0;
+
+        let gate_shot_secs =
+            (features.gate_count as f64) * (features.shots as f64) * PER_GATE_SHOT_SECS;
+        let total = (BASELINE_SECS + gate_shot_secs).clamp(BASELINE_SECS, MAX_TIMEOUT_SECS);
+        Ok(Duration::from_secs_f64(total))
     }
 
     /// Register a backend for job scheduling
@@ -1547,5 +1582,339 @@ mod tests {
                 "severity out of range: {a:?}"
             );
         }
+    }
+
+    // -----------------------------------------------------------------
+    // Foundational scheduling primitive tests
+    // -----------------------------------------------------------------
+
+    use super::priority::{
+        edf_sort_key, is_overdue, priority_weight, slack_seconds, sort_by_edf, sort_by_wsjf,
+        throughput, time_to_deadline, wsjf_priority,
+    };
+
+    /// Test record for ordering tests; stores the parameters needed to drive
+    /// each scheduling primitive in isolation.
+    #[derive(Debug, Clone, PartialEq)]
+    struct TestJob {
+        id: &'static str,
+        weight: f64,
+        runtime: Duration,
+        deadline: Option<SystemTime>,
+    }
+
+    #[test]
+    fn test_wsjf_priority_orders_correctly() {
+        // Three jobs: same weight, different runtimes → shorter runtime
+        // should win (higher WSJF). Then mix in a higher-weighted long job
+        // that should still beat a small-weight short job iff its
+        // weight/runtime ratio is larger.
+        let mut jobs = vec![
+            TestJob {
+                id: "long",
+                weight: 1.0,
+                runtime: Duration::from_secs(100),
+                deadline: None,
+            },
+            TestJob {
+                id: "short",
+                weight: 1.0,
+                runtime: Duration::from_secs(10),
+                deadline: None,
+            },
+            TestJob {
+                id: "medium",
+                weight: 1.0,
+                runtime: Duration::from_secs(50),
+                deadline: None,
+            },
+        ];
+        sort_by_wsjf(&mut jobs, |j| j.weight, |j| j.runtime);
+        assert_eq!(
+            jobs.iter().map(|j| j.id).collect::<Vec<_>>(),
+            vec!["short", "medium", "long"],
+            "WSJF should put shortest job first when weights are equal"
+        );
+
+        // Spot check: priority of short = 1/10 = 0.1, long = 1/100 = 0.01.
+        let short_p = wsjf_priority(1.0, Duration::from_secs(10));
+        let long_p = wsjf_priority(1.0, Duration::from_secs(100));
+        assert!(short_p > long_p);
+
+        // Zero-runtime should be clamped (not produce NaN/inf overflow).
+        let zero_p = wsjf_priority(1.0, Duration::ZERO);
+        assert!(zero_p.is_finite() && zero_p > 0.0);
+
+        // priority_weight ordering matches JobPriority ordering.
+        assert!(priority_weight(JobPriority::Critical) > priority_weight(JobPriority::High));
+        assert!(priority_weight(JobPriority::High) > priority_weight(JobPriority::Normal));
+        assert!(priority_weight(JobPriority::Normal) > priority_weight(JobPriority::Low));
+        assert!(priority_weight(JobPriority::Low) > priority_weight(JobPriority::BestEffort));
+    }
+
+    #[test]
+    fn test_edf_schedules_earliest_deadline_first() {
+        let now = SystemTime::now();
+        let mut jobs = vec![
+            TestJob {
+                id: "late",
+                weight: 1.0,
+                runtime: Duration::from_secs(10),
+                deadline: Some(now + Duration::from_secs(3600)),
+            },
+            TestJob {
+                id: "soonest",
+                weight: 1.0,
+                runtime: Duration::from_secs(10),
+                deadline: Some(now + Duration::from_secs(60)),
+            },
+            TestJob {
+                id: "no_deadline",
+                weight: 1.0,
+                runtime: Duration::from_secs(10),
+                deadline: None,
+            },
+            TestJob {
+                id: "middle",
+                weight: 1.0,
+                runtime: Duration::from_secs(10),
+                deadline: Some(now + Duration::from_secs(600)),
+            },
+        ];
+        sort_by_edf(&mut jobs, now, |j| j.deadline);
+        assert_eq!(
+            jobs.iter().map(|j| j.id).collect::<Vec<_>>(),
+            vec!["soonest", "middle", "late", "no_deadline"],
+            "EDF should sort by ascending time-to-deadline; jobs without deadlines must sort last"
+        );
+
+        // No deadline → MAX sort key.
+        assert_eq!(edf_sort_key(None, now), Duration::MAX);
+        // Already-overdue deadline → ZERO sort key (sort first).
+        assert_eq!(
+            edf_sort_key(Some(now - Duration::from_secs(60)), now),
+            Duration::ZERO
+        );
+    }
+
+    #[test]
+    fn test_overdue_returns_true_after_deadline() {
+        let now = SystemTime::now();
+        let past = now - Duration::from_secs(60);
+        let future = now + Duration::from_secs(60);
+        assert!(is_overdue(past, now));
+        assert!(!is_overdue(future, now));
+        // `now == deadline` is *not* overdue (strict `>`).
+        assert!(!is_overdue(now, now));
+
+        // time_to_deadline complement.
+        assert!(time_to_deadline(past, now).is_none());
+        assert_eq!(
+            time_to_deadline(future, now)
+                .expect("time_to_deadline should be Some for a future deadline")
+                .as_secs(),
+            60
+        );
+    }
+
+    #[test]
+    fn test_slack_negative_for_late_job() {
+        let now = SystemTime::now();
+        // Deadline in 10 s, but the job needs 60 s → slack should be ≈ −50 s.
+        let deadline = now + Duration::from_secs(10);
+        let slack = slack_seconds(deadline, now, Duration::from_secs(60));
+        assert!(slack < 0, "expected negative slack for late job, got {slack}");
+        assert_eq!(slack, -50);
+
+        // Deadline in 120 s, 60 s job → slack ≈ +60.
+        let comfortable_deadline = now + Duration::from_secs(120);
+        let comfortable_slack = slack_seconds(comfortable_deadline, now, Duration::from_secs(60));
+        assert_eq!(comfortable_slack, 60);
+
+        // Already-passed deadline → strongly negative.
+        let past = now - Duration::from_secs(30);
+        let overdue_slack = slack_seconds(past, now, Duration::from_secs(10));
+        assert!(overdue_slack <= -40);
+    }
+
+    #[test]
+    fn test_throughput_zero_for_empty_window() {
+        // Empty window must return 0.0, not NaN/inf.
+        assert_eq!(throughput(0, Duration::ZERO), 0.0);
+        assert_eq!(throughput(10, Duration::ZERO), 0.0);
+        // 60 jobs in 60 s → 1 job/sec.
+        assert!((throughput(60, Duration::from_secs(60)) - 1.0).abs() < 1.0e-9);
+        // 0 jobs in 1 s → 0/sec.
+        assert_eq!(throughput(0, Duration::from_secs(1)), 0.0);
+    }
+
+    #[test]
+    fn test_device_compatible_checks_all_constraints() {
+        use super::priority::device_compatible;
+        use crate::job_scheduling::ResourceRequirements as JobResourceRequirements;
+        use std::collections::HashSet;
+
+        let mut features: HashSet<String> = HashSet::new();
+        features.insert("parametric_gates".to_string());
+
+        let req = JobResourceRequirements {
+            min_qubits: 5,
+            max_depth: Some(100),
+            min_fidelity: None,
+            required_connectivity: None,
+            memory_mb: Some(1024),
+            cpu_cores: Some(2),
+            required_features: vec!["parametric_gates".to_string()],
+        };
+
+        // Capacity meets all requirements.
+        assert!(device_compatible(
+            &req,
+            10,
+            Some(200),
+            Some(2048),
+            Some(4),
+            &features
+        ));
+        // Insufficient qubits.
+        assert!(!device_compatible(
+            &req,
+            3,
+            Some(200),
+            Some(2048),
+            Some(4),
+            &features
+        ));
+        // Capacity max_depth < required.
+        assert!(!device_compatible(
+            &req,
+            10,
+            Some(50),
+            Some(2048),
+            Some(4),
+            &features
+        ));
+        // Missing feature.
+        let empty_features: HashSet<String> = HashSet::new();
+        assert!(!device_compatible(
+            &req,
+            10,
+            Some(200),
+            Some(2048),
+            Some(4),
+            &empty_features
+        ));
+        // None capacity ⇒ unlimited for that field.
+        assert!(device_compatible(&req, 10, None, None, None, &features));
+    }
+
+    #[test]
+    fn test_available_qubits_saturates() {
+        use super::priority::available_qubits;
+        assert_eq!(available_qubits(10, 4), 6);
+        assert_eq!(available_qubits(10, 10), 0);
+        // Used > capacity must saturate to 0, not wrap.
+        assert_eq!(available_qubits(10, 20), 0);
+    }
+
+    #[tokio::test]
+    async fn test_predict_optimal_retries_branches_on_priority() {
+        let params = SchedulingParams::default();
+        let scheduler = AdvancedQuantumScheduler::new(params);
+
+        // Build a minimal JobFeatures for each priority level.
+        fn features_with(priority: JobPriority) -> JobFeatures {
+            JobFeatures {
+                circuit_depth: 1,
+                gate_count: 1,
+                qubit_count: 1,
+                shots: 100,
+                priority: priority as i32,
+                user_historical_behavior: UserBehaviorFeatures {
+                    avg_job_complexity: 0.0,
+                    submission_frequency: 0.0,
+                    resource_utilization_efficiency: 0.0,
+                    sla_compliance_history: 1.0,
+                },
+                time_features: TemporalFeatures {
+                    hour_of_day: 0,
+                    day_of_week: 0,
+                    is_weekend: false,
+                    is_holiday: false,
+                    time_since_last_job: Duration::ZERO,
+                },
+                platform_features: PlatformFeatures {
+                    average_queue_length: 0.0,
+                    platform_utilization: 0.0,
+                    recent_performance_metrics: HashMap::new(),
+                    error_rates: HashMap::new(),
+                },
+            }
+        }
+
+        let critical = scheduler
+            .predict_optimal_retries(&features_with(JobPriority::Critical))
+            .await
+            .expect("retry prediction must succeed");
+        let normal = scheduler
+            .predict_optimal_retries(&features_with(JobPriority::Normal))
+            .await
+            .expect("retry prediction must succeed");
+        let best_effort = scheduler
+            .predict_optimal_retries(&features_with(JobPriority::BestEffort))
+            .await
+            .expect("retry prediction must succeed");
+        assert!(critical > normal);
+        assert!(normal > best_effort);
+    }
+
+    #[tokio::test]
+    async fn test_predict_optimal_timeout_grows_with_complexity() {
+        let params = SchedulingParams::default();
+        let scheduler = AdvancedQuantumScheduler::new(params);
+
+        let mut tiny = JobFeatures {
+            circuit_depth: 1,
+            gate_count: 1,
+            qubit_count: 1,
+            shots: 1,
+            priority: JobPriority::Normal as i32,
+            user_historical_behavior: UserBehaviorFeatures {
+                avg_job_complexity: 0.0,
+                submission_frequency: 0.0,
+                resource_utilization_efficiency: 0.0,
+                sla_compliance_history: 1.0,
+            },
+            time_features: TemporalFeatures {
+                hour_of_day: 0,
+                day_of_week: 0,
+                is_weekend: false,
+                is_holiday: false,
+                time_since_last_job: Duration::ZERO,
+            },
+            platform_features: PlatformFeatures {
+                average_queue_length: 0.0,
+                platform_utilization: 0.0,
+                recent_performance_metrics: HashMap::new(),
+                error_rates: HashMap::new(),
+            },
+        };
+        let small = scheduler
+            .predict_optimal_timeout(&tiny)
+            .await
+            .expect("timeout prediction must succeed");
+
+        tiny.gate_count = 100_000;
+        tiny.shots = 10_000;
+        let large = scheduler
+            .predict_optimal_timeout(&tiny)
+            .await
+            .expect("timeout prediction must succeed");
+        assert!(large > small);
+
+        // Even small jobs must respect the baseline (>= 60 s).
+        assert!(small >= Duration::from_secs(60));
+        // Cap at 6 hours.
+        assert!(large <= Duration::from_secs(6 * 3600));
     }
 }
