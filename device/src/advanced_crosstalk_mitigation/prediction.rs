@@ -5,7 +5,7 @@ use std::time::{Duration, SystemTime};
 use scirs2_core::ndarray::{Array1, Array2, Array3};
 
 use super::*;
-use crate::DeviceResult;
+use crate::{DeviceError, DeviceResult};
 
 impl CrosstalkPredictor {
     pub fn new(config: &CrosstalkPredictionConfig) -> Self {
@@ -20,21 +20,72 @@ impl CrosstalkPredictor {
         let n_qubits = characterization.crosstalk_matrix.nrows();
         let n_predictions = 10; // Number of prediction steps
 
+        // Use the current crosstalk matrix values as initial predictions, then apply
+        // exponential smoothing with a small drift factor based on matrix statistics.
+        let n_features = n_qubits * n_qubits;
+        let flat: Vec<f64> = characterization.crosstalk_matrix.iter().copied().collect();
+        let mean_val = if flat.is_empty() { 0.0 } else { flat.iter().sum::<f64>() / flat.len() as f64 };
+        let variance = if flat.is_empty() {
+            0.0
+        } else {
+            flat.iter().map(|x| (x - mean_val).powi(2)).sum::<f64>() / flat.len() as f64
+        };
+
+        // Build prediction matrix: each step applies an exponential smoothing factor.
+        // This is a stationary baseline (no ML model trained yet), so predictions
+        // represent "the crosstalk stays near its current level ± some decay".
+        let alpha = 0.9_f64; // smoothing factor toward mean
+        let mut predictions = Array2::zeros((n_predictions, n_features));
+        for step in 0..n_predictions {
+            let decay = alpha.powi(step as i32 + 1);
+            for (j, &v) in flat.iter().enumerate() {
+                // Each prediction step decays toward the mean
+                predictions[[step, j]] = mean_val + decay * (v - mean_val);
+            }
+        }
+
+        // Uncertainty grows with step (proportional to sqrt(step+1) * std_dev)
+        let std_dev = variance.sqrt();
+        let mut uncertainty_estimates = Array2::zeros((n_predictions, n_features));
+        for step in 0..n_predictions {
+            let u = std_dev * ((step + 1) as f64).sqrt() * 0.1;
+            for j in 0..n_features {
+                uncertainty_estimates[[step, j]] = u;
+            }
+        }
+
+        // Confidence intervals at 95% (z=1.96)
+        let mut confidence_intervals = Array3::zeros((n_predictions, n_features, 2));
+        for step in 0..n_predictions {
+            for j in 0..n_features {
+                let pred = predictions[[step, j]];
+                let u = uncertainty_estimates[[step, j]];
+                confidence_intervals[[step, j, 0]] = pred - 1.96 * u;
+                confidence_intervals[[step, j, 1]] = pred + 1.96 * u;
+            }
+        }
+
+        let now = SystemTime::now();
+        let interval = Duration::from_secs(60);
+        let timestamps: Vec<SystemTime> = (0..n_predictions)
+            .map(|i| now + interval * (i as u32 + 1))
+            .collect();
+
         Ok(CrosstalkPredictionResult {
-            predictions: Array2::zeros((n_predictions, n_qubits * n_qubits)),
-            timestamps: vec![SystemTime::now(); n_predictions],
-            confidence_intervals: Array3::zeros((n_predictions, n_qubits * n_qubits, 2)),
-            uncertainty_estimates: Array2::zeros((n_predictions, n_qubits * n_qubits)),
+            predictions,
+            timestamps,
+            confidence_intervals,
+            uncertainty_estimates,
             time_series_analysis: TimeSeriesAnalysisResult {
                 trend_analysis: TrendAnalysisResult {
                     trend_direction: TrendDirection::Stable,
-                    trend_strength: 0.1,
-                    trend_significance: 0.05,
-                    trend_rate: 0.001,
+                    trend_strength: 0.0,
+                    trend_significance: 1.0,
+                    trend_rate: 0.0,
                 },
                 seasonality_analysis: SeasonalityAnalysisResult {
-                    periods: vec![24],
-                    strengths: vec![0.2],
+                    periods: vec![],
+                    strengths: vec![],
                     patterns: HashMap::new(),
                     significance: HashMap::new(),
                 },
@@ -45,12 +96,12 @@ impl CrosstalkPredictor {
                     confidence_levels: vec![],
                 },
                 forecast_metrics: ForecastMetrics {
-                    mae: 0.01,
-                    mse: 0.0001,
-                    rmse: 0.01,
-                    mape: 1.0,
-                    smape: 1.0,
-                    mase: 0.5,
+                    mae: 0.0,
+                    mse: 0.0,
+                    rmse: 0.0,
+                    mape: 0.0,
+                    smape: 0.0,
+                    mase: 0.0,
                 },
             },
         })
@@ -75,10 +126,23 @@ impl CrosstalkPredictor {
     /// Generate multi-step ahead predictions
     pub fn predict_multi_step(&self, input_data: &Array2<f64>, steps: usize) -> DeviceResult<Array2<f64>> {
         let n_features = input_data.ncols();
-        let predictions = Array2::zeros((steps, n_features));
+        let n_rows = input_data.nrows();
+        if n_rows == 0 {
+            return Ok(Array2::zeros((steps, n_features)));
+        }
 
-        // Implement multi-step prediction logic
-        // For now, return simplified predictions
+        // Compute per-feature mean and last value for exponential smoothing baseline
+        let mut predictions = Array2::zeros((steps, n_features));
+        for j in 0..n_features {
+            let col: Vec<f64> = (0..n_rows).map(|i| input_data[[i, j]]).collect();
+            let mean = col.iter().sum::<f64>() / col.len() as f64;
+            let last = col[n_rows - 1];
+            let alpha = 0.9_f64;
+            for step in 0..steps {
+                let decay = alpha.powi(step as i32 + 1);
+                predictions[[step, j]] = mean + decay * (last - mean);
+            }
+        }
         Ok(predictions)
     }
 
@@ -166,11 +230,31 @@ impl CrosstalkPredictor {
     }
 
     fn calculate_mase(&self, predictions: &Array2<f64>, ground_truth: &Array2<f64>) -> f64 {
-        // Simplified MASE calculation
         let mae = self.calculate_mae(predictions, ground_truth);
-        // Naive forecast MAE (using previous value as prediction)
-        let naive_mae = 0.02; // Simplified
-        mae / naive_mae
+        // Naive forecast MAE: use mean of |ground_truth[i] - ground_truth[i-1]| for i>=1
+        let n_rows = ground_truth.nrows();
+        let n_cols = ground_truth.ncols();
+        if n_rows < 2 || n_cols == 0 {
+            return if mae == 0.0 { 0.0 } else { f64::INFINITY };
+        }
+        let mut naive_total = 0.0;
+        let mut naive_count = 0usize;
+        for j in 0..n_cols {
+            for i in 1..n_rows {
+                naive_total += (ground_truth[[i, j]] - ground_truth[[i - 1, j]]).abs();
+                naive_count += 1;
+            }
+        }
+        let naive_mae = if naive_count > 0 {
+            naive_total / naive_count as f64
+        } else {
+            1.0
+        };
+        if naive_mae < 1e-10 {
+            if mae < 1e-10 { 0.0 } else { f64::INFINITY }
+        } else {
+            mae / naive_mae
+        }
     }
 }
 
@@ -201,28 +285,53 @@ impl UncertaintyQuantifier {
         }
     }
 
-    fn bootstrap_uncertainty(&self, predictions: &Array2<f64>, n_bootstrap: usize) -> DeviceResult<Array2<f64>> {
-        // Bootstrap-based uncertainty estimation
-        let uncertainty = Array2::from_elem(predictions.dim(), 0.05); // Simplified
+    fn bootstrap_uncertainty(&self, predictions: &Array2<f64>, _n_bootstrap: usize) -> DeviceResult<Array2<f64>> {
+        // Bootstrap uncertainty: estimate from the spread of prediction values
+        // across time steps as a proxy for prediction variability.
+        let (n_steps, n_features) = predictions.dim();
+        let mut uncertainty = Array2::zeros((n_steps, n_features));
+        if n_steps < 2 {
+            return Ok(uncertainty);
+        }
+        // Per-feature standard deviation across time steps as uncertainty estimate
+        for j in 0..n_features {
+            let col: Vec<f64> = (0..n_steps).map(|i| predictions[[i, j]]).collect();
+            let mean = col.iter().sum::<f64>() / n_steps as f64;
+            let var = col.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / n_steps as f64;
+            let std = var.sqrt();
+            for i in 0..n_steps {
+                // Bootstrap std grows with step distance from the center
+                let step_factor = 1.0 + (i as f64 / n_steps as f64);
+                uncertainty[[i, j]] = std * step_factor;
+            }
+        }
         Ok(uncertainty)
     }
 
-    fn bayesian_uncertainty(&self, predictions: &Array2<f64>, prior_type: &str) -> DeviceResult<Array2<f64>> {
-        // Bayesian uncertainty estimation
-        let uncertainty = Array2::from_elem(predictions.dim(), 0.03); // Simplified
-        Ok(uncertainty)
+    fn bayesian_uncertainty(&self, predictions: &Array2<f64>, _prior_type: &str) -> DeviceResult<Array2<f64>> {
+        // Bayesian uncertainty requires a posterior distribution from a trained model.
+        // Without a trained Bayesian model, this cannot be computed meaningfully.
+        Err(DeviceError::NotImplemented(
+            "Bayesian uncertainty quantification requires a trained Bayesian model with posterior samples; \
+             no such model is available".to_string()
+        ))
     }
 
-    fn ensemble_uncertainty(&self, predictions: &Array2<f64>, n_models: usize) -> DeviceResult<Array2<f64>> {
-        // Ensemble-based uncertainty estimation
-        let uncertainty = Array2::from_elem(predictions.dim(), 0.04); // Simplified
-        Ok(uncertainty)
+    fn ensemble_uncertainty(&self, predictions: &Array2<f64>, _n_models: usize) -> DeviceResult<Array2<f64>> {
+        // Ensemble uncertainty requires multiple trained model outputs.
+        // Without an ensemble of trained models, this cannot be computed.
+        Err(DeviceError::NotImplemented(
+            "Ensemble uncertainty quantification requires predictions from multiple trained models; \
+             no ensemble models are available".to_string()
+        ))
     }
 
-    fn dropout_uncertainty(&self, predictions: &Array2<f64>, dropout_rate: f64, n_samples: usize) -> DeviceResult<Array2<f64>> {
-        // Monte Carlo dropout uncertainty estimation
-        let uncertainty = Array2::from_elem(predictions.dim(), 0.06); // Simplified
-        Ok(uncertainty)
+    fn dropout_uncertainty(&self, predictions: &Array2<f64>, _dropout_rate: f64, _n_samples: usize) -> DeviceResult<Array2<f64>> {
+        // MC Dropout requires a neural network with dropout layers at inference time.
+        Err(DeviceError::NotImplemented(
+            "Monte Carlo dropout uncertainty requires a neural network with dropout; \
+             no such network is available".to_string()
+        ))
     }
 
     /// Compute confidence intervals
@@ -252,13 +361,22 @@ impl UncertaintyQuantifier {
     }
 
     fn get_z_score(&self, confidence_level: f64) -> f64 {
-        // Simplified z-score lookup
-        match confidence_level {
-            0.68 => 1.0,   // 68% confidence
-            0.95 => 1.96,  // 95% confidence
-            0.99 => 2.576, // 99% confidence
-            _ => 1.96,     // Default to 95%
+        // Rational approximation of the normal quantile (Abramowitz & Stegun §26.2.17)
+        // Valid to ~4.5 decimal places for confidence_level in (0, 1).
+        let p = confidence_level + (1.0 - confidence_level) / 2.0; // one-tail probability
+        if p <= 0.0 || p >= 1.0 {
+            return 1.96;
         }
+        let t = (-2.0 * (1.0 - p).ln()).sqrt();
+        let c0 = 2.515517_f64;
+        let c1 = 0.802853_f64;
+        let c2 = 0.010328_f64;
+        let d1 = 1.432788_f64;
+        let d2 = 0.189269_f64;
+        let d3 = 0.001308_f64;
+        let numerator   = c0 + c1 * t + c2 * t * t;
+        let denominator = 1.0 + d1 * t + d2 * t * t + d3 * t * t * t;
+        t - numerator / denominator
     }
 
     /// Update uncertainty history
@@ -311,49 +429,320 @@ impl PredictionModel {
     }
 
     fn train_arima(&mut self, data: &Array2<f64>, p: usize, d: usize, q: usize) -> DeviceResult<()> {
-        // ARIMA model training implementation
+        // Fit AR(p) via Yule-Walker equations for each feature column.
+        // The d-order differencing and MA(q) part require iterative ARMA fitting
+        // beyond Yule-Walker and a proper ML framework; we implement AR(p) only and
+        // store the AR coefficients as model_data (f64 le bytes).
+        let n_rows = data.nrows();
+        let n_cols = data.ncols();
+        if n_rows < p + 1 || p == 0 {
+            self.last_updated = SystemTime::now();
+            return Ok(());
+        }
+
+        // For each column, compute AR(p) via Yule-Walker normal equations.
+        // Autocorrelations r[0..=p] then solve Toeplitz system.
+        let mut all_coeffs: Vec<f64> = Vec::with_capacity(n_cols * p);
+        for j in 0..n_cols {
+            let col: Vec<f64> = (0..n_rows).map(|i| data[[i, j]]).collect();
+            let mean = col.iter().sum::<f64>() / n_rows as f64;
+            let centered: Vec<f64> = col.iter().map(|x| x - mean).collect();
+
+            // Compute autocorrelations r[0..=p]
+            let r: Vec<f64> = (0..=p).map(|lag| {
+                let n_terms = n_rows - lag;
+                if n_terms == 0 { return 0.0; }
+                let sum: f64 = (0..n_terms).map(|i| centered[i] * centered[i + lag]).sum();
+                sum / n_rows as f64
+            }).collect();
+
+            let var = r[0];
+            if var < 1e-12 {
+                all_coeffs.extend(vec![0.0; p]);
+                continue;
+            }
+
+            // Solve Yule-Walker: R * phi = r[1..=p]
+            // R is p×p Toeplitz with R[i][j] = r[|i-j|]
+            // Use Levinson-Durbin recursion
+            let phi = levinson_durbin(&r, p);
+            all_coeffs.extend(phi);
+        }
+
+        // Store model: header [n_cols as u64 le][p as u64 le] then coefficients
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&(n_cols as u64).to_le_bytes());
+        bytes.extend_from_slice(&(p as u64).to_le_bytes());
+        for c in &all_coeffs {
+            bytes.extend_from_slice(&c.to_le_bytes());
+        }
+        self.model_data = bytes;
+        self.last_updated = SystemTime::now();
+        let _ = (d, q); // d/q not implemented in this AR-only baseline
+        Ok(())
+    }
+
+    fn train_exponential_smoothing(&mut self, data: &Array2<f64>, _trend: &str, _seasonal: &str) -> DeviceResult<()> {
+        // Simple exponential smoothing: store last smoothed value per feature.
+        // Full Holt-Winters with trend+seasonal requires a proper time-series library.
+        let n_rows = data.nrows();
+        let n_cols = data.ncols();
+        if n_rows == 0 {
+            self.last_updated = SystemTime::now();
+            return Ok(());
+        }
+        let alpha = 0.3_f64;
+        let mut smoothed = Vec::with_capacity(n_cols);
+        for j in 0..n_cols {
+            let mut s = data[[0, j]];
+            for i in 1..n_rows {
+                s = alpha * data[[i, j]] + (1.0 - alpha) * s;
+            }
+            smoothed.push(s);
+        }
+        // Store: header [n_cols as u64][alpha as f64] then smoothed values
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&(n_cols as u64).to_le_bytes());
+        bytes.extend_from_slice(&alpha.to_le_bytes());
+        for s in &smoothed {
+            bytes.extend_from_slice(&s.to_le_bytes());
+        }
+        self.model_data = bytes;
         self.last_updated = SystemTime::now();
         Ok(())
     }
 
-    fn train_exponential_smoothing(&mut self, data: &Array2<f64>, trend: &str, seasonal: &str) -> DeviceResult<()> {
-        // Exponential smoothing model training
-        self.last_updated = SystemTime::now();
-        Ok(())
+    fn train_prophet(&mut self, _data: &Array2<f64>, _growth: &str, _seasonality_mode: &str) -> DeviceResult<()> {
+        // Prophet requires a specific Bayesian/curve-fitting framework not available here.
+        Err(DeviceError::NotImplemented(
+            "Prophet model training requires the Prophet time-series library; \
+             no such dependency is available in this crate".to_string()
+        ))
     }
 
-    fn train_prophet(&mut self, data: &Array2<f64>, growth: &str, seasonality_mode: &str) -> DeviceResult<()> {
-        // Prophet model training
-        self.last_updated = SystemTime::now();
-        Ok(())
+    fn train_lstm(&mut self, _data: &Array2<f64>, _hidden_size: usize, _num_layers: usize) -> DeviceResult<()> {
+        // LSTM requires a neural network framework (e.g. tch, burn, candle).
+        Err(DeviceError::NotImplemented(
+            "LSTM model training requires a neural network framework; \
+             no such dependency is available in this crate".to_string()
+        ))
     }
 
-    fn train_lstm(&mut self, data: &Array2<f64>, hidden_size: usize, num_layers: usize) -> DeviceResult<()> {
-        // LSTM model training
-        self.last_updated = SystemTime::now();
-        Ok(())
-    }
-
-    fn train_transformer(&mut self, data: &Array2<f64>, d_model: usize, n_heads: usize, n_layers: usize) -> DeviceResult<()> {
-        // Transformer model training
-        self.last_updated = SystemTime::now();
-        Ok(())
+    fn train_transformer(&mut self, _data: &Array2<f64>, _d_model: usize, _n_heads: usize, _n_layers: usize) -> DeviceResult<()> {
+        // Transformer requires a neural network framework.
+        Err(DeviceError::NotImplemented(
+            "Transformer model training requires a neural network framework; \
+             no such dependency is available in this crate".to_string()
+        ))
     }
 
     /// Make predictions
     pub fn predict(&self, input_data: &Array2<f64>, steps: usize) -> DeviceResult<Array2<f64>> {
         let n_features = input_data.ncols();
-        let predictions = Array2::zeros((steps, n_features));
+        let n_rows = input_data.nrows();
+        if n_rows == 0 || steps == 0 {
+            return Ok(Array2::zeros((steps, n_features)));
+        }
 
-        // Implement prediction logic based on model type
-        Ok(predictions)
+        match &self.model_type {
+            TimeSeriesModel::ARIMA { p, .. } => {
+                self.predict_arima(input_data, steps, *p)
+            },
+            TimeSeriesModel::ExponentialSmoothing { .. } => {
+                self.predict_exponential_smoothing(input_data, steps)
+            },
+            TimeSeriesModel::Prophet { .. } |
+            TimeSeriesModel::LSTM { .. } |
+            TimeSeriesModel::Transformer { .. } => {
+                Err(DeviceError::NotImplemented(
+                    "Prediction requires a trained ML model that is not available; \
+                     train a supported model type first".to_string()
+                ))
+            },
+        }
+    }
+
+    fn predict_arima(&self, input_data: &Array2<f64>, steps: usize, p: usize) -> DeviceResult<Array2<f64>> {
+        let n_features = input_data.ncols();
+        let n_rows = input_data.nrows();
+        let min_header = 16; // 2 × u64 = 16 bytes
+        if self.model_data.len() < min_header || p == 0 {
+            // No trained model data; fall back to last-value persistence
+            let mut preds = Array2::zeros((steps, n_features));
+            for j in 0..n_features {
+                let last = input_data[[n_rows - 1, j]];
+                for s in 0..steps {
+                    preds[[s, j]] = last;
+                }
+            }
+            return Ok(preds);
+        }
+
+        // Parse header
+        let stored_n_cols = u64::from_le_bytes(self.model_data[0..8].try_into().map_err(|_| {
+            DeviceError::InvalidInput("Corrupt model data header".to_string())
+        })?) as usize;
+        let stored_p = u64::from_le_bytes(self.model_data[8..16].try_into().map_err(|_| {
+            DeviceError::InvalidInput("Corrupt model data header".to_string())
+        })?) as usize;
+
+        let effective_cols = stored_n_cols.min(n_features);
+        let effective_p = stored_p.min(n_rows);
+        let expected_bytes = 16 + effective_cols * effective_p * 8;
+
+        if self.model_data.len() < expected_bytes || effective_p == 0 {
+            // Fallback: last-value persistence
+            let mut preds = Array2::zeros((steps, n_features));
+            for j in 0..n_features {
+                let last = input_data[[n_rows - 1, j]];
+                for s in 0..steps {
+                    preds[[s, j]] = last;
+                }
+            }
+            return Ok(preds);
+        }
+
+        // Extract AR coefficients
+        let mut preds = Array2::zeros((steps, n_features));
+        for j in 0..effective_cols {
+            // Read p AR coefficients for column j
+            let offset = 16 + j * effective_p * 8;
+            let mut phi = Vec::with_capacity(effective_p);
+            for k in 0..effective_p {
+                let byte_off = offset + k * 8;
+                let coeff = f64::from_le_bytes(self.model_data[byte_off..byte_off + 8].try_into().map_err(|_| {
+                    DeviceError::InvalidInput("Corrupt model coefficient data".to_string())
+                })?);
+                phi.push(coeff);
+            }
+
+            // Build history buffer: last p values of input column j
+            let history: Vec<f64> = (n_rows.saturating_sub(effective_p)..n_rows)
+                .map(|i| input_data[[i, j]])
+                .collect();
+            let mean = history.iter().sum::<f64>() / history.len().max(1) as f64;
+            let centered_history: Vec<f64> = history.iter().map(|x| x - mean).collect();
+            let mut buf: VecDeque<f64> = centered_history.into_iter().collect();
+
+            for s in 0..steps {
+                // AR prediction: sum of phi[k] * buf[end - k]
+                let buf_len = buf.len();
+                let forecast: f64 = phi.iter().enumerate().map(|(k, &c)| {
+                    let idx = buf_len.saturating_sub(k + 1);
+                    c * buf.get(idx).copied().unwrap_or(0.0)
+                }).sum();
+                preds[[s, j]] = forecast + mean;
+                buf.push_back(forecast);
+                if buf.len() > effective_p * 2 {
+                    buf.pop_front();
+                }
+            }
+        }
+        // Fill remaining columns (if n_features > stored_n_cols) with last value
+        for j in effective_cols..n_features {
+            let last = input_data[[n_rows - 1, j]];
+            for s in 0..steps {
+                preds[[s, j]] = last;
+            }
+        }
+        Ok(preds)
+    }
+
+    fn predict_exponential_smoothing(&self, input_data: &Array2<f64>, steps: usize) -> DeviceResult<Array2<f64>> {
+        let n_features = input_data.ncols();
+        let n_rows = input_data.nrows();
+        let min_header = 16; // u64 + f64 = 16 bytes
+        if self.model_data.len() < min_header {
+            // No model data; use last value
+            let mut preds = Array2::zeros((steps, n_features));
+            for j in 0..n_features {
+                let last = input_data[[n_rows - 1, j]];
+                for s in 0..steps {
+                    preds[[s, j]] = last;
+                }
+            }
+            return Ok(preds);
+        }
+        let stored_n_cols = u64::from_le_bytes(self.model_data[0..8].try_into().map_err(|_| {
+            DeviceError::InvalidInput("Corrupt ES model header".to_string())
+        })?) as usize;
+        let alpha = f64::from_le_bytes(self.model_data[8..16].try_into().map_err(|_| {
+            DeviceError::InvalidInput("Corrupt ES model alpha".to_string())
+        })?);
+        let effective_cols = stored_n_cols.min(n_features);
+        let expected = 16 + effective_cols * 8;
+        if self.model_data.len() < expected {
+            let mut preds = Array2::zeros((steps, n_features));
+            for j in 0..n_features {
+                let last = input_data[[n_rows - 1, j]];
+                for s in 0..steps { preds[[s, j]] = last; }
+            }
+            return Ok(preds);
+        }
+        let mut preds = Array2::zeros((steps, n_features));
+        for j in 0..effective_cols {
+            // Start from stored smoothed value, then update with any new input data
+            let byte_off = 16 + j * 8;
+            let stored_s = f64::from_le_bytes(self.model_data[byte_off..byte_off + 8].try_into().map_err(|_| {
+                DeviceError::InvalidInput("Corrupt ES smoothed value".to_string())
+            })?);
+            // Update with new data points since training
+            let mut s = stored_s;
+            for i in 0..n_rows {
+                s = alpha * input_data[[i, j]] + (1.0 - alpha) * s;
+            }
+            // Exponential smoothing forecast is constant (level model)
+            for step in 0..steps {
+                preds[[step, j]] = s;
+            }
+        }
+        for j in effective_cols..n_features {
+            let last = input_data[[n_rows - 1, j]];
+            for s in 0..steps { preds[[s, j]] = last; }
+        }
+        Ok(preds)
     }
 
     /// Update model with new data (online learning)
     pub fn update(&mut self, new_data: &Array2<f64>) -> DeviceResult<()> {
-        // Implement online learning update
-        self.last_updated = SystemTime::now();
-        Ok(())
+        // For exponential smoothing, we can do an online update of the smoothed level.
+        match &self.model_type {
+            TimeSeriesModel::ExponentialSmoothing { .. } => {
+                let min_header = 16;
+                if self.model_data.len() < min_header {
+                    return Ok(());
+                }
+                let stored_n_cols = u64::from_le_bytes(self.model_data[0..8].try_into().map_err(|_| {
+                    DeviceError::InvalidInput("Corrupt ES model header".to_string())
+                })?) as usize;
+                let alpha = f64::from_le_bytes(self.model_data[8..16].try_into().map_err(|_| {
+                    DeviceError::InvalidInput("Corrupt ES model alpha".to_string())
+                })?);
+                let n_rows = new_data.nrows();
+                let n_cols = new_data.ncols().min(stored_n_cols);
+                let expected = 16 + stored_n_cols * 8;
+                if self.model_data.len() < expected || n_rows == 0 {
+                    return Ok(());
+                }
+                for j in 0..n_cols {
+                    let byte_off = 16 + j * 8;
+                    let mut s = f64::from_le_bytes(self.model_data[byte_off..byte_off + 8].try_into().map_err(|_| {
+                        DeviceError::InvalidInput("Corrupt ES smoothed value on update".to_string())
+                    })?);
+                    for i in 0..n_rows {
+                        s = alpha * new_data[[i, j]] + (1.0 - alpha) * s;
+                    }
+                    self.model_data[byte_off..byte_off + 8].copy_from_slice(&s.to_le_bytes());
+                }
+                self.last_updated = SystemTime::now();
+                Ok(())
+            },
+            _ => {
+                // For ARIMA and ML models, online update requires full retraining
+                self.last_updated = SystemTime::now();
+                Ok(())
+            },
+        }
     }
 
     /// Get model size in bytes
@@ -389,14 +778,14 @@ impl TimeSeriesAnalyzer {
         let seasonality_analysis = self.seasonality_detector.analyze_seasonality(data)?;
         let changepoint_analysis = self.changepoint_detector.detect_changepoints(data)?;
 
-        // Calculate forecast metrics (would typically be done after prediction)
+        // Forecast metrics are computed externally after actual predictions are made
         let forecast_metrics = ForecastMetrics {
-            mae: 0.01,
-            mse: 0.0001,
-            rmse: 0.01,
-            mape: 1.0,
-            smape: 1.0,
-            mase: 0.5,
+            mae: 0.0,
+            mse: 0.0,
+            rmse: 0.0,
+            mape: 0.0,
+            smape: 0.0,
+            mase: 0.0,
         };
 
         Ok(TimeSeriesAnalysisResult {
@@ -449,38 +838,192 @@ impl TrendDetector {
     }
 
     fn mann_kendall_trend(&self, data: &Array2<f64>) -> DeviceResult<TrendDirection> {
-        // Mann-Kendall trend test implementation
-        Ok(TrendDirection::Stable) // Simplified
+        // Mann-Kendall: compute S statistic for each column, average direction.
+        let n = data.nrows();
+        let n_cols = data.ncols();
+        if n < 3 || n_cols == 0 {
+            return Ok(TrendDirection::Stable);
+        }
+        let mut total_s = 0i64;
+        for j in 0..n_cols {
+            let mut s = 0i64;
+            for i in 0..n {
+                for k in (i + 1)..n {
+                    let diff = data[[k, j]] - data[[i, j]];
+                    if diff > 1e-10 { s += 1; }
+                    else if diff < -1e-10 { s -= 1; }
+                }
+            }
+            total_s += s;
+        }
+        // Variance of S under H0: var = n*(n-1)*(2n+5)/18 per column
+        let var_s = (n as f64 * (n as f64 - 1.0) * (2.0 * n as f64 + 5.0)) / 18.0 * n_cols as f64;
+        let z = if total_s > 0 {
+            (total_s as f64 - 1.0) / var_s.sqrt()
+        } else if total_s < 0 {
+            (total_s as f64 + 1.0) / var_s.sqrt()
+        } else {
+            0.0
+        };
+        // 95% threshold: |z| > 1.96
+        if z > 1.96 {
+            Ok(TrendDirection::Increasing)
+        } else if z < -1.96 {
+            Ok(TrendDirection::Decreasing)
+        } else {
+            Ok(TrendDirection::Stable)
+        }
     }
 
     fn linear_regression_trend(&self, data: &Array2<f64>) -> DeviceResult<TrendDirection> {
-        // Linear regression trend analysis
-        Ok(TrendDirection::Stable) // Simplified
+        // Average slope across all columns via OLS.
+        let n = data.nrows();
+        let n_cols = data.ncols();
+        if n < 2 || n_cols == 0 {
+            return Ok(TrendDirection::Stable);
+        }
+        let x_mean = (n as f64 - 1.0) / 2.0;
+        let ss_xx: f64 = (0..n).map(|i| (i as f64 - x_mean).powi(2)).sum();
+        if ss_xx < 1e-10 {
+            return Ok(TrendDirection::Stable);
+        }
+        let mut total_slope = 0.0;
+        for j in 0..n_cols {
+            let y_mean: f64 = (0..n).map(|i| data[[i, j]]).sum::<f64>() / n as f64;
+            let ss_xy: f64 = (0..n).map(|i| (i as f64 - x_mean) * (data[[i, j]] - y_mean)).sum();
+            total_slope += ss_xy / ss_xx;
+        }
+        let avg_slope = total_slope / n_cols as f64;
+        if avg_slope > 1e-6 {
+            Ok(TrendDirection::Increasing)
+        } else if avg_slope < -1e-6 {
+            Ok(TrendDirection::Decreasing)
+        } else {
+            Ok(TrendDirection::Stable)
+        }
     }
 
     fn theil_sen_trend(&self, data: &Array2<f64>) -> DeviceResult<TrendDirection> {
-        // Theil-Sen trend estimation
-        Ok(TrendDirection::Stable) // Simplified
+        // Theil-Sen estimator: median of all pairwise slopes.
+        let n = data.nrows();
+        let n_cols = data.ncols();
+        if n < 2 || n_cols == 0 {
+            return Ok(TrendDirection::Stable);
+        }
+        let mut all_slopes: Vec<f64> = Vec::new();
+        for j in 0..n_cols {
+            for i in 0..n {
+                for k in (i + 1)..n {
+                    let dx = (k as f64) - (i as f64);
+                    let dy = data[[k, j]] - data[[i, j]];
+                    all_slopes.push(dy / dx);
+                }
+            }
+        }
+        if all_slopes.is_empty() {
+            return Ok(TrendDirection::Stable);
+        }
+        all_slopes.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let median_slope = all_slopes[all_slopes.len() / 2];
+        if median_slope > 1e-6 {
+            Ok(TrendDirection::Increasing)
+        } else if median_slope < -1e-6 {
+            Ok(TrendDirection::Decreasing)
+        } else {
+            Ok(TrendDirection::Stable)
+        }
     }
 
-    fn lowess_trend(&self, data: &Array2<f64>, frac: f64) -> DeviceResult<TrendDirection> {
-        // LOWESS trend analysis
-        Ok(TrendDirection::Stable) // Simplified
+    fn lowess_trend(&self, data: &Array2<f64>, _frac: f64) -> DeviceResult<TrendDirection> {
+        // LOWESS (locally weighted scatterplot smoothing) full implementation requires
+        // iterative local regressions; fall back to linear regression for direction.
+        self.linear_regression_trend(data)
     }
 
     fn calculate_trend_strength(&self, data: &Array2<f64>) -> DeviceResult<f64> {
-        // Calculate trend strength (0-1)
-        Ok(0.1) // Simplified
+        // Trend strength = R² of linear fit, averaged across columns.
+        let n = data.nrows();
+        let n_cols = data.ncols();
+        if n < 2 || n_cols == 0 {
+            return Ok(0.0);
+        }
+        let x_mean = (n as f64 - 1.0) / 2.0;
+        let ss_xx: f64 = (0..n).map(|i| (i as f64 - x_mean).powi(2)).sum();
+        if ss_xx < 1e-10 {
+            return Ok(0.0);
+        }
+        let mut r2_sum = 0.0;
+        for j in 0..n_cols {
+            let y_vals: Vec<f64> = (0..n).map(|i| data[[i, j]]).collect();
+            let y_mean = y_vals.iter().sum::<f64>() / n as f64;
+            let ss_yy: f64 = y_vals.iter().map(|y| (y - y_mean).powi(2)).sum();
+            if ss_yy < 1e-12 {
+                continue; // Constant series, R² = 0
+            }
+            let ss_xy: f64 = (0..n).map(|i| (i as f64 - x_mean) * (y_vals[i] - y_mean)).sum();
+            let slope = ss_xy / ss_xx;
+            let intercept = y_mean - slope * x_mean;
+            let ss_res: f64 = (0..n).map(|i| {
+                let fitted = slope * i as f64 + intercept;
+                (y_vals[i] - fitted).powi(2)
+            }).sum();
+            r2_sum += 1.0 - ss_res / ss_yy;
+        }
+        Ok((r2_sum / n_cols as f64).clamp(0.0, 1.0))
     }
 
     fn test_trend_significance(&self, data: &Array2<f64>) -> DeviceResult<f64> {
-        // Statistical significance test for trend
-        Ok(0.05) // Simplified
+        // p-value for trend via Mann-Kendall Z statistic (two-tailed normal approximation).
+        let n = data.nrows();
+        let n_cols = data.ncols();
+        if n < 3 || n_cols == 0 {
+            return Ok(1.0);
+        }
+        let mut total_s = 0i64;
+        for j in 0..n_cols {
+            let mut s = 0i64;
+            for i in 0..n {
+                for k in (i + 1)..n {
+                    let diff = data[[k, j]] - data[[i, j]];
+                    if diff > 1e-10 { s += 1; }
+                    else if diff < -1e-10 { s -= 1; }
+                }
+            }
+            total_s += s;
+        }
+        let var_s = (n as f64 * (n as f64 - 1.0) * (2.0 * n as f64 + 5.0)) / 18.0 * n_cols as f64;
+        let z = if total_s > 0 {
+            (total_s as f64 - 1.0) / var_s.sqrt()
+        } else if total_s < 0 {
+            (total_s as f64 + 1.0) / var_s.sqrt()
+        } else {
+            0.0
+        };
+        // Two-tailed p-value approximation using complementary error function
+        // erf(x) ≈ using Horner's method (Abramowitz & Stegun 7.1.26)
+        let p = 2.0 * normal_survival(z.abs());
+        Ok(p.clamp(0.0, 1.0))
     }
 
     fn calculate_trend_rate(&self, data: &Array2<f64>) -> DeviceResult<f64> {
-        // Calculate rate of change
-        Ok(0.001) // Simplified
+        // Average OLS slope across columns (units: value/step)
+        let n = data.nrows();
+        let n_cols = data.ncols();
+        if n < 2 || n_cols == 0 {
+            return Ok(0.0);
+        }
+        let x_mean = (n as f64 - 1.0) / 2.0;
+        let ss_xx: f64 = (0..n).map(|i| (i as f64 - x_mean).powi(2)).sum();
+        if ss_xx < 1e-10 {
+            return Ok(0.0);
+        }
+        let mut slope_sum = 0.0;
+        for j in 0..n_cols {
+            let y_mean: f64 = (0..n).map(|i| data[[i, j]]).sum::<f64>() / n as f64;
+            let ss_xy: f64 = (0..n).map(|i| (i as f64 - x_mean) * (data[[i, j]] - y_mean)).sum();
+            slope_sum += ss_xy / ss_xx;
+        }
+        Ok(slope_sum / n_cols as f64)
     }
 }
 
@@ -500,7 +1043,7 @@ impl SeasonalityDetector {
         let mut patterns = HashMap::new();
         let mut significance = HashMap::new();
 
-        for &period in &self.periods {
+        for &period in &self.periods.clone() {
             let strength = self.calculate_seasonal_strength(data, period)?;
             if strength > self.strength_threshold {
                 detected_periods.push(period);
@@ -523,18 +1066,70 @@ impl SeasonalityDetector {
     }
 
     fn calculate_seasonal_strength(&self, data: &Array2<f64>, period: usize) -> DeviceResult<f64> {
-        // Calculate seasonal strength using autocorrelation or other methods
-        Ok(0.2) // Simplified
+        // Seasonal strength via autocorrelation at the given lag (period).
+        // Averaged across all feature columns.
+        let n = data.nrows();
+        let n_cols = data.ncols();
+        if n < period + 1 || period == 0 || n_cols == 0 {
+            return Ok(0.0);
+        }
+        let mut acf_sum = 0.0;
+        for j in 0..n_cols {
+            let col: Vec<f64> = (0..n).map(|i| data[[i, j]]).collect();
+            let mean = col.iter().sum::<f64>() / n as f64;
+            let var: f64 = col.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / n as f64;
+            if var < 1e-12 { continue; }
+            let n_terms = n - period;
+            let cov: f64 = (0..n_terms).map(|i| (col[i] - mean) * (col[i + period] - mean)).sum::<f64>() / n as f64;
+            acf_sum += (cov / var).clamp(-1.0, 1.0);
+        }
+        Ok((acf_sum / n_cols as f64).clamp(0.0, 1.0))
     }
 
     fn extract_seasonal_pattern(&self, data: &Array2<f64>, period: usize) -> DeviceResult<Array1<f64>> {
-        // Extract seasonal pattern for the given period
-        Ok(Array1::zeros(period)) // Simplified
+        // Average value within each phase bin (0..period) across all complete cycles.
+        let n = data.nrows();
+        let n_cols = data.ncols();
+        if n < period || period == 0 {
+            return Ok(Array1::zeros(period));
+        }
+        let mut bin_sum = vec![0.0f64; period];
+        let mut bin_count = vec![0usize; period];
+        for i in 0..n {
+            let phase = i % period;
+            for j in 0..n_cols {
+                bin_sum[phase] += data[[i, j]];
+                bin_count[phase] += 1;
+            }
+        }
+        let pattern: Vec<f64> = (0..period).map(|p| {
+            if bin_count[p] > 0 { bin_sum[p] / bin_count[p] as f64 } else { 0.0 }
+        }).collect();
+        Ok(Array1::from_vec(pattern))
     }
 
     fn test_seasonal_significance(&self, data: &Array2<f64>, period: usize) -> DeviceResult<f64> {
-        // Test statistical significance of seasonality
-        Ok(0.01) // Simplified
+        // Approximate p-value for the autocorrelation at the given lag.
+        // Under H0 (no seasonality), ACF ~ N(0, 1/n), so test statistic = acf * sqrt(n).
+        let n = data.nrows();
+        let n_cols = data.ncols();
+        if n < period + 1 || period == 0 || n_cols == 0 {
+            return Ok(1.0);
+        }
+        let mut acf_sum = 0.0;
+        for j in 0..n_cols {
+            let col: Vec<f64> = (0..n).map(|i| data[[i, j]]).collect();
+            let mean = col.iter().sum::<f64>() / n as f64;
+            let var: f64 = col.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / n as f64;
+            if var < 1e-12 { continue; }
+            let n_terms = n - period;
+            let cov: f64 = (0..n_terms).map(|i| (col[i] - mean) * (col[i + period] - mean)).sum::<f64>() / n as f64;
+            acf_sum += cov / var;
+        }
+        let acf = acf_sum / n_cols as f64;
+        let z = acf * (n as f64).sqrt();
+        let p = 2.0 * normal_survival(z.abs());
+        Ok(p.clamp(0.0, 1.0))
     }
 }
 
@@ -585,37 +1180,347 @@ impl ChangepointDetector {
     }
 
     fn pelt_detection(&self, data: &Array2<f64>, penalty: f64) -> DeviceResult<Vec<usize>> {
-        // PELT (Pruned Exact Linear Time) changepoint detection
-        Ok(vec![]) // Simplified - no changepoints detected
+        // PELT (Pruned Exact Linear Time) with Gaussian cost function (sum of squared deviations).
+        // This is a simplified single-feature version averaged across columns.
+        let n = data.nrows();
+        let n_cols = data.ncols();
+        let min_seg = self.min_segment_length.max(2);
+        if n < 2 * min_seg || n_cols == 0 {
+            return Ok(vec![]);
+        }
+
+        // Average across columns to get a 1D signal
+        let signal: Vec<f64> = (0..n).map(|i| {
+            (0..n_cols).map(|j| data[[i, j]]).sum::<f64>() / n_cols as f64
+        }).collect();
+
+        // Gaussian segment cost: n * log(variance) (negative log-likelihood proportional)
+        let seg_cost = |start: usize, end: usize| -> f64 {
+            let len = end - start;
+            if len < 2 { return 0.0; }
+            let mean = signal[start..end].iter().sum::<f64>() / len as f64;
+            let var = signal[start..end].iter().map(|x| (x - mean).powi(2)).sum::<f64>() / len as f64;
+            if var < 1e-12 { return 0.0; }
+            len as f64 * var.ln()
+        };
+
+        // Dynamic programming with pruning
+        let mut f = vec![f64::INFINITY; n + 1];
+        let mut cp = vec![0usize; n + 1];
+        f[0] = -penalty;
+
+        let mut admissible: Vec<usize> = vec![0];
+
+        for t in min_seg..=n {
+            let mut best_cost = f64::INFINITY;
+            let mut best_prev = 0;
+            let mut still_admissible = Vec::new();
+
+            for &s in &admissible {
+                if t - s < min_seg { continue; }
+                let cost = f[s] + seg_cost(s, t) + penalty;
+                if cost < best_cost {
+                    best_cost = cost;
+                    best_prev = s;
+                }
+                // PELT pruning: keep s if f[s] + seg_cost(s,t) <= best_cost
+                if f[s] + seg_cost(s, t) <= best_cost {
+                    still_admissible.push(s);
+                }
+            }
+            // Add t as new candidate if it satisfies min_seg from start
+            if t + min_seg <= n {
+                still_admissible.push(t);
+            }
+            admissible = still_admissible;
+
+            if best_cost < f64::INFINITY {
+                f[t] = best_cost;
+                cp[t] = best_prev;
+            }
+        }
+
+        // Backtrack
+        let mut changepoints = Vec::new();
+        let mut t = n;
+        while cp[t] != 0 {
+            t = cp[t];
+            if t > 0 && t < n {
+                changepoints.push(t);
+            }
+        }
+        changepoints.sort_unstable();
+        Ok(changepoints)
     }
 
     fn binary_segmentation(&self, data: &Array2<f64>, max_changepoints: usize) -> DeviceResult<Vec<usize>> {
-        // Binary segmentation changepoint detection
-        Ok(vec![]) // Simplified
+        // Binary segmentation via CUSUM (cumulative sum) statistic.
+        let n = data.nrows();
+        let n_cols = data.ncols();
+        let min_seg = self.min_segment_length.max(2);
+        if n < 2 * min_seg || n_cols == 0 || max_changepoints == 0 {
+            return Ok(vec![]);
+        }
+
+        let signal: Vec<f64> = (0..n).map(|i| {
+            (0..n_cols).map(|j| data[[i, j]]).sum::<f64>() / n_cols as f64
+        }).collect();
+
+        let mut changepoints = Vec::new();
+        let mut segments: Vec<(usize, usize)> = vec![(0, n)];
+
+        while changepoints.len() < max_changepoints && !segments.is_empty() {
+            let mut best_seg_idx = None;
+            let mut best_cp = 0usize;
+            let mut best_score = 0.0f64;
+
+            for (seg_idx, &(start, end)) in segments.iter().enumerate() {
+                if end - start < 2 * min_seg { continue; }
+                // Find the split point maximizing the CUSUM statistic
+                let seg_mean = signal[start..end].iter().sum::<f64>() / (end - start) as f64;
+                let mut cusum = 0.0f64;
+                let mut max_cusum = 0.0f64;
+                let mut max_t = start + min_seg;
+                for t in start..end {
+                    cusum += signal[t] - seg_mean;
+                    if t >= start + min_seg && t < end - min_seg && cusum.abs() > max_cusum {
+                        max_cusum = cusum.abs();
+                        max_t = t + 1;
+                    }
+                }
+                if max_cusum > best_score {
+                    best_score = max_cusum;
+                    best_cp = max_t;
+                    best_seg_idx = Some(seg_idx);
+                }
+            }
+
+            if let Some(idx) = best_seg_idx {
+                if best_score > self.detection_threshold {
+                    let (start, end) = segments.remove(idx);
+                    segments.push((start, best_cp));
+                    segments.push((best_cp, end));
+                    changepoints.push(best_cp);
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
+        changepoints.sort_unstable();
+        Ok(changepoints)
     }
 
     fn window_based_detection(&self, data: &Array2<f64>, window_size: usize) -> DeviceResult<Vec<usize>> {
-        // Window-based changepoint detection
-        Ok(vec![]) // Simplified
+        // Window-based detection: compare statistics in two adjacent windows.
+        let n = data.nrows();
+        let n_cols = data.ncols();
+        let w = window_size.max(2);
+        if n < 2 * w || n_cols == 0 {
+            return Ok(vec![]);
+        }
+
+        let signal: Vec<f64> = (0..n).map(|i| {
+            (0..n_cols).map(|j| data[[i, j]]).sum::<f64>() / n_cols as f64
+        }).collect();
+
+        let mut changepoints = Vec::new();
+        let threshold = self.detection_threshold;
+
+        for t in w..(n - w) {
+            let left = &signal[(t - w)..t];
+            let right = &signal[t..(t + w)];
+            let left_mean = left.iter().sum::<f64>() / w as f64;
+            let right_mean = right.iter().sum::<f64>() / w as f64;
+            let left_var = left.iter().map(|x| (x - left_mean).powi(2)).sum::<f64>() / w as f64;
+            let right_var = right.iter().map(|x| (x - right_mean).powi(2)).sum::<f64>() / w as f64;
+            let pooled_std = ((left_var + right_var) / 2.0).sqrt().max(1e-10);
+            let score = (left_mean - right_mean).abs() / pooled_std;
+            if score > threshold {
+                // Avoid consecutive detections within min_segment_length
+                let too_close = changepoints.last()
+                    .map(|&prev: &usize| t - prev < self.min_segment_length)
+                    .unwrap_or(false);
+                if !too_close {
+                    changepoints.push(t);
+                }
+            }
+        }
+        Ok(changepoints)
     }
 
-    fn bayesian_detection(&self, data: &Array2<f64>, prior_prob: f64) -> DeviceResult<Vec<usize>> {
-        // Bayesian changepoint detection
-        Ok(vec![]) // Simplified
+    fn bayesian_detection(&self, _data: &Array2<f64>, _prior_prob: f64) -> DeviceResult<Vec<usize>> {
+        // Full Bayesian changepoint detection (e.g., Adams-MacKay) requires
+        // computing run-length posteriors, which is a non-trivial O(n²) algorithm
+        // with message-passing that is beyond a simple stub. Return typed error.
+        Err(DeviceError::NotImplemented(
+            "Bayesian changepoint detection (Adams-MacKay BOCPD) is not implemented; \
+             use WindowBased or BinarySegmentation methods instead".to_string()
+        ))
     }
 
     fn calculate_changepoint_scores(&self, data: &Array2<f64>, changepoints: &[usize]) -> DeviceResult<Vec<f64>> {
-        // Calculate confidence scores for detected changepoints
-        Ok(vec![]) // Simplified
+        // Score each changepoint by the absolute mean shift normalized by pooled std.
+        let n = data.nrows();
+        let n_cols = data.ncols();
+        let w = self.min_segment_length.max(2);
+        if n_cols == 0 {
+            return Ok(vec![0.0; changepoints.len()]);
+        }
+
+        let signal: Vec<f64> = (0..n).map(|i| {
+            (0..n_cols).map(|j| data[[i, j]]).sum::<f64>() / n_cols as f64
+        }).collect();
+
+        let scores: Vec<f64> = changepoints.iter().map(|&cp| {
+            let left_start = cp.saturating_sub(w);
+            let right_end = (cp + w).min(n);
+            if left_start >= cp || cp >= right_end {
+                return 0.0;
+            }
+            let left = &signal[left_start..cp];
+            let right = &signal[cp..right_end];
+            if left.is_empty() || right.is_empty() { return 0.0; }
+            let lm = left.iter().sum::<f64>() / left.len() as f64;
+            let rm = right.iter().sum::<f64>() / right.len() as f64;
+            let lv = left.iter().map(|x| (x - lm).powi(2)).sum::<f64>() / left.len() as f64;
+            let rv = right.iter().map(|x| (x - rm).powi(2)).sum::<f64>() / right.len() as f64;
+            let pooled_std = ((lv + rv) / 2.0).sqrt().max(1e-10);
+            (lm - rm).abs() / pooled_std
+        }).collect();
+        Ok(scores)
     }
 
     fn classify_changepoint_types(&self, data: &Array2<f64>, changepoints: &[usize]) -> DeviceResult<Vec<ChangepointType>> {
-        // Classify types of changepoints (mean shift, variance change, etc.)
-        Ok(vec![]) // Simplified
+        // Classify each changepoint as MeanShift, VarianceChange, or TrendChange
+        // based on relative change magnitudes in mean and variance.
+        let n = data.nrows();
+        let n_cols = data.ncols();
+        let w = self.min_segment_length.max(2);
+        if n_cols == 0 {
+            return Ok(vec![ChangepointType::MeanShift; changepoints.len()]);
+        }
+
+        let signal: Vec<f64> = (0..n).map(|i| {
+            (0..n_cols).map(|j| data[[i, j]]).sum::<f64>() / n_cols as f64
+        }).collect();
+
+        let types: Vec<ChangepointType> = changepoints.iter().map(|&cp| {
+            let left_start = cp.saturating_sub(w);
+            let right_end = (cp + w).min(n);
+            if left_start >= cp || cp >= right_end {
+                return ChangepointType::MeanShift;
+            }
+            let left = &signal[left_start..cp];
+            let right = &signal[cp..right_end];
+            if left.len() < 2 || right.len() < 2 { return ChangepointType::MeanShift; }
+
+            let lm = left.iter().sum::<f64>() / left.len() as f64;
+            let rm = right.iter().sum::<f64>() / right.len() as f64;
+            let lv = left.iter().map(|x| (x - lm).powi(2)).sum::<f64>() / left.len() as f64;
+            let rv = right.iter().map(|x| (x - rm).powi(2)).sum::<f64>() / right.len() as f64;
+
+            let mean_change = (lm - rm).abs();
+            let global_std = (lv + rv).sqrt().max(1e-10);
+            let mean_change_norm = mean_change / global_std;
+
+            // Variance ratio test
+            let var_ratio = if lv > 1e-12 && rv > 1e-12 {
+                (lv / rv).max(rv / lv)
+            } else {
+                1.0
+            };
+
+            // Classify based on dominant signal
+            if var_ratio > 3.0 && var_ratio > mean_change_norm {
+                ChangepointType::VarianceChange
+            } else if mean_change_norm > 1.0 {
+                ChangepointType::MeanShift
+            } else {
+                // Check for trend change via slope comparison
+                let left_slope = if left.len() >= 2 {
+                    let n_l = left.len() as f64;
+                    let x_m = (n_l - 1.0) / 2.0;
+                    let ss_xx: f64 = (0..left.len()).map(|i| (i as f64 - x_m).powi(2)).sum();
+                    if ss_xx > 1e-10 {
+                        let ss_xy: f64 = (0..left.len()).map(|i| (i as f64 - x_m) * (left[i] - lm)).sum();
+                        ss_xy / ss_xx
+                    } else { 0.0 }
+                } else { 0.0 };
+                let right_slope = if right.len() >= 2 {
+                    let n_r = right.len() as f64;
+                    let x_m = (n_r - 1.0) / 2.0;
+                    let ss_xx: f64 = (0..right.len()).map(|i| (i as f64 - x_m).powi(2)).sum();
+                    if ss_xx > 1e-10 {
+                        let ss_xy: f64 = (0..right.len()).map(|i| (i as f64 - x_m) * (right[i] - rm)).sum();
+                        ss_xy / ss_xx
+                    } else { 0.0 }
+                } else { 0.0 };
+                if (left_slope - right_slope).abs() > 1e-6 {
+                    ChangepointType::TrendChange
+                } else {
+                    ChangepointType::MeanShift
+                }
+            }
+        }).collect();
+        Ok(types)
     }
 
     fn calculate_confidence_levels(&self, scores: &[f64]) -> DeviceResult<Vec<f64>> {
-        // Calculate confidence levels for changepoints
-        Ok(vec![]) // Simplified
+        // Convert detection scores to confidence levels via sigmoid transform.
+        // Score of ~1.96 (95% normal) maps to ~0.88 confidence.
+        // Score of ~3.0 (99.7% normal) maps to ~0.95 confidence.
+        let confidence: Vec<f64> = scores.iter().map(|&s| {
+            // logistic(s - 1.0) gives 0.5 at score=1.0, ~0.99 at score=5.6
+            let c = 1.0 / (1.0 + (-(s - 1.0)).exp());
+            c.clamp(0.0, 1.0)
+        }).collect();
+        Ok(confidence)
     }
+}
+
+// ─── Helper functions ─────────────────────────────────────────────────────────
+
+/// Levinson-Durbin recursion to solve Yule-Walker equations for AR(p).
+/// Returns the p AR coefficients.
+fn levinson_durbin(r: &[f64], p: usize) -> Vec<f64> {
+    // r[0] = variance, r[1..=p] = autocorrelations at lags 1..=p
+    if p == 0 || r.len() < p + 1 || r[0].abs() < 1e-12 {
+        return vec![0.0; p];
+    }
+    let mut phi = vec![vec![0.0_f64; p + 1]; p + 1];
+    let mut sigma_sq = r[0];
+
+    // Step 1: init
+    phi[1][1] = r[1] / r[0];
+    sigma_sq *= 1.0 - phi[1][1].powi(2);
+
+    for m in 2..=p {
+        if sigma_sq.abs() < 1e-12 { break; }
+        let num: f64 = r[m] - (1..m).map(|k| phi[m - 1][k] * r[m - k]).sum::<f64>();
+        phi[m][m] = num / sigma_sq;
+        for k in 1..m {
+            phi[m][k] = phi[m - 1][k] - phi[m][m] * phi[m - 1][m - k];
+        }
+        sigma_sq *= 1.0 - phi[m][m].powi(2);
+    }
+
+    (1..=p).map(|k| phi[p][k]).collect()
+}
+
+/// Compute the survival function of the standard normal: P(Z > z).
+/// Uses a rational approximation accurate to ~7 decimal places.
+fn normal_survival(z: f64) -> f64 {
+    if z < 0.0 { return 1.0 - normal_survival(-z); }
+    // Abramowitz & Stegun 26.2.17
+    let t = 1.0 / (1.0 + 0.2316419 * z);
+    let poly = t * (0.319381530
+        + t * (-0.356563782
+        + t * (1.781477937
+        + t * (-1.821255978
+        + t * 1.330274429))));
+    let pdf = (-0.5 * z * z).exp() / (2.0 * std::f64::consts::PI).sqrt();
+    (pdf * poly).clamp(0.0, 1.0)
 }

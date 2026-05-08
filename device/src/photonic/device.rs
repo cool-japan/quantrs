@@ -385,7 +385,21 @@ impl CircuitExecutor for PhotonicQuantumDeviceImpl {
         }
 
         // Check gate compatibility
-        // TODO: Implement gate validation based on photonic capabilities
+        let capabilities = self
+            .capabilities
+            .read()
+            .map_err(|e| DeviceError::LockError(format!("Capabilities lock poisoned: {e}")))?;
+
+        // If capabilities haven't been loaded yet, allow execution (conservative default)
+        let Some(caps) = capabilities.as_ref() else {
+            return Ok(true);
+        };
+
+        for gate_name in circuit.get_gate_names() {
+            if !caps.supported_gates.contains(&gate_name) {
+                return Ok(false);
+            }
+        }
 
         Ok(true)
     }
@@ -515,8 +529,8 @@ impl PhotonicQuantumDevice for PhotonicQuantumDeviceImpl {
             execution_time,
             measured_loss_rate: self.config.loss_rate,
             thermal_noise: self.config.thermal_photons,
-            gate_sequence: vec![],         // TODO: Extract from circuit
-            optimizations_applied: vec![], // TODO: Track optimizations
+            gate_sequence: circuit.get_gate_names(),
+            optimizations_applied: vec![],
         };
 
         // Update performance metrics

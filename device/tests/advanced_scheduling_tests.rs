@@ -36,7 +36,7 @@ async fn test_advanced_scheduler_initialization() {
 
     // Verify that all components are initialized
     // TODO: Test using public API once available
-    // assert!(scheduler.core_scheduler.backends.read().unwrap().is_empty());
+    // assert!(scheduler.core_scheduler.backends.read().unwrap_or_else(|e| e.into_inner()).is_empty());
 
     // Test that advanced features are available
     let queue_predictions = scheduler.predict_queue_times().await;
@@ -288,7 +288,7 @@ async fn test_advanced_scheduling_strategies() {
 
         // Test that scheduler initializes with different strategies
         // TODO: Test using public API once available
-        // assert!(scheduler.core_scheduler.backends.read().unwrap().is_empty());
+        // assert!(scheduler.core_scheduler.backends.read().unwrap_or_else(|e| e.into_inner()).is_empty());
         println!("Successfully initialized scheduler with strategy: {strategy:?}");
     }
 }
@@ -318,7 +318,7 @@ async fn test_resource_allocation_strategies() {
 
         // Test that scheduler initializes with different allocation strategies
         // TODO: Test using public API once available
-        // assert!(scheduler.core_scheduler.backends.read().unwrap().is_empty());
+        // assert!(scheduler.core_scheduler.backends.read().unwrap_or_else(|e| e.into_inner()).is_empty());
         println!("Successfully initialized scheduler with allocation strategy: {strategy:?}");
     }
 }
@@ -353,7 +353,7 @@ async fn test_ml_algorithm_configurations() {
 
         // Test that scheduler initializes with different ML algorithms
         // TODO: Test using public API once available
-        // assert!(scheduler.core_scheduler.backends.read().unwrap().is_empty());
+        // assert!(scheduler.core_scheduler.backends.read().unwrap_or_else(|e| e.into_inner()).is_empty());
         println!("Successfully initialized scheduler with ML algorithm: {algorithm:?}");
     }
 }

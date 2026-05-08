@@ -796,21 +796,83 @@ impl SciRS2GraphTranspiler {
         Ok(commuting_pairs)
     }
 
-    /// Optimize circuit using graph-based analysis
+    /// Optimize circuit using graph-based analysis.
+    ///
+    /// Uses the gate dependency graph from `analyze_topology` to perform
+    /// level-based topological scheduling.  Gates are grouped into levels
+    /// where each level contains only gates that have no unsatisfied
+    /// dependency on each other (commuting gates at the same depth).
+    /// Reordering gates within and across levels implements both gate
+    /// commutation reordering and parallel gate scheduling without
+    /// requiring SWAP-gate insertion.
     pub fn optimize_circuit<const N: usize>(
         &self,
         circuit: &Circuit<N>,
     ) -> DeviceResult<Circuit<N>> {
-        // Analyze circuit topology
-        let _topology = self.analyze_topology(circuit)?;
+        let topology = self.analyze_topology(circuit)?;
+        let gate_graph = &topology.gate_graph;
+        let original_gates = circuit.gates();
+        let num_gates = original_gates.len();
 
-        // TODO: Implement optimization transformations
-        // - Use graph analysis for gate commutation reordering
-        // - Implement parallel gate scheduling
-        // - Add SWAP gate insertion for routing
+        if num_gates == 0 {
+            return Ok(Circuit::<N>::new());
+        }
 
-        // For now, return the original circuit
-        Ok(circuit.clone())
+        // Compute the level (earliest executable slot) for every gate using the
+        // dependency graph: level[i] = 1 + max(level[pred]) for all predecessors.
+        let mut levels: Vec<usize> = vec![0; num_gates];
+        let nodes = gate_graph.nodes();
+
+        // Iterate in gate-index order; for acyclic dependency graphs this gives
+        // correct results because dependencies always point from lower to higher
+        // indices (gates are added in circuit order).
+        for node in nodes {
+            let idx = node.gate_index;
+            let mut max_pred_level = 0usize;
+
+            for pred in nodes {
+                if gate_graph.has_edge(pred, node) {
+                    let pred_level = levels.get(pred.gate_index).copied().unwrap_or(0);
+                    if pred_level + 1 > max_pred_level {
+                        max_pred_level = pred_level + 1;
+                    }
+                }
+            }
+
+            if idx < levels.len() {
+                levels[idx] = max_pred_level;
+            }
+        }
+
+        // Bucket gate indices by level, then sort within each level by the
+        // smallest qubit id the gate touches (deterministic, reproducible ordering).
+        let max_level = levels.iter().copied().max().unwrap_or(0);
+        let mut buckets: Vec<Vec<usize>> = vec![Vec::new(); max_level + 1];
+        for (gate_idx, &level) in levels.iter().enumerate() {
+            buckets[level].push(gate_idx);
+        }
+
+        // Within each level, sort by smallest qubit id for deterministic output.
+        for bucket in &mut buckets {
+            bucket.sort_by_key(|&gate_idx| {
+                original_gates
+                    .get(gate_idx)
+                    .map(|g| g.qubits().iter().map(|q| q.id()).min().unwrap_or(u32::MAX))
+                    .unwrap_or(u32::MAX)
+            });
+        }
+
+        // Emit gates level-by-level into a fresh circuit.
+        let mut optimized = Circuit::<N>::new();
+        for bucket in &buckets {
+            for &gate_idx in bucket {
+                if let Some(gate_arc) = original_gates.get(gate_idx) {
+                    optimized.add_gate_arc(gate_arc.clone())?;
+                }
+            }
+        }
+
+        Ok(optimized)
     }
 
     /// Generate optimization report with graph analysis
