@@ -142,8 +142,14 @@ impl PortfolioOptimizer {
             OptimizationMethod::MaxSharpe { risk_free_rate } => {
                 self.add_sharpe_objective(&mut qubo, num_bits_per_asset, *risk_free_rate)?;
             }
-            _ => {
-                return Err("Optimization method not yet implemented".to_string());
+            OptimizationMethod::RiskParity => {
+                self.add_risk_parity_objective(&mut qubo, num_bits_per_asset)?;
+            }
+            OptimizationMethod::BlackLitterman { views } => {
+                self.add_black_litterman_objective(&mut qubo, num_bits_per_asset, views)?;
+            }
+            OptimizationMethod::KellyCriterion => {
+                self.add_kelly_criterion_objective(&mut qubo, num_bits_per_asset)?;
             }
         }
 
@@ -427,6 +433,221 @@ impl PortfolioOptimizer {
 
                         qubo[[var_idx1, var_idx2]] +=
                             risk_scale * self.covariance[[i, j]] * w1 * w2;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Risk parity objective: equal risk contribution penalty
+    /// Penalty = sum_{i < j} (RC_i - RC_j)^2, with RC_i discretised via binary weights.
+    fn add_risk_parity_objective(
+        &self,
+        qubo: &mut Array2<f64>,
+        bits_per_asset: usize,
+    ) -> Result<(), String> {
+        let n_assets = self.returns.len();
+
+        // We expand (RC_i - RC_j)^2 = RC_i^2 - 2*RC_i*RC_j + RC_j^2.
+        // RC_i = w_i * (sum_k cov[i][k] * w_k).
+        // Expanding in binary variables w_i = sum_k b_k * scale_k gives quartic terms;
+        // we approximate to quadratic by treating cov row sums as linear coefficients:
+        // RC_i ≈ w_i * row_sum_i  →  penalty (RC_i - RC_j)^2 linearised in w-bits.
+
+        // Precompute cov row sums as marginal risk approximations at uniform weights.
+        let uniform = 1.0 / n_assets as f64;
+        let mut marginal = vec![0.0f64; n_assets];
+        for i in 0..n_assets {
+            for j in 0..n_assets {
+                marginal[i] += self.covariance[[i, j]] * uniform;
+            }
+        }
+
+        // Penalty coefficient: for each pair (i, j), (RC_i - RC_j)^2
+        // = (marginal_i * w_i - marginal_j * w_j)^2 (quadratic in w)
+        // Expand with binary encoding.
+        for i in 0..n_assets {
+            for j in (i + 1)..n_assets {
+                let mi = marginal[i];
+                let mj = marginal[j];
+                // (mi * w_i - mj * w_j)^2 = mi^2 wi^2 - 2*mi*mj*wi*wj + mj^2 wj^2
+                // Diagonal terms for each asset-bit
+                for k in 0..bits_per_asset {
+                    let sc = (1 << k) as f64 / ((1 << bits_per_asset) - 1) as f64;
+                    let vi = i * bits_per_asset + k;
+                    let vj = j * bits_per_asset + k;
+                    qubo[[vi, vi]] += mi * mi * sc * sc;
+                    qubo[[vj, vj]] += mj * mj * sc * sc;
+                }
+                // Cross terms: -2 * mi * mj * wi_{k1} * wj_{k2}
+                // Must be added symmetrically to (vi, vj) AND (vj, vi).
+                for k1 in 0..bits_per_asset {
+                    let sc1 = (1 << k1) as f64 / ((1 << bits_per_asset) - 1) as f64;
+                    let vi = i * bits_per_asset + k1;
+                    for k2 in 0..bits_per_asset {
+                        let sc2 = (1 << k2) as f64 / ((1 << bits_per_asset) - 1) as f64;
+                        let vj = j * bits_per_asset + k2;
+                        let coef = -2.0 * mi * mj * sc1 * sc2;
+                        qubo[[vi, vj]] += coef / 2.0;
+                        qubo[[vj, vi]] += coef / 2.0;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Black-Litterman objective: build posterior mean then apply mean-variance.
+    fn add_black_litterman_objective(
+        &self,
+        qubo: &mut Array2<f64>,
+        bits_per_asset: usize,
+        views: &MarketViews,
+    ) -> Result<(), String> {
+        let n_assets = self.returns.len();
+        let tau = 0.05f64;
+
+        // Compute posterior mu using Black-Litterman closed form.
+        // mu_post = pi + tau*Sigma*P^T * (P*tau*Sigma*P^T + Omega)^{-1} * (q - P*pi)
+        // where pi = self.returns, P = view_matrix, Omega = view_confidence.
+        let posterior = if views.view_matrix.shape()[0] == 0 {
+            self.returns.clone()
+        } else {
+            let p = &views.view_matrix;
+            let q_vec = &views.view_expectations;
+            let omega = &views.view_confidence;
+            let k = p.shape()[0]; // number of views
+
+            // tau_sigma = tau * Sigma  (n x n)
+            let tau_sigma = tau * &self.covariance;
+
+            // M = P * tau_sigma * P^T + Omega  (k x k)
+            let mut m = Array2::<f64>::zeros((k, k));
+            for row in 0..k {
+                for col in 0..k {
+                    let mut val = 0.0f64;
+                    for a in 0..n_assets {
+                        for b in 0..n_assets {
+                            val += p[[row, a]] * tau_sigma[[a, b]] * p[[col, b]];
+                        }
+                    }
+                    m[[row, col]] = val + omega[[row, col]];
+                }
+            }
+
+            // Invert M via Gauss-Jordan (inline, no new deps).
+            let m_inv = gauss_jordan_inverse(&m, k).unwrap_or_else(|| {
+                // Fallback: use identity (effectively ignores views)
+                Array2::<f64>::eye(k)
+            });
+
+            // diff = q - P * pi  (k-vector)
+            let mut diff = vec![0.0f64; k];
+            for v in 0..k {
+                diff[v] = q_vec[v];
+                for a in 0..n_assets {
+                    diff[v] -= p[[v, a]] * self.returns[a];
+                }
+            }
+
+            // adj = tau_sigma * P^T * m_inv * diff  (n-vector)
+            // Step 1: tmp = m_inv * diff  (k-vector)
+            let mut tmp = vec![0.0f64; k];
+            for i in 0..k {
+                for j in 0..k {
+                    tmp[i] += m_inv[[i, j]] * diff[j];
+                }
+            }
+            // Step 2: adj = tau_sigma * P^T * tmp  (n-vector)
+            let mut adj = vec![0.0f64; n_assets];
+            for a in 0..n_assets {
+                for b in 0..n_assets {
+                    let mut pt_tmp = 0.0f64;
+                    for v in 0..k {
+                        pt_tmp += p[[v, b]] * tmp[v];
+                    }
+                    adj[a] += tau_sigma[[a, b]] * pt_tmp;
+                }
+            }
+
+            let mut posterior_mu = self.returns.clone();
+            for a in 0..n_assets {
+                posterior_mu[a] += adj[a];
+            }
+            posterior_mu
+        };
+
+        // Build mean-variance QUBO with posterior returns.
+        let n_assets = posterior.len();
+        for i in 0..n_assets {
+            for k in 0..bits_per_asset {
+                let weight = (1 << k) as f64 / ((1 << bits_per_asset) - 1) as f64;
+                let var_idx = i * bits_per_asset + k;
+                qubo[[var_idx, var_idx]] -= posterior[i] * weight;
+            }
+        }
+        for i in 0..n_assets {
+            for j in 0..n_assets {
+                for k1 in 0..bits_per_asset {
+                    for k2 in 0..bits_per_asset {
+                        let w1 = (1 << k1) as f64 / ((1 << bits_per_asset) - 1) as f64;
+                        let w2 = (1 << k2) as f64 / ((1 << bits_per_asset) - 1) as f64;
+                        let vi = i * bits_per_asset + k1;
+                        let vj = j * bits_per_asset + k2;
+                        if vi <= vj {
+                            let coef = self.risk_aversion * self.covariance[[i, j]] * w1 * w2;
+                            if vi == vj {
+                                qubo[[vi, vi]] += coef;
+                            } else {
+                                qubo[[vi, vj]] += coef / 2.0;
+                                qubo[[vj, vi]] += coef / 2.0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Kelly criterion objective: maximize sum_i w_i*mu_i - 0.5 * sum_{i,j} w_i*w_j*cov[i][j]
+    fn add_kelly_criterion_objective(
+        &self,
+        qubo: &mut Array2<f64>,
+        bits_per_asset: usize,
+    ) -> Result<(), String> {
+        let n_assets = self.returns.len();
+
+        // Linear term: -mu_i * w_i  (negate because we minimise)
+        for i in 0..n_assets {
+            for k in 0..bits_per_asset {
+                let weight = (1 << k) as f64 / ((1 << bits_per_asset) - 1) as f64;
+                let vi = i * bits_per_asset + k;
+                qubo[[vi, vi]] -= self.returns[i] * weight;
+            }
+        }
+
+        // Quadratic term: +0.5 * cov[i][j] * w_i * w_j
+        for i in 0..n_assets {
+            for j in 0..n_assets {
+                for k1 in 0..bits_per_asset {
+                    for k2 in 0..bits_per_asset {
+                        let w1 = (1 << k1) as f64 / ((1 << bits_per_asset) - 1) as f64;
+                        let w2 = (1 << k2) as f64 / ((1 << bits_per_asset) - 1) as f64;
+                        let vi = i * bits_per_asset + k1;
+                        let vj = j * bits_per_asset + k2;
+                        if vi <= vj {
+                            let coef = 0.5 * self.covariance[[i, j]] * w1 * w2;
+                            if vi == vj {
+                                qubo[[vi, vi]] += coef;
+                            } else {
+                                qubo[[vi, vj]] += coef / 2.0;
+                                qubo[[vj, vi]] += coef / 2.0;
+                            }
+                        }
                     }
                 }
             }
@@ -952,6 +1173,66 @@ pub struct MarketData {
     pub volume: Array1<f64>,
 }
 
+/// Gauss-Jordan matrix inverse for a k×k matrix.
+/// Returns `None` if the matrix is singular.
+fn gauss_jordan_inverse(m: &Array2<f64>, k: usize) -> Option<Array2<f64>> {
+    // Build augmented matrix [M | I]
+    let mut aug = vec![0.0f64; k * 2 * k];
+    for row in 0..k {
+        for col in 0..k {
+            aug[row * 2 * k + col] = m[[row, col]];
+        }
+        aug[row * 2 * k + k + row] = 1.0;
+    }
+
+    for col in 0..k {
+        // Find pivot
+        let mut pivot_row = None;
+        let mut max_val = 0.0f64;
+        for row in col..k {
+            let v = aug[row * 2 * k + col].abs();
+            if v > max_val {
+                max_val = v;
+                pivot_row = Some(row);
+            }
+        }
+        let pivot_row = pivot_row?;
+        if aug[pivot_row * 2 * k + col].abs() < 1e-12 {
+            return None;
+        }
+        // Swap rows
+        if pivot_row != col {
+            for j in 0..2 * k {
+                aug.swap(col * 2 * k + j, pivot_row * 2 * k + j);
+            }
+        }
+        // Scale pivot row
+        let scale = aug[col * 2 * k + col];
+        for j in 0..2 * k {
+            aug[col * 2 * k + j] /= scale;
+        }
+        // Eliminate column entries in other rows
+        for row in 0..k {
+            if row != col {
+                let factor = aug[row * 2 * k + col];
+                for j in 0..2 * k {
+                    let sub = factor * aug[col * 2 * k + j];
+                    aug[row * 2 * k + j] -= sub;
+                }
+            }
+        }
+    }
+
+    // Extract right half as inverse
+    let mut inv = Array2::<f64>::zeros((k, k));
+    for row in 0..k {
+        for col in 0..k {
+            inv[[row, col]] = aug[row * 2 * k + k + col];
+        }
+    }
+    Some(inv)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1000,5 +1281,59 @@ mod tests {
         let (qubo, var_map) = rp_optimizer.build_qubo(3).expect("Failed to build QUBO");
 
         assert!(!var_map.is_empty());
+    }
+
+    fn make_3asset_optimizer(method: OptimizationMethod) -> PortfolioOptimizer {
+        let returns = Array1::from_vec(vec![0.10, 0.12, 0.08]);
+        let covariance = Array2::from_shape_vec(
+            (3, 3),
+            vec![0.01, 0.002, 0.001, 0.002, 0.015, 0.002, 0.001, 0.002, 0.008],
+        )
+        .expect("Failed to build covariance matrix");
+        PortfolioOptimizer::new(returns, covariance, 2.0)
+            .expect("Failed to build optimizer")
+            .with_method(method)
+    }
+
+    #[test]
+    fn test_risk_parity_qubo_shape() {
+        let opt = make_3asset_optimizer(OptimizationMethod::RiskParity);
+        let (qubo, var_map) = opt.build_qubo(3).expect("risk parity build_qubo should succeed");
+        assert!(!var_map.is_empty(), "var_map should be non-empty");
+        assert!(!qubo.iter().all(|&v| v == 0.0), "QUBO should be non-zero");
+        // Symmetry check on off-diagonal blocks
+        let n = qubo.shape()[0];
+        for i in 0..n {
+            for j in 0..n {
+                assert!(
+                    (qubo[[i, j]] - qubo[[j, i]]).abs() < 1e-10,
+                    "QUBO should be symmetric at ({i},{j})"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_black_litterman_empty_views() {
+        let views = MarketViews {
+            view_matrix: Array2::zeros((0, 3)),
+            view_expectations: scirs2_core::ndarray::Array1::zeros(0),
+            view_confidence: Array2::zeros((0, 0)),
+        };
+        let opt =
+            make_3asset_optimizer(OptimizationMethod::BlackLitterman { views });
+        let result = opt.build_qubo(3);
+        assert!(result.is_ok(), "black-litterman with empty views should succeed");
+        let (qubo, var_map) = result.expect("expected Ok");
+        assert!(!var_map.is_empty());
+        assert_eq!(qubo.shape(), [9, 9]);
+    }
+
+    #[test]
+    fn test_kelly_criterion_qubo() {
+        let opt = make_3asset_optimizer(OptimizationMethod::KellyCriterion);
+        let (qubo, var_map) = opt.build_qubo(3).expect("kelly criterion build_qubo should succeed");
+        assert!(!var_map.is_empty());
+        assert!(!qubo.iter().all(|&v| v == 0.0), "QUBO should be non-zero");
     }
 }

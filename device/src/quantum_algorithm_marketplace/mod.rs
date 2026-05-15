@@ -81,6 +81,10 @@ pub use security::*;
 #[cfg(not(feature = "scirs2"))]
 pub use fallback_scirs2::*;
 
-// TODO: Add implementation structs and functions that were in the original file
-// This would include the QuantumAlgorithmMarketplace struct and its implementation
-// For now, this refactoring focuses on organizing the configuration types
+// Note: the full `QuantumAlgorithmMarketplace` struct and its implementation
+// reside in the sibling `algorithm_marketplace` module
+// (`device/src/algorithm_marketplace/mod.rs`), which predates this module.
+// This module (`quantum_algorithm_marketplace`) provides the richer,
+// sub-module-organized type hierarchy (analytics, benchmarking, collaboration,
+// etc.) that was refactored out of the original monolithic file.  The two
+// modules co-exist intentionally; no duplication needs to be resolved here.

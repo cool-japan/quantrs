@@ -401,19 +401,119 @@ impl HyperparameterOptimizer {
         })
     }
 
-    /// Evolutionary optimization (placeholder)
+    /// Evolutionary optimization using a standard genetic algorithm.
     #[cfg(feature = "dwave")]
     fn evolutionary_optimization<F>(
         &self,
-        _objective: F,
-        _validation_problems: &[CompiledModel],
-        _population_size: usize,
-        _mutation_rate: f64,
+        objective: F,
+        validation_problems: &[CompiledModel],
+        population_size: usize,
+        mutation_rate: f64,
     ) -> Result<OptimizationResult, String>
     where
         F: Fn(&HashMap<String, f64>) -> Box<dyn Sampler>,
     {
-        Err("Evolutionary optimization not yet implemented".to_string())
+        if population_size < 2 {
+            return Err("Population size must be at least 2".to_string());
+        }
+
+        let mut rng = thread_rng();
+        let max_generations = self.num_trials.max(1) / population_size.max(1);
+
+        // 1. Initialise population
+        let mut population: Vec<HashMap<String, f64>> = (0..population_size)
+            .map(|_| self.sample_parameters(&mut rng))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let mut history: Vec<TrialResult> = Vec::new();
+        let mut scores_per_gen: Vec<f64> = Vec::new();
+
+        for _gen in 0..max_generations {
+            // 2a. Evaluate each individual
+            let mut scored: Vec<(f64, HashMap<String, f64>)> = population
+                .into_iter()
+                .map(|params| {
+                    let sampler = objective(&params);
+                    let score = self
+                        .evaluate_sampler(sampler, validation_problems)
+                        .unwrap_or(f64::INFINITY);
+                    (score, params)
+                })
+                .collect();
+
+            // 2b. Sort by score ascending (lower is better)
+            scored.sort_by(|(sa, _), (sb, _)| {
+                sa.partial_cmp(sb).unwrap_or(std::cmp::Ordering::Equal)
+            });
+
+            // Record history
+            for (i, (score, params)) in scored.iter().enumerate() {
+                history.push(TrialResult {
+                    parameters: params.clone(),
+                    score: *score,
+                    iteration: history.len(),
+                });
+                if i == 0 {
+                    scores_per_gen.push(*score);
+                }
+            }
+
+            // 2c. Select top half as parents
+            let n_parents = population_size / 2;
+            let parents: Vec<HashMap<String, f64>> =
+                scored.into_iter().take(n_parents).map(|(_, p)| p).collect();
+
+            // 2d–e. Generate children via midpoint crossover + mutation
+            let mut children: Vec<HashMap<String, f64>> = Vec::new();
+            let mut pair_idx = 0usize;
+            while children.len() < population_size - n_parents {
+                let pa = &parents[pair_idx % n_parents];
+                let pb = &parents[(pair_idx + 1) % n_parents];
+                let mut child: HashMap<String, f64> = HashMap::new();
+                for key in pa.keys() {
+                    let va = pa.get(key).copied().unwrap_or(0.0);
+                    let vb = pb.get(key).copied().unwrap_or(0.0);
+                    let mid = (va + vb) / 2.0;
+                    let noise = rng.random_range(-mutation_rate..mutation_rate);
+                    child.insert(key.clone(), mid + noise);
+                }
+                children.push(child);
+                pair_idx += 1;
+            }
+
+            // 2f. Next generation = parents ∪ children (capped at population_size)
+            let mut next_gen = parents;
+            next_gen.extend(children);
+            next_gen.truncate(population_size);
+            population = next_gen;
+        }
+
+        // Evaluate final population
+        let mut best_params = population[0].clone();
+        let mut best_score = f64::INFINITY;
+        for params in &population {
+            let sampler = objective(params);
+            let score = self
+                .evaluate_sampler(sampler, validation_problems)
+                .unwrap_or(f64::INFINITY);
+            history.push(TrialResult {
+                parameters: params.clone(),
+                score,
+                iteration: history.len(),
+            });
+            if score < best_score {
+                best_score = score;
+                best_params = params.clone();
+            }
+        }
+
+        let convergence_curve = self.compute_convergence_curve(&history);
+        Ok(OptimizationResult {
+            best_parameters: best_params,
+            best_score,
+            history,
+            convergence_curve,
+        })
     }
 
     /// Sample parameters from search space
@@ -1173,5 +1273,42 @@ mod tests {
         let ensemble = EnsembleSampler::new(samplers, EnsembleMethod::Voting);
 
         // Would need QUBO problem to test
+    }
+
+    /// Test that evolutionary_optimization returns a valid result with trivial config.
+    /// Uses an empty validation_problems slice so evaluate_sampler returns 0.0 (empty mean).
+    #[cfg(feature = "dwave")]
+    #[test]
+    fn test_evolutionary_optimization_returns_params() {
+        let mut optimizer = HyperparameterOptimizer::new(
+            OptimizationMethod::Evolutionary {
+                population_size: 4,
+                mutation_rate: 0.1,
+            },
+            20, // num_trials → max_generations = 20/4 = 5
+        );
+        optimizer.add_parameter(
+            "temperature",
+            ParameterSpace::Continuous {
+                min: 0.1,
+                max: 5.0,
+                log_scale: false,
+            },
+        );
+
+        let result = optimizer.optimize(
+            |_params| Box::new(SASampler::new(None)),
+            &[], // empty problems — evaluate_sampler returns average of empty = 0.0
+        );
+        assert!(
+            result.is_ok(),
+            "evolutionary_optimization should succeed: {:?}",
+            result.err()
+        );
+        let opt = result.expect("expected Ok");
+        assert!(
+            !opt.best_parameters.is_empty(),
+            "best_parameters should be non-empty"
+        );
     }
 }

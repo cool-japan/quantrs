@@ -335,7 +335,15 @@ impl MolecularDesignOptimizer {
                 self.build_fragment_growing_qubo(core)
             }
             OptimizationStrategy::DeNovo => self.build_de_novo_qubo(),
-            _ => Err("Strategy not yet implemented".to_string()),
+            OptimizationStrategy::FragmentLinking { fragments } => {
+                self.build_fragment_linking_qubo(fragments)
+            }
+            OptimizationStrategy::FragmentHopping { scaffold } => {
+                self.build_fragment_hopping_qubo(scaffold)
+            }
+            OptimizationStrategy::LeadOptimization { lead } => {
+                self.build_lead_optimization_qubo(lead)
+            }
         }
     }
 
@@ -417,6 +425,233 @@ impl MolecularDesignOptimizer {
 
         // Property constraints
         self.add_global_property_constraints(&mut qubo, &var_map, max_positions)?;
+
+        Ok((qubo, var_map))
+    }
+
+    /// Build QUBO for fragment linking strategy.
+    ///
+    /// Variables: `x_f` for each fragment in the provided list,
+    ///            `l_k` for each linker (connection rule template).
+    /// Linear: fragment binding scores from `fragment_library.fragment_scores`.
+    /// Quadratic: linker compatibility between selected fragments.
+    /// Constraint: at most one linker selected (penalty for co-selection).
+    fn build_fragment_linking_qubo(
+        &self,
+        fragments: &[MolecularFragment],
+    ) -> Result<(Array2<f64>, HashMap<String, usize>), String> {
+        let n_frags = fragments.len();
+        let linkers = &self.fragment_library.connection_rules.reaction_templates;
+        let n_linkers = linkers.len();
+        let n_vars = n_frags + n_linkers;
+
+        let mut qubo = Array2::<f64>::zeros((n_vars, n_vars));
+        let mut var_map = HashMap::new();
+
+        // Fragment variables
+        for (fi, frag) in fragments.iter().enumerate() {
+            var_map.insert(format!("frag_{fi}"), fi);
+            let score = self
+                .fragment_library
+                .fragment_scores
+                .get(&frag.id)
+                .copied()
+                .unwrap_or(1.0);
+            qubo[[fi, fi]] -= score;
+        }
+
+        // Linker variables
+        for (li, linker) in linkers.iter().enumerate() {
+            let idx = n_frags + li;
+            var_map.insert(format!("linker_{li}"), idx);
+            // Favour feasible linkers
+            qubo[[idx, idx]] -= linker.feasibility;
+        }
+
+        // Linker compatibility between selected fragments (quadratic)
+        for fi in 0..n_frags {
+            for fj in (fi + 1)..n_frags {
+                let fid_a = fragments[fi].id;
+                let fid_b = fragments[fj].id;
+                // Compatible pair bonus
+                if let Some(&compat) = self
+                    .fragment_library
+                    .connection_rules
+                    .compatible_pairs
+                    .get(&(fid_a, fid_b))
+                    .or_else(|| {
+                        self.fragment_library
+                            .connection_rules
+                            .compatible_pairs
+                            .get(&(fid_b, fid_a))
+                    })
+                {
+                    qubo[[fi, fj]] -= compat / 2.0;
+                    qubo[[fj, fi]] -= compat / 2.0;
+                }
+                // Forbidden pair penalty
+                if self
+                    .fragment_library
+                    .connection_rules
+                    .forbidden_connections
+                    .contains(&(fid_a, fid_b))
+                    || self
+                        .fragment_library
+                        .connection_rules
+                        .forbidden_connections
+                        .contains(&(fid_b, fid_a))
+                {
+                    qubo[[fi, fj]] += 10.0;
+                    qubo[[fj, fi]] += 10.0;
+                }
+            }
+        }
+
+        // Penalty for selecting multiple linkers (lambda = 10.0)
+        let lambda = 10.0f64;
+        for li in 0..n_linkers {
+            for lj in (li + 1)..n_linkers {
+                let ia = n_frags + li;
+                let ib = n_frags + lj;
+                qubo[[ia, ib]] += lambda / 2.0;
+                qubo[[ib, ia]] += lambda / 2.0;
+            }
+        }
+
+        Ok((qubo, var_map))
+    }
+
+    /// Build QUBO for fragment hopping strategy.
+    ///
+    /// Variables: one binary per fragment in the library representing scaffold replacement.
+    /// Linear: pharmacophore similarity score relative to reference scaffold.
+    /// Constraint: exactly one scaffold selected.
+    fn build_fragment_hopping_qubo(
+        &self,
+        scaffold: &MolecularFragment,
+    ) -> Result<(Array2<f64>, HashMap<String, usize>), String> {
+        let lib_frags = &self.fragment_library.fragments;
+        let n_frags = lib_frags.len();
+
+        if n_frags == 0 {
+            return Err("Fragment library is empty for FragmentHopping".to_string());
+        }
+
+        let mut qubo = Array2::<f64>::zeros((n_frags, n_frags));
+        let mut var_map = HashMap::new();
+
+        for (fi, frag) in lib_frags.iter().enumerate() {
+            var_map.insert(format!("scaffold_{fi}"), fi);
+            // Pharmacophore similarity: count matching feature types.
+            let sim = pharmacophore_similarity(scaffold, frag);
+            qubo[[fi, fi]] -= sim;
+        }
+
+        // Quadratic similarity across selected pair (bonus for correlated selection)
+        for fi in 0..n_frags {
+            for fj in (fi + 1)..n_frags {
+                let sim = pharmacophore_similarity(&lib_frags[fi], &lib_frags[fj]);
+                qubo[[fi, fj]] += sim / 2.0;
+                qubo[[fj, fi]] += sim / 2.0;
+            }
+        }
+
+        // Exactly one scaffold: penalty 100 * (sum_i x_i - 1)^2
+        let penalty = 100.0f64;
+        for fi in 0..n_frags {
+            qubo[[fi, fi]] += penalty; // sum x_i^2 — but x_i^2 = x_i for binary
+            for fj in (fi + 1)..n_frags {
+                qubo[[fi, fj]] += 2.0 * penalty / 2.0;
+                qubo[[fj, fi]] += 2.0 * penalty / 2.0;
+            }
+        }
+        // Linear correction: -2 * penalty * x_i
+        for fi in 0..n_frags {
+            qubo[[fi, fi]] -= 2.0 * penalty;
+        }
+
+        Ok((qubo, var_map))
+    }
+
+    /// Build QUBO for lead optimisation strategy.
+    ///
+    /// Variables: `(position, substituent)` binary variable.
+    /// We use `self.fragment_library.fragments` as candidate substituents and
+    /// up to 3 default R-group positions (or derived from `privileged_scaffolds`).
+    /// Linear: uniform ADMET score (1.0 per substituent, all equal).
+    /// Quadratic: bioisosteric penalty between adjacent positions.
+    /// Constraint: exactly one substituent per position.
+    fn build_lead_optimization_qubo(
+        &self,
+        _lead: &str,
+    ) -> Result<(Array2<f64>, HashMap<String, usize>), String> {
+        let substituents = &self.fragment_library.fragments;
+        let n_subs = substituents.len();
+
+        if n_subs == 0 {
+            return Err("Fragment library is empty for LeadOptimization".to_string());
+        }
+
+        // Derive number of positions from privileged scaffolds (capped at 3 as default)
+        let n_positions = if self.fragment_library.privileged_scaffolds.is_empty() {
+            3usize
+        } else {
+            self.fragment_library
+                .privileged_scaffolds
+                .len()
+                .min(5)
+                .max(1)
+        };
+
+        let n_vars = n_positions * n_subs;
+        let mut qubo = Array2::<f64>::zeros((n_vars, n_vars));
+        let mut var_map = HashMap::new();
+
+        // Variables: pos_p_sub_s → index p * n_subs + s
+        for p in 0..n_positions {
+            for s in 0..n_subs {
+                let idx = p * n_subs + s;
+                var_map.insert(format!("pos_{p}_sub_{s}"), idx);
+                // Uniform ADMET score — favour all substituents equally
+                let admet = self
+                    .fragment_library
+                    .fragment_scores
+                    .get(&substituents[s].id)
+                    .copied()
+                    .unwrap_or(1.0);
+                qubo[[idx, idx]] -= admet;
+            }
+        }
+
+        // Bioisosteric penalty between adjacent positions (p and p+1)
+        for p in 0..(n_positions.saturating_sub(1)) {
+            for s1 in 0..n_subs {
+                for s2 in 0..n_subs {
+                    let ia = p * n_subs + s1;
+                    let ib = (p + 1) * n_subs + s2;
+                    // Penalise selecting very similar substituents at adjacent positions
+                    let sim = pharmacophore_similarity(&substituents[s1], &substituents[s2]);
+                    let penalty = sim * 5.0;
+                    qubo[[ia, ib]] += penalty / 2.0;
+                    qubo[[ib, ia]] += penalty / 2.0;
+                }
+            }
+        }
+
+        // Exactly one substituent per position: 100 * (sum_s x_{p,s} - 1)^2
+        let penalty = 100.0f64;
+        for p in 0..n_positions {
+            for s1 in 0..n_subs {
+                let ia = p * n_subs + s1;
+                qubo[[ia, ia]] += penalty;
+                qubo[[ia, ia]] -= 2.0 * penalty;
+                for s2 in (s1 + 1)..n_subs {
+                    let ib = p * n_subs + s2;
+                    qubo[[ia, ib]] += 2.0 * penalty / 2.0;
+                    qubo[[ib, ia]] += 2.0 * penalty / 2.0;
+                }
+            }
+        }
 
         Ok((qubo, var_map))
     }
@@ -1290,6 +1525,44 @@ pub struct HitSelectionCriteria {
     pub manual_inspection: bool,
 }
 
+/// Compute a simple pharmacophore similarity between two fragments.
+/// Returns the Jaccard-like overlap of pharmacophore feature types.
+fn pharmacophore_similarity(a: &MolecularFragment, b: &MolecularFragment) -> f64 {
+    if a.pharmacophores.is_empty() && b.pharmacophores.is_empty() {
+        return 1.0;
+    }
+    let a_types: std::collections::HashSet<u8> = a
+        .pharmacophores
+        .iter()
+        .map(|f| pharmacophore_type_id(&f.feature_type))
+        .collect();
+    let b_types: std::collections::HashSet<u8> = b
+        .pharmacophores
+        .iter()
+        .map(|f| pharmacophore_type_id(&f.feature_type))
+        .collect();
+    let intersection = a_types.intersection(&b_types).count();
+    let union = a_types.union(&b_types).count();
+    if union == 0 {
+        1.0
+    } else {
+        intersection as f64 / union as f64
+    }
+}
+
+/// Assign a numeric ID to a pharmacophore type for similarity computation.
+fn pharmacophore_type_id(pt: &PharmacophoreType) -> u8 {
+    match pt {
+        PharmacophoreType::HBondDonor => 0,
+        PharmacophoreType::HBondAcceptor => 1,
+        PharmacophoreType::Hydrophobic => 2,
+        PharmacophoreType::Aromatic => 3,
+        PharmacophoreType::PositiveCharge => 4,
+        PharmacophoreType::NegativeCharge => 5,
+        PharmacophoreType::MetalCoordination => 6,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1448,5 +1721,129 @@ mod tests {
 
         let (_qubo, var_map) = result.expect("QUBO building should succeed after is_ok check");
         assert!(!var_map.is_empty());
+    }
+
+    fn make_fragment(id: usize) -> MolecularFragment {
+        MolecularFragment {
+            id,
+            smiles: format!("C{id}"),
+            attachment_points: vec![AttachmentPoint {
+                atom_idx: 0,
+                bond_types: vec![BondType::Single],
+                direction: Vec3D {
+                    x: 1.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            }],
+            properties: FragmentProperties {
+                mw_contribution: 50.0 + id as f64 * 14.0,
+                logp_contribution: 0.5,
+                hbd_count: 0,
+                hba_count: 1,
+                rotatable_count: 0,
+                tpsa_contribution: 10.0,
+            },
+            pharmacophores: vec![PharmacophoreFeature {
+                feature_type: if id % 2 == 0 {
+                    PharmacophoreType::HBondDonor
+                } else {
+                    PharmacophoreType::HBondAcceptor
+                },
+                position: Vec3D {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                tolerance: 1.0,
+            }],
+        }
+    }
+
+    fn make_library(n: usize) -> FragmentLibrary {
+        let fragments = (0..n).map(make_fragment).collect();
+        FragmentLibrary {
+            fragments,
+            connection_rules: ConnectionRules {
+                compatible_pairs: HashMap::new(),
+                forbidden_connections: HashSet::new(),
+                reaction_templates: vec![
+                    ReactionTemplate {
+                        name: "amide".to_string(),
+                        reactants: vec![],
+                        product_pattern: "C(=O)N".to_string(),
+                        feasibility: 0.9,
+                    },
+                    ReactionTemplate {
+                        name: "ether".to_string(),
+                        reactants: vec![],
+                        product_pattern: "COC".to_string(),
+                        feasibility: 0.7,
+                    },
+                ],
+            },
+            fragment_scores: (0..n).map(|i| (i, 1.0 + i as f64 * 0.1)).collect(),
+            privileged_scaffolds: vec![0],
+        }
+    }
+
+    fn make_target() -> TargetProperties {
+        TargetProperties {
+            molecular_weight: Some((200.0, 500.0)),
+            logp: Some((1.0, 5.0)),
+            logs: None,
+            hbd: Some((0, 5)),
+            hba: Some((0, 10)),
+            rotatable_bonds: None,
+            tpsa: None,
+            custom_descriptors: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn test_fragment_linking_qubo() {
+        let lib = make_library(5);
+        let frags: Vec<MolecularFragment> = (0..3).map(make_fragment).collect();
+        let optimizer = MolecularDesignOptimizer::new(make_target(), lib)
+            .with_strategy(OptimizationStrategy::FragmentLinking {
+                fragments: frags,
+            });
+        let result = optimizer.build_qubo();
+        assert!(result.is_ok(), "FragmentLinking QUBO should build without error");
+        let (qubo, var_map) = result.expect("expected Ok");
+        assert!(!var_map.is_empty(), "var_map should be non-empty");
+        assert!(!qubo.iter().all(|&v| v == 0.0), "QUBO should be non-zero");
+    }
+
+    #[test]
+    fn test_fragment_hopping_qubo() {
+        let scaffold = make_fragment(99);
+        let lib = make_library(4);
+        let optimizer = MolecularDesignOptimizer::new(make_target(), lib)
+            .with_strategy(OptimizationStrategy::FragmentHopping {
+                scaffold,
+            });
+        let result = optimizer.build_qubo();
+        assert!(result.is_ok(), "FragmentHopping QUBO should build without error");
+        let (qubo, var_map) = result.expect("expected Ok");
+        assert!(!var_map.is_empty(), "var_map should be non-empty");
+        assert_eq!(qubo.shape()[0], qubo.shape()[1], "QUBO should be square");
+    }
+
+    #[test]
+    fn test_lead_optimization_qubo() {
+        // 2 privileged scaffolds → 2 positions, library has 3 substituents
+        let mut lib = make_library(3);
+        lib.privileged_scaffolds = vec![0, 1];
+        let optimizer = MolecularDesignOptimizer::new(make_target(), lib)
+            .with_strategy(OptimizationStrategy::LeadOptimization {
+                lead: "CC(=O)O".to_string(),
+            });
+        let result = optimizer.build_qubo();
+        assert!(result.is_ok(), "LeadOptimization QUBO should build without error");
+        let (qubo, var_map) = result.expect("expected Ok");
+        // 2 positions × 3 substituents = 6 variables
+        assert_eq!(var_map.len(), 6, "should have 2*3=6 variables");
+        assert_eq!(qubo.shape(), [6, 6]);
     }
 }

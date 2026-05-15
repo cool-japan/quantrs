@@ -35,33 +35,21 @@ pub fn from_complex64(c: Complex64) -> Expression {
 
 /// Evaluate a symbolic expression to a Complex64 with given variable values.
 ///
+/// Supports full complex arithmetic including expressions containing the
+/// imaginary unit `I`, complex variable substitution, and all standard
+/// mathematical functions.
+///
 /// # Arguments
 /// * `expr` - The expression to evaluate
 /// * `values` - Map of variable names to complex values
 ///
 /// # Errors
-/// Returns an error if evaluation fails.
+/// Returns an error if evaluation fails (undefined variable, division by zero, etc.).
 pub fn eval_complex(
     expr: &Expression,
     values: &std::collections::HashMap<String, Complex64>,
 ) -> SymEngineResult<Complex64> {
-    // For now, only support real evaluation
-    // TODO: Implement full complex evaluation
-
-    let real_values: std::collections::HashMap<String, f64> = values
-        .iter()
-        .filter(|(_, v)| v.im.abs() < 1e-15)
-        .map(|(k, v)| (k.clone(), v.re))
-        .collect();
-
-    if real_values.len() != values.len() {
-        return Err(SymEngineError::not_impl(
-            "Complex variable evaluation not yet implemented",
-        ));
-    }
-
-    let result = expr.eval(&real_values)?;
-    Ok(Complex64::new(result, 0.0))
+    crate::eval::evaluate_complex_with_complex_values(expr, values)
 }
 
 /// Create complex arithmetic expressions.
@@ -123,5 +111,71 @@ mod tests {
         assert!(!c.is_symbol());
         assert!(!i.is_symbol());
         assert!(!p.is_symbol());
+    }
+
+    // =========================================================================
+    // eval_complex tests (Stub 2c)
+    // =========================================================================
+
+    #[test]
+    fn test_eval_complex_pure_real() {
+        // Expression 7.0 with no variables → Complex(7.0, 0.0)
+        let expr = Expression::float_unchecked(7.0);
+        let values = std::collections::HashMap::new();
+        let result = eval_complex(&expr, &values).expect("should evaluate pure real");
+        assert!((result.re - 7.0).abs() < 1e-10);
+        assert!(result.im.abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_eval_complex_real_plus_imag() {
+        // Expression 2.0 + 3.0*I → Complex(2.0, 3.0)
+        let two = Expression::float_unchecked(2.0);
+        let three = Expression::float_unchecked(3.0);
+        let i = Expression::i();
+        let expr = two + three * i;
+
+        let values = std::collections::HashMap::new();
+        let result = eval_complex(&expr, &values).expect("should evaluate 2+3i");
+        assert!((result.re - 2.0).abs() < 1e-10);
+        assert!((result.im - 3.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_eval_complex_with_complex_var() {
+        // z where z = 1 + 2i
+        let z = Expression::symbol("z");
+        let mut values = std::collections::HashMap::new();
+        values.insert("z".to_string(), Complex64::new(1.0, 2.0));
+
+        let result = eval_complex(&z, &values).expect("should evaluate complex variable");
+        assert!((result.re - 1.0).abs() < 1e-10);
+        assert!((result.im - 2.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_eval_complex_pure_imaginary() {
+        // Expression 5.0 * I → Complex(0.0, 5.0)
+        let five = Expression::float_unchecked(5.0);
+        let i = Expression::i();
+        let expr = five * i;
+
+        let values = std::collections::HashMap::new();
+        let result = eval_complex(&expr, &values).expect("should evaluate pure imaginary");
+        assert!(result.re.abs() < 1e-10);
+        assert!((result.im - 5.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_eval_complex_i_squared() {
+        // I * I = -1
+        let i1 = Expression::i();
+        let i2 = Expression::i();
+        let expr = i1 * i2;
+
+        let values = std::collections::HashMap::new();
+        let result = eval_complex(&expr, &values).expect("I*I should be -1");
+        assert!((result.re - (-1.0)).abs() < 1e-10);
+        assert!(result.im.abs() < 1e-10);
     }
 }

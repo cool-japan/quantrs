@@ -346,9 +346,19 @@ pub mod research {
     #[cfg(feature = "ml")]
     pub use super::algorithms::*;
 
-    // Advanced research features from core (if available)
-    // Note: These modules may not be exported from core's public API
-    // TODO: Expose these from core's public API in future versions
+    // Advanced research features from core.
+    //
+    // The following modules are `pub mod` in `quantrs2_core` and can be
+    // re-exported here once there is consensus on which items to surface:
+    //
+    //   crate::core::tensor_network      — TensorNetwork, TensorNode, etc.
+    //   crate::core::topological         — TopologicalQubit, AnyonModel, etc.
+    //   crate::core::zx_extraction       — ZXExtractor, ZXPipeline
+    //   crate::core::quantum_debugger    — QuantumDebugger
+    //   crate::core::quantum_algorithm_profiling — AlgorithmProfiler
+    //
+    // Each re-export widens the public API of `quantrs2`; add them only after
+    // their stability has been confirmed (see API_FINALIZATION_PLAN.md).
 
     // Symbolic computation
     #[cfg(feature = "symengine")]

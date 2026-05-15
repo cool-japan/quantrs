@@ -136,15 +136,13 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     #[cfg(feature = "mps")]
-    run()?;
+    run().expect("mps_ghz example failed");
 
     #[cfg(not(feature = "mps"))]
     {
         println!("This example requires the 'mps' feature.");
         println!("Run with: cargo run --example mps_ghz -p quantrs2-sim --features mps");
     }
-
-    Ok(())
 }
