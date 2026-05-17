@@ -267,8 +267,7 @@ impl EnhancedMPS {
             });
         // sv has shape (new_bond, 2*right_dim) — reshape directly to (new_bond, 2, right_dim).
         // A transpose before reshape would scramble the physical-index ordering.
-        self.tensors[right_qubit] =
-            MPSTensor::new(sv.into_shape((new_bond, 2, right_dim))?);
+        self.tensors[right_qubit] = MPSTensor::new(sv.into_shape((new_bond, 2, right_dim))?);
         if self.config.auto_canonicalize {
             self.orthogonality_center = right_qubit as i32;
         }
@@ -416,8 +415,11 @@ impl EnhancedMPS {
                     self.tensors[site + 1] = MPSTensor::new(new_tensor);
                 } else {
                     let new_next = r_thin.dot(&next_matrix);
-                    self.tensors[site + 1] =
-                        MPSTensor::new(new_next.into_shape((r_thin.shape()[0], 2, next.right_dim))?);
+                    self.tensors[site + 1] = MPSTensor::new(new_next.into_shape((
+                        r_thin.shape()[0],
+                        2,
+                        next.right_dim,
+                    ))?);
                 }
             }
         }
@@ -857,7 +859,7 @@ impl EnhancedMPS {
         // After processing all sites 0..=cut, ρ^L has shape (χ_cut+1, χ_cut+1).
         // Eigenvalues of ρ^L are the squared Schmidt values λᵢ.
         // Entropy = -Σ λᵢ ln(λᵢ).
-        use scirs2_core::ndarray::ndarray_linalg::{Eigh, UPLO, SVD};
+        use scirs2_core::ndarray::ndarray_linalg::{Eigh, SVD, UPLO};
         let chi_cut = self.tensors[cut_position].right_dim;
         // Build left half-density matrix.
         let mut rho_l = Array2::<Complex64>::zeros((1, 1));

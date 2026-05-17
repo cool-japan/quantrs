@@ -9,7 +9,11 @@ use crate::dag::{circuit_to_dag, CircuitDag, DagNode};
 use crate::routing::{CouplingMap, RoutedCircuit, RoutingResult};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
-    gate::{multi::SWAP, single::{RotationX, RotationY, RotationZ}, GateOp},
+    gate::{
+        multi::SWAP,
+        single::{RotationX, RotationY, RotationZ},
+        GateOp,
+    },
     qubit::QubitId,
 };
 use scirs2_core::random::{seq::SliceRandom, thread_rng, Rng};
@@ -349,7 +353,10 @@ impl SabreRouter {
                     .downcast_ref::<RotationZ>()
                     .map(|g| g.theta)
                     .unwrap_or(0.0);
-                Ok(Box::new(RotationZ { target: new_qubits[0], theta }))
+                Ok(Box::new(RotationZ {
+                    target: new_qubits[0],
+                    theta,
+                }))
             }
             ("RY", 1) => {
                 let theta = gate
@@ -357,7 +364,10 @@ impl SabreRouter {
                     .downcast_ref::<RotationY>()
                     .map(|g| g.theta)
                     .unwrap_or(0.0);
-                Ok(Box::new(RotationY { target: new_qubits[0], theta }))
+                Ok(Box::new(RotationY {
+                    target: new_qubits[0],
+                    theta,
+                }))
             }
             ("RX", 1) => {
                 let theta = gate
@@ -365,7 +375,10 @@ impl SabreRouter {
                     .downcast_ref::<RotationX>()
                     .map(|g| g.theta)
                     .unwrap_or(0.0);
-                Ok(Box::new(RotationX { target: new_qubits[0], theta }))
+                Ok(Box::new(RotationX {
+                    target: new_qubits[0],
+                    theta,
+                }))
             }
             _ => Err(QuantRS2Error::UnsupportedOperation(format!(
                 "Cannot route gate {} with {} qubits",

@@ -83,7 +83,11 @@ fn apply_depolarizing_qubit_top(rho4: &mut Array2<Complex64>, p: f64) {
 
     // Z_A ⊗ I_B: sign = +1 if top bit = 0, else -1
     let sign_top = |i: usize| -> f64 {
-        if (i >> 1) & 1 == 0 { 1.0 } else { -1.0 }
+        if (i >> 1) & 1 == 0 {
+            1.0
+        } else {
+            -1.0
+        }
     };
     let mut term3 = Array2::<Complex64>::zeros((4, 4));
     for i in 0..4 {
@@ -140,7 +144,13 @@ fn apply_depolarizing_qubit_bot(rho4: &mut Array2<Complex64>, p: f64) {
     }
 
     // I_A ⊗ Z_B: sign = +1 if bottom bit = 0, else -1
-    let sign_bot = |i: usize| -> f64 { if i & 1 == 0 { 1.0 } else { -1.0 } };
+    let sign_bot = |i: usize| -> f64 {
+        if i & 1 == 0 {
+            1.0
+        } else {
+            -1.0
+        }
+    };
     let mut term3 = Array2::<Complex64>::zeros((4, 4));
     for i in 0..4 {
         for j in 0..4 {
@@ -226,7 +236,11 @@ fn apply_bell_circuit_8x8(rho8: Array2<Complex64>) -> Array2<Complex64> {
     //   New index: i' where bit2 unchanged, bit1 flipped iff bit2=1.
     let cnot_perm = |i: usize| -> usize {
         let psi_bit = (i >> 2) & 1;
-        if psi_bit == 1 { i ^ 2 } else { i }
+        if psi_bit == 1 {
+            i ^ 2
+        } else {
+            i
+        }
     };
     let mut after_cnot = Array2::<Complex64>::zeros((8, 8));
     for i in 0..8 {
@@ -250,8 +264,7 @@ fn apply_bell_circuit_8x8(rho8: Array2<Complex64>) -> Array2<Complex64> {
                     let i2 = (i & 3) | (pi2 << 2);
                     let j2 = (j & 3) | (pj2 << 2);
                     after_h[[i2, j2]] +=
-                        Complex64::new(h_val * h_val * phase_i * phase_j, 0.0)
-                        * after_cnot[[i, j]];
+                        Complex64::new(h_val * h_val * phase_i * phase_j, 0.0) * after_cnot[[i, j]];
                 }
             }
         }
@@ -261,14 +274,20 @@ fn apply_bell_circuit_8x8(rho8: Array2<Complex64>) -> Array2<Complex64> {
 
 /// Probability of qubit ψ (bit 2) being |0⟩.
 fn prob_qubit_0_in_8x8(rho8: &Array2<Complex64>) -> f64 {
-    (0..4_usize).map(|i| rho8[[i, i]].re).sum::<f64>().clamp(0.0, 1.0)
+    (0..4_usize)
+        .map(|i| rho8[[i, i]].re)
+        .sum::<f64>()
+        .clamp(0.0, 1.0)
 }
 
 /// Project qubit ψ (bit 2) onto |m⟩ and renormalise.
 fn project_qubit_2_in_8x8(rho8: &Array2<Complex64>, m: bool) -> Array2<Complex64> {
     let start = if m { 4 } else { 0 };
     let end = start + 4;
-    let prob: f64 = (start..end).map(|i| rho8[[i, i]].re).sum::<f64>().max(1e-15);
+    let prob: f64 = (start..end)
+        .map(|i| rho8[[i, i]].re)
+        .sum::<f64>()
+        .max(1e-15);
     let mut out = Array2::<Complex64>::zeros((8, 8));
     for i in start..end {
         for j in start..end {
@@ -519,7 +538,11 @@ fn apply_bell_circuit_on_middle_qubits(rho: Array2<Complex64>) -> Array2<Complex
     // CNOT: control = qubit1 (bit2), target = qubit2 (bit1)
     let cnot = |i: usize| -> usize {
         let bit2 = (i >> 2) & 1;
-        if bit2 == 1 { i ^ 2 } else { i }
+        if bit2 == 1 {
+            i ^ 2
+        } else {
+            i
+        }
     };
     let mut after_cnot = Array2::<Complex64>::zeros((16, 16));
     for i in 0..16 {
@@ -617,7 +640,13 @@ fn apply_x_bot(rho4: &mut Array2<Complex64>) {
 
 /// Apply Z on the right (bottom) qubit of a 4-dim two-qubit density matrix.
 fn apply_z_bot(rho4: &mut Array2<Complex64>) {
-    let sign = |i: usize| -> f64 { if i & 1 == 0 { 1.0 } else { -1.0 } };
+    let sign = |i: usize| -> f64 {
+        if i & 1 == 0 {
+            1.0
+        } else {
+            -1.0
+        }
+    };
     for i in 0..4 {
         for j in 0..4 {
             rho4[[i, j]] *= Complex64::new(sign(i) * sign(j), 0.0);

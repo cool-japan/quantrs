@@ -24,7 +24,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("Circuit: H applied to all {N} qubits");
-    println!("Expected state: uniform superposition over {} basis states\n", 1 << N);
+    println!(
+        "Expected state: uniform superposition over {} basis states\n",
+        1 << N
+    );
 
     // ---- Run simulation ----
     let sim = StateVectorSimulator::new();

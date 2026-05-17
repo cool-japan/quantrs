@@ -68,13 +68,7 @@ fn loss(output: f64, label: f64) -> f64 {
 }
 
 /// Parameter-shift gradient for parameter k
-fn parameter_shift_gradient(
-    x0: f64,
-    x1: f64,
-    params: &[f64],
-    label: f64,
-    k: usize,
-) -> Result<f64> {
+fn parameter_shift_gradient(x0: f64, x1: f64, params: &[f64], label: f64, k: usize) -> Result<f64> {
     let shift = std::f64::consts::PI / 2.0;
     let mut params_plus = params.to_vec();
     let mut params_minus = params.to_vec();
@@ -131,13 +125,8 @@ fn main() -> Result<()> {
             total_loss += loss(output, label);
 
             for (k, gs) in grad_sum.iter_mut().enumerate() {
-                let g = parameter_shift_gradient(
-                    x0,
-                    x1,
-                    params.as_slice().expect("slice"),
-                    label,
-                    k,
-                )?;
+                let g =
+                    parameter_shift_gradient(x0, x1, params.as_slice().expect("slice"), label, k)?;
                 *gs += g;
             }
         }
@@ -163,22 +152,40 @@ fn main() -> Result<()> {
         let output = vqc_forward(x0, x1, params.as_slice().expect("slice"))?;
         let predicted = if output > 0.0 { 1.0 } else { 0.0 };
         let ok = (predicted - label).abs() < 0.5;
-        if ok { correct += 1; }
+        if ok {
+            correct += 1;
+        }
         println!(
             "  ({x0:.0},{x1:.0}) → ⟨Z₀⟩={output:+.4}  pred={predicted:.0}  label={label:.0}  {}",
             if ok { "✓" } else { "✗" }
         );
     }
     let accuracy = correct as f64 / data.len() as f64;
-    println!("\nAccuracy : {correct}/{} = {:.0}%", data.len(), accuracy * 100.0);
-    println!("Final params: [{}]",
-        params.iter().map(|p| format!("{p:.4}")).collect::<Vec<_>>().join(", "));
+    println!(
+        "\nAccuracy : {correct}/{} = {:.0}%",
+        data.len(),
+        accuracy * 100.0
+    );
+    println!(
+        "Final params: [{}]",
+        params
+            .iter()
+            .map(|p| format!("{p:.4}"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
 
     // Loss decreased
     let initial_loss = loss_history[0];
     let final_loss = *loss_history.last().expect("non-empty");
-    println!("Loss: {initial_loss:.4} → {final_loss:.4}  (decreased: {})",
-        if final_loss < initial_loss { "yes" } else { "no" });
+    println!(
+        "Loss: {initial_loss:.4} → {final_loss:.4}  (decreased: {})",
+        if final_loss < initial_loss {
+            "yes"
+        } else {
+            "no"
+        }
+    );
 
     // MSE should decrease during training
     assert!(

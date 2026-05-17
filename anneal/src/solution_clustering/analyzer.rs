@@ -1351,9 +1351,7 @@ impl SolutionClusteringAnalyzer {
             } else {
                 clusters
                     .iter()
-                    .map(|c| {
-                        c.quality_metrics.silhouette_coefficient * c.solutions.len() as f64
-                    })
+                    .map(|c| c.quality_metrics.silhouette_coefficient * c.solutions.len() as f64)
                     .sum::<f64>()
                     / total_points as f64
             }
@@ -1619,7 +1617,11 @@ impl SolutionClusteringAnalyzer {
                     0.0
                 } else {
                     let denom = a.max(b);
-                    if denom < 1e-12 { 0.0 } else { (b - a) / denom }
+                    if denom < 1e-12 {
+                        0.0
+                    } else {
+                        (b - a) / denom
+                    }
                 };
 
                 per_cluster_silhouettes[ci] += s;
@@ -1690,8 +1692,11 @@ impl SolutionClusteringAnalyzer {
                     max_ratio = ratio;
                 }
             }
-            clusters[ci].quality_metrics.davies_bouldin_index =
-                if max_ratio.is_finite() { max_ratio } else { 0.0 };
+            clusters[ci].quality_metrics.davies_bouldin_index = if max_ratio.is_finite() {
+                max_ratio
+            } else {
+                0.0
+            };
         }
 
         // ---- Calinski-Harabasz index ----

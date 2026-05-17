@@ -92,29 +92,38 @@ fn pennylane_op_to_gate(
     op: &PennyLaneOperation,
     wire_map: &WireMap,
 ) -> Result<Box<dyn quantrs2_core::gate::GateOp>, DeviceError> {
-    use quantrs2_core::gate::multi::{CRX, CRY, CRZ, CNOT, CY, CZ, CH, Fredkin, SWAP, Toffoli};
+    use quantrs2_core::gate::multi::{Fredkin, Toffoli, CH, CNOT, CRX, CRY, CRZ, CY, CZ, SWAP};
     use quantrs2_core::gate::single::{
         Hadamard, Identity, PGate, PauliX, PauliY, PauliZ, Phase, PhaseDagger, RotationX,
-        RotationY, RotationZ, SqrtX, SqrtXDagger, T, TDagger, UGate,
+        RotationY, RotationZ, SqrtX, SqrtXDagger, TDagger, UGate, T,
     };
 
     // Helper: get qubit i from the wires list
     let q = |i: usize| -> Result<QubitId, DeviceError> {
-        let wire = op.wires.get(i).copied().ok_or_else(|| DeviceError::WrongQubitCount {
-            gate: op.name.clone(),
-            expected: i + 1,
-            actual: op.wires.len(),
-        })?;
-        wire_map.wire_to_qubit(wire).ok_or(DeviceError::UnknownWire(wire))
+        let wire = op
+            .wires
+            .get(i)
+            .copied()
+            .ok_or_else(|| DeviceError::WrongQubitCount {
+                gate: op.name.clone(),
+                expected: i + 1,
+                actual: op.wires.len(),
+            })?;
+        wire_map
+            .wire_to_qubit(wire)
+            .ok_or(DeviceError::UnknownWire(wire))
     };
 
     // Helper: get parameter i
     let p = |i: usize| -> Result<f64, DeviceError> {
-        op.params.get(i).copied().ok_or_else(|| DeviceError::WrongParamCount {
-            gate: op.name.clone(),
-            expected: i + 1,
-            actual: op.params.len(),
-        })
+        op.params
+            .get(i)
+            .copied()
+            .ok_or_else(|| DeviceError::WrongParamCount {
+                gate: op.name.clone(),
+                expected: i + 1,
+                actual: op.params.len(),
+            })
     };
 
     match op.name.as_str() {
@@ -125,9 +134,7 @@ fn pennylane_op_to_gate(
         "PauliZ" | "Z" => Ok(Box::new(PauliZ { target: q(0)? })),
         "Hadamard" | "H" => Ok(Box::new(Hadamard { target: q(0)? })),
         "S" | "Phase" => Ok(Box::new(Phase { target: q(0)? })),
-        "Adjoint(S)" | "S.Adjoint" | "Sdg" | "S†" => {
-            Ok(Box::new(PhaseDagger { target: q(0)? }))
-        }
+        "Adjoint(S)" | "S.Adjoint" | "Sdg" | "S†" => Ok(Box::new(PhaseDagger { target: q(0)? })),
         "T" => Ok(Box::new(T { target: q(0)? })),
         "Adjoint(T)" | "T.Adjoint" | "Tdg" | "T†" => Ok(Box::new(TDagger { target: q(0)? })),
         "SX" | "sx" | "√X" => Ok(Box::new(SqrtX { target: q(0)? })),
@@ -306,11 +313,27 @@ impl std::fmt::Display for DeviceError {
         match self {
             Self::UnknownGate(g) => write!(f, "Unknown PennyLane gate: {}", g),
             Self::UnknownWire(w) => write!(f, "Unknown wire index: {}", w),
-            Self::WrongQubitCount { gate, expected, actual } => {
-                write!(f, "Gate '{}' expects {} qubit(s), got {}", gate, expected, actual)
+            Self::WrongQubitCount {
+                gate,
+                expected,
+                actual,
+            } => {
+                write!(
+                    f,
+                    "Gate '{}' expects {} qubit(s), got {}",
+                    gate, expected, actual
+                )
             }
-            Self::WrongParamCount { gate, expected, actual } => {
-                write!(f, "Gate '{}' expects {} param(s), got {}", gate, expected, actual)
+            Self::WrongParamCount {
+                gate,
+                expected,
+                actual,
+            } => {
+                write!(
+                    f,
+                    "Gate '{}' expects {} param(s), got {}",
+                    gate, expected, actual
+                )
             }
             Self::UnsupportedQubitCount(n) => write!(f, "Unsupported qubit count: {}", n),
             Self::SimulationFailed(msg) => write!(f, "Simulation failed: {}", msg),
@@ -389,14 +412,8 @@ impl QuantRS2Device {
             .map_err(|e| DeviceError::SimulationFailed(e.to_string()))?;
 
         let amplitudes = result.amplitudes();
-        let state_re: Vec<f64> = amplitudes
-            .iter()
-            .map(|a| a.re)
-            .collect();
-        let state_im: Vec<f64> = amplitudes
-            .iter()
-            .map(|a| a.im)
-            .collect();
+        let state_re: Vec<f64> = amplitudes.iter().map(|a| a.re).collect();
+        let state_im: Vec<f64> = amplitudes.iter().map(|a| a.im).collect();
         let probabilities = result.probabilities();
 
         // Compute expectation values
@@ -421,8 +438,8 @@ impl QuantRS2Device {
     /// Returns `DeviceError` if JSON deserialization fails, or if the execution
     /// fails.
     pub fn execute_json(&self, json_input: &str) -> Result<String, DeviceError> {
-        let circuit: PennyLaneCircuit = serde_json::from_str(json_input)
-            .map_err(|e| DeviceError::JsonError(e.to_string()))?;
+        let circuit: PennyLaneCircuit =
+            serde_json::from_str(json_input).map_err(|e| DeviceError::JsonError(e.to_string()))?;
 
         let result = self.execute(&circuit)?;
 
@@ -445,10 +462,10 @@ fn apply_boxed_gate(
     circuit: &mut DynamicCircuit,
     gate: Box<dyn quantrs2_core::gate::GateOp>,
 ) -> Result<(), DeviceError> {
-    use quantrs2_core::gate::multi::{CRX, CRY, CRZ, CNOT, CY, CZ, CH, Fredkin, SWAP, Toffoli};
+    use quantrs2_core::gate::multi::{Fredkin, Toffoli, CH, CNOT, CRX, CRY, CRZ, CY, CZ, SWAP};
     use quantrs2_core::gate::single::{
         Hadamard, Identity, PGate, PauliX, PauliY, PauliZ, Phase, PhaseDagger, RotationX,
-        RotationY, RotationZ, SqrtX, SqrtXDagger, T, TDagger, UGate,
+        RotationY, RotationZ, SqrtX, SqrtXDagger, TDagger, UGate, T,
     };
 
     let name = gate.name().to_string();
@@ -558,7 +575,9 @@ mod tests {
     #[test]
     fn test_bell_state_probabilities() {
         let device = QuantRS2Device::new();
-        let result = device.execute(&bell_circuit()).expect("bell state execution");
+        let result = device
+            .execute(&bell_circuit())
+            .expect("bell state execution");
 
         // Bell state |Φ+⟩ = (|00⟩ + |11⟩) / √2
         // Probabilities should be ~0.5 for |00⟩ and |11⟩, ~0 for |01⟩ and |10⟩
@@ -588,7 +607,9 @@ mod tests {
     #[test]
     fn test_bell_state_expval() {
         let device = QuantRS2Device::new();
-        let result = device.execute(&bell_circuit()).expect("bell state execution");
+        let result = device
+            .execute(&bell_circuit())
+            .expect("bell state execution");
 
         // ⟨Z⊗I⟩ for Bell state = 0
         assert_eq!(result.expval.len(), 1);

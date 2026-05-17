@@ -80,14 +80,8 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let p1 = amp1.norm_sqr();
 
     println!("\nAmplitudes:");
-    println!(
-        "  |{:0>20}⟩ : |amp|² = {p0:.6}  (expected 0.5)",
-        0
-    );
-    println!(
-        "  |{:1>20}⟩ : |amp|² = {p1:.6}  (expected 0.5)",
-        1
-    );
+    println!("  |{:0>20}⟩ : |amp|² = {p0:.6}  (expected 0.5)", 0);
+    println!("  |{:1>20}⟩ : |amp|² = {p1:.6}  (expected 0.5)", 1);
 
     // ---- Entanglement entropy at the middle cut ----
     // For GHZ: S(n/2) = ln(2) ≈ 0.6931

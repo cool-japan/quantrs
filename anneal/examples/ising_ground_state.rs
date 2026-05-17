@@ -27,7 +27,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ---- Problem 1: Antiferromagnetic chain ----
     // Nearest-neighbour coupling J = -1 → ground state alternates ±1
     println!("Problem 1: Antiferromagnetic 1-D chain (N={n_spins})");
-    println!("  Expected ground energy: -{} (alternating spins)", n_spins - 1);
+    println!(
+        "  Expected ground energy: -{} (alternating spins)",
+        n_spins - 1
+    );
 
     let mut af_model = IsingModel::new(n_spins);
     for i in 0..(n_spins - 1) {
@@ -46,14 +49,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let solution = solver.solve(&af_model)?;
 
     println!("  Best energy found : {:.4}", solution.best_energy);
-    println!(
-        "  Best spins (first 10): {:?}",
-        &solution.best_spins[..10]
-    );
-    println!(
-        "  Runtime           : {:.2?}",
-        solution.runtime
-    );
+    println!("  Best spins (first 10): {:?}", &solution.best_spins[..10]);
+    println!("  Runtime           : {:.2?}", solution.runtime);
 
     // Verify near-optimal solution
     let expected = -((n_spins - 1) as f64);
@@ -86,10 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let solution2 = solver2.solve(&fm_model)?;
 
     println!("  Best energy found : {:.4}", solution2.best_energy);
-    println!(
-        "  Best spins (first 10): {:?}",
-        &solution2.best_spins[..10]
-    );
+    println!("  Best spins (first 10): {:?}", &solution2.best_spins[..10]);
 
     // Count domain walls (adjacent antiparallel spins) — ferromagnetic ground state has 0
     let domain_walls: usize = (0..n_spins)

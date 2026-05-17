@@ -90,7 +90,9 @@ fn main() {
     // Add penalty terms
     for i in 0..n_total {
         // Linear part: P * (c_i^2 - 2*W*c_i)
-        q[(i, i)] = (2.0 * capacity).mul_add(-coeffs[i], coeffs[i] * coeffs[i]).mul_add(penalty, q[(i, i)]);
+        q[(i, i)] = (2.0 * capacity)
+            .mul_add(-coeffs[i], coeffs[i] * coeffs[i])
+            .mul_add(penalty, q[(i, i)]);
         for j in (i + 1)..n_total {
             // Quadratic part: P * 2 * c_i * c_j (upper triangle)
             q[(i, j)] = (penalty * 2.0 * coeffs[i]).mul_add(coeffs[j], q[(i, j)]);
@@ -100,9 +102,7 @@ fn main() {
     // ---- Solve with SBSampler ----
     println!("Running Simulated Bifurcation (100 shots)…");
     let sb = SBSampler::new();
-    let results = sb
-        .run_qubo(&(q, var_map), 100)
-        .expect("SB sampler failed");
+    let results = sb.run_qubo(&(q, var_map), 100).expect("SB sampler failed");
 
     // ---- Decode best result ----
     let best = &results[0];
@@ -150,10 +150,7 @@ fn main() {
 }
 
 /// Brute-force exact solution for verification
-fn brute_force_knapsack(
-    items: &[(f64, f64)],
-    capacity: f64,
-) -> (f64, f64, Vec<usize>) {
+fn brute_force_knapsack(items: &[(f64, f64)], capacity: f64) -> (f64, f64, Vec<usize>) {
     let n = items.len();
     let mut best_value = 0.0f64;
     let mut best_weight = 0.0f64;

@@ -36,7 +36,7 @@ fn main() {
     for &(i, j) in &edges {
         q[(i, i)] -= 1.0; // -x_i contribution from edge (i,j)
         q[(j, j)] -= 1.0; // -x_j contribution from edge (i,j)
-        // Use upper triangle for quadratic terms
+                          // Use upper triangle for quadratic terms
         let (lo, hi) = if i < j { (i, j) } else { (j, i) };
         q[(lo, hi)] += 1.0;
     }
@@ -76,10 +76,7 @@ fn main() {
     // ---- Report ----
     let achieved = sa_cut.max(tabu_cut);
     println!("\nBest cut achieved: {achieved} / {n}");
-    assert!(
-        achieved >= 7,
-        "Expected to find a cut of at least 7 on C_8"
-    );
+    assert!(achieved >= 7, "Expected to find a cut of at least 7 on C_8");
     println!("OK");
 }
 
@@ -88,12 +85,8 @@ fn compute_cut(assignments: &HashMap<String, bool>, edges: &[(usize, usize)]) ->
     edges
         .iter()
         .filter(|&&(i, j)| {
-            let xi = *assignments
-                .get(&format!("x{i}"))
-                .expect("variable missing");
-            let xj = *assignments
-                .get(&format!("x{j}"))
-                .expect("variable missing");
+            let xi = *assignments.get(&format!("x{i}")).expect("variable missing");
+            let xj = *assignments.get(&format!("x{j}")).expect("variable missing");
             xi != xj
         })
         .count()
@@ -103,10 +96,7 @@ fn compute_cut(assignments: &HashMap<String, bool>, edges: &[(usize, usize)]) ->
 fn print_assignment(assignments: &HashMap<String, bool>, n: usize) {
     let bits: String = (0..n)
         .map(|i| {
-            if *assignments
-                .get(&format!("x{i}"))
-                .expect("variable missing")
-            {
+            if *assignments.get(&format!("x{i}")).expect("variable missing") {
                 '1'
             } else {
                 '0'

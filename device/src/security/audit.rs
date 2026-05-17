@@ -251,7 +251,10 @@ impl InMemoryAuditLogger {
 
 impl AuditLogger for InMemoryAuditLogger {
     fn log(&self, event: AuditEvent) -> Result<(), AuditError> {
-        self.stored.lock().unwrap_or_else(|e| e.into_inner()).push(event);
+        self.stored
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push(event);
         Ok(())
     }
 
@@ -260,7 +263,10 @@ impl AuditLogger for InMemoryAuditLogger {
     }
 
     fn events(&self) -> Vec<AuditEvent> {
-        self.stored.lock().unwrap_or_else(|e| e.into_inner()).clone()
+        self.stored
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 }
 
@@ -301,7 +307,8 @@ mod tests {
             .with_error("timeout");
 
         let json = serde_json::to_string(&event).expect("serialization should succeed");
-        let parsed: AuditEvent = serde_json::from_str(&json).expect("deserialization should succeed");
+        let parsed: AuditEvent =
+            serde_json::from_str(&json).expect("deserialization should succeed");
         assert_eq!(parsed.backend_id, Some("ibm_nairobi".to_string()));
         assert!(!parsed.success);
         assert_eq!(parsed.error, Some("timeout".to_string()));
@@ -345,10 +352,7 @@ mod tests {
     #[test]
     fn test_file_audit_logger_multiple_entries() {
         let dir = env::temp_dir();
-        let path = dir.join(format!(
-            "quantrs_audit_multi_{}.jsonl",
-            fastrand::u64(..)
-        ));
+        let path = dir.join(format!("quantrs_audit_multi_{}.jsonl", fastrand::u64(..)));
         let logger = FileAuditLogger::new(&path).expect("file logger creation should succeed");
 
         for op in [
@@ -372,7 +376,9 @@ mod tests {
     fn test_null_logger() {
         let logger = NullAuditLogger;
         let event = AuditEvent::new(OperationType::StatusCheck, true);
-        logger.log(event).expect("null logger should always succeed");
+        logger
+            .log(event)
+            .expect("null logger should always succeed");
         logger.flush().expect("null flush should always succeed");
         assert!(logger.events().is_empty());
     }

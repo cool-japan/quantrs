@@ -1,5 +1,13 @@
 # QuantRS2 Roadmap
 
+## Current Version: 0.2.0 (in progress)
+
+## v0.2.0 (in progress, branch: 0.2.0)
+
+- [x] **Build fix** — removed broken `serialization` feature from scirs2-core in workspace `Cargo.toml`; this feature transitively pulled `oxiarc-lz4/zstd 0.2.8` which referenced `oxiarc_core::cancel`/`progress` paths that don't exist in `oxiarc-core 0.3.0`, blocking the entire workspace from compiling.
+- [x] **HOBO energy library** (`tytan/src/sampler/energy.rs`) — unified 3-body and 4-body PUBO energy evaluation with early-out pruning; wired into `PopulationAnnealing`, `SimulatedAnnealing`, and `GASampler` replacing per-sampler incomplete implementations. See [tytan/TODO.md](tytan/TODO.md) for full design notes.
+- [x] **Clippy fixes** — `manual_checked_ops` in `sim/src/cuda/kernels.rs`, `map_unwrap_or` in `quantrs2/src/diagnostics.rs`.
+
 ## Current Version: 0.1.3
 
 ## Completed in v0.1.3 (2026-03-27)

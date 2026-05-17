@@ -585,10 +585,7 @@ mod tests {
         apply_x_simd(&mut state, 0, 1); // |1⟩
         apply_s_simd(&mut state, 0, 1);
 
-        assert!(
-            state[0].norm() < 1e-12,
-            "S|1>: state[0] should be 0"
-        );
+        assert!(state[0].norm() < 1e-12, "S|1>: state[0] should be 0");
         assert!(
             (state[1] - Complex64::new(0.0, 1.0)).norm() < 1e-12,
             "S|1>: state[1] should be i"
@@ -604,14 +601,8 @@ mod tests {
         apply_t_simd(&mut state, 0, 1);
 
         let expected = Complex64::new(FRAC_PI_4.cos(), FRAC_PI_4.sin());
-        assert!(
-            state[0].norm() < 1e-12,
-            "T|1>: state[0] should be 0"
-        );
-        assert!(
-            (state[1] - expected).norm() < 1e-12,
-            "T|1>: state[1] wrong"
-        );
+        assert!(state[0].norm() < 1e-12, "T|1>: state[0] should be 0");
+        assert!((state[1] - expected).norm() < 1e-12, "T|1>: state[1] wrong");
     }
 
     // -----------------------------------------------------------------------
@@ -740,7 +731,11 @@ mod tests {
         ];
         apply_gate_2x2_scalar(&mut state, id, 0, n);
         let diff = max_diff(&state, &original);
-        assert!(diff < 1e-15, "Identity gate altered state: max_diff={}", diff);
+        assert!(
+            diff < 1e-15,
+            "Identity gate altered state: max_diff={}",
+            diff
+        );
     }
 
     #[test]

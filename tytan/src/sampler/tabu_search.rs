@@ -86,9 +86,7 @@ use scirs2_core::random::prelude::*;
 use scirs2_core::random::rngs::StdRng;
 use std::collections::HashMap;
 
-use super::energy::{
-    compute_influence_simd, energy_full_simd, update_influence_simd,
-};
+use super::energy::{compute_influence_simd, energy_full_simd, update_influence_simd};
 use super::{SampleResult, Sampler, SamplerError, SamplerResult};
 
 /// Parameters for the Tabu Search algorithm

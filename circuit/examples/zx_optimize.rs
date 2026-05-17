@@ -136,15 +136,21 @@ fn benchmark_t_counts() -> quantrs2_core::error::QuantRS2Result<Vec<(String, usi
     // All-T circuit
     let mut c_all_t = Circuit::<3>::new();
     for _ in 0..3 {
-        for q in 0..3u32 { c_all_t.t(q)?; }
+        for q in 0..3u32 {
+            c_all_t.t(q)?;
+        }
     }
     let zx1 = optimizer.circuit_to_zx(&c_all_t)?;
     results.push(("All-T (9 gates)".to_string(), zx1.t_count()));
 
     // T+H+T pattern (canonical phase gadget)
     let mut c_phase = Circuit::<2>::new();
-    c_phase.h(0)?; c_phase.t(0)?; c_phase.h(0)?;
-    c_phase.h(1)?; c_phase.t(1)?; c_phase.h(1)?;
+    c_phase.h(0)?;
+    c_phase.t(0)?;
+    c_phase.h(0)?;
+    c_phase.h(1)?;
+    c_phase.t(1)?;
+    c_phase.h(1)?;
     let zx2 = optimizer.circuit_to_zx(&c_phase)?;
     results.push(("H·T·H (phase gadget)".to_string(), zx2.t_count()));
 

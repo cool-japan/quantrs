@@ -627,7 +627,11 @@ fn test_calinski_harabasz_higher_for_better_clustering() {
     let pe = make_point(4, vec![-1, -1], vec![-5.1, -4.9], 0.0);
     let pf = make_point(5, vec![-1, -1], vec![-4.9, -5.1], 0.0);
 
-    fn make_cluster(id: usize, solutions: Vec<SolutionPoint>, centroid: Vec<f64>) -> SolutionCluster {
+    fn make_cluster(
+        id: usize,
+        solutions: Vec<SolutionPoint>,
+        centroid: Vec<f64>,
+    ) -> SolutionCluster {
         // Pre-compute per-cluster inertia so update_global_quality_metrics can
         // compute CH (which depends on inertia).
         let inertia: f64 = solutions
@@ -671,11 +675,23 @@ fn test_calinski_harabasz_higher_for_better_clustering() {
 
     let mut good = vec![
         make_cluster(0, vec![pa.clone(), pb.clone(), pc.clone()], vec![5.0, 5.0]),
-        make_cluster(1, vec![pd.clone(), pe.clone(), pf.clone()], vec![-5.0, -5.0]),
+        make_cluster(
+            1,
+            vec![pd.clone(), pe.clone(), pf.clone()],
+            vec![-5.0, -5.0],
+        ),
     ];
     let mut bad = vec![
-        make_cluster(0, vec![pa.clone(), pd.clone(), pc.clone()], vec![1.633, 1.7]),
-        make_cluster(1, vec![pb.clone(), pe.clone(), pf.clone()], vec![-1.633, -1.633]),
+        make_cluster(
+            0,
+            vec![pa.clone(), pd.clone(), pc.clone()],
+            vec![1.633, 1.7],
+        ),
+        make_cluster(
+            1,
+            vec![pb.clone(), pe.clone(), pf.clone()],
+            vec![-1.633, -1.633],
+        ),
     ];
 
     analyzer
@@ -733,12 +749,7 @@ fn test_autocorrelation_high_for_smooth_energy_walk() {
 
     let mut solution_points = Vec::new();
     for i in 0..10usize {
-        solution_points.push(make_point(
-            i,
-            vec![1, -1],
-            vec![1.0, -1.0],
-            i as f64,
-        ));
+        solution_points.push(make_point(i, vec![1, -1], vec![1.0, -1.0], i as f64));
     }
 
     let metrics = analyzer.calculate_ruggedness_metrics(&solution_points);
@@ -861,7 +872,15 @@ fn test_basin_depth_zero_for_global_minimum() {
     let basins = analyzer.detect_energy_basins(&solution_points, &clusters);
     assert_eq!(basins.len(), 2);
     // First basin is the global minimum, depth must be 0.
-    assert!(basins[0].depth.abs() < 1e-12, "global-min basin depth should be 0, got {}", basins[0].depth);
+    assert!(
+        basins[0].depth.abs() < 1e-12,
+        "global-min basin depth should be 0, got {}",
+        basins[0].depth
+    );
     // Second basin sits 4.0 above the global minimum.
-    assert!((basins[1].depth - 4.0).abs() < 1e-12, "depth of shallow basin should be 4.0, got {}", basins[1].depth);
+    assert!(
+        (basins[1].depth - 4.0).abs() < 1e-12,
+        "depth of shallow basin should be 4.0, got {}",
+        basins[1].depth
+    );
 }

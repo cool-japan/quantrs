@@ -44,7 +44,10 @@ fn main() -> quantrs2_core::error::QuantRS2Result<()> {
     println!("\n-- SABRE Routing --");
     println!("  Gates after routing: {}", routed_sabre.num_gates());
     println!("  SWAP gates inserted: {}", routed_sabre.num_swaps());
-    println!("  Routing overhead   : {:.1}%", routed_sabre.routing_overhead() * 100.0);
+    println!(
+        "  Routing overhead   : {:.1}%",
+        routed_sabre.routing_overhead() * 100.0
+    );
 
     let stats = routed_sabre.statistics();
     println!("  Circuit depth  : {}", stats.circuit_depth);
@@ -60,7 +63,10 @@ fn main() -> quantrs2_core::error::QuantRS2Result<()> {
 
     println!("  Gates after routing: {}", routed_la.num_gates());
     println!("  SWAP gates inserted: {}", routed_la.num_swaps());
-    println!("  Routing overhead   : {:.1}%", routed_la.routing_overhead() * 100.0);
+    println!(
+        "  Routing overhead   : {:.1}%",
+        routed_la.routing_overhead() * 100.0
+    );
 
     // ---- Step 4: Ring device (better for QFT) ----
     println!("\n=== Routing onto Ring Device (0─1─2─3─4─0) ===");
@@ -70,7 +76,10 @@ fn main() -> quantrs2_core::error::QuantRS2Result<()> {
 
     println!("  Gates after routing: {}", routed_ring.num_gates());
     println!("  SWAP gates inserted: {}", routed_ring.num_swaps());
-    println!("  Routing overhead   : {:.1}%", routed_ring.routing_overhead() * 100.0);
+    println!(
+        "  Routing overhead   : {:.1}%",
+        routed_ring.routing_overhead() * 100.0
+    );
 
     // ---- Step 5: IBM Lagos (7-qubit device, use 5 qubits) ----
     println!("\n=== Routing onto IBM Lagos (7-qubit, using 5) ===");
@@ -80,7 +89,10 @@ fn main() -> quantrs2_core::error::QuantRS2Result<()> {
         Ok(routed_ibm) => {
             println!("  Gates after routing: {}", routed_ibm.num_gates());
             println!("  SWAP gates inserted: {}", routed_ibm.num_swaps());
-            println!("  Routing overhead   : {:.1}%", routed_ibm.routing_overhead() * 100.0);
+            println!(
+                "  Routing overhead   : {:.1}%",
+                routed_ibm.routing_overhead() * 100.0
+            );
         }
         Err(e) => {
             println!("  IBM Lagos routing: {e}  (may fail for this circuit)");

@@ -1723,7 +1723,10 @@ mod tests {
         // Deadline in 10 s, but the job needs 60 s → slack should be ≈ −50 s.
         let deadline = now + Duration::from_secs(10);
         let slack = slack_seconds(deadline, now, Duration::from_secs(60));
-        assert!(slack < 0, "expected negative slack for late job, got {slack}");
+        assert!(
+            slack < 0,
+            "expected negative slack for late job, got {slack}"
+        );
         assert_eq!(slack, -50);
 
         // Deadline in 120 s, 60 s job → slack ≈ +60.

@@ -194,9 +194,7 @@ fn test_12q_random_circuit_norm() {
             for pair_start in (0..N - 1).step_by(2) {
                 let control = pair_start;
                 let target = pair_start + 1;
-                circuit
-                    .cnot(control, target)
-                    .expect("CNOT gate failed");
+                circuit.cnot(control, target).expect("CNOT gate failed");
             }
         }
 
@@ -275,9 +273,6 @@ fn test_15q_ghz_state_probability() {
         if i == 0 || i == dim - 1 {
             continue;
         }
-        assert!(
-            p < 1e-9,
-            "P(|{i}⟩) = {p:.2e} in GHZ state — expected 0"
-        );
+        assert!(p < 1e-9, "P(|{i}⟩) = {p:.2e} in GHZ state — expected 0");
     }
 }

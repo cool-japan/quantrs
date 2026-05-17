@@ -636,10 +636,7 @@ impl<const N: usize> AlignmentEngine<N> {
                         column: max,
                     },
                     old_text: section.content.clone(),
-                    new_text: format!(
-                        "// align to column {min} for section '{}'\n",
-                        section.name
-                    ),
+                    new_text: format!("// align to column {min} for section '{}'\n", section.name),
                 });
             }
         }

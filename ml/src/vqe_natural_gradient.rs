@@ -73,8 +73,7 @@ impl VQENaturalGradient {
     /// Returns [`MLError`] on evaluation failure.
     pub fn parameter_shift_gradients(&self, params: &[f64]) -> Result<Vec<f64>> {
         use std::f64::consts::PI;
-        self.inner
-            .parameter_shift_gradients(params, PI / 2.0)
+        self.inner.parameter_shift_gradients(params, PI / 2.0)
     }
 }
 

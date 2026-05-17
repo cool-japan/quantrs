@@ -46,7 +46,7 @@ quantrs2-symengine-pure = { workspace = true, optional = true }
 pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"], optional = true }
 scirs2-numpy = { workspace = true, optional = true }
 chrono.workspace = true
-numrs2 = { workspace = true, optional = true }
+# numrs2 moved to py crate only — core/python_bindings.rs uses ndarray fallback, not numrs2 directly
 
 [features]
 default = []

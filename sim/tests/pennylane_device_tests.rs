@@ -1,6 +1,8 @@
 //! Integration tests for the PennyLane device backend.
 
-use quantrs2_sim::pennylane::device::{PennyLaneCircuit, PennyLaneObservable, PennyLaneOperation, QuantRS2Device};
+use quantrs2_sim::pennylane::device::{
+    PennyLaneCircuit, PennyLaneObservable, PennyLaneOperation, QuantRS2Device,
+};
 
 fn make_hadamard_op(wire: usize) -> PennyLaneOperation {
     PennyLaneOperation {
@@ -47,7 +49,11 @@ fn test_bell_state_probabilities() {
     let result = device.execute(&circuit).expect("bell state");
 
     // |Φ+⟩ = (|00⟩ + |11⟩) / √2
-    assert_eq!(result.probabilities.len(), 4, "wrong number of basis states");
+    assert_eq!(
+        result.probabilities.len(),
+        4,
+        "wrong number of basis states"
+    );
     assert!(
         (result.probabilities[0] - 0.5).abs() < 1e-9,
         "P(|00⟩) = {} (expected 0.5)",
@@ -200,8 +206,7 @@ fn test_json_input_bell_state() {
 
     // Deserialize and check
     use quantrs2_sim::pennylane::device::PennyLaneResult;
-    let result: PennyLaneResult =
-        serde_json::from_str(&result_json).expect("deserialize result");
+    let result: PennyLaneResult = serde_json::from_str(&result_json).expect("deserialize result");
 
     assert_eq!(result.probabilities.len(), 4);
     assert!((result.probabilities[0] - 0.5).abs() < 1e-9);

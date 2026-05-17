@@ -2,7 +2,7 @@
     clippy::pedantic,
     clippy::unreadable_literal,
     clippy::suboptimal_flops,
-    clippy::doc_lazy_continuation,
+    clippy::doc_lazy_continuation
 )]
 //! Criterion benchmarks for SIMD-accelerated QUBO energy evaluation.
 //!
@@ -28,7 +28,9 @@ fn make_qubo(n: usize, seed: u64) -> Vec<f64> {
     let mut q = vec![0.0f64; n * n];
     let mut s = seed;
     let mut lcg = || -> f64 {
-        s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        s = s
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         (s >> 33) as f64 / u32::MAX as f64 * 4.0 - 2.0
     };
     for i in 0..n {
@@ -46,7 +48,9 @@ fn make_state(n: usize, seed: u64) -> Vec<bool> {
     let mut s = seed;
     (0..n)
         .map(|_| {
-            s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            s = s
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             (s >> 63) == 1
         })
         .collect()

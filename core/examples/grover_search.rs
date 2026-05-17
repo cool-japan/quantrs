@@ -64,9 +64,16 @@ fn main() -> QuantRS2Result<()> {
         .iter()
         .enumerate()
         .map(|(i, a)| (i, a.norm_sqr()))
-        .fold((0, 0.0f64), |(bi, bp), (i, p)| {
-            if p > bp { (i, p) } else { (bi, bp) }
-        });
+        .fold(
+            (0, 0.0f64),
+            |(bi, bp), (i, p)| {
+                if p > bp {
+                    (i, p)
+                } else {
+                    (bi, bp)
+                }
+            },
+        );
 
     println!("\n=== Result ===");
     println!("Most probable state: |{max_idx:03b}⟩ with P = {max_prob:.6}");

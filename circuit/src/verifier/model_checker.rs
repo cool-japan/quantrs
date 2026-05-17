@@ -128,7 +128,10 @@ impl<const N: usize> ModelChecker<N> {
                 | TemporalProperty::Safety { property } => {
                     (property.clone(), VerificationOutcome::Unknown)
                 }
-                TemporalProperty::Until { property1, property2 } => (
+                TemporalProperty::Until {
+                    property1,
+                    property2,
+                } => (
                     format!("{property1} U {property2}"),
                     VerificationOutcome::Unknown,
                 ),

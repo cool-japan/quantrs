@@ -335,14 +335,8 @@ fn test_generic_gate_2x2_simd_correctness() {
     // Use a random unitary-ish matrix (not necessarily unitary, but enough to
     // test the arithmetic path).
     let mat = [
-        [
-            Complex64::new(0.6, 0.2),
-            Complex64::new(-0.3, 0.5),
-        ],
-        [
-            Complex64::new(0.7, -0.1),
-            Complex64::new(0.4, 0.3),
-        ],
+        [Complex64::new(0.6, 0.2), Complex64::new(-0.3, 0.5)],
+        [Complex64::new(0.7, -0.1), Complex64::new(0.4, 0.3)],
     ];
 
     for &n in &[3usize, 5, 7] {

@@ -113,12 +113,10 @@ impl Optimizer {
                     epsilon: 1e-8,
                 }
             }
-            OptimizationMethod::QuantumNaturalGradient => {
-                Optimizer::QuantumNaturalGradient {
-                    learning_rate: 0.01,
-                    regularization: 1e-3,
-                }
-            }
+            OptimizationMethod::QuantumNaturalGradient => Optimizer::QuantumNaturalGradient {
+                learning_rate: 0.01,
+                regularization: 1e-3,
+            },
             OptimizationMethod::SciRS2Adam => {
                 let mut config = HashMap::new();
                 config.insert("learning_rate".to_string(), 0.001);

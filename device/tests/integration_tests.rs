@@ -92,7 +92,10 @@ mod mock_backend_tests {
         let shots = 1024;
         let counts = backend.run(BELL_QASM, shots).expect("run should succeed");
         let total: usize = counts.values().sum();
-        assert_eq!(total, shots, "counts should sum to the requested number of shots");
+        assert_eq!(
+            total, shots,
+            "counts should sum to the requested number of shots"
+        );
     }
 
     #[test]
@@ -198,7 +201,9 @@ mod qasm_integration_tests {
     #[test]
     fn test_qasm_bell_circuit_roundtrip_and_run() {
         let backend = MockQuantumBackend::new(MockBackendConfig::perfect(4));
-        let counts = backend.run(BELL_QASM, 1000).expect("Bell circuit should run");
+        let counts = backend
+            .run(BELL_QASM, 1000)
+            .expect("Bell circuit should run");
         // The Bell circuit has 2 qubits → every bitstring is 2 bits
         for key in counts.keys() {
             assert_eq!(key.len(), 2, "expected 2-bit bitstrings, got '{key}'");
@@ -216,7 +221,9 @@ mod qasm_integration_tests {
     #[test]
     fn test_qasm_single_qubit_run() {
         let backend = MockQuantumBackend::new(MockBackendConfig::perfect(1));
-        let counts = backend.run(SINGLE_QUBIT_QASM, 256).expect("H circuit should run");
+        let counts = backend
+            .run(SINGLE_QUBIT_QASM, 256)
+            .expect("H circuit should run");
         for key in counts.keys() {
             assert_eq!(key.len(), 1, "expected 1-bit bitstrings, got '{key}'");
         }
@@ -246,7 +253,9 @@ mod qasm_integration_tests {
     fn test_mock_accepts_valid_qasm_2_0() {
         let backend = MockQuantumBackend::new(MockBackendConfig::perfect(5));
         // The BELL_QASM constant is proper QASM 2.0 — must succeed
-        let counts = backend.run(BELL_QASM, 512).expect("valid QASM 2.0 must be accepted");
+        let counts = backend
+            .run(BELL_QASM, 512)
+            .expect("valid QASM 2.0 must be accepted");
         assert!(!counts.is_empty());
     }
 
@@ -306,7 +315,9 @@ mod error_handling_tests {
     #[test]
     fn test_zero_shot_returns_empty_counts() {
         let backend = MockQuantumBackend::new(MockBackendConfig::perfect(2));
-        let counts = backend.run(BELL_QASM, 0).expect("zero shots should succeed");
+        let counts = backend
+            .run(BELL_QASM, 0)
+            .expect("zero shots should succeed");
         assert!(
             counts.is_empty(),
             "zero shots must produce an empty counts map"
@@ -406,7 +417,9 @@ mod capability_tests {
         assert!(backend.config.error_rate > 0.0);
         // Should accept a 7-qubit circuit
         let qasm_7q = "OPENQASM 2.0;\ninclude \"qelib1.inc\";\nqreg q[7];\ncreg c[7];\nh q[0];\nmeasure q[0] -> c[0];\n";
-        let counts = backend.run(qasm_7q, 512).expect("7-qubit circuit on 7-qubit backend");
+        let counts = backend
+            .run(qasm_7q, 512)
+            .expect("7-qubit circuit on 7-qubit backend");
         let total: usize = counts.values().sum();
         assert_eq!(total, 512);
     }
@@ -415,7 +428,10 @@ mod capability_tests {
     fn test_capabilities_query() {
         let backend = MockQuantumBackend::new(MockBackendConfig::ibm_nairobi_like());
         let caps = backend.capabilities();
-        assert_eq!(caps.get("name").map(String::as_str), Some("mock_ibm_nairobi"));
+        assert_eq!(
+            caps.get("name").map(String::as_str),
+            Some("mock_ibm_nairobi")
+        );
         assert_eq!(caps.get("n_qubits").map(String::as_str), Some("7"));
         assert_eq!(caps.get("max_shots").map(String::as_str), Some("4096"));
         assert_eq!(caps.get("simulator").map(String::as_str), Some("true"));
@@ -423,7 +439,10 @@ mod capability_tests {
         let gates_str = caps
             .get("supported_gates")
             .expect("supported_gates key must be present");
-        assert!(gates_str.contains("cx"), "expected 'cx' in gate set: {gates_str}");
+        assert!(
+            gates_str.contains("cx"),
+            "expected 'cx' in gate set: {gates_str}"
+        );
     }
 
     #[test]
@@ -473,7 +492,9 @@ mod capability_tests {
     fn test_multiple_runs_accumulate_records() {
         let backend = MockQuantumBackend::new(MockBackendConfig::perfect(5));
         for i in 1..=5 {
-            backend.run(BELL_QASM, 100 * i).unwrap_or_else(|e| panic!("run {i} failed: {e}"));
+            backend
+                .run(BELL_QASM, 100 * i)
+                .unwrap_or_else(|e| panic!("run {i} failed: {e}"));
         }
         assert_eq!(backend.job_count(), 5);
         // Verify shots are recorded correctly

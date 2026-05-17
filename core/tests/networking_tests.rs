@@ -98,7 +98,10 @@ fn e91_ideal_chsh_near_2sqrt2() {
         ideal_s,
         result.chsh_value
     );
-    assert!(result.passed_bell_test, "Should pass Bell test without noise");
+    assert!(
+        result.passed_bell_test,
+        "Should pass Bell test without noise"
+    );
 }
 
 #[test]
@@ -144,10 +147,7 @@ fn e91_chsh_decreases_monotonically_with_noise() {
 fn e91_key_generation_produces_bits() {
     let proto = E91Protocol::new(5000, 0.0, 6006);
     let result = proto.run().expect("e91");
-    assert!(
-        !result.key.is_empty(),
-        "Should generate a non-empty key"
-    );
+    assert!(!result.key.is_empty(), "Should generate a non-empty key");
     assert!(
         result.key_rate > 0.01,
         "Key rate should be > 1%, got {}",

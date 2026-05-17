@@ -31,8 +31,10 @@
 
 use quantrs2_core::gate::{
     multi::{CNOT, CZ, SWAP},
-    single::{Hadamard, PauliX, PauliY, PauliZ, Phase, PhaseDagger, RotationX, RotationY,
-             RotationZ, TDagger, T},
+    single::{
+        Hadamard, PauliX, PauliY, PauliZ, Phase, PhaseDagger, RotationX, RotationY, RotationZ,
+        TDagger, T,
+    },
     GateOp,
 };
 use quantrs2_core::qubit::QubitId;
@@ -85,9 +87,7 @@ enum TemplateKind {
     },
     /// Merging two rotation gates of the same type on the same qubit.
     /// E.g. RZ(a)·RZ(b) → RZ(a+b).
-    RotationMerge {
-        gate_name: &'static str,
-    },
+    RotationMerge { gate_name: &'static str },
 }
 
 // ─── Template ────────────────────────────────────────────────────────────────
@@ -109,7 +109,10 @@ impl GateTemplate {
     ) -> Self {
         Self {
             name,
-            kind: TemplateKind::Fixed { pattern, replacement },
+            kind: TemplateKind::Fixed {
+                pattern,
+                replacement,
+            },
         }
     }
 
@@ -135,25 +138,37 @@ fn standard_templates() -> Vec<GateTemplate> {
         // H·H = I
         GateTemplate::fixed(
             "H·H = I",
-            vec![TemplateGate::new("H", vec![0]), TemplateGate::new("H", vec![0])],
+            vec![
+                TemplateGate::new("H", vec![0]),
+                TemplateGate::new("H", vec![0]),
+            ],
             vec![],
         ),
         // X·X = I
         GateTemplate::fixed(
             "X·X = I",
-            vec![TemplateGate::new("X", vec![0]), TemplateGate::new("X", vec![0])],
+            vec![
+                TemplateGate::new("X", vec![0]),
+                TemplateGate::new("X", vec![0]),
+            ],
             vec![],
         ),
         // Y·Y = I
         GateTemplate::fixed(
             "Y·Y = I",
-            vec![TemplateGate::new("Y", vec![0]), TemplateGate::new("Y", vec![0])],
+            vec![
+                TemplateGate::new("Y", vec![0]),
+                TemplateGate::new("Y", vec![0]),
+            ],
             vec![],
         ),
         // Z·Z = I
         GateTemplate::fixed(
             "Z·Z = I",
-            vec![TemplateGate::new("Z", vec![0]), TemplateGate::new("Z", vec![0])],
+            vec![
+                TemplateGate::new("Z", vec![0]),
+                TemplateGate::new("Z", vec![0]),
+            ],
             vec![],
         ),
         // ── Two-qubit self-inverse cancellations ─────────────────────────────
@@ -188,13 +203,19 @@ fn standard_templates() -> Vec<GateTemplate> {
         // S·S = Z
         GateTemplate::fixed(
             "S·S = Z",
-            vec![TemplateGate::new("S", vec![0]), TemplateGate::new("S", vec![0])],
+            vec![
+                TemplateGate::new("S", vec![0]),
+                TemplateGate::new("S", vec![0]),
+            ],
             vec![TemplateGate::new("Z", vec![0])],
         ),
         // T·T = S
         GateTemplate::fixed(
             "T·T = S",
-            vec![TemplateGate::new("T", vec![0]), TemplateGate::new("T", vec![0])],
+            vec![
+                TemplateGate::new("T", vec![0]),
+                TemplateGate::new("T", vec![0]),
+            ],
             vec![TemplateGate::new("S", vec![0])],
         ),
         // T†·T† = S†
@@ -218,25 +239,37 @@ fn standard_templates() -> Vec<GateTemplate> {
         // S·S† = I
         GateTemplate::fixed(
             "S·S† = I",
-            vec![TemplateGate::new("S", vec![0]), TemplateGate::new("S†", vec![0])],
+            vec![
+                TemplateGate::new("S", vec![0]),
+                TemplateGate::new("S†", vec![0]),
+            ],
             vec![],
         ),
         // S†·S = I
         GateTemplate::fixed(
             "S†·S = I",
-            vec![TemplateGate::new("S†", vec![0]), TemplateGate::new("S", vec![0])],
+            vec![
+                TemplateGate::new("S†", vec![0]),
+                TemplateGate::new("S", vec![0]),
+            ],
             vec![],
         ),
         // T·T† = I
         GateTemplate::fixed(
             "T·T† = I",
-            vec![TemplateGate::new("T", vec![0]), TemplateGate::new("T†", vec![0])],
+            vec![
+                TemplateGate::new("T", vec![0]),
+                TemplateGate::new("T†", vec![0]),
+            ],
             vec![],
         ),
         // T†·T = I
         GateTemplate::fixed(
             "T†·T = I",
-            vec![TemplateGate::new("T†", vec![0]), TemplateGate::new("T", vec![0])],
+            vec![
+                TemplateGate::new("T†", vec![0]),
+                TemplateGate::new("T", vec![0]),
+            ],
             vec![],
         ),
         // T·T·T·T = Z  (since T^8 = I, T^4 = Z up to global phase)
@@ -359,7 +392,10 @@ impl TemplateMatchingPass {
     /// Run the pass on a gate list, returning the reduced gate list.
     ///
     /// Iterates until no further reductions are found (convergence).
-    pub fn run(&self, gates: &[Arc<dyn GateOp + Send + Sync>]) -> Vec<Arc<dyn GateOp + Send + Sync>> {
+    pub fn run(
+        &self,
+        gates: &[Arc<dyn GateOp + Send + Sync>],
+    ) -> Vec<Arc<dyn GateOp + Send + Sync>> {
         let mut current: Vec<Arc<dyn GateOp + Send + Sync>> = gates.to_vec();
 
         loop {
@@ -385,9 +421,7 @@ impl TemplateMatchingPass {
         'outer: while i < gates.len() {
             // Try every template at position i
             for template in &self.templates {
-                if let Some((replacement, consumed)) =
-                    self.try_apply_template(template, gates, i)
-                {
+                if let Some((replacement, consumed)) = self.try_apply_template(template, gates, i) {
                     result.extend(replacement);
                     i += consumed;
                     continue 'outer;
@@ -411,9 +445,10 @@ impl TemplateMatchingPass {
         start: usize,
     ) -> Option<(Vec<Arc<dyn GateOp + Send + Sync>>, usize)> {
         match &template.kind {
-            TemplateKind::Fixed { pattern, replacement } => {
-                self.try_match_fixed(pattern, replacement, gates, start)
-            }
+            TemplateKind::Fixed {
+                pattern,
+                replacement,
+            } => self.try_match_fixed(pattern, replacement, gates, start),
             TemplateKind::RotationMerge { gate_name } => {
                 self.try_merge_rotation(gate_name, gates, start)
             }
@@ -472,8 +507,7 @@ impl TemplateMatchingPass {
                 let r1 = pat_gate.qubits[1];
                 if r0 != r1 {
                     // Already stored: verify they're distinct concrete qubits
-                    if qubit_map.get(r0).copied().flatten()
-                        == qubit_map.get(r1).copied().flatten()
+                    if qubit_map.get(r0).copied().flatten() == qubit_map.get(r1).copied().flatten()
                     {
                         return None;
                     }
@@ -558,18 +592,9 @@ impl TemplateMatchingPass {
 /// Extract the rotation angle from a gate known to be one of "RX", "RY", "RZ".
 fn extract_rotation_angle(gate: &dyn GateOp, gate_name: &str) -> Option<f64> {
     match gate_name {
-        "RX" => gate
-            .as_any()
-            .downcast_ref::<RotationX>()
-            .map(|g| g.theta),
-        "RY" => gate
-            .as_any()
-            .downcast_ref::<RotationY>()
-            .map(|g| g.theta),
-        "RZ" => gate
-            .as_any()
-            .downcast_ref::<RotationZ>()
-            .map(|g| g.theta),
+        "RX" => gate.as_any().downcast_ref::<RotationX>().map(|g| g.theta),
+        "RY" => gate.as_any().downcast_ref::<RotationY>().map(|g| g.theta),
+        "RZ" => gate.as_any().downcast_ref::<RotationZ>().map(|g| g.theta),
         _ => None,
     }
 }
@@ -705,8 +730,14 @@ mod tests {
     fn test_cnot_cancellation() {
         let (c, t) = (q(0), q(1));
         let gates = vec![
-            arc(CNOT { control: c, target: t }),
-            arc(CNOT { control: c, target: t }),
+            arc(CNOT {
+                control: c,
+                target: t,
+            }),
+            arc(CNOT {
+                control: c,
+                target: t,
+            }),
         ];
         let result = pass().run(&gates);
         assert!(
@@ -720,8 +751,14 @@ mod tests {
     fn test_cz_cancellation() {
         let (c, t) = (q(0), q(1));
         let gates = vec![
-            arc(CZ { control: c, target: t }),
-            arc(CZ { control: c, target: t }),
+            arc(CZ {
+                control: c,
+                target: t,
+            }),
+            arc(CZ {
+                control: c,
+                target: t,
+            }),
         ];
         let result = pass().run(&gates);
         assert!(result.is_empty(), "CZ·CZ should cancel");
@@ -731,8 +768,14 @@ mod tests {
     fn test_swap_cancellation() {
         let (a, b) = (q(0), q(1));
         let gates = vec![
-            arc(SWAP { qubit1: a, qubit2: b }),
-            arc(SWAP { qubit1: a, qubit2: b }),
+            arc(SWAP {
+                qubit1: a,
+                qubit2: b,
+            }),
+            arc(SWAP {
+                qubit1: a,
+                qubit2: b,
+            }),
         ];
         let result = pass().run(&gates);
         assert!(result.is_empty(), "SWAP·SWAP should cancel");
@@ -764,8 +807,14 @@ mod tests {
     fn test_rz_merging() {
         let q0 = q(0);
         let gates = vec![
-            arc(RotationZ { target: q0, theta: 0.3 }),
-            arc(RotationZ { target: q0, theta: 0.7 }),
+            arc(RotationZ {
+                target: q0,
+                theta: 0.3,
+            }),
+            arc(RotationZ {
+                target: q0,
+                theta: 0.7,
+            }),
         ];
         let result = pass().run(&gates);
         assert_eq!(result.len(), 1, "RZ(0.3)·RZ(0.7) should merge to one gate");
@@ -785,8 +834,14 @@ mod tests {
     fn test_rx_merging() {
         let q0 = q(0);
         let gates = vec![
-            arc(RotationX { target: q0, theta: 0.5 }),
-            arc(RotationX { target: q0, theta: 0.5 }),
+            arc(RotationX {
+                target: q0,
+                theta: 0.5,
+            }),
+            arc(RotationX {
+                target: q0,
+                theta: 0.5,
+            }),
         ];
         let result = pass().run(&gates);
         assert_eq!(result.len(), 1, "RX(0.5)·RX(0.5) should merge");
@@ -804,8 +859,14 @@ mod tests {
     fn test_ry_merging() {
         let q0 = q(0);
         let gates = vec![
-            arc(RotationY { target: q0, theta: 0.2 }),
-            arc(RotationY { target: q0, theta: 0.8 }),
+            arc(RotationY {
+                target: q0,
+                theta: 0.2,
+            }),
+            arc(RotationY {
+                target: q0,
+                theta: 0.8,
+            }),
         ];
         let result = pass().run(&gates);
         assert_eq!(result.len(), 1, "RY(0.2)·RY(0.8) should merge");
@@ -841,22 +902,42 @@ mod tests {
     fn test_cnot_different_controls_no_cancel() {
         // CNOT(0,2) and CNOT(1,2) — different control qubits, must NOT cancel
         let gates = vec![
-            arc(CNOT { control: q(0), target: q(2) }),
-            arc(CNOT { control: q(1), target: q(2) }),
+            arc(CNOT {
+                control: q(0),
+                target: q(2),
+            }),
+            arc(CNOT {
+                control: q(1),
+                target: q(2),
+            }),
         ];
         let result = pass().run(&gates);
-        assert_eq!(result.len(), 2, "CNOT with different controls must not cancel");
+        assert_eq!(
+            result.len(),
+            2,
+            "CNOT with different controls must not cancel"
+        );
     }
 
     #[test]
     fn test_cnot_different_targets_no_cancel() {
         // CNOT(0,1) and CNOT(0,2) — different target qubits, must NOT cancel
         let gates = vec![
-            arc(CNOT { control: q(0), target: q(1) }),
-            arc(CNOT { control: q(0), target: q(2) }),
+            arc(CNOT {
+                control: q(0),
+                target: q(1),
+            }),
+            arc(CNOT {
+                control: q(0),
+                target: q(2),
+            }),
         ];
         let result = pass().run(&gates);
-        assert_eq!(result.len(), 2, "CNOT with different targets must not cancel");
+        assert_eq!(
+            result.len(),
+            2,
+            "CNOT with different targets must not cancel"
+        );
     }
 
     // ── Conjugation identity tests ───────────────────────────────────────────
@@ -910,8 +991,14 @@ mod tests {
         let q0 = q(0);
         let two_pi = 2.0 * std::f64::consts::PI;
         let gates = vec![
-            arc(RotationZ { target: q0, theta: two_pi * 0.6 }),
-            arc(RotationZ { target: q0, theta: two_pi * 0.4 }),
+            arc(RotationZ {
+                target: q0,
+                theta: two_pi * 0.6,
+            }),
+            arc(RotationZ {
+                target: q0,
+                theta: two_pi * 0.4,
+            }),
         ];
         let result = pass().run(&gates);
         // Combined angle = 2π, which should cancel to identity
@@ -929,9 +1016,18 @@ mod tests {
         // RZ(0.3)·RZ(0.3)·RZ(0.3) — first two merge, then we get RZ(0.6)·RZ(0.3) = RZ(0.9)
         let q0 = q(0);
         let gates = vec![
-            arc(RotationZ { target: q0, theta: 0.3 }),
-            arc(RotationZ { target: q0, theta: 0.3 }),
-            arc(RotationZ { target: q0, theta: 0.3 }),
+            arc(RotationZ {
+                target: q0,
+                theta: 0.3,
+            }),
+            arc(RotationZ {
+                target: q0,
+                theta: 0.3,
+            }),
+            arc(RotationZ {
+                target: q0,
+                theta: 0.3,
+            }),
         ];
         let result = pass().run(&gates);
         assert_eq!(result.len(), 1, "RZ·RZ·RZ should merge to one gate");

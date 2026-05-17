@@ -117,7 +117,11 @@ fn apply_depolarizing_qubit_a(rho4: &mut Array2<Complex64>, p: f64) {
 
     // Z_A ⊗ I_B
     let sign_a = |i: usize| -> f64 {
-        if (i >> 1) & 1 == 0 { 1.0 } else { -1.0 }
+        if (i >> 1) & 1 == 0 {
+            1.0
+        } else {
+            -1.0
+        }
     };
     let mut t3 = Array2::<Complex64>::zeros((4, 4));
     for i in 0..4 {
@@ -161,7 +165,13 @@ fn apply_depolarizing_qubit_b(rho4: &mut Array2<Complex64>, p: f64) {
     add_scaled(rho4, &t2, scale_p);
 
     // I_A ⊗ Z_B
-    let sign_b = |i: usize| -> f64 { if i & 1 == 0 { 1.0 } else { -1.0 } };
+    let sign_b = |i: usize| -> f64 {
+        if i & 1 == 0 {
+            1.0
+        } else {
+            -1.0
+        }
+    };
     let mut t3 = Array2::<Complex64>::zeros((4, 4));
     for i in 0..4 {
         for j in 0..4 {

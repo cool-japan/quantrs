@@ -356,8 +356,11 @@ mod tests {
         let path = dir.join(format!("quantrs_creds_{}.json", fastrand::u64(..)));
 
         let mut file = std::fs::File::create(&path).expect("create file");
-        write!(file, r#"{{"IBM_TOKEN":"ibm-secret","AWS_KEY":"aws-secret"}}"#)
-            .expect("write credentials");
+        write!(
+            file,
+            r#"{{"IBM_TOKEN":"ibm-secret","AWS_KEY":"aws-secret"}}"#
+        )
+        .expect("write credentials");
         drop(file);
 
         // Set mode 0600 on Unix so the permission check passes
@@ -429,8 +432,9 @@ mod tests {
 
     #[test]
     fn test_composite_provider_all_fail() {
-        let composite = CompositeCredentialProvider::new()
-            .with_provider(EnvVarCredentialProvider::new("DEFINITELY_MISSING_PREFIX_XYZ"));
+        let composite = CompositeCredentialProvider::new().with_provider(
+            EnvVarCredentialProvider::new("DEFINITELY_MISSING_PREFIX_XYZ"),
+        );
 
         let result = composite.get_credential("NONEXISTENT");
         assert!(matches!(result, Err(CredentialError::NotFound(_))));

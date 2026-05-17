@@ -389,8 +389,7 @@ impl SystemCapabilities {
                 .arg("--query-gpu=name")
                 .arg("--format=csv,noheader")
                 .output()
-                .map(|output| output.status.success())
-                .unwrap_or(false)
+                .is_ok_and(|output| output.status.success())
         }
 
         #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]

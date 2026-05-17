@@ -96,7 +96,10 @@ fn main() -> QuantRS2Result<()> {
     let estimated_phase = max_state as f64 / n_states as f64;
     println!("\nMost probable readout: |{max_state:03b}⟩ → φ ≈ {estimated_phase:.4}");
     println!("True phase           : φ = {true_phase:.4}");
-    println!("Error                : {:.4}", (estimated_phase - true_phase).abs());
+    println!(
+        "Error                : {:.4}",
+        (estimated_phase - true_phase).abs()
+    );
 
     // ---- Assertions ----
     // The estimated phase should be the nearest multiple of 1/8 to the true phase 1/16

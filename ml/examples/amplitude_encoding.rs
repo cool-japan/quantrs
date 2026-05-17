@@ -37,7 +37,9 @@ fn main() -> Result<()> {
     for (i, &amp) in encoded1.iter().enumerate() {
         println!(
             "  |{i:02b}⟩ : amplitude = {:+.4}{:+.4}i  (prob = {:.6})",
-            amp.re, amp.im, amp.norm_sqr()
+            amp.re,
+            amp.im,
+            amp.norm_sqr()
         );
     }
     println!("Encoded norm : {norm_enc1:.10}  (should be 1.0)");
@@ -54,7 +56,10 @@ fn main() -> Result<()> {
     let encoded2 = amplitude_encode(&image_patch)?;
     let norm_enc2: f64 = encoded2.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
 
-    println!("Image patch (8 pixels): {:?}", image_patch.as_slice().expect("slice"));
+    println!(
+        "Image patch (8 pixels): {:?}",
+        image_patch.as_slice().expect("slice")
+    );
     println!("Quantum state norms²  :");
     for (i, &amp) in encoded2.iter().enumerate() {
         let bar = "#".repeat((amp.norm_sqr() * 20.0).round() as usize);
@@ -86,7 +91,10 @@ fn main() -> Result<()> {
     println!("  ⟨e1|e2⟩²  = {fidelity_ac:.6}  (expected 0.0 — orthogonal)");
     println!("  ⟨e1|d ⟩²  = {fidelity_ad:.6}  (expected 0.5 — 45°)");
 
-    assert!((fidelity_ab - 1.0).abs() < 1e-10, "Identical vectors: fidelity=1");
+    assert!(
+        (fidelity_ab - 1.0).abs() < 1e-10,
+        "Identical vectors: fidelity=1"
+    );
     assert!(fidelity_ac < 1e-10, "Orthogonal vectors: fidelity=0");
     assert!((fidelity_ad - 0.5).abs() < 0.01, "45° angle: fidelity≈0.5");
 

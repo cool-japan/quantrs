@@ -159,16 +159,10 @@ impl std::fmt::Display for MockBackendError {
         match self {
             MockBackendError::JobFailed(msg) => write!(f, "mock job failed: {msg}"),
             MockBackendError::TooManyQubits { requested, max } => {
-                write!(
-                    f,
-                    "requested {requested} qubits, backend max is {max}"
-                )
+                write!(f, "requested {requested} qubits, backend max is {max}")
             }
             MockBackendError::TooManyShots { requested, max } => {
-                write!(
-                    f,
-                    "requested {requested} shots, backend max is {max}"
-                )
+                write!(f, "requested {requested} shots, backend max is {max}")
             }
             MockBackendError::InvalidCircuit(msg) => write!(f, "invalid circuit: {msg}"),
         }
@@ -413,8 +407,7 @@ impl MockQuantumBackend {
     ///
     /// An empty gate set (the default) means every gate is accepted.
     pub fn supports_gate(&self, gate_name: &str) -> bool {
-        self.config.gate_set.is_empty()
-            || self.config.gate_set.iter().any(|g| g == gate_name)
+        self.config.gate_set.is_empty() || self.config.gate_set.iter().any(|g| g == gate_name)
     }
 
     /// Return `true` when the pair `(q0, q1)` is a valid 2-qubit connection.
@@ -476,7 +469,10 @@ mod tests {
     fn test_capabilities_contains_name() {
         let backend = MockQuantumBackend::new(MockBackendConfig::ibm_nairobi_like());
         let caps = backend.capabilities();
-        assert_eq!(caps.get("name").map(String::as_str), Some("mock_ibm_nairobi"));
+        assert_eq!(
+            caps.get("name").map(String::as_str),
+            Some("mock_ibm_nairobi")
+        );
         assert_eq!(caps.get("n_qubits").map(String::as_str), Some("7"));
     }
 

@@ -2,10 +2,10 @@
 
 use quantrs2_circuit::builder::Circuit;
 use quantrs2_circuit::qasm::{circuit_to_qasm, qasm_to_gates};
-use quantrs2_core::gate::multi::{CRX, CRY, CRZ, CNOT, CZ, SWAP, Toffoli};
+use quantrs2_core::gate::multi::{Toffoli, CNOT, CRX, CRY, CRZ, CZ, SWAP};
 use quantrs2_core::gate::single::{
-    Hadamard, Phase, PauliX, PauliY, PauliZ, PhaseDagger, RotationX, RotationY, RotationZ,
-    SqrtX, T, TDagger, UGate,
+    Hadamard, PauliX, PauliY, PauliZ, Phase, PhaseDagger, RotationX, RotationY, RotationZ, SqrtX,
+    TDagger, UGate, T,
 };
 use quantrs2_core::qubit::QubitId;
 
@@ -196,7 +196,11 @@ measure q[1] -> c[1];
 "#;
     // Measures and barriers are currently skipped in gate list
     let (gates, _) = qasm_to_gates(qasm).expect("parse with measure");
-    assert_eq!(gates.len(), 2, "should have only H and CNOT, not measure/barrier");
+    assert_eq!(
+        gates.len(),
+        2,
+        "should have only H and CNOT, not measure/barrier"
+    );
 }
 
 // ─── round-trip tests ────────────────────────────────────────────────────────

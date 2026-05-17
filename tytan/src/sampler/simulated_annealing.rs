@@ -342,6 +342,9 @@ impl SASampler {
             StdRng::seed_from_u64(seed)
         };
 
+        // Convert tensor to dynamic dimensionality once, reused by the closure below
+        let tensor_dyn: scirs2_core::ndarray::ArrayD<f64> = tensor.to_owned().into_dyn();
+
         // Store solutions and their frequencies
         let mut solution_counts: HashMap<Vec<bool>, (f64, usize)> = HashMap::new();
 
@@ -360,67 +363,9 @@ impl SASampler {
         let final_temp = 0.1;
         let sweeps = 1000;
 
-        // Function to evaluate HOBO energy
+        // Function to evaluate HOBO energy via the unified dispatch function
         let evaluate_energy = |state: &[bool]| -> f64 {
-            let mut energy = 0.0;
-
-            // We'll match based on tensor dimension to handle differently
-            // Handle the tensor processing based on its dimensions
-            if tensor.ndim() == 3 {
-                let tensor3d = tensor
-                    .to_owned()
-                    .into_dimensionality::<scirs2_core::ndarray::Ix3>()
-                    .ok();
-                if let Some(t) = tensor3d {
-                    // Calculate energy for 3D tensor
-                    for i in 0..std::cmp::min(n_vars, t.dim().0) {
-                        if !state[i] {
-                            continue;
-                        }
-                        for j in 0..std::cmp::min(n_vars, t.dim().1) {
-                            if !state[j] {
-                                continue;
-                            }
-                            for k in 0..std::cmp::min(n_vars, t.dim().2) {
-                                if state[k] {
-                                    energy += t[[i, j, k]];
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                // For other dimensions, we'll do a brute force approach
-                let shape = tensor.shape();
-                if shape.len() == 2 {
-                    // Handle 2D specifically
-                    if let Ok(tensor2d) = tensor
-                        .to_owned()
-                        .into_dimensionality::<scirs2_core::ndarray::Ix2>()
-                    {
-                        for i in 0..std::cmp::min(n_vars, tensor2d.dim().0) {
-                            if !state[i] {
-                                continue;
-                            }
-                            for j in 0..std::cmp::min(n_vars, tensor2d.dim().1) {
-                                if state[j] {
-                                    energy += tensor2d[[i, j]];
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    // Fallback for other dimensions - just return the energy as is
-                    // This should be specialized for other tensor dimensions if needed
-                    if !tensor.is_empty() {
-                        println!(
-                            "Warning: Processing tensor with shape {shape:?} not specifically optimized"
-                        );
-                    }
-                }
-            }
-
-            energy
+            super::energy::hobo_energy_full_dispatch(state, &tensor_dyn)
         };
 
         // Vector to store thread-local solutions

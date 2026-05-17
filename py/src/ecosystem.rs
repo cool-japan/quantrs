@@ -33,9 +33,10 @@ pub fn circuit_to_qasm(circuit: &crate::circuit_core::PyCircuit) -> PyResult<Str
     use quantrs2_circuit::qasm::circuit_to_qasm as rust_circuit_to_qasm;
     use quantrs2_sim::dynamic::DynamicCircuit;
 
-    let dynamic = circuit.circuit.as_ref().ok_or_else(|| {
-        PyValueError::new_err("circuit is not initialized")
-    })?;
+    let dynamic = circuit
+        .circuit
+        .as_ref()
+        .ok_or_else(|| PyValueError::new_err("circuit is not initialized"))?;
 
     // Dispatch to the const-generic Circuit through DynamicCircuit arms
     macro_rules! export_arm {
@@ -84,11 +85,9 @@ pub fn circuit_to_qasm(circuit: &crate::circuit_core::PyCircuit) -> PyResult<Str
 /// ValueError
 ///     If the QASM string is invalid or contains unsupported gates.
 #[pyfunction]
-pub fn qasm_to_circuit_ops(
-    qasm: &str,
-) -> PyResult<(Vec<GateOp>, usize)> {
-    use quantrs2_circuit::qasm::qasm_to_gates;
+pub fn qasm_to_circuit_ops(qasm: &str) -> PyResult<(Vec<GateOp>, usize)> {
     use quantrs2_circuit::qasm::export::extract_params;
+    use quantrs2_circuit::qasm::qasm_to_gates;
 
     let (gates, num_qubits) =
         qasm_to_gates(qasm).map_err(|e| PyValueError::new_err(e.to_string()))?;
@@ -171,14 +170,16 @@ pub fn execute_pennylane_circuit(json_input: &str) -> PyResult<String> {
 /// ValueError
 ///     If the JSON is malformed or the circuit contains unsupported operations.
 #[pyfunction]
-pub fn execute_pennylane_circuit_dict(py: Python<'_>, json_input: &str) -> PyResult<Py<pyo3::types::PyDict>> {
+pub fn execute_pennylane_circuit_dict(
+    py: Python<'_>,
+    json_input: &str,
+) -> PyResult<Py<pyo3::types::PyDict>> {
     use pyo3::types::PyDict;
     use quantrs2_sim::pennylane::QuantRS2Device;
 
     let device = QuantRS2Device::new();
-    let circuit: quantrs2_sim::pennylane::PennyLaneCircuit =
-        serde_json::from_str(json_input)
-            .map_err(|e| PyValueError::new_err(format!("JSON parse error: {e}")))?;
+    let circuit: quantrs2_sim::pennylane::PennyLaneCircuit = serde_json::from_str(json_input)
+        .map_err(|e| PyValueError::new_err(format!("JSON parse error: {e}")))?;
 
     let result = device
         .execute(&circuit)
@@ -205,7 +206,10 @@ pub fn register_ecosystem_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // PennyLane functions
     ecosystem.add_function(wrap_pyfunction!(execute_pennylane_circuit, &ecosystem)?)?;
-    ecosystem.add_function(wrap_pyfunction!(execute_pennylane_circuit_dict, &ecosystem)?)?;
+    ecosystem.add_function(wrap_pyfunction!(
+        execute_pennylane_circuit_dict,
+        &ecosystem
+    )?)?;
 
     m.add_submodule(&ecosystem)?;
 

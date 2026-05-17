@@ -48,11 +48,7 @@ pub fn is_overdue(deadline: SystemTime, now: SystemTime) -> bool {
 /// Negative when the job cannot finish before its deadline. Computed via
 /// `i64` differences so we can represent arbitrarily negative slack
 /// (`Duration` is unsigned and would saturate).
-pub fn slack_seconds(
-    deadline: SystemTime,
-    now: SystemTime,
-    estimated_runtime: Duration,
-) -> i64 {
+pub fn slack_seconds(deadline: SystemTime, now: SystemTime, estimated_runtime: Duration) -> i64 {
     let to_deadline_secs: i64 = match deadline.duration_since(now) {
         Ok(d) => i64::try_from(d.as_secs()).unwrap_or(i64::MAX),
         Err(e) => -i64::try_from(e.duration().as_secs()).unwrap_or(i64::MAX),

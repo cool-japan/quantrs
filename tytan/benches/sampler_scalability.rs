@@ -60,9 +60,7 @@ fn bench_sa_sampler(c: &mut Criterion) {
             |b, _| {
                 let sampler = SASampler::new(Some(0));
                 b.iter(|| {
-                    let results = sampler
-                        .run_qubo(black_box(&qubo), 1)
-                        .expect("SA failed");
+                    let results = sampler.run_qubo(black_box(&qubo), 1).expect("SA failed");
                     black_box(results.len())
                 });
             },
@@ -92,9 +90,7 @@ fn bench_tabu_sampler(c: &mut Criterion) {
             |b, _| {
                 let sampler = TabuSampler::new().with_seed(0);
                 b.iter(|| {
-                    let results = sampler
-                        .run_qubo(black_box(&qubo), 1)
-                        .expect("Tabu failed");
+                    let results = sampler.run_qubo(black_box(&qubo), 1).expect("Tabu failed");
                     black_box(results.len())
                 });
             },

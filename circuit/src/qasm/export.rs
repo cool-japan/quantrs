@@ -62,8 +62,8 @@ pub fn qasm2_gate_param_count(qasm_name: &str) -> usize {
 /// How many qubits does a qelib1 gate take?
 pub fn qasm2_gate_qubit_count(qasm_name: &str) -> usize {
     match qasm_name {
-        "id" | "x" | "y" | "z" | "h" | "s" | "sdg" | "t" | "tdg" | "sx" | "sxdg" | "rx"
-        | "ry" | "rz" | "u1" | "u2" | "u3" | "p" => 1,
+        "id" | "x" | "y" | "z" | "h" | "s" | "sdg" | "t" | "tdg" | "sx" | "sxdg" | "rx" | "ry"
+        | "rz" | "u1" | "u2" | "u3" | "p" => 1,
         "cx" | "cy" | "cz" | "ch" | "crx" | "cry" | "crz" | "cp" | "cs" | "swap" => 2,
         "ccx" | "cswap" => 3,
         _ => 1, // default guess
@@ -126,13 +126,7 @@ fn gate_to_qasm2_line(
         // Emit one measure per qubit: measure q[i] -> c[i];
         let mut lines = String::new();
         for q in &qubits {
-            writeln!(
-                lines,
-                "measure {}[{}] -> c[{}];",
-                reg_name,
-                q.id(),
-                q.id()
-            )?;
+            writeln!(lines, "measure {}[{}] -> c[{}];", reg_name, q.id(), q.id())?;
         }
         // Trim trailing newline so caller can add its own
         return Ok(Some(lines.trim_end_matches('\n').to_string()));
@@ -159,7 +153,8 @@ fn gate_to_qasm2_line(
         return Ok(Some(format!("barrier {};", args.join(", "))));
     }
 
-    let qasm_name = gate_name_to_qasm2(name).ok_or_else(|| QasmError::UnsupportedGate(name.to_string()))?;
+    let qasm_name =
+        gate_name_to_qasm2(name).ok_or_else(|| QasmError::UnsupportedGate(name.to_string()))?;
 
     let params = extract_params(gate.as_ref());
     let qubits = gate.qubits();
@@ -268,7 +263,9 @@ mod tests {
     #[test]
     fn test_qasm2_single_qubit_gates() {
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).expect("H");
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("H");
         circuit.add_gate(PauliX { target: QubitId(1) }).expect("X");
         circuit.add_gate(Phase { target: QubitId(0) }).expect("S");
         circuit.add_gate(T { target: QubitId(1) }).expect("T");

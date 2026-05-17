@@ -75,6 +75,7 @@ use scirs2_core::random::prelude::*;
 use scirs2_core::random::rngs::StdRng;
 use std::collections::HashMap;
 
+use super::energy::hobo_energy_full_dispatch;
 use super::{SampleResult, Sampler, SamplerResult};
 
 /// Genetic Algorithm Sampler
@@ -484,43 +485,7 @@ impl Sampler for GASampler {
 
         // Otherwise, implement the full HOBO genetic algorithm here
         // Define a function to evaluate the energy of a solution
-        let evaluate_energy = |state: &[bool]| -> f64 {
-            let mut energy = 0.0;
-
-            // Evaluate according to tensor dimension
-            if tensor.ndim() == 2 {
-                // Use matrix evaluation (much faster)
-                for i in 0..n_vars {
-                    if state[i] {
-                        energy += tensor[[i, i]]; // Diagonal terms
-
-                        for j in 0..n_vars {
-                            if state[j] && j != i {
-                                energy += tensor[[i, j]];
-                            }
-                        }
-                    }
-                }
-            } else {
-                // Generic tensor evaluation (slower)
-                tensor.indexed_iter().for_each(|(indices, &coeff)| {
-                    if coeff == 0.0 {
-                        return;
-                    }
-
-                    // Check if all variables at these indices are 1
-                    let term_active = (0..indices.ndim())
-                        .map(|d| indices[d])
-                        .all(|idx| idx < state.len() && state[idx]);
-
-                    if term_active {
-                        energy += coeff;
-                    }
-                });
-            }
-
-            energy
-        };
+        let evaluate_energy = |state: &[bool]| -> f64 { hobo_energy_full_dispatch(state, tensor) };
 
         // Solution map with frequencies
         let mut solution_counts: HashMap<Vec<bool>, (f64, usize)> = HashMap::new();

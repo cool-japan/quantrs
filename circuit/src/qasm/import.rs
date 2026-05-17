@@ -82,9 +82,10 @@ fn eval_expr(raw: &str) -> Result<f64, QasmError> {
                 let r = eval_expr(rhs)?;
                 if op == '/' {
                     if r == 0.0 {
-                        return Err(QasmError::ExpressionError(
-                            format!("division by zero in '{}'", s),
-                        ));
+                        return Err(QasmError::ExpressionError(format!(
+                            "division by zero in '{}'",
+                            s
+                        )));
                     }
                     return Ok(l / r);
                 }
@@ -181,7 +182,13 @@ fn tokenize(line: &str) -> Vec<Token> {
                 let start = i;
                 chars.next();
                 while let Some((_, nc)) = chars.peek() {
-                    if nc.is_ascii_digit() || *nc == '.' || *nc == 'e' || *nc == 'E' || *nc == '+' || *nc == '-' {
+                    if nc.is_ascii_digit()
+                        || *nc == '.'
+                        || *nc == 'e'
+                        || *nc == 'E'
+                        || *nc == '+'
+                        || *nc == '-'
+                    {
                         chars.next();
                     } else {
                         break;
@@ -201,7 +208,12 @@ fn tokenize(line: &str) -> Vec<Token> {
                 let start = i;
                 chars.next();
                 while let Some((_, nc)) = chars.peek() {
-                    if nc.is_ascii_alphanumeric() || matches!(*nc, '.' | '_' | '+' | '-' | '*' | '/' | '(' | ')' | 'e' | 'E') {
+                    if nc.is_ascii_alphanumeric()
+                        || matches!(
+                            *nc,
+                            '.' | '_' | '+' | '-' | '*' | '/' | '(' | ')' | 'e' | 'E'
+                        )
+                    {
                         chars.next();
                     } else {
                         break;
@@ -234,25 +246,30 @@ fn make_gate(
     qubits: &[QubitId],
     line_no: usize,
 ) -> Result<Box<dyn GateOp>, QasmError> {
-    use quantrs2_core::gate::multi::{CRX, CRY, CRZ, CNOT, CY, CZ, CH, Fredkin, SWAP, Toffoli};
+    use quantrs2_core::gate::multi::{Fredkin, Toffoli, CH, CNOT, CRX, CRY, CRZ, CY, CZ, SWAP};
     use quantrs2_core::gate::single::{
         Hadamard, Identity, PGate, PauliX, PauliY, PauliZ, Phase, PhaseDagger, RotationX,
-        RotationY, RotationZ, SqrtX, SqrtXDagger, T, TDagger, UGate,
+        RotationY, RotationZ, SqrtX, SqrtXDagger, TDagger, UGate, T,
     };
 
     let q = |idx: usize| -> Result<QubitId, QasmError> {
-        qubits.get(idx).copied().ok_or_else(|| QasmError::parse(
-            line_no,
-            format!("gate '{}' needs qubit index {}", name, idx),
-        ))
+        qubits.get(idx).copied().ok_or_else(|| {
+            QasmError::parse(
+                line_no,
+                format!("gate '{}' needs qubit index {}", name, idx),
+            )
+        })
     };
 
     let p = |idx: usize| -> Result<f64, QasmError> {
-        params.get(idx).copied().ok_or_else(|| QasmError::WrongParameterCount {
-            gate: name.to_string(),
-            expected: idx + 1,
-            actual: params.len(),
-        })
+        params
+            .get(idx)
+            .copied()
+            .ok_or_else(|| QasmError::WrongParameterCount {
+                gate: name.to_string(),
+                expected: idx + 1,
+                actual: params.len(),
+            })
     };
 
     match name {
@@ -357,14 +374,20 @@ fn parse_qubit_ref(
     line_no: usize,
 ) -> Result<(QubitId, usize), QasmError> {
     if tokens.len() < 4 {
-        return Err(QasmError::parse(line_no, "expected qubit reference like q[0]"));
+        return Err(QasmError::parse(
+            line_no,
+            "expected qubit reference like q[0]",
+        ));
     }
     let reg_name = match &tokens[0] {
         Token::Ident(s) => s.clone(),
         _ => return Err(QasmError::parse(line_no, "expected register name")),
     };
     if tokens[1] != Token::LBracket {
-        return Err(QasmError::parse(line_no, "expected '[' after register name"));
+        return Err(QasmError::parse(
+            line_no,
+            "expected '[' after register name",
+        ));
     }
     let idx = match &tokens[2] {
         Token::Int(n) => *n,
@@ -374,9 +397,14 @@ fn parse_qubit_ref(
         return Err(QasmError::parse(line_no, "expected ']' after index"));
     }
 
-    let info = registers.get(&reg_name).ok_or_else(|| QasmError::UndefinedRegister(reg_name.clone()))?;
+    let info = registers
+        .get(&reg_name)
+        .ok_or_else(|| QasmError::UndefinedRegister(reg_name.clone()))?;
     if info.is_classical {
-        return Err(QasmError::parse(line_no, format!("register '{}' is classical, expected quantum", reg_name)));
+        return Err(QasmError::parse(
+            line_no,
+            format!("register '{}' is classical, expected quantum", reg_name),
+        ));
     }
     if idx >= info.size {
         return Err(QasmError::QubitIndexOutOfRange {
@@ -519,7 +547,10 @@ pub fn qasm_to_gates(qasm: &str) -> Result<(Vec<Box<dyn GateOp>>, usize), QasmEr
         let gate_name = match &tokens[0] {
             Token::Ident(s) => s.to_lowercase(),
             _ => {
-                return Err(QasmError::parse(line_no, format!("unexpected token: {:?}", tokens[0])));
+                return Err(QasmError::parse(
+                    line_no,
+                    format!("unexpected token: {:?}", tokens[0]),
+                ));
             }
         };
 
@@ -618,7 +649,10 @@ pub fn qasm_to_gates(qasm: &str) -> Result<(Vec<Box<dyn GateOp>>, usize), QasmEr
         }
 
         if qubits.is_empty() {
-            return Err(QasmError::parse(line_no, format!("gate '{}' has no qubit arguments", gate_name)));
+            return Err(QasmError::parse(
+                line_no,
+                format!("gate '{}' has no qubit arguments", gate_name),
+            ));
         }
 
         let gate = make_gate(&gate_name, &params, &qubits, line_no)?;

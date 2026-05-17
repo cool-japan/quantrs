@@ -72,14 +72,8 @@ fn measure_in_basis(rho: &Array2<Complex64>, basis: Bb84Basis, rand_val: f64) ->
             let rho10 = rho[[1, 0]];
             let rho11 = rho[[1, 1]];
             let mut rho_rot = Array2::<Complex64>::zeros((2, 2));
-            rho_rot[[0, 0]] = Complex64::new(
-                h * h * (rho00 + rho01 + rho10 + rho11).re,
-                0.0,
-            );
-            rho_rot[[1, 1]] = Complex64::new(
-                h * h * (rho00 - rho01 - rho10 + rho11).re,
-                0.0,
-            );
+            rho_rot[[0, 0]] = Complex64::new(h * h * (rho00 + rho01 + rho10 + rho11).re, 0.0);
+            rho_rot[[1, 1]] = Complex64::new(h * h * (rho00 - rho01 - rho10 + rho11).re, 0.0);
             let (outcome, _) = measure_computational(&rho_rot, rand_val);
             outcome
         }

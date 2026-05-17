@@ -80,7 +80,9 @@ pub struct DepolarizingChannel {
 impl DepolarizingChannel {
     /// Create a new depolarizing channel.
     pub fn new(p: f64) -> Self {
-        Self { p: p.clamp(0.0, 1.0) }
+        Self {
+            p: p.clamp(0.0, 1.0),
+        }
     }
 }
 
@@ -125,7 +127,9 @@ pub struct DephazingChannel {
 impl DephazingChannel {
     /// Create a new dephasing channel.
     pub fn new(p: f64) -> Self {
-        Self { p: p.clamp(0.0, 1.0) }
+        Self {
+            p: p.clamp(0.0, 1.0),
+        }
     }
 }
 
@@ -164,7 +168,9 @@ pub struct AmplitudeDampingChannel {
 impl AmplitudeDampingChannel {
     /// Create a new amplitude damping channel.
     pub fn new(gamma: f64) -> Self {
-        Self { gamma: gamma.clamp(0.0, 1.0) }
+        Self {
+            gamma: gamma.clamp(0.0, 1.0),
+        }
     }
 }
 

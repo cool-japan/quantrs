@@ -90,9 +90,7 @@ use scirs2_core::random::prelude::*;
 use scirs2_core::random::rngs::StdRng;
 use std::collections::HashMap;
 
-use super::energy::{
-    compute_influence_simd, energy_full_simd, update_influence_simd,
-};
+use super::energy::{compute_influence_simd, energy_full_simd, update_influence_simd};
 use super::{SampleResult, Sampler, SamplerError, SamplerResult};
 
 /// Parameters for the Population Annealing algorithm
@@ -250,49 +248,8 @@ impl PopulationAnnealingSampler {
     }
 
     /// Evaluate HOBO energy for a dynamic-dimension tensor
-    fn evaluate_hobo_energy_dyn(tensor: &ArrayD<f64>, state: &[bool], n_vars: usize) -> f64 {
-        let mut energy = 0.0;
-        let shape = tensor.shape();
-        let ndim = shape.len();
-
-        if ndim == 2 {
-            let n0 = shape[0].min(n_vars);
-            let n1 = shape[1].min(n_vars);
-            for i in 0..n0 {
-                if !state[i] {
-                    continue;
-                }
-                for j in 0..n1 {
-                    if state[j] {
-                        if let Some(&v) = tensor.get([i, j].as_slice()) {
-                            energy += v;
-                        }
-                    }
-                }
-            }
-        } else if ndim == 3 {
-            let n0 = shape[0].min(n_vars);
-            let n1 = shape[1].min(n_vars);
-            let n2 = shape[2].min(n_vars);
-            for i in 0..n0 {
-                if !state[i] {
-                    continue;
-                }
-                for j in 0..n1 {
-                    if !state[j] {
-                        continue;
-                    }
-                    for k in 0..n2 {
-                        if state[k] {
-                            if let Some(&v) = tensor.get([i, j, k].as_slice()) {
-                                energy += v;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        energy
+    fn evaluate_hobo_energy_dyn(tensor: &ArrayD<f64>, state: &[bool], _n_vars: usize) -> f64 {
+        super::energy::hobo_energy_full_dispatch(state, tensor)
     }
 
     /// Perform multinomial resampling of the population

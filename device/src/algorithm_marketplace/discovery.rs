@@ -533,10 +533,7 @@ impl AlgorithmDiscoveryEngine {
         // ranking and personalization layers will refine. Filter on
         // hardware/complexity/category constraints from `criteria` so the
         // pre-ranking shortlist already respects user requirements.
-        let search_engine = self
-            .search_engine
-            .read()
-            .unwrap_or_else(|e| e.into_inner());
+        let search_engine = self.search_engine.read().unwrap_or_else(|e| e.into_inner());
 
         // Use the criteria query if present, otherwise use category as a hint.
         let query = criteria.query.clone().unwrap_or_else(|| {
@@ -569,9 +566,7 @@ impl AlgorithmDiscoveryEngine {
                     }
                 }
                 let mut pairs: Vec<(String, f64)> = scores.into_iter().collect();
-                pairs.sort_by(|a, b| {
-                    b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
-                });
+                pairs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
                 pairs
             }
         };

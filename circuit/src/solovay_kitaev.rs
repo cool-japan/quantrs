@@ -211,10 +211,7 @@ impl SU2 {
         // Handle global phase: normalize by global phase factor.
         let det = self.m00 * self.m11 - self.m01 * self.m10;
         let global_phase_half = det.arg() / 2.0;
-        let phase_inv = Complex64::new(
-            (-global_phase_half).cos(),
-            (-global_phase_half).sin(),
-        );
+        let phase_inv = Complex64::new((-global_phase_half).cos(), (-global_phase_half).sin());
 
         let a00 = self.m00 * phase_inv;
         let a01 = self.m01 * phase_inv;
@@ -426,7 +423,7 @@ fn su2_to_canonical_quat(m: &SU2) -> (f64, f64, f64, f64) {
     let det = m.m00 * m.m11 - m.m01 * m.m10;
     let phase_angle = det.arg() / 2.0; // φ = arg(det)/2
     let phase_inv = Complex64::new((-phase_angle).cos(), (-phase_angle).sin()); // e^{-iφ}
-    // R = e^{-iφ} * M  → det(R) = e^{-2iφ} * e^{2iφ} = 1
+                                                                                // R = e^{-iφ} * M  → det(R) = e^{-2iφ} * e^{2iφ} = 1
     let r00 = m.m00 * phase_inv;
     let r10 = m.m10 * phase_inv;
 
@@ -436,13 +433,29 @@ fn su2_to_canonical_quat(m: &SU2) -> (f64, f64, f64, f64) {
     // Canonicalize by ensuring the largest-magnitude component is positive.
     let max_abs = q0.abs().max(q1.abs()).max(q2.abs()).max(q3.abs());
     let sign = if (q0.abs() - max_abs).abs() < 1e-10 {
-        if q0 >= 0.0 { 1.0_f64 } else { -1.0_f64 }
+        if q0 >= 0.0 {
+            1.0_f64
+        } else {
+            -1.0_f64
+        }
     } else if (q1.abs() - max_abs).abs() < 1e-10 {
-        if q1 >= 0.0 { 1.0_f64 } else { -1.0_f64 }
+        if q1 >= 0.0 {
+            1.0_f64
+        } else {
+            -1.0_f64
+        }
     } else if (q2.abs() - max_abs).abs() < 1e-10 {
-        if q2 >= 0.0 { 1.0_f64 } else { -1.0_f64 }
+        if q2 >= 0.0 {
+            1.0_f64
+        } else {
+            -1.0_f64
+        }
     } else {
-        if q3 >= 0.0 { 1.0_f64 } else { -1.0_f64 }
+        if q3 >= 0.0 {
+            1.0_f64
+        } else {
+            -1.0_f64
+        }
     };
 
     (sign * q0, sign * q1, sign * q2, sign * q3)
@@ -536,8 +549,7 @@ fn enumerate_cliffords() -> Vec<(Vec<&'static str>, SU2)> {
     let h_gate = SU2::from_gate_name("H").unwrap_or_else(SU2::identity);
     let s_gate = SU2::from_gate_name("S").unwrap_or_else(SU2::identity);
     let sdg_gate = SU2::from_gate_name("Sdg").unwrap_or_else(SU2::identity);
-    let generators: &[(&'static str, &SU2)] =
-        &[("H", &h_gate), ("S", &s_gate), ("Sdg", &sdg_gate)];
+    let generators: &[(&'static str, &SU2)] = &[("H", &h_gate), ("S", &s_gate), ("Sdg", &sdg_gate)];
 
     let mut table = DedupTable::new();
     table.insert(Vec::new(), SU2::identity());
@@ -963,7 +975,10 @@ mod tests {
         let approx = sequence_to_matrix(&seq);
         let dist = approx.frobenius_distance(&target);
         // Table lookup: with depth=10, expect dist < 0.2 for most targets
-        assert!(dist < 0.5, "Depth-0 should be within 0.5 of target, got {dist}");
+        assert!(
+            dist < 0.5,
+            "Depth-0 should be within 0.5 of target, got {dist}"
+        );
     }
 
     #[test]
@@ -989,7 +1004,10 @@ mod tests {
             "SK depth=1 ({dist:.6}) should improve over depth=0 ({depth0_dist:.6})"
         );
         // Absolute bound: with the dense Clifford+T table, depth-1 reaches ~0.037
-        assert!(dist < 0.05, "SK depth=1 should achieve dist < 0.05, got {dist:.6}");
+        assert!(
+            dist < 0.05,
+            "SK depth=1 should achieve dist < 0.05, got {dist:.6}"
+        );
         assert!(!seq.is_empty(), "Sequence should not be empty");
     }
 
@@ -1057,7 +1075,10 @@ mod tests {
         let delta = target.mul(&u_prev_phased.adjoint());
         let delta_dist = delta.distance_from_identity();
         eprintln!("Phase-aligned delta dist from identity: {:.6}", delta_dist);
-        eprintln!("Phase-aligned delta rotation angle: {:.6}", delta.rotation_angle());
+        eprintln!(
+            "Phase-aligned delta rotation angle: {:.6}",
+            delta.rotation_angle()
+        );
 
         let (v, w) = balanced_commutator_decompose(&delta).expect("commutator failed");
         let (v_seq, v_dist) = table.find_closest(&v);
@@ -1072,10 +1093,16 @@ mod tests {
         // Compute the commutator using approximated v and w
         let v_mat = sequence_to_matrix(v_seq);
         let w_mat = sequence_to_matrix(w_seq);
-        let approx_comm = v_mat.mul(&w_mat).mul(&v_mat.adjoint()).mul(&w_mat.adjoint());
+        let approx_comm = v_mat
+            .mul(&w_mat)
+            .mul(&v_mat.adjoint())
+            .mul(&w_mat.adjoint());
         let approx_comm_to_delta = approx_comm.frobenius_distance(&delta);
         let approx_comm_to_i = approx_comm.distance_from_identity();
-        eprintln!("Approx commutator dist from delta: {:.6}", approx_comm_to_delta);
+        eprintln!(
+            "Approx commutator dist from delta: {:.6}",
+            approx_comm_to_delta
+        );
         eprintln!("Approx commutator dist from I: {:.6}", approx_comm_to_i);
 
         // Full depth=1 result: V_approx * W_approx * V_approx† * W_approx† * u_prev
@@ -1107,10 +1134,14 @@ mod tests {
         // strict improvement over depth-1 is not guaranteed with this gate set.
         // With table_depth=10 (~73k entries), depth-1 achieves dist ≈ 0.037.
         let target = SU2::rotation_z(0.5);
-        let d1 = SOKDecomposer::new(10, 1).decompose(&target).expect("depth1 failed");
+        let d1 = SOKDecomposer::new(10, 1)
+            .decompose(&target)
+            .expect("depth1 failed");
         let dist1 = sequence_to_matrix(&d1).frobenius_distance(&target);
 
-        let d3 = SOKDecomposer::new(10, 3).decompose(&target).expect("depth3 failed");
+        let d3 = SOKDecomposer::new(10, 3)
+            .decompose(&target)
+            .expect("depth3 failed");
         let dist3 = sequence_to_matrix(&d3).frobenius_distance(&target);
 
         // Depth=3 must be at least as good as depth=1 (SK is monotone by construction).

@@ -322,9 +322,7 @@ impl WarmStartQAOAOptimizer {
             WarmStartStrategy::Random { seed } => {
                 // Seeded random assignments in [-1, 1]
                 let mut rng = fastrand::Rng::with_seed(*seed);
-                let assignments: Vec<f64> = (0..n)
-                    .map(|_| rng.f64() * 2.0 - 1.0)
-                    .collect();
+                let assignments: Vec<f64> = (0..n).map(|_| rng.f64() * 2.0 - 1.0).collect();
 
                 let classical_objective = self.graph.maxcut_value(&assignments);
 
@@ -542,7 +540,10 @@ mod tests {
         assert_eq!(angles.betas.len(), 2);
         // Vertex assignments from seeded random are in (-1, 1)
         for v in &angles.vertex_assignments {
-            assert!(*v >= -1.0 && *v <= 1.0, "random assignment {v} out of range");
+            assert!(
+                *v >= -1.0 && *v <= 1.0,
+                "random assignment {v} out of range"
+            );
         }
     }
 

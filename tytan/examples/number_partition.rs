@@ -11,7 +11,7 @@
 //! Run with:
 //!   cargo run --example number_partition -p quantrs2-tytan --all-features
 
-use quantrs2_tytan::sampler::{Sampler, SBSampler, TabuSampler};
+use quantrs2_tytan::sampler::{SBSampler, Sampler, TabuSampler};
 use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 
@@ -77,9 +77,7 @@ fn main() {
     // ---- Compare with SBSampler ----
     println!("\nRunning Simulated Bifurcation (100 shots)…");
     let sb = SBSampler::new();
-    let sb_results = sb
-        .run_qubo(&(q, var_map), 100)
-        .expect("SB sampler failed");
+    let sb_results = sb.run_qubo(&(q, var_map), 100).expect("SB sampler failed");
     println!(
         "Best energy (SB)   : {:.4}  (ideal = 0)",
         sb_results[0].energy

@@ -11,8 +11,8 @@ pub mod e91;
 pub mod teleportation;
 
 pub use bb84::{Bb84Protocol, Bb84Result};
-pub use channel::{
-    AmplitudeDampingChannel, DephazingChannel, DepolarizingChannel, NoiseChannel,
-};
+pub use channel::{AmplitudeDampingChannel, DephazingChannel, DepolarizingChannel, NoiseChannel};
 pub use e91::{E91Protocol, E91Result};
-pub use teleportation::{EntanglementSwapping, SwappingResult, TeleportationProtocol, TeleportationResult};
+pub use teleportation::{
+    EntanglementSwapping, SwappingResult, TeleportationProtocol, TeleportationResult,
+};

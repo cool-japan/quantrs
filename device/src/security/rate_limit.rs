@@ -136,12 +136,7 @@ impl RateLimiter {
     }
 
     /// Register a provider-specific bucket, overriding the defaults.
-    pub fn with_provider(
-        mut self,
-        provider: impl Into<String>,
-        capacity: f64,
-        rate: f64,
-    ) -> Self {
+    pub fn with_provider(mut self, provider: impl Into<String>, capacity: f64, rate: f64) -> Self {
         self.buckets
             .insert(provider.into(), TokenBucket::new(capacity, rate));
         self
@@ -238,7 +233,7 @@ mod tests {
     #[test]
     fn test_token_bucket_consume_fails_when_empty() {
         let mut bucket = TokenBucket::new(3.0, 0.001); // very slow refill
-        // Drain all tokens
+                                                       // Drain all tokens
         assert!(bucket.try_consume(3.0));
         // Next consume should fail immediately
         assert!(!bucket.try_consume(1.0));

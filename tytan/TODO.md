@@ -19,8 +19,18 @@
   - **Risk:** Doc-test runtime — keep each example ≤ 10 lines, ≤ 20 shots.
 - [x] Testing improvements — sampler property + integration tests (2026-04-27)
 
+## v0.2.0 (2026-05-17)
+
+- [x] HOBO energy library (`tytan/src/sampler/energy.rs`) — 3-body and 4-body specialized fast paths plus generic ndim dispatch; all CPU samplers routed through single shared kernel.
+  - **Design:** `hobo_energy_full_dispatch` picks specialized `ArrayView3`/`ArrayView4` paths for ndim ∈ {3,4} (early-out pruning ≥ 90% on 50% dense state), generic `indexed_iter` for ndim ≥ 5, existing scalar QUBO path for ndim == 2.
+  - **Delta / influence API:** `hobo_energy_delta_{3,4}body`, `hobo_compute_influence`, `hobo_update_influence`, `hobo_recompute_influence`.
+  - **Key correctness insight:** ΔE = (1 − 2x[k]) · g[k] where g[k] counts each tensor entry containing k ONCE regardless of k-multiplicity (binary identity x[k]^m = x[k]).
+  - **Samplers updated:** `PopulationAnnealing`, `SimulatedAnnealing`, `GASampler` — all ndim warnings / silent-zero returns eliminated.
+  - **Tests added:** 8 HOBO correctness tests in `tytan/tests/energy_correctness.rs`; all 507 tytan tests pass.
+- [x] Build fix — removed broken `serialization` feature from scirs2-core (was pulling oxiarc-lz4/zstd 0.2.8 with unresolved import paths against oxiarc-core 0.3.0 API).
+
 ## Proposed follow-ups
 
-- **SIMD QUBO energy eval for HOBO (higher-order terms)** — extend energy_delta_simd to handle 3-body and 4-body PUBO interactions efficiently.
 - **GPU-only SB kernel via wgpu/ocl** — port SBSampler inner loop to GPU compute shader for large dense instances (n ≥ 1000).
 - **Tensor-core HOBO contraction** — BLAS-level contraction for high-order Boltzmann machine terms.
+- **MIKAS/Armin GPU HOBO** — depends on GPU SB kernel above.

@@ -27,11 +27,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Spokes: 0-5, 1-6, 2-7, 3-8, 4-9
     let edges: &[(usize, usize)] = &[
         // Outer cycle
-        (0, 1), (1, 2), (2, 3), (3, 4), (4, 0),
+        (0, 1),
+        (1, 2),
+        (2, 3),
+        (3, 4),
+        (4, 0),
         // Inner pentagram
-        (5, 7), (7, 9), (9, 6), (6, 8), (8, 5),
+        (5, 7),
+        (7, 9),
+        (9, 6),
+        (6, 8),
+        (8, 5),
         // Spokes
-        (0, 5), (1, 6), (2, 7), (3, 8), (4, 9),
+        (0, 5),
+        (1, 6),
+        (2, 7),
+        (3, 8),
+        (4, 9),
     ];
     let n_vertices = 10usize;
     let n_edges = edges.len();
@@ -56,7 +68,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     params.seed = Some(7);
 
     // ---- Solve ----
-    println!("Running Simulated Annealing ({} repetitions)…", params.num_repetitions);
+    println!(
+        "Running Simulated Annealing ({} repetitions)…",
+        params.num_repetitions
+    );
     let solver = ClassicalAnnealingSimulator::new(params)?;
     let solution = solver.solve(&model)?;
 
@@ -67,9 +82,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // cut = (|E| - Σ_{(i,j)∈E} s_i*s_j) / 2
     let spin_product_sum: f64 = edges
         .iter()
-        .map(|&(i, j)| {
-            (solution.best_spins[i] as f64) * (solution.best_spins[j] as f64)
-        })
+        .map(|&(i, j)| (solution.best_spins[i] as f64) * (solution.best_spins[j] as f64))
         .sum();
     let cut_size = ((n_edges as f64 - spin_product_sum) / 2.0).round() as usize;
 
@@ -100,7 +113,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter(|&&(i, j)| solution.best_spins[i] != solution.best_spins[j])
         .copied()
         .collect();
-    println!("Cut edges ({}/{}): {:?}", cut_edges.len(), n_edges, cut_edges);
+    println!(
+        "Cut edges ({}/{}): {:?}",
+        cut_edges.len(),
+        n_edges,
+        cut_edges
+    );
 
     // ---- Assertion ----
     assert!(
