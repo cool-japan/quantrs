@@ -1500,5 +1500,75 @@ class TestPerformanceAndScalability:
         assert end_time - start_time < 3.0
 
 
+@pytest.mark.skipif(not HAS_QUANTUM_CONTAINERS, reason="quantum containers not available")
+class TestQuantumHardwareUsedMetric:
+    """Tests for the quantum_hardware_used metric in get_system_metrics (stub 4a)."""
+
+    def test_quantum_hardware_used_zero_when_no_hardware_deployments(self):
+        """quantum_hardware_used is 0 when no containers request QUANTUM_HARDWARE."""
+        orchestrator = QuantumContainerOrchestrator()
+
+        spec = DeploymentSpec(
+            name="sim-only-deployment",
+            containers=[
+                ContainerConfig(
+                    "sim-container",
+                    "test:latest",
+                    resources=[ResourceRequirement(ResourceType.QUANTUM_SIMULATOR, 1)]
+                )
+            ],
+            mode=DeploymentMode.LOCAL
+        )
+        orchestrator.active_deployments["sim-only"] = spec
+
+        metrics = orchestrator.get_system_metrics()
+        assert metrics['quantum_metrics']['quantum_hardware_used'] == 0
+
+    def test_quantum_hardware_used_increments(self):
+        """quantum_hardware_used counts containers that request QUANTUM_HARDWARE resources."""
+        orchestrator = QuantumContainerOrchestrator()
+
+        hw_spec = DeploymentSpec(
+            name="hw-deployment",
+            containers=[
+                ContainerConfig(
+                    "hw-container",
+                    "test:latest",
+                    resources=[
+                        ResourceRequirement(ResourceType.QUANTUM_HARDWARE, 5, "qubits")
+                    ]
+                )
+            ],
+            mode=DeploymentMode.LOCAL
+        )
+        orchestrator.active_deployments["hw-deploy"] = hw_spec
+
+        metrics = orchestrator.get_system_metrics()
+        assert metrics['quantum_metrics']['quantum_hardware_used'] > 0
+
+    def test_quantum_hardware_used_counts_multiple(self):
+        """quantum_hardware_used accumulates over multiple containers/deployments."""
+        orchestrator = QuantumContainerOrchestrator()
+
+        for i in range(3):
+            spec = DeploymentSpec(
+                name=f"hw-deploy-{i}",
+                containers=[
+                    ContainerConfig(
+                        f"hw-container-{i}",
+                        "test:latest",
+                        resources=[
+                            ResourceRequirement(ResourceType.QUANTUM_HARDWARE, 5, "qubits")
+                        ]
+                    )
+                ],
+                mode=DeploymentMode.LOCAL
+            )
+            orchestrator.active_deployments[f"hw-deploy-{i}"] = spec
+
+        metrics = orchestrator.get_system_metrics()
+        assert metrics['quantum_metrics']['quantum_hardware_used'] == 3
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

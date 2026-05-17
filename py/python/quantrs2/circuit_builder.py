@@ -518,8 +518,74 @@ class CircuitBuilder:
                 
                 return circuit_id
             else:
-                # TODO: Implement QASM import
-                return None
+                # QASM import: parse OpenQASM 2.0 dialect produced by _export_qasm
+                import re
+                circuit_id = circuit_id or f"qasm_loaded_{int(time.time())}"
+                n_qubits = 0
+                gate_lines = []
+
+                for raw_line in content.strip().splitlines():
+                    line = raw_line.strip().rstrip(';')
+                    if (not line
+                            or line.startswith('//')
+                            or line.startswith('OPENQASM')
+                            or line.startswith('include')):
+                        continue
+                    if line.startswith('qreg'):
+                        # qreg q[N]
+                        m = re.search(r'\[(\d+)\]', line)
+                        if m:
+                            n_qubits = int(m.group(1))
+                    elif line.startswith('creg') or line.startswith('measure') or line.startswith('barrier') or line.startswith('reset'):
+                        # skip classical registers, measurement, barrier, reset
+                        pass
+                    else:
+                        gate_lines.append(line)
+
+                if n_qubits < 1:
+                    return None
+
+                self.create_circuit(n_qubits, circuit_id)
+
+                # Gate name -> (num_qubits, num_params) mapping from the gate registry
+                # plus aliases: cx -> cnot
+                _GATE_ALIASES = {'cx': 'cnot'}
+                _PARAM_GATES = {'rx', 'ry', 'rz'}
+
+                for gate_line in gate_lines:
+                    # Match: name(params) qubit or name qubit,qubit ...
+                    # e.g. "h q[0]", "cx q[0],q[1]", "rx(0.5) q[0]"
+                    m = re.match(r'^(\w+)(?:\(([^)]*)\))?\s+(.+)$', gate_line)
+                    if not m:
+                        continue
+
+                    raw_name = m.group(1).lower()
+                    params_str = m.group(2)
+                    qubits_str = m.group(3)
+
+                    # Resolve alias
+                    gate_name = _GATE_ALIASES.get(raw_name, raw_name)
+
+                    # Parse qubit indices from "q[i],q[j]" or "q[i] -> c[j]" (measure)
+                    qubit_indices = [int(idx) for idx in re.findall(r'q\[(\d+)\]', qubits_str)]
+
+                    # Parse params
+                    params = []
+                    if params_str:
+                        for p in params_str.split(','):
+                            p = p.strip()
+                            if p:
+                                try:
+                                    params.append(float(p))
+                                except ValueError:
+                                    pass
+
+                    if gate_name not in self.available_gates:
+                        continue
+
+                    self.add_gate(gate_name, qubit_indices, params if params else None, circuit_id)
+
+                return circuit_id
         except Exception:
             return None
     

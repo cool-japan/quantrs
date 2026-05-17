@@ -316,9 +316,20 @@ impl EnhancedVQF {
         self
     }
 
+    /// Enable/disable multi-level optimization
+    pub const fn with_multilevel(mut self, use_multilevel: bool) -> Self {
+        self.use_multilevel = use_multilevel;
+        self
+    }
+
     /// Factor with enhanced techniques
     pub fn factor(&mut self) -> Result<EnhancedFactorizationResult, String> {
-        // Classical preprocessing
+        // For multilevel mode, skip classical preprocessing to get full prime factorization.
+        if self.use_multilevel {
+            return self.multilevel_factorization();
+        }
+
+        // Classical preprocessing (single-level path only)
         if let Some(factors) = self.classical_preprocessing() {
             return Ok(EnhancedFactorizationResult {
                 factors: vec![factors.p, factors.q],
@@ -328,12 +339,7 @@ impl EnhancedVQF {
             });
         }
 
-        // Try quantum factorization with enhancements
-        if self.use_multilevel {
-            self.multilevel_factorization()
-        } else {
-            self.single_level_factorization()
-        }
+        self.single_level_factorization()
     }
 
     /// Classical preprocessing with multiple techniques
@@ -452,10 +458,96 @@ impl EnhancedVQF {
     }
 
     /// Multi-level factorization for larger numbers
-    fn multilevel_factorization(&self) -> Result<EnhancedFactorizationResult, String> {
-        // Implement hierarchical factorization
-        // Break down into smaller subproblems
-        Err("Multilevel factorization not yet implemented".to_string())
+    fn multilevel_factorization(&mut self) -> Result<EnhancedFactorizationResult, String> {
+        let n = self.base_vqf.n;
+        let mut factors = Self::factorize_recursive(self, n)?;
+        factors.sort_unstable();
+        Ok(EnhancedFactorizationResult {
+            factors,
+            method: "Multilevel recursive".to_string(),
+            quantum_advantage: self.estimate_quantum_advantage(),
+            circuit_depth: self.estimate_circuit_depth(),
+        })
+    }
+
+    /// Recursive prime factorization helper
+    fn factorize_recursive(&mut self, n: u64) -> Result<Vec<u64>, String> {
+        if n <= 1 {
+            return Ok(vec![]);
+        }
+        if is_prime(n) {
+            return Ok(vec![n]);
+        }
+        // Try Pollard's rho
+        if let Some(f) = self.pollard_rho(n, 1000) {
+            let mut left = self.factorize_recursive(f)?;
+            let right = self.factorize_recursive(n / f)?;
+            left.extend(right);
+            return Ok(left);
+        }
+        // Try Fermat
+        if let Some(f) = self.fermat_factorization(n) {
+            if f > 1 && f < n {
+                let mut left = self.factorize_recursive(f)?;
+                let right = self.factorize_recursive(n / f)?;
+                left.extend(right);
+                return Ok(left);
+            }
+        }
+        // Try wheel
+        if let Some(f) = self.wheel_factorization(n) {
+            if f > 1 && f < n {
+                let mut left = self.factorize_recursive(f)?;
+                let right = self.factorize_recursive(n / f)?;
+                left.extend(right);
+                return Ok(left);
+            }
+        }
+        // Fall back to base VQF
+        self.base_vqf.n = n;
+        let result = self.base_vqf.factor()?;
+        if result.success && result.p > 1 && result.q > 1 && result.p * result.q == n {
+            let mut left = self.factorize_recursive_plain(result.p)?;
+            let right = self.factorize_recursive_plain(result.q)?;
+            left.extend(right);
+            Ok(left)
+        } else {
+            // Cannot factor further — treat as prime
+            Ok(vec![n])
+        }
+    }
+
+    /// Recursive factorization without VQF fallback (avoids borrowing self.base_vqf)
+    fn factorize_recursive_plain(&self, n: u64) -> Result<Vec<u64>, String> {
+        if n <= 1 {
+            return Ok(vec![]);
+        }
+        if is_prime(n) {
+            return Ok(vec![n]);
+        }
+        if let Some(f) = self.pollard_rho(n, 1000) {
+            let mut left = self.factorize_recursive_plain(f)?;
+            let right = self.factorize_recursive_plain(n / f)?;
+            left.extend(right);
+            return Ok(left);
+        }
+        if let Some(f) = self.fermat_factorization(n) {
+            if f > 1 && f < n {
+                let mut left = self.factorize_recursive_plain(f)?;
+                let right = self.factorize_recursive_plain(n / f)?;
+                left.extend(right);
+                return Ok(left);
+            }
+        }
+        if let Some(f) = self.wheel_factorization(n) {
+            if f > 1 && f < n {
+                let mut left = self.factorize_recursive_plain(f)?;
+                let right = self.factorize_recursive_plain(n / f)?;
+                left.extend(right);
+                return Ok(left);
+            }
+        }
+        Ok(vec![n])
     }
 
     /// Estimate quantum advantage
@@ -645,6 +737,27 @@ pub struct ShorsResult {
     pub success_probability: f64,
 }
 
+/// Primality test via trial division up to √n
+fn is_prime(n: u64) -> bool {
+    if n < 2 {
+        return false;
+    }
+    if n == 2 || n == 3 {
+        return true;
+    }
+    if n % 2 == 0 || n % 3 == 0 {
+        return false;
+    }
+    let mut k = 5u64;
+    while k * k <= n {
+        if n % k == 0 || n % (k + 2) == 0 {
+            return false;
+        }
+        k += 6;
+    }
+    true
+}
+
 /// Helper functions
 const fn gcd(mut a: u64, mut b: u64) -> u64 {
     while b != 0 {
@@ -721,5 +834,47 @@ mod tests {
     fn test_helper_functions() {
         assert_eq!(gcd(48, 18), 6);
         assert_eq!(mod_exp(3, 4, 7), 4); // 3^4 mod 7 = 81 mod 7 = 4
+    }
+
+    #[test]
+    fn test_multilevel_factor_15() {
+        let optimizer = ClassicalOptimizer::GradientDescent {
+            learning_rate: 0.1,
+            momentum: 0.0,
+        };
+        let mut vqf = EnhancedVQF::new(15, optimizer)
+            .expect("Failed to create EnhancedVQF for n=15")
+            .with_multilevel(true);
+        let result = vqf.factor().expect("multilevel_factorization(15) should succeed");
+        assert!(result.factors.contains(&3), "factors should contain 3");
+        assert!(result.factors.contains(&5), "factors should contain 5");
+    }
+
+    #[test]
+    fn test_multilevel_factor_prime() {
+        let optimizer = ClassicalOptimizer::GradientDescent {
+            learning_rate: 0.1,
+            momentum: 0.0,
+        };
+        let mut vqf = EnhancedVQF::new(13, optimizer)
+            .expect("Failed to create EnhancedVQF for n=13")
+            .with_multilevel(true);
+        let result = vqf.factor().expect("multilevel_factorization(13) should succeed");
+        assert_eq!(result.factors, vec![13], "prime 13 should return [13]");
+    }
+
+    #[test]
+    fn test_multilevel_factor_composite() {
+        let optimizer = ClassicalOptimizer::GradientDescent {
+            learning_rate: 0.1,
+            momentum: 0.0,
+        };
+        let mut vqf = EnhancedVQF::new(105, optimizer)
+            .expect("Failed to create EnhancedVQF for n=105")
+            .with_multilevel(true);
+        let result = vqf.factor().expect("multilevel_factorization(105) should succeed");
+        assert!(result.factors.contains(&3), "factors should contain 3");
+        assert!(result.factors.contains(&5), "factors should contain 5");
+        assert!(result.factors.contains(&7), "factors should contain 7");
     }
 }

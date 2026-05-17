@@ -1475,22 +1475,25 @@ class QuantumContainerOrchestrator:
             # Quantum-specific metrics
             quantum_containers = 0
             quantum_simulators_used = 0
-            
+            quantum_hardware_used = 0
+
             for deployment_name, spec in self.active_deployments.items():
                 for container_config in spec.containers:
-                    if any(req.type in [ResourceType.QUANTUM_SIMULATOR, ResourceType.QUANTUM_HARDWARE] 
+                    if any(req.type in [ResourceType.QUANTUM_SIMULATOR, ResourceType.QUANTUM_HARDWARE]
                           for req in container_config.resources):
                         quantum_containers += 1
-                        
-                        # Count quantum simulators
+
+                        # Count quantum simulators and hardware resources
                         for req in container_config.resources:
                             if req.type == ResourceType.QUANTUM_SIMULATOR:
                                 quantum_simulators_used += 1
-            
+                            elif req.type == ResourceType.QUANTUM_HARDWARE:
+                                quantum_hardware_used += 1
+
             metrics['quantum_metrics'] = {
                 'quantum_containers': quantum_containers,
                 'quantum_simulators_used': quantum_simulators_used,
-                'quantum_hardware_used': 0  # TODO: Implement hardware tracking
+                'quantum_hardware_used': quantum_hardware_used
             }
             
         except Exception as e:

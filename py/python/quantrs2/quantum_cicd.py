@@ -26,6 +26,7 @@ import hashlib
 import shutil
 import asyncio
 import concurrent.futures
+from datetime import datetime
 from typing import Dict, List, Any, Optional, Union, Callable, Set
 from dataclasses import dataclass, field, asdict
 from enum import Enum
@@ -1386,6 +1387,8 @@ class QuantumCICDManager:
         # Scheduler for periodic tasks
         self.scheduler_thread = None
         self.scheduler_enabled = False
+        # Track last-fired minute per pipeline to prevent double-firing within one minute
+        self._last_fired: Dict[str, datetime] = {}
     
     def add_repository(self, name: str, repo_path: str, remote_url: Optional[str] = None) -> GitRepository:
         """Add a Git repository for CI/CD."""
@@ -1502,19 +1505,59 @@ class QuantumCICDManager:
         """Scheduler loop for periodic tasks."""
         while self.scheduler_enabled:
             try:
+                now = datetime.now()
+
                 # Check for scheduled pipelines
                 for pipeline_name, pipeline_data in self.pipeline_configs.items():
                     config = pipeline_data['config']
-                    
+
                     if TriggerType.SCHEDULE in config.triggers:
-                        # TODO: Implement schedule parsing and execution
-                        pass
-                
+                        schedule_expr = config.quantum_config.get('schedule', '')
+                        if not schedule_expr:
+                            continue
+
+                        # Suppress double-fire within the same clock minute
+                        last = self._last_fired.get(pipeline_name)
+                        if (last is not None
+                                and last.year == now.year
+                                and last.month == now.month
+                                and last.day == now.day
+                                and last.hour == now.hour
+                                and last.minute == now.minute):
+                            continue
+
+                        if self._evaluate_trigger(schedule_expr, now):
+                            self._last_fired[pipeline_name] = now
+                            logging.info(
+                                f"Schedule triggered pipeline '{pipeline_name}' "
+                                f"with expr '{schedule_expr}'"
+                            )
+                            # Invoke pipeline asynchronously from sync context
+                            try:
+                                # Use the first registered repo, or 'default'
+                                repo_name = next(iter(self.git_repos), None)
+                                if repo_name is not None:
+                                    asyncio.run(self.trigger_pipeline(
+                                        pipeline_name=pipeline_name,
+                                        repo_name=repo_name,
+                                        trigger=TriggerType.SCHEDULE
+                                    ))
+                                else:
+                                    logging.warning(
+                                        f"No repositories registered; skipping "
+                                        f"scheduled run of '{pipeline_name}'"
+                                    )
+                            except Exception as trigger_err:
+                                logging.error(
+                                    f"Failed to trigger scheduled pipeline "
+                                    f"'{pipeline_name}': {trigger_err}"
+                                )
+
                 # Cleanup old pipeline runs
                 self._cleanup_old_runs()
-                
+
                 time.sleep(60)  # Check every minute
-                
+
             except Exception as e:
                 logging.error(f"Scheduler error: {e}")
                 time.sleep(60)
@@ -1522,17 +1565,52 @@ class QuantumCICDManager:
     def _cleanup_old_runs(self):
         """Clean up old pipeline runs."""
         cutoff_time = time.time() - (7 * 24 * 3600)  # 7 days
-        
+
         initial_count = len(self.pipeline_engine.completed_pipelines)
         self.pipeline_engine.completed_pipelines = [
             run for run in self.pipeline_engine.completed_pipelines
             if run.started_at > cutoff_time
         ]
-        
+
         cleaned_count = initial_count - len(self.pipeline_engine.completed_pipelines)
         if cleaned_count > 0:
             logging.info(f"Cleaned up {cleaned_count} old pipeline runs")
-    
+
+    def _evaluate_trigger(self, trigger: str, now: datetime) -> bool:
+        """Return True if *now* matches the 5-field cron-style trigger string.
+
+        Field order: minute hour day_of_month month day_of_week.
+        Supported patterns per field:
+          *       — any value
+          */n     — every n-th value (value % n == 0)
+          N       — exact integer match
+        Note: day_of_week uses Python's weekday() convention (Monday=0, Sunday=6).
+        """
+        parts = trigger.split()
+        if len(parts) != 5:
+            return False
+
+        fields = [now.minute, now.hour, now.day, now.month, now.weekday()]
+
+        for pattern, value in zip(parts, fields):
+            if pattern == '*':
+                continue
+            if pattern.startswith('*/'):
+                try:
+                    step = int(pattern[2:])
+                    if step < 1 or value % step != 0:
+                        return False
+                except ValueError:
+                    return False
+            else:
+                try:
+                    if int(pattern) != value:
+                        return False
+                except ValueError:
+                    return False
+
+        return True
+
     def start_dashboard(self, port: int = 8080):
         """Start the CI/CD dashboard."""
         self.dashboard.port = port

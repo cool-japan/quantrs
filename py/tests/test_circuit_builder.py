@@ -1012,5 +1012,104 @@ class TestCircuitBuilderIntegration:
         assert len(info['elements']) == 100
 
 
+@pytest.mark.skipif(not HAS_CIRCUIT_BUILDER, reason="circuit_builder module not available")
+class TestQasmRoundTrip:
+    """Tests for QASM import via load_circuit (stub 4b)."""
+
+    def _make_builder(self):
+        return CircuitBuilder(MockCircuitBackend())
+
+    def test_qasm_round_trip_gate_count(self):
+        """Build a circuit, export QASM, reimport, and verify gate count is preserved."""
+        builder = self._make_builder()
+        orig_id = builder.create_circuit(2)
+        builder.add_gate('h', [0], circuit_id=orig_id)
+        builder.add_gate('x', [1], circuit_id=orig_id)
+        builder.add_gate('cnot', [0, 1], circuit_id=orig_id)
+
+        orig_info = builder.get_circuit_info(orig_id)
+        orig_gate_count = orig_info['gate_count']
+
+        qasm_str = builder.export_circuit("qasm", orig_id)
+        assert "OPENQASM" in qasm_str
+
+        with tempfile.NamedTemporaryFile(
+            suffix='.qasm', mode='w', delete=False
+        ) as f:
+            f.write(qasm_str)
+            tmp_path = Path(f.name)
+
+        try:
+            loaded_id = builder.load_circuit(tmp_path)
+            assert loaded_id is not None, "load_circuit returned None — QASM import failed"
+
+            loaded_info = builder.get_circuit_info(loaded_id)
+            assert loaded_info is not None
+            assert loaded_info['gate_count'] == orig_gate_count
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    def test_qasm_round_trip_rotation_gates(self):
+        """Round-trip with parameterised rotation gates (rx, ry, rz)."""
+        builder = self._make_builder()
+        orig_id = builder.create_circuit(1)
+        builder.add_gate('rx', [0], params=[0.5], circuit_id=orig_id)
+        builder.add_gate('ry', [0], params=[1.0], circuit_id=orig_id)
+        builder.add_gate('rz', [0], params=[1.5], circuit_id=orig_id)
+
+        qasm_str = builder.export_circuit("qasm", orig_id)
+
+        with tempfile.NamedTemporaryFile(
+            suffix='.qasm', mode='w', delete=False
+        ) as f:
+            f.write(qasm_str)
+            tmp_path = Path(f.name)
+
+        try:
+            loaded_id = builder.load_circuit(tmp_path)
+            assert loaded_id is not None
+            loaded_info = builder.get_circuit_info(loaded_id)
+            assert loaded_info['gate_count'] == 3
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    def test_qasm_import_preserves_qubit_count(self):
+        """Imported circuit has same number of qubits as original."""
+        builder = self._make_builder()
+        orig_id = builder.create_circuit(4)
+        builder.add_gate('h', [0], circuit_id=orig_id)
+
+        qasm_str = builder.export_circuit("qasm", orig_id)
+
+        with tempfile.NamedTemporaryFile(
+            suffix='.qasm', mode='w', delete=False
+        ) as f:
+            f.write(qasm_str)
+            tmp_path = Path(f.name)
+
+        try:
+            loaded_id = builder.load_circuit(tmp_path)
+            assert loaded_id is not None
+            loaded_info = builder.get_circuit_info(loaded_id)
+            assert loaded_info['n_qubits'] == 4
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    def test_qasm_load_returns_none_on_missing_qreg(self):
+        """load_circuit returns None when file content lacks a qreg definition."""
+        builder = self._make_builder()
+        with tempfile.NamedTemporaryFile(
+            suffix='.qasm', mode='w', delete=False
+        ) as f:
+            f.write("OPENQASM 2.0;\ninclude \"qelib1.inc\";\n")
+            tmp_path = Path(f.name)
+
+        try:
+            result = builder.load_circuit(tmp_path)
+            assert result is None
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+
 if __name__ == "__main__":
     pytest.main([__file__])
