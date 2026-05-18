@@ -30,6 +30,7 @@
 - [x] Build fix — removed broken `serialization` feature from scirs2-core (was pulling oxiarc-lz4/zstd 0.2.8 with unresolved import paths against oxiarc-core 0.3.0 API).
 - [x] CIM noise injection (2026-05-18) — replaced hardcoded `Complex64::new(0.0, 0.0)` noise at `coherent_ising_machine.rs:172` with Euler-Maruyama Gaussian increments via existing `scirs2_core::random::RandNormal`. Seeded from `self.seed`; deterministic replay guaranteed. Added 4 tests in `tytan/tests/cim_noise_tests.rs`.
 - [x] HOBO 3/4-body outer-loop parallelization (2026-05-18) — added `into_par_iter` outer loop to `hobo_energy_full_3body` (threshold n≥32) and `hobo_energy_full_4body` (threshold n≥16) in `energy.rs`. Scalar fallback for small n avoids rayon spawn overhead. FP accumulation tolerance 1e-7 (3body n=64) / 1e-9 (4body n=16). 2 new tests added.
+- [x] Hardware HOBO support via Rosenberg quadratization (2026-05-18) — added `hobo_to_qubo` to `energy.rs`: Rosenberg substitution y_{ij}=x_i*x_j with penalty P=(1+max|T|)*n; builds extended var_map with `_aux_i_j` entries. All four hardware samplers (FPGA, NEC, Hitachi, Fujitsu) now call `hobo_to_qubo` + `run_qubo` and strip auxiliary variable keys from results.
 
 ## Proposed follow-ups
 

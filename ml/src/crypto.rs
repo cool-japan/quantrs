@@ -110,12 +110,8 @@ impl QuantumKeyDistribution {
             ProtocolType::BB84 => self.bb84_protocol(),
             ProtocolType::E91 => self.e91_protocol(),
             ProtocolType::B92 => self.b92_protocol(),
-            ProtocolType::BBM92 => Err(MLError::NotImplemented(
-                "BBM92 protocol not implemented yet".to_string(),
-            )),
-            ProtocolType::SARG04 => Err(MLError::NotImplemented(
-                "SARG04 protocol not implemented yet".to_string(),
-            )),
+            ProtocolType::BBM92 => self.bbm92_protocol(),
+            ProtocolType::SARG04 => self.sarg04_protocol(),
         }
     }
 
@@ -230,6 +226,100 @@ impl QuantumKeyDistribution {
         self.alice.key = Some(key_bytes.clone());
         self.bob.key = Some(key_bytes);
 
+        Ok(key_length)
+    }
+
+    /// BBM92 protocol (Bennett-Brassard-Mermin 1992) — entanglement-based QKD.
+    ///
+    /// Alice and Bob share EPR pairs; each measures independently in a randomly
+    /// chosen basis (Z or X). Bases are compared classically; matching positions
+    /// yield perfectly anti-correlated raw key bits (Alice flips hers). Retention
+    /// rate ≈ 50% (same as BB84) because each measurement in the Z/X basis is
+    /// equally likely to match the other party's choice.
+    fn bbm92_protocol(&mut self) -> Result<usize> {
+        let mut rng = thread_rng();
+
+        // Simulate entangled pair measurements: both choose basis 0 (Z) or 1 (X).
+        let alice_bases: Vec<usize> = (0..self.num_qubits)
+            .map(|_| if rng.random::<f64>() > 0.5 { 1 } else { 0 })
+            .collect();
+        let bob_bases: Vec<usize> = (0..self.num_qubits)
+            .map(|_| if rng.random::<f64>() > 0.5 { 1 } else { 0 })
+            .collect();
+
+        // Alice measures her qubit; bob's result is anti-correlated in matching basis.
+        let alice_bits: Vec<u8> = (0..self.num_qubits)
+            .map(|_| if rng.random::<f64>() > 0.5 { 1 } else { 0 })
+            .collect();
+
+        // Sifting: keep positions where bases agree.
+        let sifted_indices: Vec<usize> = (0..self.num_qubits)
+            .filter(|&i| alice_bases[i] == bob_bases[i])
+            .collect();
+        let key_length = sifted_indices.len();
+
+        // Build raw key bytes from sifted bits.
+        let key_bytes: Vec<u8> = sifted_indices
+            .chunks(8)
+            .map(|chunk| {
+                chunk
+                    .iter()
+                    .enumerate()
+                    .fold(0u8, |acc, (bit_pos, &idx)| acc | (alice_bits[idx] << bit_pos))
+            })
+            .collect();
+
+        self.alice.key = Some(key_bytes.clone());
+        // Bob's key is identical after anti-correlation flip (Alice pre-flips hers).
+        self.bob.key = Some(key_bytes);
+        Ok(key_length)
+    }
+
+    /// SARG04 protocol (Scarani-Acin-Ribordy-Gisin 2004).
+    ///
+    /// SARG04 is a BB84 variant with modified sifting: Alice announces one of two
+    /// non-orthogonal state pairs to reveal her bit, making photon-number-splitting
+    /// attacks harder. Retention rate ≈ 25% (half that of BB84) because Bob's
+    /// conclusive unambiguous-state-discrimination succeeds only when his measurement
+    /// basis matches the natural eigenbasis of the announced pair.
+    fn sarg04_protocol(&mut self) -> Result<usize> {
+        let mut rng = thread_rng();
+
+        // Alice chooses random bits and random bases.
+        let alice_bits: Vec<u8> = (0..self.num_qubits)
+            .map(|_| if rng.random::<f64>() > 0.5 { 1 } else { 0 })
+            .collect();
+        let alice_bases: Vec<usize> = (0..self.num_qubits)
+            .map(|_| if rng.random::<f64>() > 0.5 { 1 } else { 0 })
+            .collect();
+
+        // Bob measures in a random basis; he succeeds (gets conclusive result)
+        // with probability 1/2 (USD strategy on a 2-state ensemble).
+        let bob_conclusive: Vec<bool> = (0..self.num_qubits)
+            .map(|_| rng.random::<f64>() > 0.5)
+            .collect();
+
+        // Only conclusive Bob measurements where bases align produce key bits.
+        let bob_bases: Vec<usize> = (0..self.num_qubits)
+            .map(|_| if rng.random::<f64>() > 0.5 { 1 } else { 0 })
+            .collect();
+        let sifted_indices: Vec<usize> = (0..self.num_qubits)
+            .filter(|&i| bob_conclusive[i] && alice_bases[i] == bob_bases[i])
+            .collect();
+        let key_length = sifted_indices.len();
+
+        let key_bytes: Vec<u8> = sifted_indices
+            .chunks(8)
+            .map(|chunk| {
+                chunk
+                    .iter()
+                    .enumerate()
+                    .fold(0u8, |acc, (bit_pos, &idx)| acc | (alice_bits[idx] << bit_pos))
+            })
+            .collect();
+
+        self.alice.key = Some(key_bytes.clone());
+        self.bob.key = Some(key_bytes);
         Ok(key_length)
     }
 

@@ -376,22 +376,46 @@ impl EnhancedNoiseCharacterizer {
         }
     }
 
-    /// Calculate error bars
-    pub(super) const fn calculate_error_bars(_survival_prob: f64, _shots: usize) -> f64 {
-        // Stub implementation using standard error
-        0.01 // placeholder
+    /// Calculate error bars using Wald 95% confidence interval half-width for binomial proportion.
+    pub(super) fn calculate_error_bars(survival_prob: f64, shots: usize) -> f64 {
+        if shots == 0 {
+            return 1.0;
+        }
+        let p = survival_prob.clamp(0.0, 1.0);
+        // Wald 95% CI half-width: z * sqrt(p*(1-p)/n)
+        1.96 * (p * (1.0 - p) / shots as f64).sqrt()
     }
 
-    /// Calculate fit confidence interval
-    pub(super) const fn calculate_fit_confidence_interval(
-        _x: &[f64],
-        _y: &[f64],
-        _a: f64,
-        _p: f64,
-        _b: f64,
+    /// Calculate fit confidence interval for exponential decay f(x) = a * p^x + b.
+    ///
+    /// Returns a 95% CI `(lower, upper)` for the decay constant `p` based on
+    /// the residual standard error of the fit across all provided data points.
+    pub(super) fn calculate_fit_confidence_interval(
+        x: &[f64],
+        y: &[f64],
+        a: f64,
+        p: f64,
+        b: f64,
     ) -> QuantRS2Result<(f64, f64)> {
-        // Stub implementation
-        Ok((0.0, 1.0)) // placeholder
+        if x.len() != y.len() || x.is_empty() {
+            return Ok((0.0, 1.0));
+        }
+        let n = x.len() as f64;
+        // Sum of squared residuals from the exponential decay model
+        let sse: f64 = x
+            .iter()
+            .zip(y.iter())
+            .map(|(&xi, &yi)| {
+                let predicted = a * p.powf(xi) + b;
+                (yi - predicted).powi(2)
+            })
+            .sum();
+        // 3 free parameters: a, p, b
+        let degrees_of_freedom = (n - 3.0_f64).max(1.0);
+        let s = (sse / degrees_of_freedom).sqrt();
+        // 95% CI half-width centred on the estimated decay constant p
+        let half_width = 1.96 * s;
+        Ok((p - half_width, p + half_width))
     }
 
     /// Calculate survival probability from RB results

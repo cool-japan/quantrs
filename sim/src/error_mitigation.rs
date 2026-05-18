@@ -195,14 +195,37 @@ impl ZeroNoiseExtrapolation {
             )));
         }
 
-        // Simple polynomial fit using least squares
-        // For now, use Richardson for degree 2, linear for degree 1
+        // Polynomial fit via Lagrange interpolation evaluated at x=0.
+        // Uses the first (degree+1) points. For degree ≤ 2, delegates to the
+        // specialised implementations; for degree ≥ 3, applies generic Lagrange.
         match degree {
             1 => self.linear_extrapolation(values, scales),
             2 => self.richardson_extrapolation(values, scales),
-            _ => Err(SimulatorError::NotImplemented(
-                "Polynomial degree > 2 not yet implemented".to_string(),
-            )),
+            _ => {
+                // Generic Lagrange interpolation at x=0 using (degree+1) points.
+                // L(0) = Σ_i y_i * Π_{j≠i} (0 - x_j) / (x_i - x_j)
+                let n_pts = degree + 1;
+                let xs = &scales[..n_pts];
+                let ys = &values[..n_pts];
+                let mut result = 0.0_f64;
+                for i in 0..n_pts {
+                    let mut num = 1.0_f64;
+                    let mut den = 1.0_f64;
+                    for j in 0..n_pts {
+                        if j != i {
+                            num *= -xs[j];
+                            den *= xs[i] - xs[j];
+                        }
+                    }
+                    if den.abs() < 1e-15 {
+                        return Err(SimulatorError::InvalidInput(
+                            "Degenerate scale factors — cannot form stable Lagrange basis".to_string(),
+                        ));
+                    }
+                    result += ys[i] * num / den;
+                }
+                Ok(result)
+            }
         }
     }
 

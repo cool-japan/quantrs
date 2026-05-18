@@ -756,6 +756,132 @@ fn hobo_influence_at(state: &[bool], tensor: &ArrayD<f64>, k: usize) -> f64 {
     g_k
 }
 
+/// Rosenberg quadratization: reduce a 3-body PUBO tensor to QUBO by introducing
+/// one auxiliary binary variable y_{ij} = x_i * x_j for each pair (i,j) that
+/// participates in at least one non-zero 3-body term.
+///
+/// Returns `(qubo_matrix, extended_var_map)` where `qubo_matrix` is upper-triangular
+/// with shape `(n + n_aux) × (n + n_aux)` and `extended_var_map` appends auxiliary
+/// variable names `"_aux_{i}_{j}"` to the original map.
+///
+/// # Errors
+/// Returns a string error if the tensor is not 3-dimensional or is not cubic.
+pub fn hobo_to_qubo(
+    tensor: &ArrayD<f64>,
+    var_map: &HashMap<String, usize>,
+) -> Result<(Array2<f64>, HashMap<String, usize>), String> {
+    let ndim = tensor.ndim();
+    if ndim == 2 {
+        let q = tensor
+            .view()
+            .into_dimensionality::<scirs2_core::ndarray::Ix2>()
+            .map_err(|e| format!("QUBO conversion: {e}"))?
+            .to_owned();
+        return Ok((q, var_map.clone()));
+    }
+    if ndim != 3 {
+        return Err(format!(
+            "hobo_to_qubo: only 2D and 3D tensors are supported, got {ndim}D"
+        ));
+    }
+    let shape = tensor.shape();
+    let n = shape[0];
+    if shape[1] != n || shape[2] != n {
+        return Err(format!(
+            "hobo_to_qubo: tensor must be cubic, got {shape:?}"
+        ));
+    }
+
+    // Enumerate pairs (i < j) that appear in any non-zero 3-body term.
+    let mut pair_to_aux: HashMap<(usize, usize), usize> = HashMap::new();
+    for i in 0..n {
+        for j in (i + 1)..n {
+            for k in (j + 1)..n {
+                if tensor[[i, j, k]].abs() > 1e-15
+                    || tensor[[i, k, j]].abs() > 1e-15
+                    || tensor[[j, i, k]].abs() > 1e-15
+                    || tensor[[j, k, i]].abs() > 1e-15
+                    || tensor[[k, i, j]].abs() > 1e-15
+                    || tensor[[k, j, i]].abs() > 1e-15
+                {
+                    // Register all pairs that participate.
+                    for &(a, b) in &[(i, j), (i, k), (j, k)] {
+                        let count = pair_to_aux.len();
+                        pair_to_aux.entry((a, b)).or_insert(n + count);
+                    }
+                }
+            }
+        }
+    }
+    let n_aux = pair_to_aux.len();
+    let n_total = n + n_aux;
+
+    // Penalty strength: 1 + max coefficient magnitude (scaled by problem size).
+    let max_coeff = tensor
+        .iter()
+        .fold(0.0_f64, |m, &v| if v.abs() > m { v.abs() } else { m });
+    let penalty = (1.0 + max_coeff) * (n as f64);
+
+    let mut q = Array2::<f64>::zeros((n_total, n_total));
+
+    // (A) Diagonal 2-body part of the input tensor (tensor[[i,i,*]] not meaningful for HOBO,
+    //     but handle the case where ndim==2 was not caught above).
+    // Nothing to do here for a pure 3-body tensor.
+
+    // (B) Auxiliary variable penalties: for each pair (i<j) with aux variable y = x_i * x_j
+    //     the Rosenberg penalty Δ = P*(3y + x_i*x_j − 2*x_i*y − 2*x_j*y) contributes:
+    //       Q[y,y]   += 3P    (linear on y, encoded on diagonal)
+    //       Q[i,j]   += P     (quadratic x_i*x_j)
+    //       Q[i,y]   -= 2P    (upper-tri: min(i,y) row, max col)
+    //       Q[j,y]   -= 2P
+    for (&(i, j), &y) in &pair_to_aux {
+        q[[y, y]] += 3.0 * penalty;
+        // Upper-tri convention: put Q[a,b] with a <= b.
+        let (r, c) = if i <= j { (i, j) } else { (j, i) };
+        q[[r, c]] += penalty;
+        let (r2, c2) = if i <= y { (i, y) } else { (y, i) };
+        q[[r2, c2]] -= 2.0 * penalty;
+        let (r3, c3) = if j <= y { (j, y) } else { (y, j) };
+        q[[r3, c3]] -= 2.0 * penalty;
+    }
+
+    // (C) 3-body terms → quadratic terms involving auxiliaries.
+    //     For T[i,j,k] * x_i * x_j * x_k (with all six permutations summed to the
+    //     canonical upper-tri entry), collect coefficient T_sym and use each pair:
+    //       T_sym * x_i * x_j * x_k = T_sym/3 * (y_{ij}*x_k + y_{ik}*x_j + y_{jk}*x_i)
+    for i in 0..n {
+        for j in (i + 1)..n {
+            for k in (j + 1)..n {
+                // Symmetrised coefficient (sum all 6 permutations).
+                let t_sym = tensor[[i, j, k]]
+                    + tensor[[i, k, j]]
+                    + tensor[[j, i, k]]
+                    + tensor[[j, k, i]]
+                    + tensor[[k, i, j]]
+                    + tensor[[k, j, i]];
+                if t_sym.abs() < 1e-15 {
+                    continue;
+                }
+                let t_third = t_sym / 3.0;
+                for &(a, b, c) in &[(i, j, k), (i, k, j), (j, k, i)] {
+                    if let Some(&y_ab) = pair_to_aux.get(&(a, b)) {
+                        let (r, col) = if y_ab <= c { (y_ab, c) } else { (c, y_ab) };
+                        q[[r, col]] += t_third;
+                    }
+                }
+            }
+        }
+    }
+
+    // Build extended var_map.
+    let mut ext_map = var_map.clone();
+    for (&(i, j), &aux_idx) in &pair_to_aux {
+        ext_map.insert(format!("_aux_{i}_{j}"), aux_idx);
+    }
+
+    Ok((q, ext_map))
+}
+
 #[cfg(test)]
 #[allow(
     clippy::unreadable_literal,

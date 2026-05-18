@@ -59,7 +59,8 @@ impl StimCircuit {
     /// Parse from Stim format string
     pub fn from_str(s: &str) -> Result<Self> {
         let mut circuit = Self::new();
-        for (line_num, line) in s.lines().enumerate() {
+        let mut lines_iter = s.lines().enumerate().peekable();
+        while let Some((line_num, line)) = lines_iter.next() {
             let line = line.trim();
             if line.is_empty() {
                 continue;
@@ -67,6 +68,35 @@ impl StimCircuit {
             if let Some(stripped) = line.strip_prefix('#') {
                 circuit.metadata.push(stripped.trim().to_string());
                 circuit.add_instruction(StimInstruction::Comment(stripped.trim().to_string()));
+                continue;
+            }
+            // Detect REPEAT blocks: `REPEAT N {` starts a multi-line block.
+            let upper = line.to_uppercase();
+            if upper.starts_with("REPEAT") {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                let count = parts
+                    .get(1)
+                    .and_then(|s| s.trim_end_matches('{').trim().parse::<usize>().ok())
+                    .unwrap_or(1);
+                // Collect body lines until the matching `}`.
+                let mut body_lines: Vec<String> = Vec::new();
+                for (_, body_line) in lines_iter.by_ref() {
+                    let bline = body_line.trim();
+                    if bline == "}" {
+                        break;
+                    }
+                    body_lines.push(bline.to_string());
+                }
+                let body_str = body_lines.join("\n");
+                let inner = Self::from_str(&body_str)?;
+                circuit.add_instruction(StimInstruction::Repeat {
+                    count,
+                    instructions: inner.instructions,
+                });
+                continue;
+            }
+            // Closing brace lines are consumed inside REPEAT handling above; skip any stray ones.
+            if line == "}" {
                 continue;
             }
             match parse_instruction(line) {
