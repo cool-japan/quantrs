@@ -49,7 +49,10 @@ impl MLCompilationOptimizer {
     /// When the strategy carries no explicit transformations (e.g., the model
     /// is a placeholder and returns an empty list), all four transforms are
     /// applied in a canonical order so this path is never a no-op.
-    fn apply_ml_optimizations(ir: &QuantumIR, strategy: &MLOptimizationStrategy) -> QuantRS2Result<QuantumIR> {
+    fn apply_ml_optimizations(
+        ir: &QuantumIR,
+        strategy: &MLOptimizationStrategy,
+    ) -> QuantRS2Result<QuantumIR> {
         if strategy.transformations.is_empty() {
             // Fallback: apply all transforms in canonical order.
             let ir = Self::apply_rotation_merging_transform(ir)?;
@@ -63,7 +66,9 @@ impl MLCompilationOptimizer {
         for transform in &strategy.transformations {
             current = match transform.transform_type {
                 TransformationType::GateFusion => Self::apply_gate_fusion_transform(&current)?,
-                TransformationType::RotationMerging => Self::apply_rotation_merging_transform(&current)?,
+                TransformationType::RotationMerging => {
+                    Self::apply_rotation_merging_transform(&current)?
+                }
                 TransformationType::Commutation => Self::apply_commutation_transform(&current)?,
                 TransformationType::Decomposition => Self::apply_decomposition_transform(&current)?,
             };
@@ -125,9 +130,7 @@ impl MLCompilationOptimizer {
         for op in ops {
             let merged = if let Some(last) = result.last_mut() {
                 // Only merge if both are single-qubit gates on the same single qubit.
-                if last.qubits.len() == 1
-                    && op.qubits.len() == 1
-                    && last.qubits[0] == op.qubits[0]
+                if last.qubits.len() == 1 && op.qubits.len() == 1 && last.qubits[0] == op.qubits[0]
                 {
                     Self::try_merge_rotations(&last.operation_type, &op.operation_type)
                 } else {
@@ -140,8 +143,9 @@ impl MLCompilationOptimizer {
             match merged {
                 Some(Some(merged_type)) => {
                     // Replace the last operation with the merged gate.
-                    let last = result.last_mut()
-                        .ok_or_else(|| QuantRS2Error::RuntimeError("Internal merge error".to_string()))?;
+                    let last = result.last_mut().ok_or_else(|| {
+                        QuantRS2Error::RuntimeError("Internal merge error".to_string())
+                    })?;
                     last.operation_type = merged_type;
                 }
                 Some(None) => {
@@ -229,12 +233,11 @@ impl MLCompilationOptimizer {
 
         for op in ops {
             let action = if let Some(last) = result.last() {
-                if last.qubits.len() == 1
-                    && op.qubits.len() == 1
-                    && last.qubits[0] == op.qubits[0]
+                if last.qubits.len() == 1 && op.qubits.len() == 1 && last.qubits[0] == op.qubits[0]
                 {
                     // Try rotation merge first.
-                    let rotation_merge = Self::try_merge_rotations(&last.operation_type, &op.operation_type);
+                    let rotation_merge =
+                        Self::try_merge_rotations(&last.operation_type, &op.operation_type);
                     if rotation_merge.is_some() {
                         rotation_merge.map(|inner| ("rotation", inner))
                     } else {
@@ -251,8 +254,9 @@ impl MLCompilationOptimizer {
 
             match action {
                 Some(("rotation", Some(merged_type))) => {
-                    let last = result.last_mut()
-                        .ok_or_else(|| QuantRS2Error::RuntimeError("Internal fusion error".to_string()))?;
+                    let last = result.last_mut().ok_or_else(|| {
+                        QuantRS2Error::RuntimeError("Internal fusion error".to_string())
+                    })?;
                     last.operation_type = merged_type;
                 }
                 Some((_, None)) => {
@@ -730,7 +734,11 @@ mod tests {
             ],
         );
         let result = MLCompilationOptimizer::apply_rotation_merging_transform(&ir).unwrap();
-        assert_eq!(result.operations.len(), 1, "two RX gates should merge to one");
+        assert_eq!(
+            result.operations.len(),
+            1,
+            "two RX gates should merge to one"
+        );
         match &result.operations[0].operation_type {
             IROperationType::Gate(IRGate::RX(angle)) => {
                 let expected = (0.5f64 + 0.3).rem_euclid(2.0 * std::f64::consts::PI);
@@ -932,10 +940,7 @@ mod tests {
     fn test_decomposition_non_compound_passes_through() {
         let ir = build_ir(
             1,
-            vec![
-                single_gate(IRGate::H, 0),
-                single_gate(IRGate::RX(1.0), 0),
-            ],
+            vec![single_gate(IRGate::H, 0), single_gate(IRGate::RX(1.0), 0)],
         );
         let result = MLCompilationOptimizer::apply_decomposition_transform(&ir).unwrap();
         assert_eq!(

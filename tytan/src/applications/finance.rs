@@ -1298,7 +1298,9 @@ mod tests {
     #[test]
     fn test_risk_parity_qubo_shape() {
         let opt = make_3asset_optimizer(OptimizationMethod::RiskParity);
-        let (qubo, var_map) = opt.build_qubo(3).expect("risk parity build_qubo should succeed");
+        let (qubo, var_map) = opt
+            .build_qubo(3)
+            .expect("risk parity build_qubo should succeed");
         assert!(!var_map.is_empty(), "var_map should be non-empty");
         assert!(!qubo.iter().all(|&v| v == 0.0), "QUBO should be non-zero");
         // Symmetry check on off-diagonal blocks
@@ -1320,10 +1322,12 @@ mod tests {
             view_expectations: scirs2_core::ndarray::Array1::zeros(0),
             view_confidence: Array2::zeros((0, 0)),
         };
-        let opt =
-            make_3asset_optimizer(OptimizationMethod::BlackLitterman { views });
+        let opt = make_3asset_optimizer(OptimizationMethod::BlackLitterman { views });
         let result = opt.build_qubo(3);
-        assert!(result.is_ok(), "black-litterman with empty views should succeed");
+        assert!(
+            result.is_ok(),
+            "black-litterman with empty views should succeed"
+        );
         let (qubo, var_map) = result.expect("expected Ok");
         assert!(!var_map.is_empty());
         assert_eq!(qubo.shape(), [9, 9]);
@@ -1332,7 +1336,9 @@ mod tests {
     #[test]
     fn test_kelly_criterion_qubo() {
         let opt = make_3asset_optimizer(OptimizationMethod::KellyCriterion);
-        let (qubo, var_map) = opt.build_qubo(3).expect("kelly criterion build_qubo should succeed");
+        let (qubo, var_map) = opt
+            .build_qubo(3)
+            .expect("kelly criterion build_qubo should succeed");
         assert!(!var_map.is_empty());
         assert!(!qubo.iter().all(|&v| v == 0.0), "QUBO should be non-zero");
     }

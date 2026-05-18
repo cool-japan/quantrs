@@ -39,6 +39,7 @@
 //! implementations.
 
 use scirs2_core::ndarray::{Array2, ArrayD, ArrayView3, ArrayView4, Dimension, Ix3, Ix4, IxDyn};
+use scirs2_core::parallel_ops::*;
 use std::collections::HashMap;
 
 /// Build a dense n×n Q matrix (flat row-major) from a sparse edge list.
@@ -327,25 +328,55 @@ pub fn hobo_energy_full(state: &[bool], tensor: &ArrayD<f64>) -> f64 {
 ///
 /// * `state` – binary state vector of length `n`
 /// * `tensor` – 3-dimensional coefficient tensor; each axis must have length `n`
+/// Minimum number of variables before spawning rayon tasks for 3-body energy.
+///
+/// Below this threshold the scalar path avoids thread-spawn overhead; above it
+/// each active outer index `i` is evaluated by a separate rayon work item.
+const HOBO_3BODY_PARALLEL_THRESHOLD: usize = 32;
+
 pub fn hobo_energy_full_3body(state: &[bool], tensor: ArrayView3<f64>) -> f64 {
     let n = tensor.dim().0;
-    let mut energy = 0.0f64;
-    for i in 0..n {
-        if !state[i] {
-            continue;
-        }
-        for j in 0..n {
-            if !state[j] {
+    if n >= HOBO_3BODY_PARALLEL_THRESHOLD {
+        // Parallel outer loop: each active i contributes independently.
+        // ArrayView3<f64> and &[bool] are both Sync, so closures are Send.
+        (0..n)
+            .into_par_iter()
+            .filter(|&i| state[i])
+            .map(|i| {
+                let mut partial = 0.0f64;
+                for j in 0..n {
+                    if !state[j] {
+                        continue;
+                    }
+                    for l in 0..n {
+                        if state[l] {
+                            partial += tensor[[i, j, l]];
+                        }
+                    }
+                }
+                partial
+            })
+            .sum()
+    } else {
+        // Scalar path for small n — avoids rayon spawn overhead.
+        let mut energy = 0.0f64;
+        for i in 0..n {
+            if !state[i] {
                 continue;
             }
-            for l in 0..n {
-                if state[l] {
-                    energy += tensor[[i, j, l]];
+            for j in 0..n {
+                if !state[j] {
+                    continue;
+                }
+                for l in 0..n {
+                    if state[l] {
+                        energy += tensor[[i, j, l]];
+                    }
                 }
             }
         }
+        energy
     }
-    energy
 }
 
 /// Compute the full HOBO energy for a 4-body (order-4) tensor.
@@ -357,30 +388,64 @@ pub fn hobo_energy_full_3body(state: &[bool], tensor: ArrayView3<f64>) -> f64 {
 ///
 /// * `state` – binary state vector of length `n`
 /// * `tensor` – 4-dimensional coefficient tensor; each axis must have length `n`
+/// Minimum number of variables before spawning rayon tasks for 4-body energy.
+///
+/// Each outer work item is O(n³), so n ≥ 16 is worthwhile even with spawn cost.
+const HOBO_4BODY_PARALLEL_THRESHOLD: usize = 16;
+
 pub fn hobo_energy_full_4body(state: &[bool], tensor: ArrayView4<f64>) -> f64 {
     let n = tensor.dim().0;
-    let mut energy = 0.0f64;
-    for i in 0..n {
-        if !state[i] {
-            continue;
-        }
-        for j in 0..n {
-            if !state[j] {
+    if n >= HOBO_4BODY_PARALLEL_THRESHOLD {
+        // Parallel outer loop: each active i contributes independently.
+        // ArrayView4<f64> and &[bool] are both Sync, so closures are Send.
+        (0..n)
+            .into_par_iter()
+            .filter(|&i| state[i])
+            .map(|i| {
+                let mut partial = 0.0f64;
+                for j in 0..n {
+                    if !state[j] {
+                        continue;
+                    }
+                    for l in 0..n {
+                        if !state[l] {
+                            continue;
+                        }
+                        for m in 0..n {
+                            if state[m] {
+                                partial += tensor[[i, j, l, m]];
+                            }
+                        }
+                    }
+                }
+                partial
+            })
+            .sum()
+    } else {
+        // Scalar path for small n — avoids rayon spawn overhead.
+        let mut energy = 0.0f64;
+        for i in 0..n {
+            if !state[i] {
                 continue;
             }
-            for l in 0..n {
-                if !state[l] {
+            for j in 0..n {
+                if !state[j] {
                     continue;
                 }
-                for m in 0..n {
-                    if state[m] {
-                        energy += tensor[[i, j, l, m]];
+                for l in 0..n {
+                    if !state[l] {
+                        continue;
+                    }
+                    for m in 0..n {
+                        if state[m] {
+                            energy += tensor[[i, j, l, m]];
+                        }
                     }
                 }
             }
         }
+        energy
     }
-    energy
 }
 
 /// Compute the full HOBO energy, dispatching to the most efficient implementation.

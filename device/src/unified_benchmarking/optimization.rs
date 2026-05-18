@@ -126,7 +126,10 @@ mod tests {
     #[test]
     fn test_new_engine_has_empty_history() {
         let engine = OptimizationEngine::new();
-        assert!(engine.history().is_empty(), "new engine must have empty history");
+        assert!(
+            engine.history().is_empty(),
+            "new engine must have empty history"
+        );
     }
 
     #[test]

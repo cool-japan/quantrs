@@ -194,7 +194,10 @@ impl ReportGenerator {
         );
         for (platform, pr) in &result.platform_results {
             let m = &pr.performance_metrics;
-            table_md.push_str(&Self::generate_markdown_table_row(&format!("{platform:?}"), m));
+            table_md.push_str(&Self::generate_markdown_table_row(
+                &format!("{platform:?}"),
+                m,
+            ));
         }
         sections.push(ReportSectionContent {
             section_id: "platform_summary".to_string(),
@@ -204,8 +207,9 @@ impl ReportGenerator {
         });
 
         // ── Section 3: cross-platform analysis ───────────────────────────────
-        let mut cpa_md =
-            String::from("## Cross-Platform Analysis\n\n| Platform | Composite Score |\n|---|---|\n");
+        let mut cpa_md = String::from(
+            "## Cross-Platform Analysis\n\n| Platform | Composite Score |\n|---|---|\n",
+        );
         for (label, score) in &result.cross_platform_analysis.platform_comparison {
             cpa_md.push_str(&format!("| {label} | {score:.4} |\n"));
         }
@@ -329,8 +333,14 @@ mod tests {
             availability: 0.995,
         };
         let row = ReportGenerator::generate_markdown_table_row("TestPlatform", &m);
-        assert!(row.contains("0.9900"), "row should contain formatted fidelity");
-        assert!(row.contains("TestPlatform"), "row should contain platform label");
+        assert!(
+            row.contains("0.9900"),
+            "row should contain formatted fidelity"
+        );
+        assert!(
+            row.contains("TestPlatform"),
+            "row should contain platform label"
+        );
     }
 
     #[test]
@@ -366,7 +376,13 @@ mod tests {
             },
         };
         let md = ReportGenerator::report_to_markdown(&report);
-        assert!(md.contains("Hello world"), "combined markdown must include section 1");
-        assert!(md.contains("Second part"), "combined markdown must include section 2");
+        assert!(
+            md.contains("Hello world"),
+            "combined markdown must include section 1"
+        );
+        assert!(
+            md.contains("Second part"),
+            "combined markdown must include section 2"
+        );
     }
 }

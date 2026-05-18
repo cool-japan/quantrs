@@ -1002,10 +1002,123 @@ impl QuantumInspiredFramework {
         })
     }
     /// Quantum differential evolution
-    pub(super) fn quantum_differential_evolution(&self) -> Result<OptimizationResult> {
-        Err(SimulatorError::NotImplemented(
-            "Quantum Differential Evolution not yet implemented".to_string(),
-        ))
+    pub(super) fn quantum_differential_evolution(&mut self) -> Result<OptimizationResult> {
+        let pop_size = self.config.algorithm_config.population_size.max(4);
+        let num_vars = self.config.num_variables;
+        let max_iterations = self.config.algorithm_config.max_iterations;
+        // F in DE literature: scale factor for the difference vector
+        let mutation_factor = 0.5_f64;
+        let crossover_rate = self.config.algorithm_config.crossover_rate;
+        let bounds = self.config.optimization_config.bounds.clone();
+        let quantum_params = self.config.algorithm_config.quantum_parameters.clone();
+
+        // Initialize population using quantum-inspired initialization
+        let mut population = self.initialize_quantum_population(pop_size, num_vars)?;
+        let mut fitness: Vec<f64> = Vec::with_capacity(pop_size);
+        let mut best_solution = population[0].clone();
+        let mut best_fitness = f64::INFINITY;
+
+        // Evaluate initial population fitness
+        for individual in &population {
+            let f = self.evaluate_objective(individual)?;
+            fitness.push(f);
+            self.state.runtime_stats.function_evaluations += 1;
+            if f < best_fitness {
+                best_fitness = f;
+                best_solution = individual.clone();
+            }
+        }
+
+        for iteration in 0..max_iterations {
+            self.state.iteration = iteration;
+
+            for i in 0..pop_size {
+                // Pick 3 distinct random indices r1, r2, r3, all != i
+                let mut rng = self.rng.lock().expect("RNG lock poisoned");
+                let mut indices: Vec<usize> = Vec::with_capacity(3);
+                let mut attempts = 0usize;
+                while indices.len() < 3 && attempts < 1000 {
+                    let idx = (rng.random::<f64>() * pop_size as f64) as usize % pop_size;
+                    if idx != i && !indices.contains(&idx) {
+                        indices.push(idx);
+                    }
+                    attempts += 1;
+                }
+                // Fallback if pop_size < 4: wrap with offset to ensure distinct-ish values
+                while indices.len() < 3 {
+                    let candidate = (i + indices.len() + 1) % pop_size;
+                    if !indices.contains(&candidate) {
+                        indices.push(candidate);
+                    } else {
+                        indices.push((candidate + 1) % pop_size);
+                    }
+                }
+                let (r1, r2, r3) = (indices[0], indices[1], indices[2]);
+
+                // Mutant vector: v = x_r1 + F * (x_r2 - x_r3)
+                let mut mutant = population[r1].clone();
+                for j in 0..num_vars {
+                    mutant[j] =
+                        mutation_factor.mul_add(population[r2][j] - population[r3][j], mutant[j]);
+                }
+
+                // Binomial crossover: trial inherits from mutant with rate CR,
+                // at least one dimension guaranteed (jrand)
+                let mut trial = population[i].clone();
+                let guaranteed_j = (rng.random::<f64>() * num_vars as f64) as usize % num_vars;
+                for j in 0..num_vars {
+                    if j == guaranteed_j || rng.random::<f64>() < crossover_rate {
+                        trial[j] = mutant[j];
+                    }
+                    // Quantum tunneling: probabilistic random reset to bypass local basins
+                    if rng.random::<f64>() < quantum_params.tunneling_probability {
+                        let (min_b, max_b) = if j < bounds.len() {
+                            bounds[j]
+                        } else {
+                            (-10.0, 10.0)
+                        };
+                        trial[j] = rng.random::<f64>().mul_add(max_b - min_b, min_b);
+                    }
+                    // Clamp to feasible bounds
+                    let (min_b, max_b) = if j < bounds.len() {
+                        bounds[j]
+                    } else {
+                        (-10.0, 10.0)
+                    };
+                    trial[j] = trial[j].clamp(min_b, max_b);
+                }
+                drop(rng);
+
+                // Greedy selection: replace parent only if trial is better
+                let trial_fitness = self.evaluate_objective(&trial)?;
+                self.state.runtime_stats.function_evaluations += 1;
+                if trial_fitness < fitness[i] {
+                    fitness[i] = trial_fitness;
+                    population[i] = trial;
+                    if trial_fitness < best_fitness {
+                        best_fitness = trial_fitness;
+                        best_solution = population[i].clone();
+                    }
+                }
+            }
+
+            self.state.best_objective = best_fitness;
+            self.state.best_solution = best_solution.clone();
+            self.state.convergence_history.push(best_fitness);
+
+            if self.check_convergence()? {
+                break;
+            }
+        }
+
+        Ok(OptimizationResult {
+            solution: best_solution,
+            objective_value: best_fitness,
+            iterations: self.state.iteration,
+            converged: self.check_convergence()?,
+            runtime_stats: self.state.runtime_stats.clone(),
+            metadata: HashMap::new(),
+        })
     }
     /// Classical QAOA simulation
     pub(super) fn classical_qaoa_simulation(&self) -> Result<OptimizationResult> {
@@ -1026,10 +1139,109 @@ impl QuantumInspiredFramework {
         ))
     }
     /// Quantum harmony search
-    pub(super) fn quantum_harmony_search(&self) -> Result<OptimizationResult> {
-        Err(SimulatorError::NotImplemented(
-            "Quantum Harmony Search not yet implemented".to_string(),
-        ))
+    pub(super) fn quantum_harmony_search(&mut self) -> Result<OptimizationResult> {
+        let hm_size = self.config.algorithm_config.population_size.max(5);
+        let num_vars = self.config.num_variables;
+        let max_iterations = self.config.algorithm_config.max_iterations;
+        // HMCR: probability of selecting from harmony memory (typical: 0.7–0.95)
+        let hmcr = 0.9_f64;
+        // PAR: probability of pitch adjustment when selected from memory (typical: 0.1–0.5)
+        let par = 0.3_f64;
+        let bounds = self.config.optimization_config.bounds.clone();
+        let quantum_params = self.config.algorithm_config.quantum_parameters.clone();
+
+        // Initialize harmony memory using quantum-inspired population initializer
+        let mut harmony_memory = self.initialize_quantum_population(hm_size, num_vars)?;
+        let mut hm_fitness: Vec<f64> = Vec::with_capacity(hm_size);
+        let mut best_solution = harmony_memory[0].clone();
+        let mut best_fitness = f64::INFINITY;
+
+        // Evaluate initial harmonies
+        for harmony in &harmony_memory {
+            let f = self.evaluate_objective(harmony)?;
+            hm_fitness.push(f);
+            self.state.runtime_stats.function_evaluations += 1;
+            if f < best_fitness {
+                best_fitness = f;
+                best_solution = harmony.clone();
+            }
+        }
+
+        for iteration in 0..max_iterations {
+            self.state.iteration = iteration;
+
+            // Improvise a new harmony vector
+            let mut new_harmony = Array1::zeros(num_vars);
+            let mut rng = self.rng.lock().expect("RNG lock poisoned");
+
+            for j in 0..num_vars {
+                let (min_b, max_b) = if j < bounds.len() {
+                    bounds[j]
+                } else {
+                    (-10.0, 10.0)
+                };
+
+                if rng.random::<f64>() < hmcr {
+                    // Memory consideration: borrow a value from a randomly chosen harmony
+                    let hm_idx = (rng.random::<f64>() * hm_size as f64) as usize % hm_size;
+                    new_harmony[j] = harmony_memory[hm_idx][j];
+
+                    // Pitch adjustment: perturb the recalled value within a bandwidth
+                    if rng.random::<f64>() < par {
+                        // Bandwidth proportional to 5% of the variable range
+                        let bw = 0.05 * (max_b - min_b);
+                        let perturbation = (rng.random::<f64>() - 0.5) * 2.0 * bw;
+                        new_harmony[j] = (new_harmony[j] + perturbation).clamp(min_b, max_b);
+                    }
+                } else {
+                    // Random selection: uniform draw within variable bounds
+                    new_harmony[j] = rng.random::<f64>().mul_add(max_b - min_b, min_b);
+                }
+
+                // Quantum tunneling: escape local optima by random reset
+                if rng.random::<f64>() < quantum_params.tunneling_probability {
+                    new_harmony[j] = rng.random::<f64>().mul_add(max_b - min_b, min_b);
+                }
+            }
+            drop(rng);
+
+            // Evaluate the improvised harmony
+            let new_fitness = self.evaluate_objective(&new_harmony)?;
+            self.state.runtime_stats.function_evaluations += 1;
+
+            // Update harmony memory: replace the worst harmony if the new one is better
+            if let Some((worst_idx, &worst_fitness)) = hm_fitness
+                .iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            {
+                if new_fitness < worst_fitness {
+                    hm_fitness[worst_idx] = new_fitness;
+                    harmony_memory[worst_idx] = new_harmony;
+                    if new_fitness < best_fitness {
+                        best_fitness = new_fitness;
+                        best_solution = harmony_memory[worst_idx].clone();
+                    }
+                }
+            }
+
+            self.state.best_objective = best_fitness;
+            self.state.best_solution = best_solution.clone();
+            self.state.convergence_history.push(best_fitness);
+
+            if self.check_convergence()? {
+                break;
+            }
+        }
+
+        Ok(OptimizationResult {
+            solution: best_solution,
+            objective_value: best_fitness,
+            iterations: self.state.iteration,
+            converged: self.check_convergence()?,
+            runtime_stats: self.state.runtime_stats.clone(),
+            metadata: HashMap::new(),
+        })
     }
     /// Evaluate objective function
     pub(super) fn evaluate_objective(&self, solution: &Array1<f64>) -> Result<f64> {

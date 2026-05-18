@@ -510,7 +510,11 @@ impl UnifiedQuantumBenchmarkSystem {
         circuit_results: &CircuitLevelResults,
         algorithm_results: &AlgorithmLevelResults,
     ) -> DeviceResult<CostMetrics> {
-        Ok(compute_cost_metrics(gate_results, circuit_results, algorithm_results))
+        Ok(compute_cost_metrics(
+            gate_results,
+            circuit_results,
+            algorithm_results,
+        ))
     }
 
     // Utility methods
@@ -716,10 +720,7 @@ impl UnifiedQuantumBenchmarkSystem {
         }
 
         // Also update the in-memory baseline map for the current process.
-        let mut baselines = self
-            .baselines
-            .write()
-            .unwrap_or_else(|e| e.into_inner());
+        let mut baselines = self.baselines.write().unwrap_or_else(|e| e.into_inner());
         for (platform, pr) in &result.platform_results {
             let m = &pr.performance_metrics;
             let ci_half = m.error_rate * 0.05; // rough 5% CI half-width
@@ -747,10 +748,7 @@ impl UnifiedQuantumBenchmarkSystem {
                     super::types::BaselineMetricValue {
                         metric: super::types::BaselineMetric::Throughput,
                         value: m.throughput,
-                        confidence_interval: (
-                            (m.throughput * 0.9).max(0.0),
-                            m.throughput * 1.1,
-                        ),
+                        confidence_interval: ((m.throughput * 0.9).max(0.0), m.throughput * 1.1),
                         measurement_count: 1,
                     },
                 ],

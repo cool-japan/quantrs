@@ -1805,11 +1805,12 @@ mod tests {
         let lib = make_library(5);
         let frags: Vec<MolecularFragment> = (0..3).map(make_fragment).collect();
         let optimizer = MolecularDesignOptimizer::new(make_target(), lib)
-            .with_strategy(OptimizationStrategy::FragmentLinking {
-                fragments: frags,
-            });
+            .with_strategy(OptimizationStrategy::FragmentLinking { fragments: frags });
         let result = optimizer.build_qubo();
-        assert!(result.is_ok(), "FragmentLinking QUBO should build without error");
+        assert!(
+            result.is_ok(),
+            "FragmentLinking QUBO should build without error"
+        );
         let (qubo, var_map) = result.expect("expected Ok");
         assert!(!var_map.is_empty(), "var_map should be non-empty");
         assert!(!qubo.iter().all(|&v| v == 0.0), "QUBO should be non-zero");
@@ -1820,11 +1821,12 @@ mod tests {
         let scaffold = make_fragment(99);
         let lib = make_library(4);
         let optimizer = MolecularDesignOptimizer::new(make_target(), lib)
-            .with_strategy(OptimizationStrategy::FragmentHopping {
-                scaffold,
-            });
+            .with_strategy(OptimizationStrategy::FragmentHopping { scaffold });
         let result = optimizer.build_qubo();
-        assert!(result.is_ok(), "FragmentHopping QUBO should build without error");
+        assert!(
+            result.is_ok(),
+            "FragmentHopping QUBO should build without error"
+        );
         let (qubo, var_map) = result.expect("expected Ok");
         assert!(!var_map.is_empty(), "var_map should be non-empty");
         assert_eq!(qubo.shape()[0], qubo.shape()[1], "QUBO should be square");
@@ -1835,12 +1837,16 @@ mod tests {
         // 2 privileged scaffolds → 2 positions, library has 3 substituents
         let mut lib = make_library(3);
         lib.privileged_scaffolds = vec![0, 1];
-        let optimizer = MolecularDesignOptimizer::new(make_target(), lib)
-            .with_strategy(OptimizationStrategy::LeadOptimization {
+        let optimizer = MolecularDesignOptimizer::new(make_target(), lib).with_strategy(
+            OptimizationStrategy::LeadOptimization {
                 lead: "CC(=O)O".to_string(),
-            });
+            },
+        );
         let result = optimizer.build_qubo();
-        assert!(result.is_ok(), "LeadOptimization QUBO should build without error");
+        assert!(
+            result.is_ok(),
+            "LeadOptimization QUBO should build without error"
+        );
         let (qubo, var_map) = result.expect("expected Ok");
         // 2 positions × 3 substituents = 6 variables
         assert_eq!(var_map.len(), 6, "should have 2*3=6 variables");

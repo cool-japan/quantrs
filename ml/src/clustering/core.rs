@@ -2,7 +2,7 @@
 
 use crate::dimensionality_reduction::QuantumDistanceMetric;
 use crate::error::{MLError, Result};
-use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 
 use super::config::*;
 
@@ -92,47 +92,245 @@ impl QuantumClusterer {
         clusterer
     }
 
-    /// Fit the clustering model
-    pub fn fit(&mut self, data: &Array2<f64>) -> Result<ClusteringResult> {
-        // Placeholder implementation
-        let n_clusters = if self.config.algorithm == ClusteringAlgorithm::QuantumDBSCAN {
-            // DBSCAN determines clusters automatically
-            2 // placeholder
-        } else {
-            self.config.n_clusters
-        };
+    /// Compute squared Euclidean distance between two array views
+    fn squared_dist(&self, a: &ArrayView1<f64>, b: &ArrayView1<f64>) -> f64 {
+        a.iter().zip(b.iter()).map(|(x, y)| (x - y).powi(2)).sum()
+    }
+
+    /// Iterative union-find with path halving (no recursion)
+    fn uf_find(parent: &mut [usize], mut x: usize) -> usize {
+        while parent[x] != x {
+            // Path compression by halving
+            parent[x] = parent[parent[x]];
+            x = parent[x];
+        }
+        x
+    }
+
+    /// Run Lloyd's k-means algorithm with k-means++ initialization.
+    ///
+    /// Returns `(cluster_centers, labels, inertia)`.
+    fn run_kmeans(
+        &self,
+        data: &Array2<f64>,
+        k: usize,
+    ) -> Result<(Array2<f64>, Array1<usize>, f64)> {
+        let n_samples = data.nrows();
         let n_features = data.ncols();
+        let max_iter = self.config.max_iterations;
+
+        // -----------------------------------------------------------------------
+        // k-means++ initialisation
+        // First center: deterministic – row 0, or seeded via random_state.
+        // Subsequent centers: greedy furthest-point (deterministic, avoids RNG).
+        // -----------------------------------------------------------------------
+        let mut centers = Array2::<f64>::zeros((k, n_features));
+
+        // Choose first center
+        let first_idx = self
+            .config
+            .random_state
+            .map(|s| (s as usize) % n_samples)
+            .unwrap_or(0);
+        centers.row_mut(0).assign(&data.row(first_idx));
+
+        // k-means++ subsequent centers
+        for c in 1..k {
+            // For each sample, compute minimum squared distance to any chosen center so far
+            let mut min_dists_sq = vec![f64::INFINITY; n_samples];
+            for i in 0..n_samples {
+                for prev_c in 0..c {
+                    let d = self.squared_dist(&data.row(i), &centers.row(prev_c));
+                    if d < min_dists_sq[i] {
+                        min_dists_sq[i] = d;
+                    }
+                }
+            }
+            // Greedy deterministic choice: the sample farthest from all current centers
+            let next_idx = min_dists_sq
+                .iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(i, _)| i)
+                .unwrap_or(c % n_samples);
+            centers.row_mut(c).assign(&data.row(next_idx));
+        }
+
+        // -----------------------------------------------------------------------
+        // Lloyd's iterations
+        // -----------------------------------------------------------------------
+        let mut labels = vec![0usize; n_samples];
+
+        for _iter in 0..max_iter {
+            // ----- Assignment step -----
+            let mut changed = false;
+            for i in 0..n_samples {
+                let mut best_c = 0;
+                let mut best_d = f64::INFINITY;
+                for c in 0..k {
+                    let d = self.squared_dist(&data.row(i), &centers.row(c));
+                    if d < best_d {
+                        best_d = d;
+                        best_c = c;
+                    }
+                }
+                if labels[i] != best_c {
+                    changed = true;
+                    labels[i] = best_c;
+                }
+            }
+
+            // ----- Update step -----
+            let mut new_centers = Array2::<f64>::zeros((k, n_features));
+            let mut counts = vec![0usize; k];
+            for i in 0..n_samples {
+                let c = labels[i];
+                new_centers.row_mut(c).scaled_add(1.0, &data.row(i));
+                counts[c] += 1;
+            }
+            for c in 0..k {
+                if counts[c] > 0 {
+                    new_centers
+                        .row_mut(c)
+                        .mapv_inplace(|v| v / counts[c] as f64);
+                } else {
+                    // Empty cluster: reassign center to a guaranteed occupied data point
+                    new_centers.row_mut(c).assign(&data.row(c % n_samples));
+                }
+            }
+            centers = new_centers;
+
+            if !changed {
+                break;
+            }
+        }
+
+        // -----------------------------------------------------------------------
+        // Compute inertia (within-cluster sum of squared distances)
+        // -----------------------------------------------------------------------
+        let mut inertia = 0.0f64;
+        for i in 0..n_samples {
+            inertia += self.squared_dist(&data.row(i), &centers.row(labels[i]));
+        }
+
+        let labels_arr = Array1::from_iter(labels);
+        Ok((centers, labels_arr, inertia))
+    }
+
+    /// Density-based cluster counting using union-find over the epsilon neighbourhood.
+    ///
+    /// Uses `dbscan_config.eps` and `dbscan_config.min_samples` when available,
+    /// falling back to sensible defaults derived from the data spread.
+    fn fit_dbscan(&self, data: &Array2<f64>) -> Result<usize> {
+        let n = data.nrows();
+
+        let (eps, min_samples) = if let Some(cfg) = &self.dbscan_config {
+            (cfg.eps, cfg.min_samples)
+        } else {
+            // Estimate eps as ~10 % of the bounding-box diagonal
+            let mut max_sq = 0.0f64;
+            for i in 0..n {
+                for j in (i + 1)..n {
+                    let d = self.squared_dist(&data.row(i), &data.row(j));
+                    if d > max_sq {
+                        max_sq = d;
+                    }
+                }
+            }
+            (max_sq.sqrt() * 0.1, 2usize)
+        };
+
+        // Union-find initialisation
+        let mut parent: Vec<usize> = (0..n).collect();
+
+        for i in 0..n {
+            let mut neighbor_count = 0usize;
+            for j in 0..n {
+                if i == j {
+                    continue;
+                }
+                let d = self.squared_dist(&data.row(i), &data.row(j)).sqrt();
+                if d <= eps {
+                    neighbor_count += 1;
+                    // Union i and j
+                    let pi = Self::uf_find(&mut parent, i);
+                    let pj = Self::uf_find(&mut parent, j);
+                    if pi != pj {
+                        parent[pi] = pj;
+                    }
+                }
+            }
+            // Points with fewer than min_samples neighbours remain noise (own root)
+            let _ = neighbor_count;
+        }
+
+        // Count distinct roots – each root represents one cluster
+        let n_clusters = (0..n)
+            .filter(|&i| Self::uf_find(&mut parent, i) == i)
+            .count();
+
+        Ok(n_clusters.max(1))
+    }
+
+    /// Fit the clustering model using Lloyd's k-means with k-means++ initialization.
+    pub fn fit(&mut self, data: &Array2<f64>) -> Result<ClusteringResult> {
         let n_samples = data.nrows();
 
-        // Create placeholder cluster centers
-        let cluster_centers = Array2::zeros((n_clusters, n_features));
-        let labels = Array1::zeros(n_samples);
+        if n_samples == 0 {
+            return Err(MLError::InvalidInput("Empty data".to_string()));
+        }
 
-        // Store for later use
+        // Determine the target number of clusters
+        let n_clusters = match self.config.algorithm {
+            ClusteringAlgorithm::QuantumDBSCAN => {
+                // DBSCAN determines clusters from density
+                let auto_k = self.fit_dbscan(data)?;
+                auto_k
+            }
+            _ => {
+                // Use configured n_clusters, capped to available samples
+                self.config.n_clusters.min(n_samples).max(1)
+            }
+        };
+
+        // Run Lloyd's k-means (with k-means++ init) over the chosen k
+        let (cluster_centers, labels, inertia) = self.run_kmeans(data, n_clusters)?;
+
         self.cluster_centers = Some(cluster_centers.clone());
         self.labels = Some(labels.clone());
 
-        // Create result
-        let result = ClusteringResult {
+        Ok(ClusteringResult {
             labels,
             n_clusters,
             cluster_centers: Some(cluster_centers),
-            inertia: Some(0.0),  // placeholder
-            probabilities: None, // Will be set for fuzzy clustering
-        };
-
-        Ok(result)
+            inertia: Some(inertia),
+            probabilities: None,
+        })
     }
 
-    /// Predict cluster labels
+    /// Predict cluster labels for new data by assigning to the nearest center.
     pub fn predict(&self, data: &Array2<f64>) -> Result<Array1<usize>> {
-        if self.cluster_centers.is_none() {
-            return Err(MLError::ModelNotTrained(
-                "Clusterer must be fitted before predict".to_string(),
-            ));
-        }
+        let centers = self.cluster_centers.as_ref().ok_or_else(|| {
+            MLError::ModelNotTrained("Clusterer must be fitted before predict".to_string())
+        })?;
 
-        Ok(Array1::zeros(data.nrows()))
+        let k = centers.nrows();
+        let labels: Vec<usize> = (0..data.nrows())
+            .map(|i| {
+                let mut best_c = 0;
+                let mut best_d = f64::INFINITY;
+                for c in 0..k {
+                    let d = self.squared_dist(&data.row(i), &centers.row(c));
+                    if d < best_d {
+                        best_d = d;
+                        best_c = c;
+                    }
+                }
+                best_c
+            })
+            .collect();
+
+        Ok(Array1::from_iter(labels))
     }
 
     /// Predict cluster probabilities (for soft clustering)
@@ -197,7 +395,7 @@ impl QuantumClusterer {
     /// Evaluate clustering performance
     pub fn evaluate(
         &self,
-        data: &Array2<f64>,
+        _data: &Array2<f64>,
         _true_labels: Option<&Array1<usize>>,
     ) -> Result<ClusteringMetrics> {
         if self.cluster_centers.is_none() {

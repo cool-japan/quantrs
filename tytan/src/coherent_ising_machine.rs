@@ -124,13 +124,16 @@ impl CIMSimulator {
             })
             .collect();
 
-        // Normal distribution for noise
-        let _noise_dist = Normal::new(0.0, self.noise_strength)
-            .map_err(|e| format!("Failed to create noise distribution: {e}"))?;
+        // Normal distribution for standard Gaussian samples (scaled by noise_strength at use site)
+        let standard_normal = Normal::<f64>::new(0.0_f64, 1.0_f64)
+            .expect("Normal distribution with mean=0, std=1 is always valid");
 
         // Evolution loop
         for step in 0..steps {
             let mut new_amplitudes = amplitudes.clone();
+
+            // Construct per-step noise distribution outside inner spin loop for efficiency
+            let noise_scale = self.noise_strength;
 
             for i in 0..n {
                 // Compute coupling term
@@ -169,10 +172,14 @@ impl CIMSimulator {
                     + detuning_term
                     + coupling_term;
 
-                // Add noise (simplified for now due to version conflicts)
-                let noise = Complex64::new(0.0, 0.0); // TODO: Fix rand version conflicts
+                // Gaussian noise injection for the SDE Wiener process increments
+                // Each spin receives independent real and imaginary noise components
+                let noise_re = standard_normal.sample(rng) * noise_scale;
+                let noise_im = standard_normal.sample(rng) * noise_scale;
+                let noise = Complex64::new(noise_re, noise_im);
 
-                // Update amplitude
+                // Update amplitude using Euler-Maruyama scheme: dA = f(A)dt + g*dW
+                // where dW ~ sqrt(dt) * N(0,1)
                 new_amplitudes[i] =
                     amplitudes[i] + self.dt * deterministic + (self.dt.sqrt()) * noise;
             }

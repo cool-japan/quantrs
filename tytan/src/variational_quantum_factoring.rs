@@ -845,7 +845,9 @@ mod tests {
         let mut vqf = EnhancedVQF::new(15, optimizer)
             .expect("Failed to create EnhancedVQF for n=15")
             .with_multilevel(true);
-        let result = vqf.factor().expect("multilevel_factorization(15) should succeed");
+        let result = vqf
+            .factor()
+            .expect("multilevel_factorization(15) should succeed");
         assert!(result.factors.contains(&3), "factors should contain 3");
         assert!(result.factors.contains(&5), "factors should contain 5");
     }
@@ -859,7 +861,9 @@ mod tests {
         let mut vqf = EnhancedVQF::new(13, optimizer)
             .expect("Failed to create EnhancedVQF for n=13")
             .with_multilevel(true);
-        let result = vqf.factor().expect("multilevel_factorization(13) should succeed");
+        let result = vqf
+            .factor()
+            .expect("multilevel_factorization(13) should succeed");
         assert_eq!(result.factors, vec![13], "prime 13 should return [13]");
     }
 
@@ -872,7 +876,9 @@ mod tests {
         let mut vqf = EnhancedVQF::new(105, optimizer)
             .expect("Failed to create EnhancedVQF for n=105")
             .with_multilevel(true);
-        let result = vqf.factor().expect("multilevel_factorization(105) should succeed");
+        let result = vqf
+            .factor()
+            .expect("multilevel_factorization(105) should succeed");
         assert!(result.factors.contains(&3), "factors should contain 3");
         assert!(result.factors.contains(&5), "factors should contain 5");
         assert!(result.factors.contains(&7), "factors should contain 7");

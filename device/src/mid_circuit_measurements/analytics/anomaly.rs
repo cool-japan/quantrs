@@ -110,8 +110,7 @@ impl AnomalyDetector {
         let heuristic_precision = if total > 0.0 { 0.8 } else { 1.0 };
         let heuristic_recall = if total > 0.0 { 0.7 } else { 1.0 };
         let f1 = if heuristic_precision + heuristic_recall > 0.0 {
-            2.0 * heuristic_precision * heuristic_recall
-                / (heuristic_precision + heuristic_recall)
+            2.0 * heuristic_precision * heuristic_recall / (heuristic_precision + heuristic_recall)
         } else {
             0.0
         };
@@ -585,7 +584,9 @@ mod tests {
         let detector = AnomalyDetector::new();
         let latencies = make_anomalous_latencies();
         let confidences: Vec<f64> = latencies.iter().map(|_| 0.9).collect();
-        let results = detector.detect(&latencies, &confidences).expect("detect should succeed");
+        let results = detector
+            .detect(&latencies, &confidences)
+            .expect("detect should succeed");
         // The spike at index 15 must be detected as an anomaly.
         assert!(
             !results.anomalies.is_empty(),
@@ -598,7 +599,9 @@ mod tests {
         let detector = AnomalyDetector::with_parameters(2.0, 10);
         let latencies: Vec<f64> = (0..20).map(|i| i as f64).collect();
         let confidences: Vec<f64> = latencies.iter().map(|_| 0.9).collect();
-        let results = detector.detect(&latencies, &confidences).expect("detect ok");
+        let results = detector
+            .detect(&latencies, &confidences)
+            .expect("detect ok");
         assert!(
             results.thresholds.contains_key("zscore"),
             "thresholds map must contain zscore key"
@@ -614,7 +617,9 @@ mod tests {
         let detector = AnomalyDetector::new();
         let latencies = make_anomalous_latencies();
         let confidences: Vec<f64> = latencies.iter().map(|_| 0.9).collect();
-        let results = detector.detect(&latencies, &confidences).expect("detect ok");
+        let results = detector
+            .detect(&latencies, &confidences)
+            .expect("detect ok");
         assert!(
             !results.method_performance.precision.is_empty(),
             "method_performance.precision must not be empty"
@@ -624,7 +629,9 @@ mod tests {
     #[test]
     fn test_detect_empty_input_returns_default() {
         let detector = AnomalyDetector::new();
-        let result = detector.detect(&[], &[]).expect("empty input should return Ok");
+        let result = detector
+            .detect(&[], &[])
+            .expect("empty input should return Ok");
         assert!(result.anomalies.is_empty(), "no anomalies for empty input");
     }
 }

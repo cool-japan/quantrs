@@ -40,17 +40,15 @@ fn parse_cell(s: &str) -> Result<Complex64, SymEngineError> {
                 .trim()
                 .parse::<f64>()
                 .map_err(|_| SymEngineError::parse(format!("cannot parse real part: {re_str}")))?;
-            let im = im_str
-                .trim()
-                .parse::<f64>()
-                .map_err(|_| SymEngineError::parse(format!("cannot parse imaginary coefficient: {im_str}")))?;
+            let im = im_str.trim().parse::<f64>().map_err(|_| {
+                SymEngineError::parse(format!("cannot parse imaginary coefficient: {im_str}"))
+            })?;
             return Ok(Complex64::new(re, im));
         }
         // Pure imaginary: no '+' separator found
-        let im = without_i
-            .trim()
-            .parse::<f64>()
-            .map_err(|_| SymEngineError::parse(format!("cannot parse imaginary coefficient: {without_i}")))?;
+        let im = without_i.trim().parse::<f64>().map_err(|_| {
+            SymEngineError::parse(format!("cannot parse imaginary coefficient: {without_i}"))
+        })?;
         return Ok(Complex64::new(0.0, im));
     }
 
@@ -481,8 +479,8 @@ mod tests {
         // Negative imaginary: from_array2 emits "(2+-3*I)" for Complex(2, -3)
         let src: Array2<Complex64> = array![[Complex64::new(2.0, -3.0)]];
         let expr = from_array2(&src);
-        let arr = to_array2(&expr, &no_values())
-            .expect("to_array2 negative imaginary should succeed");
+        let arr =
+            to_array2(&expr, &no_values()).expect("to_array2 negative imaginary should succeed");
         assert_eq!(arr.shape(), &[1, 1]);
         assert!((arr[[0, 0]].re - 2.0).abs() < 1e-10);
         assert!((arr[[0, 0]].im - (-3.0)).abs() < 1e-10);

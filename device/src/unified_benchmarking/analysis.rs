@@ -12,28 +12,25 @@ use scirs2_core::ndarray::Array2;
 use super::results::{
     AccuracyComparison, AlgorithmLevelResults, AnomalyDetectionResults, BarrenPlateauAnalysis,
     BreakEvenAnalysis, CapacityPlanningResult, CapacityRecommendation, CentralityAnalysisResult,
-    CircuitLevelResults, ClassificationResults, ClusteringResults,
+    CircuitLevelResults, ClassicalComparisonResult, ClassificationResults, ClusteringResults,
     CommunityDetectionResult, ConnectivityAnalysisResult, ConvergenceAnalysis,
-    CorrelationAnalysisResult, CostAnalysisResult, CostMetrics,
-    CostOptimizationAnalysisResult, CrossEntropyResult, CrossPlatformAnalysis,
-    CrossPlatformComparison, CrossValidationResult, DepthScalingResult, EnsembleResult,
-    FeatureImportanceResults, ForecastingResults, GateLevelResults, GraphAnalysisResult,
-    HeavyOutputResult, HypothesisTestResult, LinearRegressionResult, MLAnalysisResult,
-    MLModelResult, MLRegressionResults, ModelComparisonResult, NISQPerformanceResult,
-    NonlinearRegressionResult, OptimizationAnalysisResult, OptimizationResult,
-    ParameterSensitivityAnalysis, ParetoAnalysisResult, PerturbationResult,
-    PlatformBenchmarkResult, PlatformPerformanceMetrics, PlatformRanking, PolynomialFit,
-    ExponentialFit, QuantumAdvantageResult, ROIAnalysis, ROIAnalysisResult,
+    CorrelationAnalysisResult, CostAnalysisResult, CostMetrics, CostOptimizationAnalysisResult,
+    CrossEntropyResult, CrossPlatformAnalysis, CrossPlatformComparison, CrossValidationResult,
+    DepthScalingResult, EnsembleResult, ExponentialFit, FailurePattern, FeatureImportanceResults,
+    ForecastingResults, GateLevelResults, GraphAnalysisResult, HeavyOutputResult,
+    HypothesisTestResult, LinearRegressionResult, MLAnalysisResult, MLModelResult,
+    MLRegressionResults, ModelComparisonResult, NISQPerformanceResult, NonlinearRegressionResult,
+    OptimizationAnalysisResult, OptimizationResult, ParameterSensitivityAnalysis,
+    ParetoAnalysisResult, PerturbationResult, PlatformBenchmarkResult, PlatformPerformanceMetrics,
+    PlatformRanking, PolynomialFit, QuantumAdvantageResult, ROIAnalysis, ROIAnalysisResult,
     RandomizedBenchmarkingResult, RegressionAnalysisResult, ReliabilityMetrics,
     ResourceAnalysisResult, ResourceUtilizationMetrics, RobustnessAnalysisResult,
-    ScalingMetric, ScalabilityAnalysis, SciRS2AnalysisResult, SeasonalityAnalysisResult,
-    SensitivityAnalysisResult, StabilityAnalysis, StatisticalAnalysisResult,
-    StatisticalSummary, SystemCostEfficiency, SystemLevelResults, SystemReliabilityAnalysis,
-    SystemResourceUtilization, SystemScalabilityAnalysis, TimeSeriesAnalysisResult,
-    TopologyOptimizationResult, TrendAnalysisResult, UncertaintyPropagation,
-    VariationalAlgorithmResult, VolumeBenchmarkResult, WidthScalingResult,
-    ClassicalComparisonResult, StationarityTestResults,
-    FailurePattern,
+    ScalabilityAnalysis, ScalingMetric, SciRS2AnalysisResult, SeasonalityAnalysisResult,
+    SensitivityAnalysisResult, StabilityAnalysis, StationarityTestResults,
+    StatisticalAnalysisResult, StatisticalSummary, SystemCostEfficiency, SystemLevelResults,
+    SystemReliabilityAnalysis, SystemResourceUtilization, SystemScalabilityAnalysis,
+    TimeSeriesAnalysisResult, TopologyOptimizationResult, TrendAnalysisResult,
+    UncertaintyPropagation, VariationalAlgorithmResult, VolumeBenchmarkResult, WidthScalingResult,
 };
 use super::types::QuantumPlatform;
 
@@ -60,11 +57,7 @@ pub fn statistical_summary_from_slice(values: &[f64]) -> StatisticalSummary {
     }
     let n = values.len() as f64;
     let mean = values.iter().sum::<f64>() / n;
-    let variance = values
-        .iter()
-        .map(|&x| (x - mean).powi(2))
-        .sum::<f64>()
-        / n;
+    let variance = values.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / n;
     let std_dev = variance.sqrt();
     let mut sorted = values.to_vec();
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
@@ -638,10 +631,7 @@ pub fn compute_resource_analysis(
     } else {
         utilizations.iter().sum::<f64>() / utilizations.len() as f64
     };
-    let peak_utilization = utilizations
-        .iter()
-        .cloned()
-        .fold(0.0_f64, f64::max);
+    let peak_utilization = utilizations.iter().cloned().fold(0.0_f64, f64::max);
 
     let util_metric = |avg: f64, peak: f64| ResourceUtilizationMetrics {
         average_utilization: avg,

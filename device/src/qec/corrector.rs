@@ -1155,10 +1155,7 @@ mod tests {
             cfg.local_folding.selection_strategy,
             RegionSelectionStrategy::Automatic,
         );
-        assert_eq!(
-            cfg.local_folding.overlap_handling,
-            OverlapHandling::Merge,
-        );
+        assert_eq!(cfg.local_folding.overlap_handling, OverlapHandling::Merge,);
     }
 
     #[test]
