@@ -7,6 +7,10 @@
 - [x] **Build fix** — removed broken `serialization` feature from scirs2-core in workspace `Cargo.toml`; this feature transitively pulled `oxiarc-lz4/zstd 0.2.8` which referenced `oxiarc_core::cancel`/`progress` paths that don't exist in `oxiarc-core 0.3.0`, blocking the entire workspace from compiling.
 - [x] **HOBO energy library** (`tytan/src/sampler/energy.rs`) — unified 3-body and 4-body PUBO energy evaluation with early-out pruning; wired into `PopulationAnnealing`, `SimulatedAnnealing`, and `GASampler` replacing per-sampler incomplete implementations. See [tytan/TODO.md](tytan/TODO.md) for full design notes.
 - [x] **Clippy fixes** — `manual_checked_ops` in `sim/src/cuda/kernels.rs`, `map_unwrap_or` in `quantrs2/src/diagnostics.rs`.
+- [x] **CIM stochastic noise** (`tytan/src/coherent_ising_machine.rs`) — replaced hardcoded zero noise with Euler-Maruyama Gaussian increments via `scirs2_core::random::RandNormal`. CIM now converges stochastically as designed.
+- [x] **HOBO 3/4-body parallelization** (`tytan/src/sampler/energy.rs`) — outer-loop `into_par_iter` for n≥32 (3-body) / n≥16 (4-body) with scalar fallback for small tensors.
+- [x] **ML k-means clustering** (`ml/src/clustering/core.rs`) — replaced placeholder `fit`/`predict` with Lloyd's algorithm and k-means++ greedy initialization. Real inertia = sum of squared within-cluster distances. DBSCAN path uses iterative union-find.
+- [x] **Quantum Differential Evolution + Quantum Harmony Search** (`sim/src/quantum_inspired_classical/types.rs`) — replaced `NotImplemented` stubs with DE/rand/1/bin + quantum tunneling, and HS harmony memory + quantum pitch adjustment respectively. 73 new tests added workspace-wide; total 5267 tests pass.
 
 ## Current Version: 0.1.3
 

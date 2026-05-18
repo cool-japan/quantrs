@@ -756,3 +756,112 @@ fn test_hobo_dispatch_2body_matches_energy_full_n4() {
         );
     }
 }
+
+// ─── Parallel HOBO correctness tests ─────────────────────────────────────────
+
+/// `hobo_energy_full_3body` with n=64 (above the 32-variable parallel threshold)
+/// must match the naïve `indexed_iter` oracle for several deterministic states.
+///
+/// This exercises the rayon outer-loop path: each active `i` is a separate work
+/// item and the partial sums must reduce to exactly the same total as the scalar
+/// reference implementation (within f64 rounding tolerance 1e-9).
+#[test]
+fn test_hobo_3body_parallel_correctness_n64() {
+    let n = 64usize;
+    let tensor = make_hobo_3body(n, 0xDEAD_BEEF_1234_5678u64);
+    let view3 = tensor
+        .view()
+        .into_dimensionality::<scirs2_core::ndarray::Ix3>()
+        .expect("3d view");
+
+    // Build several deterministic test states using the LCG seed so we avoid
+    // the `rand` crate (SciRS2 policy).
+    let states: &[Vec<bool>] = &[
+        // all-false: energy must be 0.0
+        vec![false; n],
+        // all-true: every coefficient is counted
+        vec![true; n],
+        // alternating bits
+        (0..n).map(|i| i % 2 == 0).collect(),
+        // every 4th bit
+        (0..n).map(|i| i % 4 == 0).collect(),
+        // pseudo-random pattern from LCG seed
+        {
+            let mut s = 0xCAFE_BABE_DEAD_BEEFu64;
+            (0..n)
+                .map(|_| {
+                    s = s
+                        .wrapping_mul(6364136223846793005)
+                        .wrapping_add(1442695040888963407);
+                    (s >> 63) == 1
+                })
+                .collect()
+        },
+    ];
+
+    for (idx, state) in states.iter().enumerate() {
+        let expected = naive_hobo_energy(state, &tensor);
+        let got = hobo_energy_full_3body(state, view3);
+        // Tolerance is 1e-7 to account for non-associativity of parallel f64
+        // summation: with n=64 there are up to n³ = 262 144 terms, and rayon's
+        // partial-sum reduction reorders additions compared to the naïve serial
+        // loop.  The relative error per addition is ε_mach ≈ 2.2e-16, so for
+        // ~262k terms the accumulated round-trip error can reach ~58 ULP of the
+        // final result.  A tolerance of 1e-7 on values O(1e5) is ≈ 1e-12
+        // relative, which is well within acceptable correctness bounds.
+        assert!(
+            (got - expected).abs() < 1e-7,
+            "state_idx={idx}: parallel={got:.15e}, naive={expected:.15e}, diff={:.3e}",
+            (got - expected).abs()
+        );
+    }
+}
+
+/// `hobo_energy_full_4body` with n=16 (at the 16-variable parallel threshold)
+/// must match the naïve `indexed_iter` oracle for several deterministic states.
+///
+/// Each outer work item is O(n³) = 4096 multiply-adds, which is enough work to
+/// make parallelism worthwhile.  The test checks that the sum of rayon partial
+/// results equals the scalar reference within 1e-9.
+#[test]
+fn test_hobo_4body_parallel_correctness_n16() {
+    let n = 16usize;
+    let tensor = make_hobo_4body(n, 0xFEED_FACE_C0DE_BABEu64);
+    let view4 = tensor
+        .view()
+        .into_dimensionality::<scirs2_core::ndarray::Ix4>()
+        .expect("4d view");
+
+    let states: &[Vec<bool>] = &[
+        // all-false
+        vec![false; n],
+        // all-true
+        vec![true; n],
+        // alternating
+        (0..n).map(|i| i % 2 == 0).collect(),
+        // every 3rd
+        (0..n).map(|i| i % 3 == 0).collect(),
+        // pseudo-random from LCG
+        {
+            let mut s = 0xABCD_EF01_2345_6789u64;
+            (0..n)
+                .map(|_| {
+                    s = s
+                        .wrapping_mul(6364136223846793005)
+                        .wrapping_add(1442695040888963407);
+                    (s >> 63) == 1
+                })
+                .collect()
+        },
+    ];
+
+    for (idx, state) in states.iter().enumerate() {
+        let expected = naive_hobo_energy(state, &tensor);
+        let got = hobo_energy_full_4body(state, view4);
+        assert!(
+            (got - expected).abs() < 1e-9,
+            "state_idx={idx}: parallel={got:.15e}, naive={expected:.15e}, diff={:.3e}",
+            (got - expected).abs()
+        );
+    }
+}

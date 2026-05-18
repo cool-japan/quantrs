@@ -841,13 +841,63 @@ mod tests {
     }
 
     #[test]
+    fn test_quantum_differential_evolution_runs() {
+        let mut config = QuantumInspiredConfig::default();
+        config.optimization_config.algorithm_type =
+            OptimizationAlgorithm::QuantumDifferentialEvolution;
+        config.algorithm_config.max_iterations = 15;
+        config.algorithm_config.population_size = 8;
+        config.num_variables = 4;
+        // Sphere bounds: [-5, 5]^4
+        config.optimization_config.bounds = vec![(-5.0, 5.0); 4];
+
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
+        let result = framework.optimize();
+
+        assert!(result.is_ok(), "QDE should succeed: {result:?}");
+        let opt = result.expect("QDE optimize failed");
+        assert!(opt.iterations <= 15, "QDE ran too many iterations");
+        assert!(opt.objective_value.is_finite(), "QDE produced non-finite objective");
+        assert_eq!(opt.solution.len(), 4, "QDE solution dimension mismatch");
+        assert!(
+            opt.runtime_stats.function_evaluations > 0,
+            "QDE should have evaluated the objective at least once"
+        );
+    }
+
+    #[test]
+    fn test_quantum_harmony_search_runs() {
+        let mut config = QuantumInspiredConfig::default();
+        config.optimization_config.algorithm_type = OptimizationAlgorithm::QuantumHarmonySearch;
+        config.algorithm_config.max_iterations = 15;
+        config.algorithm_config.population_size = 6;
+        config.num_variables = 4;
+        // Sphere bounds: [-5, 5]^4
+        config.optimization_config.bounds = vec![(-5.0, 5.0); 4];
+
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
+        let result = framework.optimize();
+
+        assert!(result.is_ok(), "QHS should succeed: {result:?}");
+        let opt = result.expect("QHS optimize failed");
+        assert!(opt.iterations <= 15, "QHS ran too many iterations");
+        assert!(opt.objective_value.is_finite(), "QHS produced non-finite objective");
+        assert_eq!(opt.solution.len(), 4, "QHS solution dimension mismatch");
+        assert!(
+            opt.runtime_stats.function_evaluations > 0,
+            "QHS should have evaluated the objective at least once"
+        );
+    }
+
+    #[test]
     fn test_error_handling_unimplemented_algorithms() {
+        // QDE and QHS are now implemented; only truly-unimplemented stubs remain here
         let unimplemented_algorithms = vec![
-            OptimizationAlgorithm::QuantumDifferentialEvolution,
             OptimizationAlgorithm::ClassicalQAOA,
             OptimizationAlgorithm::ClassicalVQE,
             OptimizationAlgorithm::QuantumAntColony,
-            OptimizationAlgorithm::QuantumHarmonySearch,
         ];
 
         for algorithm in unimplemented_algorithms {

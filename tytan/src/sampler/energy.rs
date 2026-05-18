@@ -318,22 +318,24 @@ pub fn hobo_energy_full(state: &[bool], tensor: &ArrayD<f64>) -> f64 {
     energy
 }
 
-/// Compute the full HOBO energy for a 3-body (order-3) tensor.
-///
-/// Specialized triple-loop implementation with early-out `continue` on inactive
-/// spins, which is substantially faster than the generic `indexed_iter` path for
-/// dense tensors.
-///
-/// # Arguments
-///
-/// * `state` – binary state vector of length `n`
-/// * `tensor` – 3-dimensional coefficient tensor; each axis must have length `n`
 /// Minimum number of variables before spawning rayon tasks for 3-body energy.
 ///
 /// Below this threshold the scalar path avoids thread-spawn overhead; above it
 /// each active outer index `i` is evaluated by a separate rayon work item.
 const HOBO_3BODY_PARALLEL_THRESHOLD: usize = 32;
 
+/// Compute the full HOBO energy for a 3-body (order-3) tensor.
+///
+/// Specialized triple-loop implementation with early-out `continue` on inactive
+/// spins, which is substantially faster than the generic `indexed_iter` path for
+/// dense tensors.  For `n >= 32`, the outer loop is parallelised via rayon
+/// (exposed through `scirs2_core::parallel_ops`), with a scalar fallback for
+/// smaller problems to avoid thread-spawn overhead.
+///
+/// # Arguments
+///
+/// * `state` – binary state vector of length `n`
+/// * `tensor` – 3-dimensional coefficient tensor; each axis must have length `n`
 pub fn hobo_energy_full_3body(state: &[bool], tensor: ArrayView3<f64>) -> f64 {
     let n = tensor.dim().0;
     if n >= HOBO_3BODY_PARALLEL_THRESHOLD {
@@ -379,20 +381,22 @@ pub fn hobo_energy_full_3body(state: &[bool], tensor: ArrayView3<f64>) -> f64 {
     }
 }
 
-/// Compute the full HOBO energy for a 4-body (order-4) tensor.
-///
-/// Specialized quadruple-loop implementation with early-out `continue` on
-/// inactive spins.
-///
-/// # Arguments
-///
-/// * `state` – binary state vector of length `n`
-/// * `tensor` – 4-dimensional coefficient tensor; each axis must have length `n`
 /// Minimum number of variables before spawning rayon tasks for 4-body energy.
 ///
 /// Each outer work item is O(n³), so n ≥ 16 is worthwhile even with spawn cost.
 const HOBO_4BODY_PARALLEL_THRESHOLD: usize = 16;
 
+/// Compute the full HOBO energy for a 4-body (order-4) tensor.
+///
+/// Specialized quadruple-loop implementation with early-out `continue` on
+/// inactive spins.  For `n >= 16`, the outer loop is parallelised via rayon
+/// (exposed through `scirs2_core::parallel_ops`), with a scalar fallback for
+/// smaller problems.
+///
+/// # Arguments
+///
+/// * `state` – binary state vector of length `n`
+/// * `tensor` – 4-dimensional coefficient tensor; each axis must have length `n`
 pub fn hobo_energy_full_4body(state: &[bool], tensor: ArrayView4<f64>) -> f64 {
     let n = tensor.dim().0;
     if n >= HOBO_4BODY_PARALLEL_THRESHOLD {

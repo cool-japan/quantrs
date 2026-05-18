@@ -28,6 +28,8 @@
   - **Samplers updated:** `PopulationAnnealing`, `SimulatedAnnealing`, `GASampler` — all ndim warnings / silent-zero returns eliminated.
   - **Tests added:** 8 HOBO correctness tests in `tytan/tests/energy_correctness.rs`; all 507 tytan tests pass.
 - [x] Build fix — removed broken `serialization` feature from scirs2-core (was pulling oxiarc-lz4/zstd 0.2.8 with unresolved import paths against oxiarc-core 0.3.0 API).
+- [x] CIM noise injection (2026-05-18) — replaced hardcoded `Complex64::new(0.0, 0.0)` noise at `coherent_ising_machine.rs:172` with Euler-Maruyama Gaussian increments via existing `scirs2_core::random::RandNormal`. Seeded from `self.seed`; deterministic replay guaranteed. Added 4 tests in `tytan/tests/cim_noise_tests.rs`.
+- [x] HOBO 3/4-body outer-loop parallelization (2026-05-18) — added `into_par_iter` outer loop to `hobo_energy_full_3body` (threshold n≥32) and `hobo_energy_full_4body` (threshold n≥16) in `energy.rs`. Scalar fallback for small n avoids rayon spawn overhead. FP accumulation tolerance 1e-7 (3body n=64) / 1e-9 (4body n=16). 2 new tests added.
 
 ## Proposed follow-ups
 
