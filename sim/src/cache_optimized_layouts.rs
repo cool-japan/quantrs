@@ -465,14 +465,22 @@ impl CacheOptimizedStateVector {
             let a01 = self.data[pi01];
             let a10 = self.data[pi10];
             let a11 = self.data[pi11];
-            self.data[pi00] = gate_matrix[[0, 0]] * a00 + gate_matrix[[0, 1]] * a01
-                + gate_matrix[[0, 2]] * a10 + gate_matrix[[0, 3]] * a11;
-            self.data[pi01] = gate_matrix[[1, 0]] * a00 + gate_matrix[[1, 1]] * a01
-                + gate_matrix[[1, 2]] * a10 + gate_matrix[[1, 3]] * a11;
-            self.data[pi10] = gate_matrix[[2, 0]] * a00 + gate_matrix[[2, 1]] * a01
-                + gate_matrix[[2, 2]] * a10 + gate_matrix[[2, 3]] * a11;
-            self.data[pi11] = gate_matrix[[3, 0]] * a00 + gate_matrix[[3, 1]] * a01
-                + gate_matrix[[3, 2]] * a10 + gate_matrix[[3, 3]] * a11;
+            self.data[pi00] = gate_matrix[[0, 0]] * a00
+                + gate_matrix[[0, 1]] * a01
+                + gate_matrix[[0, 2]] * a10
+                + gate_matrix[[0, 3]] * a11;
+            self.data[pi01] = gate_matrix[[1, 0]] * a00
+                + gate_matrix[[1, 1]] * a01
+                + gate_matrix[[1, 2]] * a10
+                + gate_matrix[[1, 3]] * a11;
+            self.data[pi10] = gate_matrix[[2, 0]] * a00
+                + gate_matrix[[2, 1]] * a01
+                + gate_matrix[[2, 2]] * a10
+                + gate_matrix[[2, 3]] * a11;
+            self.data[pi11] = gate_matrix[[3, 0]] * a00
+                + gate_matrix[[3, 1]] * a01
+                + gate_matrix[[3, 2]] * a10
+                + gate_matrix[[3, 3]] * a11;
         }
         self.update_access_statistics(start_time.elapsed());
         Ok(())

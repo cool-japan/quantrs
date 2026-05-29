@@ -216,7 +216,6 @@ pub mod tpu_acceleration;
 pub mod trotter;
 pub mod visualization_hooks;
 
-#[cfg(feature = "advanced_math")]
 pub mod tensor_network;
 pub mod utils;
 // Optimization modules refactored into specialized implementations:
@@ -762,7 +761,6 @@ pub mod gpu_metal;
 #[cfg(all(feature = "gpu", target_os = "macos"))]
 pub mod gpu_linalg_metal;
 
-#[cfg(feature = "advanced_math")]
 pub use crate::tensor_network::*;
 
 // Old monolithic optimization modules have been refactored into specialized implementations

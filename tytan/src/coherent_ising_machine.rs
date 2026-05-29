@@ -339,12 +339,31 @@ impl Sampler for CIMSimulator {
 
     fn run_hobo(
         &self,
-        _hobo: &(Array<f64, IxDyn>, HashMap<String, usize>),
-        _shots: usize,
+        hobo: &(Array<f64, IxDyn>, HashMap<String, usize>),
+        shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
-        Err(SamplerError::NotImplemented(
-            "CIM simulator currently only supports QUBO problems".to_string(),
-        ))
+        let (tensor, var_map) = hobo;
+
+        // Quadratize HOBO → QUBO via Rosenberg polynomial reduction.
+        let (qubo, ext_var_map) = crate::sampler::energy::hobo_to_qubo(tensor, var_map)
+            .map_err(SamplerError::InvalidModel)?;
+
+        // The quadratized QUBO may have more variables than the CIM was
+        // originally configured for.  We create a temporary CIM with the
+        // correct spin count rather than rejecting the problem.
+        let n_qubo = qubo.shape()[0];
+        let mut tmp_cim = self.clone();
+        tmp_cim.n_spins = n_qubo;
+
+        // Delegate to the QUBO solver.
+        let mut results = tmp_cim.run_qubo(&(qubo, ext_var_map), shots)?;
+
+        // Strip auxiliary variables (introduced by quadratization) from each result.
+        for result in &mut results {
+            result.assignments.retain(|k, _| !k.starts_with("_aux_"));
+        }
+
+        Ok(results)
     }
 }
 

@@ -1103,8 +1103,8 @@ impl JITCompiler {
                 // For 3+ qubits: apply the gate matrix to the first two target qubits
                 // controlled by the remaining targets (Toffoli-style decomposition).
                 // If the gate has a known 2-qubit matrix, use it; otherwise use Identity.
-                let matrix = Self::get_two_qubit_gate_matrix(gate_type)
-                    .unwrap_or_else(|_| Array2::eye(4));
+                let matrix =
+                    Self::get_two_qubit_gate_matrix(gate_type).unwrap_or_else(|_| Array2::eye(4));
                 let num_qubits = (state.len() as f64).log2() as usize;
                 let control_qubits = &targets[2..];
                 let q0 = targets[0];
@@ -1128,14 +1128,22 @@ impl JITCompiler {
                         let a01 = state[i01];
                         let a10 = state[i10];
                         let a11 = state[i11];
-                        state[i00] = matrix[(0, 0)] * a00 + matrix[(0, 1)] * a01
-                            + matrix[(0, 2)] * a10 + matrix[(0, 3)] * a11;
-                        state[i01] = matrix[(1, 0)] * a00 + matrix[(1, 1)] * a01
-                            + matrix[(1, 2)] * a10 + matrix[(1, 3)] * a11;
-                        state[i10] = matrix[(2, 0)] * a00 + matrix[(2, 1)] * a01
-                            + matrix[(2, 2)] * a10 + matrix[(2, 3)] * a11;
-                        state[i11] = matrix[(3, 0)] * a00 + matrix[(3, 1)] * a01
-                            + matrix[(3, 2)] * a10 + matrix[(3, 3)] * a11;
+                        state[i00] = matrix[(0, 0)] * a00
+                            + matrix[(0, 1)] * a01
+                            + matrix[(0, 2)] * a10
+                            + matrix[(0, 3)] * a11;
+                        state[i01] = matrix[(1, 0)] * a00
+                            + matrix[(1, 1)] * a01
+                            + matrix[(1, 2)] * a10
+                            + matrix[(1, 3)] * a11;
+                        state[i10] = matrix[(2, 0)] * a00
+                            + matrix[(2, 1)] * a01
+                            + matrix[(2, 2)] * a10
+                            + matrix[(2, 3)] * a11;
+                        state[i11] = matrix[(3, 0)] * a00
+                            + matrix[(3, 1)] * a01
+                            + matrix[(3, 2)] * a10
+                            + matrix[(3, 3)] * a11;
                     }
                 }
                 Ok(())

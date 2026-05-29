@@ -537,12 +537,25 @@ impl OptimizedShannonDecomposer {
 
         match (gate1.name(), gate2.name()) {
             ("RZ", "RZ") => {
-                // Extract angles - this is simplified
-                // Real implementation would use gate parameters
-                let theta1 = PI / 4.0; // Placeholder
-                let theta2 = PI / 4.0; // Placeholder
-
+                let theta1 = gate1.as_any().downcast_ref::<RotationZ>()?.theta;
+                let theta2 = gate2.as_any().downcast_ref::<RotationZ>()?.theta;
                 Some(Box::new(RotationZ {
+                    target: qubit,
+                    theta: theta1 + theta2,
+                }))
+            }
+            ("RX", "RX") => {
+                let theta1 = gate1.as_any().downcast_ref::<RotationX>()?.theta;
+                let theta2 = gate2.as_any().downcast_ref::<RotationX>()?.theta;
+                Some(Box::new(RotationX {
+                    target: qubit,
+                    theta: theta1 + theta2,
+                }))
+            }
+            ("RY", "RY") => {
+                let theta1 = gate1.as_any().downcast_ref::<RotationY>()?.theta;
+                let theta2 = gate2.as_any().downcast_ref::<RotationY>()?.theta;
+                Some(Box::new(RotationY {
                     target: qubit,
                     theta: theta1 + theta2,
                 }))
@@ -647,5 +660,75 @@ mod tests {
 
         // Optimizations should eliminate all gates for identity
         assert_eq!(decomp.gates.len(), 0);
+    }
+
+    #[test]
+    fn test_merge_rz_rotations() {
+        let decomposer = OptimizedShannonDecomposer::new();
+        let qubit = QubitId(0);
+        let g1 = Box::new(RotationZ {
+            target: qubit,
+            theta: 0.3,
+        }) as Box<dyn GateOp>;
+        let g2 = Box::new(RotationZ {
+            target: qubit,
+            theta: 0.4,
+        }) as Box<dyn GateOp>;
+        let merged = decomposer
+            .try_merge_rotations(&g1, &g2)
+            .expect("should merge RZ+RZ");
+        let rz = merged
+            .as_any()
+            .downcast_ref::<RotationZ>()
+            .expect("merged gate must be RotationZ");
+        assert!(
+            (rz.theta - 0.7).abs() < 1e-10,
+            "merged theta should be 0.7, got {}",
+            rz.theta
+        );
+    }
+
+    #[test]
+    fn test_merge_rx_rotations() {
+        let decomposer = OptimizedShannonDecomposer::new();
+        let qubit = QubitId(0);
+        let g1 = Box::new(RotationX {
+            target: qubit,
+            theta: 0.5,
+        }) as Box<dyn GateOp>;
+        let g2 = Box::new(RotationX {
+            target: qubit,
+            theta: 0.3,
+        }) as Box<dyn GateOp>;
+        let merged = decomposer
+            .try_merge_rotations(&g1, &g2)
+            .expect("should merge RX+RX");
+        let rx = merged
+            .as_any()
+            .downcast_ref::<RotationX>()
+            .expect("merged gate must be RotationX");
+        assert!(
+            (rx.theta - 0.8).abs() < 1e-10,
+            "merged theta should be 0.8, got {}",
+            rx.theta
+        );
+    }
+
+    #[test]
+    fn test_no_merge_different_axes() {
+        let decomposer = OptimizedShannonDecomposer::new();
+        let qubit = QubitId(0);
+        let g1 = Box::new(RotationZ {
+            target: qubit,
+            theta: 0.3,
+        }) as Box<dyn GateOp>;
+        let g2 = Box::new(RotationX {
+            target: qubit,
+            theta: 0.4,
+        }) as Box<dyn GateOp>;
+        assert!(
+            decomposer.try_merge_rotations(&g1, &g2).is_none(),
+            "RZ and RX should not merge"
+        );
     }
 }

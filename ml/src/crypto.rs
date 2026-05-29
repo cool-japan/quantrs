@@ -262,10 +262,9 @@ impl QuantumKeyDistribution {
         let key_bytes: Vec<u8> = sifted_indices
             .chunks(8)
             .map(|chunk| {
-                chunk
-                    .iter()
-                    .enumerate()
-                    .fold(0u8, |acc, (bit_pos, &idx)| acc | (alice_bits[idx] << bit_pos))
+                chunk.iter().enumerate().fold(0u8, |acc, (bit_pos, &idx)| {
+                    acc | (alice_bits[idx] << bit_pos)
+                })
             })
             .collect();
 
@@ -311,10 +310,9 @@ impl QuantumKeyDistribution {
         let key_bytes: Vec<u8> = sifted_indices
             .chunks(8)
             .map(|chunk| {
-                chunk
-                    .iter()
-                    .enumerate()
-                    .fold(0u8, |acc, (bit_pos, &idx)| acc | (alice_bits[idx] << bit_pos))
+                chunk.iter().enumerate().fold(0u8, |acc, (bit_pos, &idx)| {
+                    acc | (alice_bits[idx] << bit_pos)
+                })
             })
             .collect();
 

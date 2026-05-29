@@ -483,139 +483,209 @@ impl JordanWignerTransform {
         }
     }
 
-    /// Transform fermionic operator to Pauli string
+    /// Transform a single fermionic operator to its complete Pauli operator sum via JW.
+    ///
+    /// Returns the full Jordan-Wigner representation as a `PauliOperatorSum` (possibly
+    /// containing multiple terms for operators like creation/annihilation).
+    ///
+    /// JW mappings (n = num_modes, Z_k below denotes Z on mode k):
+    ///
+    /// - `n_i = (I − Z_i)/2`           → two Pauli strings (constant + Z_i)
+    /// - `c†_i = (Z_0⋯Z_{i-1})(X_i − iY_i)/2` → two Pauli strings
+    /// - `c_i  = (Z_0⋯Z_{i-1})(X_i + iY_i)/2` → two Pauli strings
+    /// - `Hopping c†_from c_to` via full product    → four raw terms reduced to two
+    /// - `Interaction c†⋯c_l` via full product
+    pub fn transform_operator_to_sum(
+        &mut self,
+        op: &FermionicOperator,
+    ) -> Result<PauliOperatorSum> {
+        let mut sum = PauliOperatorSum::new(self.num_modes);
+        match op {
+            FermionicOperator::Number(site) => {
+                // n_i = (I - Z_i)/2 = 0.5·I - 0.5·Z_i
+                let identity = PauliString::new(self.num_modes); // coefficient = 1.0, all I
+                let mut id = identity;
+                id.coefficient = Complex64::new(0.5, 0.0);
+                sum.add_term(id)?;
+
+                let z_term =
+                    self.single_site_pauli(*site, PauliOperator::Z, Complex64::new(-0.5, 0.0))?;
+                sum.add_term(z_term)?;
+            }
+            FermionicOperator::Creation(site) => {
+                // c†_i = (Z_{0..i} X_i)/2 − i(Z_{0..i} Y_i)/2
+                let x_term =
+                    self.jw_pauli_string(*site, PauliOperator::X, Complex64::new(0.5, 0.0))?;
+                let y_term =
+                    self.jw_pauli_string(*site, PauliOperator::Y, Complex64::new(0.0, -0.5))?;
+                sum.add_term(x_term)?;
+                sum.add_term(y_term)?;
+            }
+            FermionicOperator::Annihilation(site) => {
+                // c_i = (Z_{0..i} X_i)/2 + i(Z_{0..i} Y_i)/2
+                let x_term =
+                    self.jw_pauli_string(*site, PauliOperator::X, Complex64::new(0.5, 0.0))?;
+                let y_term =
+                    self.jw_pauli_string(*site, PauliOperator::Y, Complex64::new(0.0, 0.5))?;
+                sum.add_term(x_term)?;
+                sum.add_term(y_term)?;
+            }
+            FermionicOperator::Hopping { from, to } => {
+                // c†_from c_to: multiply the two full JW sums
+                let creation_sum =
+                    self.transform_operator_to_sum(&FermionicOperator::Creation(*from))?;
+                let annihilation_sum =
+                    self.transform_operator_to_sum(&FermionicOperator::Annihilation(*to))?;
+                for ca in &creation_sum.terms {
+                    for an in &annihilation_sum.terms {
+                        let product = ca.multiply(an)?;
+                        // Skip near-zero terms
+                        if product.coefficient.norm() > 1e-15 {
+                            sum.add_term(product)?;
+                        }
+                    }
+                }
+            }
+            FermionicOperator::Interaction { sites } => {
+                // c†_{s0} c†_{s1} c_{s2} c_{s3}: full product
+                let sums: Vec<PauliOperatorSum> = [
+                    FermionicOperator::Creation(sites[0]),
+                    FermionicOperator::Creation(sites[1]),
+                    FermionicOperator::Annihilation(sites[2]),
+                    FermionicOperator::Annihilation(sites[3]),
+                ]
+                .iter()
+                .map(|fop| self.transform_operator_to_sum(fop))
+                .collect::<Result<Vec<_>>>()?;
+
+                // Iteratively multiply all operator sums
+                let mut current: Vec<PauliString> = sums[0].terms.clone();
+                for next_sum in sums.iter().skip(1) {
+                    let mut new_current = Vec::new();
+                    for ca in &current {
+                        for nb in &next_sum.terms {
+                            let product = ca.multiply(nb)?;
+                            if product.coefficient.norm() > 1e-15 {
+                                new_current.push(product);
+                            }
+                        }
+                    }
+                    current = new_current;
+                }
+                for term in current {
+                    sum.add_term(term)?;
+                }
+            }
+        }
+        Ok(sum)
+    }
+
+    /// Build a JW Pauli string: Z_{0}⋯Z_{site-1} op_{site} I_{site+1}⋯ with given coefficient.
+    fn jw_pauli_string(
+        &self,
+        site: usize,
+        op: PauliOperator,
+        coeff: Complex64,
+    ) -> Result<PauliString> {
+        if site >= self.num_modes {
+            return Err(SimulatorError::IndexOutOfBounds(site));
+        }
+        let mut paulis = vec![PauliOperator::I; self.num_modes];
+        paulis[..site].fill(PauliOperator::Z);
+        paulis[site] = op;
+        let ops: Vec<(usize, PauliOperator)> = paulis
+            .iter()
+            .enumerate()
+            .filter(|(_, &p)| p != PauliOperator::I)
+            .map(|(i, &p)| (i, p))
+            .collect();
+        PauliString::from_ops(self.num_modes, &ops, coeff)
+    }
+
+    /// Build a single-site Pauli string (no JW Z-string): I⋯I op_site I⋯I.
+    fn single_site_pauli(
+        &self,
+        site: usize,
+        op: PauliOperator,
+        coeff: Complex64,
+    ) -> Result<PauliString> {
+        if site >= self.num_modes {
+            return Err(SimulatorError::IndexOutOfBounds(site));
+        }
+        PauliString::from_ops(self.num_modes, &[(site, op)], coeff)
+    }
+
+    /// Transform fermionic operator to a single representative Pauli string.
+    ///
+    /// This returns only the X-part of the JW decomposition (for creation/annihilation)
+    /// or the Z-only part of the number operator, and is used internally for
+    /// Pauli-composition chains.  For complete expectation values use
+    /// `transform_operator_to_sum`.
     pub fn transform_operator(&mut self, op: &FermionicOperator) -> Result<PauliString> {
         if let Some(cached) = self.pauli_cache.get(op) {
             return Ok(cached.clone());
         }
 
         let pauli_string = match op {
-            FermionicOperator::Creation(i) => self.creation_to_pauli(*i)?,
-            FermionicOperator::Annihilation(i) => self.annihilation_to_pauli(*i)?,
-            FermionicOperator::Number(i) => self.number_to_pauli(*i)?,
-            FermionicOperator::Hopping { from, to } => self.hopping_to_pauli(*from, *to)?,
-            FermionicOperator::Interaction { sites } => self.interaction_to_pauli(*sites)?,
+            FermionicOperator::Creation(i) => {
+                self.jw_pauli_string(*i, PauliOperator::X, Complex64::new(0.5, 0.0))?
+            }
+            FermionicOperator::Annihilation(i) => {
+                self.jw_pauli_string(*i, PauliOperator::X, Complex64::new(0.5, 0.0))?
+            }
+            FermionicOperator::Number(i) => {
+                // Only Z term; identity term handled in transform_operator_to_sum
+                self.single_site_pauli(*i, PauliOperator::Z, Complex64::new(-0.5, 0.0))?
+            }
+            FermionicOperator::Hopping { from, to } => self
+                .creation_to_pauli(*from)?
+                .multiply(&self.annihilation_to_pauli(*to)?)?,
+            FermionicOperator::Interaction { sites } => self
+                .creation_to_pauli(sites[0])?
+                .multiply(&self.creation_to_pauli(sites[1])?)?
+                .multiply(&self.annihilation_to_pauli(sites[2])?)?
+                .multiply(&self.annihilation_to_pauli(sites[3])?)?,
         };
 
         self.pauli_cache.insert(op.clone(), pauli_string.clone());
         Ok(pauli_string)
     }
 
-    /// Transform creation operator c†_i to Pauli string
+    /// Transform creation operator c†_i to single Pauli string (X-part of JW).
     fn creation_to_pauli(&self, site: usize) -> Result<PauliString> {
         if site >= self.num_modes {
             return Err(SimulatorError::IndexOutOfBounds(site));
         }
-
-        let mut paulis = vec![PauliOperator::I; self.num_modes];
-
-        // Jordan-Wigner string: Z_0 Z_1 ... Z_{i-1} (X_i - i Y_i)/2
-        paulis[..site].fill(PauliOperator::Z);
-
-        // For creation: (X - iY)/2, we'll represent this as two terms
-        // This is a simplified representation - proper implementation would
-        // handle complex Pauli strings
-        paulis[site] = PauliOperator::X;
-
-        let ops: Vec<(usize, PauliOperator)> = paulis
-            .iter()
-            .enumerate()
-            .filter(|(_, &op)| op != PauliOperator::I)
-            .map(|(i, &op)| (i, op))
-            .collect();
-
-        PauliString::from_ops(self.num_modes, &ops, Complex64::new(0.5, 0.0))
+        self.jw_pauli_string(site, PauliOperator::X, Complex64::new(0.5, 0.0))
     }
 
-    /// Transform annihilation operator `c_i` to Pauli string
+    /// Transform annihilation operator c_i to single Pauli string (X-part of JW).
     fn annihilation_to_pauli(&self, site: usize) -> Result<PauliString> {
         if site >= self.num_modes {
             return Err(SimulatorError::IndexOutOfBounds(site));
         }
-
-        let mut paulis = vec![PauliOperator::I; self.num_modes];
-
-        // Jordan-Wigner string: Z_0 Z_1 ... Z_{i-1} (X_i + i Y_i)/2
-        paulis[..site].fill(PauliOperator::Z);
-
-        paulis[site] = PauliOperator::X;
-
-        let ops: Vec<(usize, PauliOperator)> = paulis
-            .iter()
-            .enumerate()
-            .filter(|(_, &op)| op != PauliOperator::I)
-            .map(|(i, &op)| (i, op))
-            .collect();
-
-        PauliString::from_ops(self.num_modes, &ops, Complex64::new(0.5, 0.0))
+        self.jw_pauli_string(site, PauliOperator::X, Complex64::new(0.5, 0.0))
     }
 
-    /// Transform number operator `n_i` to Pauli string
-    fn number_to_pauli(&self, site: usize) -> Result<PauliString> {
-        if site >= self.num_modes {
-            return Err(SimulatorError::IndexOutOfBounds(site));
-        }
-
-        let mut paulis = vec![PauliOperator::I; self.num_modes];
-
-        // n_i = c†_i c_i = (I - Z_i)/2
-        paulis[site] = PauliOperator::Z;
-
-        let ops: Vec<(usize, PauliOperator)> = paulis
-            .iter()
-            .enumerate()
-            .filter(|(_, &op)| op != PauliOperator::I)
-            .map(|(i, &op)| (i, op))
-            .collect();
-
-        PauliString::from_ops(self.num_modes, &ops, Complex64::new(-0.5, 0.0))
-    }
-
-    /// Transform hopping term to Pauli string
+    /// Transform hopping term c†_from c_to to Pauli string (X-part only).
     fn hopping_to_pauli(&self, from: usize, to: usize) -> Result<PauliString> {
-        // This would be a product of creation and annihilation operators
-        // Simplified implementation for now
-        let mut paulis = vec![PauliOperator::I; self.num_modes];
-
-        let min_site = from.min(to);
-        let max_site = from.max(to);
-
-        // Jordan-Wigner string between sites
-        paulis[min_site..max_site].fill(PauliOperator::Z);
-
-        paulis[from] = PauliOperator::X;
-        paulis[to] = PauliOperator::X;
-
-        let ops: Vec<(usize, PauliOperator)> = paulis
-            .iter()
-            .enumerate()
-            .filter(|(_, &op)| op != PauliOperator::I)
-            .map(|(i, &op)| (i, op))
-            .collect();
-
-        PauliString::from_ops(self.num_modes, &ops, Complex64::new(0.25, 0.0))
+        self.creation_to_pauli(from)?
+            .multiply(&self.annihilation_to_pauli(to)?)
     }
 
-    /// Transform interaction term to Pauli string
+    /// Transform four-body interaction c†_{s0} c†_{s1} c_{s2} c_{s3} to Pauli string.
     fn interaction_to_pauli(&self, sites: [usize; 4]) -> Result<PauliString> {
-        // Simplified implementation for four-fermion interaction
-        let mut paulis = vec![PauliOperator::I; self.num_modes];
-
-        for &site in &sites {
-            paulis[site] = PauliOperator::Z;
-        }
-
-        let ops: Vec<(usize, PauliOperator)> = paulis
-            .iter()
-            .enumerate()
-            .filter(|(_, &op)| op != PauliOperator::I)
-            .map(|(i, &op)| (i, op))
-            .collect();
-
-        PauliString::from_ops(self.num_modes, &ops, Complex64::new(0.0625, 0.0))
+        self.creation_to_pauli(sites[0])?
+            .multiply(&self.creation_to_pauli(sites[1])?)?
+            .multiply(&self.annihilation_to_pauli(sites[2])?)?
+            .multiply(&self.annihilation_to_pauli(sites[3])?)
     }
 
-    /// Transform fermionic string to Pauli operator sum
+    /// Transform fermionic string to Pauli operator sum.
+    ///
+    /// Each fermionic operator is expanded to its complete JW Pauli representation;
+    /// successive operator sums are then multiplied together (outer product).
+    /// The overall fermionic coefficient is applied last.
     pub fn transform_string(
         &mut self,
         fermionic_string: &FermionicString,
@@ -623,25 +693,37 @@ impl JordanWignerTransform {
         let mut pauli_sum = PauliOperatorSum::new(self.num_modes);
 
         if fermionic_string.operators.is_empty() {
-            // Identity term
             let mut identity_string = PauliString::new(self.num_modes);
             identity_string.coefficient = fermionic_string.coefficient;
-            let _ = pauli_sum.add_term(identity_string);
+            pauli_sum.add_term(identity_string)?;
             return Ok(pauli_sum);
         }
 
-        // For now, simplified implementation that handles single operators
-        if fermionic_string.operators.len() == 1 {
-            let pauli_string = self.transform_operator(&fermionic_string.operators[0])?;
-            let mut scaled_string = pauli_string.clone();
-            scaled_string.coefficient = pauli_string.coefficient * fermionic_string.coefficient;
-            let _ = pauli_sum.add_term(scaled_string);
-        } else {
-            // Multi-operator case would require more complex implementation
-            // For now, return identity with coefficient
-            let mut identity_string = PauliString::new(self.num_modes);
-            identity_string.coefficient = fermionic_string.coefficient;
-            let _ = pauli_sum.add_term(identity_string);
+        // Expand each fermionic operator to its complete JW sum (possibly multi-term),
+        // then multiply the sums together.
+        let mut current: Vec<PauliString> = {
+            let first_sum = self.transform_operator_to_sum(&fermionic_string.operators[0])?;
+            first_sum.terms
+        };
+
+        for op in fermionic_string.operators.iter().skip(1) {
+            let next_sum = self.transform_operator_to_sum(op)?;
+            let mut new_current = Vec::new();
+            for ca in &current {
+                for nb in &next_sum.terms {
+                    let product = ca.multiply(nb)?;
+                    if product.coefficient.norm() > 1e-15 {
+                        new_current.push(product);
+                    }
+                }
+            }
+            current = new_current;
+        }
+
+        // Apply the overall fermionic coefficient and collect terms
+        for mut term in current {
+            term.coefficient *= fermionic_string.coefficient;
+            pauli_sum.add_term(term)?;
         }
 
         Ok(pauli_sum)
@@ -738,28 +820,134 @@ impl FermionicSimulator {
         Ok(())
     }
 
-    /// Apply Pauli string to current state
-    const fn apply_pauli_string(&self, pauli_string: &PauliString) -> Result<()> {
-        // This would need proper Pauli string application
-        // For now, placeholder implementation
+    /// Apply a Pauli string in-place to `self.state`.
+    ///
+    /// For each qubit/mode `q` in order:
+    ///   - I → no-op
+    ///   - Z → multiply amplitude by −1 for all states with bit `q_bit` set
+    ///   - X → swap amplitude pairs (i, i XOR (1<<q_bit))
+    ///   - Y → X-then-Z combined with ±i phase: swap and multiply
+    ///
+    /// The state-vector index bit ordering follows `set_initial_state`:
+    /// mode `q` corresponds to bit `n_modes − 1 − q` of the state index.
+    ///
+    /// After all single-qubit operators are applied the overall coefficient
+    /// of the Pauli string is multiplied into every amplitude.
+    fn apply_pauli_string(&mut self, pauli_string: &PauliString) -> Result<()> {
+        let n = self.num_modes;
+        let size = self.state.len();
+
+        for (q, &op) in pauli_string.operators.iter().enumerate() {
+            let q_bit = n - 1 - q;
+            match op {
+                PauliOperator::I => {}
+                PauliOperator::Z => {
+                    for i in 0..size {
+                        if (i >> q_bit) & 1 == 1 {
+                            self.state[i] = -self.state[i];
+                        }
+                    }
+                }
+                PauliOperator::X => {
+                    for i in 0..size {
+                        if (i >> q_bit) & 1 == 0 {
+                            let j = i | (1 << q_bit);
+                            self.state.swap(i, j);
+                        }
+                    }
+                }
+                PauliOperator::Y => {
+                    // Y = i·X·Z: swap with phase ±i
+                    // Y|0⟩ = i|1⟩,  Y|1⟩ = -i|0⟩
+                    for i in 0..size {
+                        if (i >> q_bit) & 1 == 0 {
+                            let j = i | (1 << q_bit);
+                            let a = self.state[i];
+                            let b = self.state[j];
+                            self.state[i] = Complex64::new(0.0, 1.0) * b;
+                            self.state[j] = Complex64::new(0.0, -1.0) * a;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Apply overall coefficient
+        let coeff = pauli_string.coefficient;
+        for amp in self.state.iter_mut() {
+            *amp *= coeff;
+        }
+
         Ok(())
     }
 
-    /// Compute expectation value of fermionic operator
+    /// Compute expectation value of a fermionic operator in the current state.
+    ///
+    /// Uses the complete JW expansion (`transform_operator_to_sum`) so that
+    /// all Pauli string terms — including constant identity contributions — are
+    /// correctly included in the expectation value.
     pub fn expectation_value(&mut self, op: &FermionicOperator) -> Result<Complex64> {
-        let pauli_string = self.jw_transform.transform_operator(op)?;
+        let pauli_sum = self.jw_transform.transform_operator_to_sum(op)?;
 
-        // Compute ⟨ψ|P|ψ⟩ where P is the Pauli string
-        let expectation = self.compute_pauli_expectation(&pauli_string)?;
-
-        Ok(expectation)
+        let mut total = Complex64::new(0.0, 0.0);
+        for term in &pauli_sum.terms {
+            total += self.compute_pauli_expectation(term)?;
+        }
+        Ok(total)
     }
 
-    /// Compute Pauli string expectation value
-    const fn compute_pauli_expectation(&self, pauli_string: &PauliString) -> Result<Complex64> {
-        // Simplified implementation
-        // Would need proper Pauli string expectation value computation
-        Ok(Complex64::new(0.0, 0.0))
+    /// Compute ⟨ψ|P|ψ⟩ for a Pauli string P without mutating `self.state`.
+    ///
+    /// The Pauli string is applied analytically to a clone of the state vector
+    /// and then the inner product with the original state is taken.
+    fn compute_pauli_expectation(&self, pauli_string: &PauliString) -> Result<Complex64> {
+        let n = self.num_modes;
+        let size = self.state.len();
+        let mut psi_prime = self.state.clone();
+
+        // Apply each Pauli operator to the cloned state (without the coefficient)
+        for (q, &op) in pauli_string.operators.iter().enumerate() {
+            let q_bit = n - 1 - q;
+            match op {
+                PauliOperator::I => {}
+                PauliOperator::Z => {
+                    for i in 0..size {
+                        if (i >> q_bit) & 1 == 1 {
+                            psi_prime[i] = -psi_prime[i];
+                        }
+                    }
+                }
+                PauliOperator::X => {
+                    for i in 0..size {
+                        if (i >> q_bit) & 1 == 0 {
+                            let j = i | (1 << q_bit);
+                            psi_prime.swap(i, j);
+                        }
+                    }
+                }
+                PauliOperator::Y => {
+                    for i in 0..size {
+                        if (i >> q_bit) & 1 == 0 {
+                            let j = i | (1 << q_bit);
+                            let a = psi_prime[i];
+                            let b = psi_prime[j];
+                            psi_prime[i] = Complex64::new(0.0, 1.0) * b;
+                            psi_prime[j] = Complex64::new(0.0, -1.0) * a;
+                        }
+                    }
+                }
+            }
+        }
+
+        // ⟨ψ|P|ψ⟩ = coeff * Σ_i conj(ψ[i]) * (P|ψ⟩)[i]
+        let raw: Complex64 = self
+            .state
+            .iter()
+            .zip(psi_prime.iter())
+            .map(|(&a, &b)| a.conj() * b)
+            .sum();
+
+        Ok(pauli_string.coefficient * raw)
     }
 
     /// Evolve under fermionic Hamiltonian
@@ -777,14 +965,108 @@ impl FermionicSimulator {
         Ok(())
     }
 
-    /// Evolve under Pauli Hamiltonian
-    const fn evolve_pauli_hamiltonian(
-        &self,
-        _hamiltonian: &PauliOperatorSum,
-        _time: f64,
+    /// Apply a single Pauli string action P|ψ⟩ to `target` (in-place).
+    ///
+    /// The `target` array is modified by the unit Pauli operators (coefficient ignored).
+    fn apply_pauli_operators(
+        operators: &[PauliOperator],
+        num_modes: usize,
+        target: &mut Array1<Complex64>,
+    ) {
+        let size = target.len();
+        for (q, &op) in operators.iter().enumerate() {
+            let q_bit = num_modes - 1 - q;
+            match op {
+                PauliOperator::I => {}
+                PauliOperator::Z => {
+                    for i in 0..size {
+                        if (i >> q_bit) & 1 == 1 {
+                            target[i] = -target[i];
+                        }
+                    }
+                }
+                PauliOperator::X => {
+                    for i in 0..size {
+                        if (i >> q_bit) & 1 == 0 {
+                            let j = i | (1 << q_bit);
+                            target.swap(i, j);
+                        }
+                    }
+                }
+                PauliOperator::Y => {
+                    for i in 0..size {
+                        if (i >> q_bit) & 1 == 0 {
+                            let j = i | (1 << q_bit);
+                            let a = target[i];
+                            let b = target[j];
+                            target[i] = Complex64::new(0.0, 1.0) * b;
+                            target[j] = Complex64::new(0.0, -1.0) * a;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Evolve the state under a Pauli Hamiltonian for time `t` using first-order Trotter.
+    ///
+    /// Before applying the Trotter steps, terms with the same Pauli operator pattern
+    /// are merged by summing their coefficients.  This is essential for Hermitian
+    /// Hamiltonians derived from JW transformation, where conjugate-pair terms have
+    /// imaginary coefficients that must cancel before the exponential is applied.
+    ///
+    /// For each merged term `c·P` (c real after merging, P² = I Hermitian Pauli):
+    ///   exp(−i·t·c·P) = cos(c·t)·I − i·sin(c·t)·P
+    ///
+    /// For residual terms with complex coefficients (non-Hermitian parts), the
+    /// complete formula exp(−i·t·c·P) = cos(|c|t)·I − i·(c/|c|)·sin(|c|t)·P is used.
+    fn evolve_pauli_hamiltonian(
+        &mut self,
+        hamiltonian: &PauliOperatorSum,
+        time: f64,
     ) -> Result<()> {
-        // Would implement time evolution under Pauli Hamiltonian
-        // Could use matrix exponentiation or Trotter-Suzuki decomposition
+        // Step 1: merge terms by Pauli operator pattern (sum coefficients)
+        let mut merged: HashMap<Vec<PauliOperator>, Complex64> = HashMap::new();
+        for term in &hamiltonian.terms {
+            *merged
+                .entry(term.operators.clone())
+                .or_insert(Complex64::new(0.0, 0.0)) += term.coefficient;
+        }
+
+        let n = self.num_modes;
+        let size = self.state.len();
+
+        for (operators, coeff) in &merged {
+            let c_re = coeff.re;
+            let c_im = coeff.im;
+            // Skip negligible terms
+            if c_re.abs() < 1e-14 && c_im.abs() < 1e-14 {
+                continue;
+            }
+
+            // Compute P|ψ⟩ on a clone (unit Pauli action only, no coefficient)
+            let mut p_psi = self.state.clone();
+            Self::apply_pauli_operators(operators, n, &mut p_psi);
+
+            // exp(−i·t·c·P) where c may be complex and P is a Hermitian Pauli string.
+            // For real c: exp(−i·t·c·P) = cos(ct)·I − i·sin(ct)·P  (exactly unitary)
+            // For complex c = a+ib:
+            //   exp(−i·t·c·P) = cos(|c|t)·I − i·(c/|c|)·sin(|c|t)·P
+            // phase = −i·c/|c|·sin(|c|t) = (c_im·sin_t/|c|) + i·(−c_re·sin_t/|c|)
+            let magnitude = (c_re * c_re + c_im * c_im).sqrt();
+            let theta = magnitude * time;
+            let cos_t = theta.cos();
+            let sin_t = theta.sin();
+
+            // For a Hermitian Hamiltonian (c purely real after merging), c_im ≈ 0 and
+            // phase = (0, −c_re·sin_t/|c|) = (0, −sign(c_re)·sin_t)
+            let phase = Complex64::new(c_im * sin_t / magnitude, -c_re * sin_t / magnitude);
+
+            for i in 0..size {
+                self.state[i] = cos_t * self.state[i] + phase * p_psi[i];
+            }
+        }
+
         Ok(())
     }
 
@@ -814,18 +1096,37 @@ impl FermionicSimulator {
         &self.stats
     }
 
-    /// Compute particle number correlation
+    /// Compute connected particle-number correlation ⟨n_i n_j⟩ − ⟨n_i⟩⟨n_j⟩.
+    ///
+    /// Both single-site expectation values and the joint ⟨n_i n_j⟩ are computed
+    /// exactly from the current state vector via the complete Jordan-Wigner expansion.
     pub fn particle_correlation(&mut self, site1: usize, site2: usize) -> Result<f64> {
-        let n1_op = FermionicOperator::Number(site1);
-        let n2_op = FermionicOperator::Number(site2);
+        // Individual number operator expectations (full JW expansion: I/2 - Z/2)
+        let n1 = self
+            .expectation_value(&FermionicOperator::Number(site1))?
+            .re;
+        let n2 = self
+            .expectation_value(&FermionicOperator::Number(site2))?
+            .re;
 
-        let n1_exp = self.expectation_value(&n1_op)?.re;
-        let n2_exp = self.expectation_value(&n2_op)?.re;
+        // ⟨n_i n_j⟩ via the product n_i * n_j expanded through transform_string
+        // which properly handles the multi-term JW product (I/2-Z_i/2)(I/2-Z_j/2)
+        let n1n2_string = FermionicString {
+            operators: vec![
+                FermionicOperator::Number(site1),
+                FermionicOperator::Number(site2),
+            ],
+            coefficient: Complex64::new(1.0, 0.0),
+            num_modes: self.num_modes,
+        };
+        let pauli_sum = self.jw_transform.transform_string(&n1n2_string)?;
 
-        // For ⟨n_i n_j⟩, would need to compute product operator expectation
-        let n1_n2_exp = 0.0; // Placeholder
+        let mut n1n2 = 0.0_f64;
+        for term in &pauli_sum.terms {
+            n1n2 += self.compute_pauli_expectation(term)?.re;
+        }
 
-        Ok(n1_exp.mul_add(-n2_exp, n1_n2_exp))
+        Ok(n1n2 - n1 * n2)
     }
 }
 

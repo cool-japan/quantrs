@@ -18,15 +18,17 @@ use super::types::TensorNetworkSampler;
 impl Sampler for TensorNetworkSampler {
     fn run_qubo(
         &self,
-        _qubo: &(
+        qubo: &(
             scirs2_core::ndarray::Array2<f64>,
             std::collections::HashMap<String, usize>,
         ),
-        _num_reads: usize,
+        num_reads: usize,
     ) -> SamplerResult<Vec<crate::sampler::SampleResult>> {
-        Err(SamplerError::NotImplemented(
-            "Use run_hobo instead ".to_string(),
-        ))
+        let (matrix, var_map) = qubo;
+        // Lift the 2-D QUBO matrix to a dynamic-rank tensor (ndim == 2)
+        // so that run_hobo can handle it via the existing dispatch path.
+        let tensor: ArrayD<f64> = matrix.clone().into_dyn();
+        self.run_hobo(&(tensor, var_map.clone()), num_reads)
     }
     fn run_hobo(
         &self,

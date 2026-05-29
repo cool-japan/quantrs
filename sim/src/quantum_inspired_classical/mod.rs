@@ -1,13 +1,13 @@
 //! Auto-generated module structure
 
-pub mod extra_types;
-pub mod framework;
 pub mod algorithmconfig_traits;
 pub mod benchmarkingconfig_traits;
 pub mod communitydetectionparams_traits;
 pub mod comparisonstats_traits;
 pub mod convergenceanalysis_traits;
 pub mod executionstats_traits;
+pub mod extra_types;
+pub mod framework;
 pub mod functions;
 pub mod graphconfig_traits;
 pub mod linalgconfig_traits;
@@ -27,14 +27,14 @@ pub mod types;
 pub mod wavefunctionconfig_traits;
 
 // Re-export all types
-pub use extra_types::*;
-pub use framework::*;
 pub use algorithmconfig_traits::*;
 pub use benchmarkingconfig_traits::*;
 pub use communitydetectionparams_traits::*;
 pub use comparisonstats_traits::*;
 pub use convergenceanalysis_traits::*;
 pub use executionstats_traits::*;
+pub use extra_types::*;
+pub use framework::*;
 pub use functions::*;
 pub use graphconfig_traits::*;
 pub use linalgconfig_traits::*;

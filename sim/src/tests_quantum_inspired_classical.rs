@@ -876,7 +876,10 @@ mod tests {
         assert!(result.is_ok(), "QDE should succeed: {result:?}");
         let opt = result.expect("QDE optimize failed");
         assert!(opt.iterations <= 15, "QDE ran too many iterations");
-        assert!(opt.objective_value.is_finite(), "QDE produced non-finite objective");
+        assert!(
+            opt.objective_value.is_finite(),
+            "QDE produced non-finite objective"
+        );
         assert_eq!(opt.solution.len(), 4, "QDE solution dimension mismatch");
         assert!(
             opt.runtime_stats.function_evaluations > 0,
@@ -901,7 +904,10 @@ mod tests {
         assert!(result.is_ok(), "QHS should succeed: {result:?}");
         let opt = result.expect("QHS optimize failed");
         assert!(opt.iterations <= 15, "QHS ran too many iterations");
-        assert!(opt.objective_value.is_finite(), "QHS produced non-finite objective");
+        assert!(
+            opt.objective_value.is_finite(),
+            "QHS produced non-finite objective"
+        );
         assert_eq!(opt.solution.len(), 4, "QHS solution dimension mismatch");
         assert!(
             opt.runtime_stats.function_evaluations > 0,
@@ -945,21 +951,27 @@ mod tests {
         config.optimization_config.algorithm_type = OptimizationAlgorithm::ClassicalQAOA;
         config.algorithm_config.max_iterations = 20;
         config.num_variables = 5;
-        config.optimization_config.bounds =
-            vec![(-5.0_f64, 5.0_f64); 5];
+        config.optimization_config.bounds = vec![(-5.0_f64, 5.0_f64); 5];
 
-        let mut framework =
-            QuantumInspiredFramework::new(config).expect("Failed to create ClassicalQAOA framework");
+        let mut framework = QuantumInspiredFramework::new(config)
+            .expect("Failed to create ClassicalQAOA framework");
         let result = framework.optimize();
 
         assert!(result.is_ok(), "ClassicalQAOA should succeed: {result:?}");
         let opt = result.expect("ClassicalQAOA optimize failed");
-        assert!(opt.iterations <= 20, "ClassicalQAOA ran too many iterations");
+        assert!(
+            opt.iterations <= 20,
+            "ClassicalQAOA ran too many iterations"
+        );
         assert!(
             opt.objective_value.is_finite(),
             "ClassicalQAOA produced non-finite objective"
         );
-        assert_eq!(opt.solution.len(), 5, "ClassicalQAOA solution dimension mismatch");
+        assert_eq!(
+            opt.solution.len(),
+            5,
+            "ClassicalQAOA solution dimension mismatch"
+        );
         assert!(
             opt.runtime_stats.function_evaluations > 0,
             "ClassicalQAOA should have evaluated the objective at least once"
@@ -972,8 +984,7 @@ mod tests {
         config.optimization_config.algorithm_type = OptimizationAlgorithm::ClassicalVQE;
         config.algorithm_config.max_iterations = 15;
         config.num_variables = 4;
-        config.optimization_config.bounds =
-            vec![(-3.0_f64, 3.0_f64); 4];
+        config.optimization_config.bounds = vec![(-3.0_f64, 3.0_f64); 4];
 
         let mut framework =
             QuantumInspiredFramework::new(config).expect("Failed to create ClassicalVQE framework");
@@ -986,7 +997,11 @@ mod tests {
             opt.objective_value.is_finite(),
             "ClassicalVQE produced non-finite objective"
         );
-        assert_eq!(opt.solution.len(), 4, "ClassicalVQE solution dimension mismatch");
+        assert_eq!(
+            opt.solution.len(),
+            4,
+            "ClassicalVQE solution dimension mismatch"
+        );
         assert!(
             opt.runtime_stats.function_evaluations > 0,
             "ClassicalVQE should have evaluated the objective at least once"
@@ -1000,21 +1015,30 @@ mod tests {
         config.algorithm_config.max_iterations = 10;
         config.algorithm_config.population_size = 6;
         config.num_variables = 3;
-        config.optimization_config.bounds =
-            vec![(-4.0_f64, 4.0_f64); 3];
+        config.optimization_config.bounds = vec![(-4.0_f64, 4.0_f64); 3];
 
-        let mut framework =
-            QuantumInspiredFramework::new(config).expect("Failed to create QuantumAntColony framework");
+        let mut framework = QuantumInspiredFramework::new(config)
+            .expect("Failed to create QuantumAntColony framework");
         let result = framework.optimize();
 
-        assert!(result.is_ok(), "QuantumAntColony should succeed: {result:?}");
+        assert!(
+            result.is_ok(),
+            "QuantumAntColony should succeed: {result:?}"
+        );
         let opt = result.expect("QuantumAntColony optimize failed");
-        assert!(opt.iterations <= 10, "QuantumAntColony ran too many iterations");
+        assert!(
+            opt.iterations <= 10,
+            "QuantumAntColony ran too many iterations"
+        );
         assert!(
             opt.objective_value.is_finite(),
             "QuantumAntColony produced non-finite objective"
         );
-        assert_eq!(opt.solution.len(), 3, "QuantumAntColony solution dimension mismatch");
+        assert_eq!(
+            opt.solution.len(),
+            3,
+            "QuantumAntColony solution dimension mismatch"
+        );
         assert!(
             opt.runtime_stats.function_evaluations > 0,
             "QuantumAntColony should have evaluated the objective at least once"

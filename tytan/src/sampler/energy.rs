@@ -787,9 +787,7 @@ pub fn hobo_to_qubo(
     let shape = tensor.shape();
     let n = shape[0];
     if shape[1] != n || shape[2] != n {
-        return Err(format!(
-            "hobo_to_qubo: tensor must be cubic, got {shape:?}"
-        ));
+        return Err(format!("hobo_to_qubo: tensor must be cubic, got {shape:?}"));
     }
 
     // Enumerate pairs (i < j) that appear in any non-zero 3-body term.

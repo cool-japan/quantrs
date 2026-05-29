@@ -219,7 +219,8 @@ impl ZeroNoiseExtrapolation {
                     }
                     if den.abs() < 1e-15 {
                         return Err(SimulatorError::InvalidInput(
-                            "Degenerate scale factors — cannot form stable Lagrange basis".to_string(),
+                            "Degenerate scale factors — cannot form stable Lagrange basis"
+                                .to_string(),
                         ));
                     }
                     result += ys[i] * num / den;

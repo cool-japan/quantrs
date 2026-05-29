@@ -634,7 +634,11 @@ impl QuantumInspiredFramework {
             let mut rng = self.rng.lock().expect("RNG lock poisoned");
             let mut v = Array1::zeros(num_vars);
             for j in 0..num_vars {
-                let (lo, hi) = if j < bounds.len() { bounds[j] } else { (-10.0, 10.0) };
+                let (lo, hi) = if j < bounds.len() {
+                    bounds[j]
+                } else {
+                    (-10.0, 10.0)
+                };
                 v[j] = rng.random::<f64>().mul_add(hi - lo, lo);
             }
             v
@@ -655,7 +659,11 @@ impl QuantumInspiredFramework {
             let mut next = current.clone();
             let mut rng = self.rng.lock().expect("RNG lock poisoned");
             for j in 0..num_vars {
-                let (lo, hi) = if j < bounds.len() { bounds[j] } else { (-10.0, 10.0) };
+                let (lo, hi) = if j < bounds.len() {
+                    bounds[j]
+                } else {
+                    (-10.0, 10.0)
+                };
                 let range = hi - lo;
                 // Problem phase: gradient-guided shift using cost landscape curvature
                 let shift = range * 0.05;
@@ -722,7 +730,11 @@ impl QuantumInspiredFramework {
             let mut rng = self.rng.lock().expect("RNG lock poisoned");
             let mut v = Array1::zeros(num_vars);
             for j in 0..num_vars {
-                let (lo, hi) = if j < bounds.len() { bounds[j] } else { (-10.0, 10.0) };
+                let (lo, hi) = if j < bounds.len() {
+                    bounds[j]
+                } else {
+                    (-10.0, 10.0)
+                };
                 v[j] = rng.random::<f64>().mul_add(hi - lo, lo);
             }
             v
@@ -740,7 +752,11 @@ impl QuantumInspiredFramework {
 
             // Coordinate descent with parameter-shift rule (analogous to quantum gradient)
             for j in 0..num_vars {
-                let (lo, hi) = if j < bounds.len() { bounds[j] } else { (-10.0, 10.0) };
+                let (lo, hi) = if j < bounds.len() {
+                    bounds[j]
+                } else {
+                    (-10.0, 10.0)
+                };
                 let delta = 0.1 * (hi - lo) + interference.abs() * 0.01 * (hi - lo);
 
                 let mut plus = theta.clone();
@@ -766,7 +782,11 @@ impl QuantumInspiredFramework {
                 let mut rng = self.rng.lock().expect("RNG lock poisoned");
                 if rng.random::<f64>() < quantum_params.tunneling_probability {
                     let j = (rng.random::<f64>() * num_vars as f64) as usize % num_vars;
-                    let (lo, hi) = if j < bounds.len() { bounds[j] } else { (-10.0, 10.0) };
+                    let (lo, hi) = if j < bounds.len() {
+                        bounds[j]
+                    } else {
+                        (-10.0, 10.0)
+                    };
                     theta[j] = rng.random::<f64>().mul_add(hi - lo, lo);
                     current_energy = self.evaluate_objective(&theta)?;
                     self.state.runtime_stats.function_evaluations += 1;
@@ -816,7 +836,11 @@ impl QuantumInspiredFramework {
             let mut rng = self.rng.lock().expect("RNG lock poisoned");
             let mut v = Array1::zeros(num_vars);
             for j in 0..num_vars {
-                let (lo, hi) = if j < bounds.len() { bounds[j] } else { (-10.0, 10.0) };
+                let (lo, hi) = if j < bounds.len() {
+                    bounds[j]
+                } else {
+                    (-10.0, 10.0)
+                };
                 v[j] = rng.random::<f64>().mul_add(hi - lo, lo);
             }
             v
@@ -839,7 +863,11 @@ impl QuantumInspiredFramework {
                 {
                     let mut rng = self.rng.lock().expect("RNG lock poisoned");
                     for j in 0..num_vars {
-                        let (lo, hi) = if j < bounds.len() { bounds[j] } else { (-10.0, 10.0) };
+                        let (lo, hi) = if j < bounds.len() {
+                            bounds[j]
+                        } else {
+                            (-10.0, 10.0)
+                        };
                         // Quantum tunneling: occasionally pick uniformly regardless of pheromone
                         if rng.random::<f64>() < quantum_params.tunneling_probability {
                             solution[j] = rng.random::<f64>().mul_add(hi - lo, lo);
@@ -883,12 +911,19 @@ impl QuantumInspiredFramework {
 
             // Pheromone deposit: lower-energy ants contribute more
             let min_e = ant_energies.iter().cloned().fold(f64::INFINITY, f64::min);
-            let max_e = ant_energies.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            let max_e = ant_energies
+                .iter()
+                .cloned()
+                .fold(f64::NEG_INFINITY, f64::max);
             let range = (max_e - min_e).max(1e-10);
             for (ant_idx, solution) in ant_solutions.iter().enumerate() {
                 let deposit = 1.0 - (ant_energies[ant_idx] - min_e) / range;
                 for j in 0..num_vars {
-                    let (lo, hi) = if j < bounds.len() { bounds[j] } else { (-10.0, 10.0) };
+                    let (lo, hi) = if j < bounds.len() {
+                        bounds[j]
+                    } else {
+                        (-10.0, 10.0)
+                    };
                     let level = ((solution[j] - lo) / (hi - lo) * N_LEVELS as f64) as usize;
                     let level = level.min(N_LEVELS - 1);
                     pheromones[j][level] += deposit;
@@ -1146,14 +1181,9 @@ impl QuantumInspiredFramework {
                 }
 
                 // MSE loss per sample.
-                let residual: Array1<f64> = Array1::from_iter(
-                    y_pred
-                        .iter()
-                        .zip(y_true.iter())
-                        .map(|(p, t)| *p - *t),
-                );
-                total_loss +=
-                    residual.iter().map(|r| r * r).sum::<f64>() / output_dim as f64;
+                let residual: Array1<f64> =
+                    Array1::from_iter(y_pred.iter().zip(y_true.iter()).map(|(p, t)| *p - *t));
+                total_loss += residual.iter().map(|r| r * r).sum::<f64>() / output_dim as f64;
 
                 // Accumulate gradients.
                 for o in 0..output_dim {
@@ -1178,8 +1208,7 @@ impl QuantumInspiredFramework {
             {
                 let mut rng = self.rng.lock().expect("RNG lock poisoned");
                 if rng.random::<f64>() < tunneling_prob {
-                    let j =
-                        (rng.random::<f64>() * n_params as f64) as usize % n_params;
+                    let j = (rng.random::<f64>() * n_params as f64) as usize % n_params;
                     params[j] += (rng.random::<f64>() - 0.5) * 0.01;
                 }
             }
@@ -1211,8 +1240,7 @@ impl QuantumInspiredFramework {
                     .map(|(p, t)| (p - t).abs())
                     .sum::<f64>()
                     / output_dim as f64;
-                let mag: f64 =
-                    y_true.iter().map(|t| t.abs()).sum::<f64>() / output_dim as f64;
+                let mag: f64 = y_true.iter().map(|t| t.abs()).sum::<f64>() / output_dim as f64;
                 if err < 0.1 * mag.max(1.0) {
                     correct += 1;
                 }
@@ -1282,9 +1310,7 @@ impl QuantumInspiredFramework {
                         // Quantum tunneling: resample coordinate uniformly.
                         prop[j] = rng.random::<f64>().mul_add(hi - lo, lo);
                     } else {
-                        prop[j] =
-                            (current[j] + (rng.random::<f64>() - 0.5) * step)
-                                .clamp(lo, hi);
+                        prop[j] = (current[j] + (rng.random::<f64>() - 0.5) * step).clamp(lo, hi);
                     }
                 }
                 prop
@@ -1318,8 +1344,7 @@ impl QuantumInspiredFramework {
         let mean: Array1<f64> = samples_array
             .mean_axis(scirs2_core::ndarray::Axis(0))
             .unwrap_or_else(|| Array1::zeros(num_vars));
-        let variance: Array1<f64> =
-            samples_array.var_axis(scirs2_core::ndarray::Axis(0), 0.0);
+        let variance: Array1<f64> = samples_array.var_axis(scirs2_core::ndarray::Axis(0), 0.0);
 
         // Skewness: E[(X-mu)^3] / sigma^3.
         let skewness: Array1<f64> = Array1::from_iter((0..num_vars).map(|j| {
@@ -1379,8 +1404,7 @@ impl QuantumInspiredFramework {
             }
         }
 
-        let effective_sample_size =
-            (n_samples as f64 * acceptance_rate).max(1.0) as usize;
+        let effective_sample_size = (n_samples as f64 * acceptance_rate).max(1.0) as usize;
         // Autocorrelation time lower-bounded at 1.
         let autocorr_times: Array1<f64> =
             Array1::from_elem(num_vars, (1.0_f64 / acceptance_rate.max(1e-6)).max(1.0));
@@ -1440,8 +1464,7 @@ impl QuantumInspiredFramework {
         let max_iter = self.config.algorithm_config.max_iterations.max(1000);
         let tol = self.config.algorithm_config.tolerance.max(1e-10);
 
-        let mut x: Array1<Complex64> =
-            Array1::from_elem(n, Complex64::new(0.0, 0.0));
+        let mut x: Array1<Complex64> = Array1::from_elem(n, Complex64::new(0.0, 0.0));
 
         let mut converged_iter = max_iter;
 
@@ -1506,10 +1529,7 @@ impl QuantumInspiredFramework {
     /// max-cut value (sum of edge weights crossing the even/odd colour bipartition).
     /// Graph metrics (modularity, clustering coefficient, average path length,
     /// diameter) are also computed via BFS.
-    pub fn solve_graph_problem(
-        &mut self,
-        adjacency_matrix: &Array2<f64>,
-    ) -> Result<GraphResult> {
+    pub fn solve_graph_problem(&mut self, adjacency_matrix: &Array2<f64>) -> Result<GraphResult> {
         let n = adjacency_matrix.nrows();
         if n == 0 {
             return Ok(GraphResult {

@@ -533,18 +533,85 @@ impl QuantumGAN {
     }
 }
 
-/// Calculate Jensen-Shannon divergence between two datasets
+/// Calculate Jensen-Shannon divergence between two datasets using histogram estimation.
+///
+/// For each column (feature dimension), estimates the probability distributions
+/// with a fixed-bin histogram, then computes JS = 0.5 * KL(p||m) + 0.5 * KL(q||m)
+/// where m = (p + q) / 2.  Results are averaged across columns.
 fn calculate_js_divergence(data1: &Array2<f64>, data2: &Array2<f64>) -> Result<f64> {
-    // This is a simplified placeholder implementation
-    // In a real implementation, we would:
-    // 1. Estimate probability distributions from the data
-    // 2. Calculate the KL divergence between each distribution and their average
-    // 3. Calculate JS divergence as the average of these KL divergences
+    if data1.ncols() == 0 || data1.nrows() == 0 || data2.nrows() == 0 {
+        return Ok(0.0);
+    }
 
-    // For now, just return a random value between 0 and 1
-    let divergence = thread_rng().random::<f64>() * 0.5;
+    let n_bins: usize = 20;
+    let n_cols = data1.ncols().min(data2.ncols());
+    let mut total_js = 0.0;
 
-    Ok(divergence)
+    for col in 0..n_cols {
+        let col1: Vec<f64> = data1.column(col).to_vec();
+        let col2: Vec<f64> = data2.column(col).to_vec();
+
+        let min_val = col1
+            .iter()
+            .chain(col2.iter())
+            .cloned()
+            .fold(f64::INFINITY, f64::min);
+        let max_val = col1
+            .iter()
+            .chain(col2.iter())
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
+
+        if (max_val - min_val).abs() < 1e-14 {
+            // All values identical across both datasets → JS divergence is 0
+            continue;
+        }
+
+        let bin_width = (max_val - min_val) / n_bins as f64;
+        let mut hist1 = vec![0.0f64; n_bins];
+        let mut hist2 = vec![0.0f64; n_bins];
+
+        for &v in &col1 {
+            let bin = ((v - min_val) / bin_width) as usize;
+            let bin = bin.min(n_bins - 1);
+            hist1[bin] += 1.0;
+        }
+        for &v in &col2 {
+            let bin = ((v - min_val) / bin_width) as usize;
+            let bin = bin.min(n_bins - 1);
+            hist2[bin] += 1.0;
+        }
+
+        let n1 = col1.len() as f64;
+        let n2 = col2.len() as f64;
+        for i in 0..n_bins {
+            hist1[i] /= n1;
+            hist2[i] /= n2;
+        }
+
+        // JS = 0.5 * KL(p || m) + 0.5 * KL(q || m),  m = (p + q) / 2
+        let mut js = 0.0f64;
+        for i in 0..n_bins {
+            let p = hist1[i];
+            let q = hist2[i];
+            let m = (p + q) * 0.5;
+            if m > 1e-14 {
+                if p > 1e-14 {
+                    js += 0.5 * p * (p / m).ln();
+                }
+                if q > 1e-14 {
+                    js += 0.5 * q * (q / m).ln();
+                }
+            }
+        }
+        total_js += js;
+    }
+
+    Ok(if n_cols > 0 {
+        total_js / n_cols as f64
+    } else {
+        0.0
+    })
 }
 
 // Helper function to sample a random batch from a dataset
@@ -558,6 +625,30 @@ fn sample_batch(data: &Array2<f64>, batch_size: usize) -> Result<Array2<f64>> {
     }
 
     Ok(batch)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use scirs2_core::ndarray::Array2;
+
+    #[test]
+    fn test_js_divergence_identical() {
+        let data = Array2::from_shape_vec((4, 2), vec![0.0, 1.0, 0.5, 0.5, 0.2, 0.8, 0.7, 0.3])
+            .expect("array creation failed");
+        let js = calculate_js_divergence(&data, &data).expect("divergence failed");
+        assert!(js < 0.01, "JS(p,p) should be ≈0, got {js}");
+    }
+
+    #[test]
+    fn test_js_divergence_bounded() {
+        let data1 =
+            Array2::from_shape_vec((4, 1), vec![0.0, 0.0, 0.0, 0.0]).expect("array creation");
+        let data2 =
+            Array2::from_shape_vec((4, 1), vec![1.0, 1.0, 1.0, 1.0]).expect("array creation");
+        let js = calculate_js_divergence(&data1, &data2).expect("divergence failed");
+        assert!(js >= 0.0 && js <= 1.0, "JS should be in [0, 1], got {js}");
+    }
 }
 
 impl fmt::Display for GeneratorType {

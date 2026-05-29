@@ -455,9 +455,7 @@ impl ObjectiveFunction for ObjectiveEvaluator {
     ) -> DeviceResult<Array1<f64>> {
         match method {
             GradientMethod::ParameterShift => self.compute_parameter_shift_gradient(parameters),
-            GradientMethod::FiniteDifference => {
-                self.compute_finite_difference_gradient(parameters)
-            }
+            GradientMethod::FiniteDifference => self.compute_finite_difference_gradient(parameters),
             GradientMethod::CentralDifference => {
                 self.compute_central_difference_gradient(parameters)
             }
@@ -465,9 +463,7 @@ impl ObjectiveFunction for ObjectiveEvaluator {
                 self.compute_forward_difference_gradient(parameters)
             }
             GradientMethod::NaturalGradient => self.compute_natural_gradient(parameters),
-            GradientMethod::AutomaticDifferentiation => {
-                self.compute_automatic_gradient(parameters)
-            }
+            GradientMethod::AutomaticDifferentiation => self.compute_automatic_gradient(parameters),
         }
     }
     /// Estimate computational cost
@@ -861,7 +857,11 @@ impl ObjectiveEvaluator {
             cost += weight;
         }
         // Add penalty for any violated distance constraints from spec.
-        let penalty = spec.parameters.get("penalty_strength").copied().unwrap_or(1.0);
+        let penalty = spec
+            .parameters
+            .get("penalty_strength")
+            .copied()
+            .unwrap_or(1.0);
         cost += penalty * (n as f64 - order.len() as f64).abs();
         Ok(Self::make_cost_result(cost, circuit, "tsp_cost"))
     }
@@ -875,7 +875,11 @@ impl ObjectiveEvaluator {
         let selected: Vec<bool> = circuit.parameters.iter().map(|&p| p >= 0.5).collect();
         let cardinality = selected.iter().filter(|&&s| s).count() as f64;
         let graph = spec.graph.as_deref().unwrap_or(&[]);
-        let penalty = spec.parameters.get("penalty_strength").copied().unwrap_or(2.0);
+        let penalty = spec
+            .parameters
+            .get("penalty_strength")
+            .copied()
+            .unwrap_or(2.0);
         let violations: f64 = graph
             .iter()
             .filter(|&&(u, v, _)| {
@@ -899,7 +903,12 @@ impl ObjectiveEvaluator {
             return Ok(Self::make_cost_result(0.0, circuit, "portfolio_cost"));
         }
         // Normalise weights to simplex.
-        let sum: f64 = circuit.parameters.iter().map(|p| p.abs()).sum::<f64>().max(1e-12);
+        let sum: f64 = circuit
+            .parameters
+            .iter()
+            .map(|p| p.abs())
+            .sum::<f64>()
+            .max(1e-12);
         let w: Vec<f64> = circuit.parameters.iter().map(|&p| p.abs() / sum).collect();
         // Expected return: weight · expected_returns from spec params (default 0.05 per asset).
         let expected_return: f64 = w
@@ -963,7 +972,11 @@ impl ObjectiveEvaluator {
     fn evaluate_state_preparation(circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
         let state = Self::simulate_circuit_exact(circuit)?;
         let fidelity = state[0].norm_sqr();
-        Ok(Self::make_cost_result(1.0 - fidelity, circuit, "state_prep_infidelity"))
+        Ok(Self::make_cost_result(
+            1.0 - fidelity,
+            circuit,
+            "state_prep_infidelity",
+        ))
     }
 
     /// Process fidelity estimate: product of cosines of rotation angles.
@@ -973,7 +986,11 @@ impl ObjectiveEvaluator {
             .iter()
             .map(|&p| p.cos().powi(2))
             .product::<f64>();
-        Ok(Self::make_cost_result(1.0 - fidelity, circuit, "process_infidelity"))
+        Ok(Self::make_cost_result(
+            1.0 - fidelity,
+            circuit,
+            "process_infidelity",
+        ))
     }
 
     /// Generic custom objective: sum of cos(p_i).
@@ -984,7 +1001,10 @@ impl ObjectiveEvaluator {
     }
 
     /// Forward finite-difference gradient: [f(x+h) - f(x)] / h.
-    fn compute_finite_difference_gradient(&self, parameters: &Array1<f64>) -> DeviceResult<Array1<f64>> {
+    fn compute_finite_difference_gradient(
+        &self,
+        parameters: &Array1<f64>,
+    ) -> DeviceResult<Array1<f64>> {
         let h = 1e-5_f64;
         let f0 = self.evaluate(parameters)?.value;
         let mut gradient = Array1::zeros(parameters.len());
@@ -998,7 +1018,10 @@ impl ObjectiveEvaluator {
     }
 
     /// Central finite-difference gradient: [f(x+h) - f(x-h)] / 2h. More accurate than forward.
-    fn compute_central_difference_gradient(&self, parameters: &Array1<f64>) -> DeviceResult<Array1<f64>> {
+    fn compute_central_difference_gradient(
+        &self,
+        parameters: &Array1<f64>,
+    ) -> DeviceResult<Array1<f64>> {
         let h = 1e-5_f64;
         let mut gradient = Array1::zeros(parameters.len());
         for i in 0..parameters.len() {
@@ -1014,7 +1037,10 @@ impl ObjectiveEvaluator {
     }
 
     /// Forward-difference gradient (alias for finite difference).
-    fn compute_forward_difference_gradient(&self, parameters: &Array1<f64>) -> DeviceResult<Array1<f64>> {
+    fn compute_forward_difference_gradient(
+        &self,
+        parameters: &Array1<f64>,
+    ) -> DeviceResult<Array1<f64>> {
         self.compute_finite_difference_gradient(parameters)
     }
 
@@ -1069,7 +1095,12 @@ impl ObjectiveEvaluator {
             state = new_state;
         }
         // Normalise.
-        let norm: f64 = state.iter().map(|a| a.norm_sqr()).sum::<f64>().sqrt().max(1e-15);
+        let norm: f64 = state
+            .iter()
+            .map(|a| a.norm_sqr())
+            .sum::<f64>()
+            .sqrt()
+            .max(1e-15);
         state.mapv_inplace(|a| a / norm);
         Ok(state)
     }
@@ -1109,7 +1140,11 @@ impl ObjectiveEvaluator {
     fn evaluate_fidelity(circuit: &ParametricCircuit) -> DeviceResult<ObjectiveResult> {
         let state = Self::simulate_circuit_exact(circuit)?;
         let fidelity = state[0].norm_sqr();
-        Ok(Self::make_cost_result(1.0 - fidelity, circuit, "infidelity"))
+        Ok(Self::make_cost_result(
+            1.0 - fidelity,
+            circuit,
+            "infidelity",
+        ))
     }
 
     /// Expectation value of Z⊗…⊗Z (all-qubit parity operator).
@@ -1122,11 +1157,19 @@ impl ObjectiveEvaluator {
             .iter()
             .enumerate()
             .map(|(basis, amp)| {
-                let parity = if basis.count_ones() % 2 == 0 { 1.0 } else { -1.0 };
+                let parity = if basis.count_ones() % 2 == 0 {
+                    1.0
+                } else {
+                    -1.0
+                };
                 parity * amp.norm_sqr()
             })
             .sum();
-        Ok(Self::make_cost_result(exp_val, circuit, "expectation_value"))
+        Ok(Self::make_cost_result(
+            exp_val,
+            circuit,
+            "expectation_value",
+        ))
     }
 }
 impl Default for MeasurementStrategy {

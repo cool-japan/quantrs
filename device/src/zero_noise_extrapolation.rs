@@ -6,7 +6,6 @@
 use crate::{CircuitResult, DeviceError, DeviceResult};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::GateOp;
-use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::thread_rng;
 use std::collections::HashMap;
 
@@ -560,66 +559,145 @@ impl ExtrapolationFitter {
         })
     }
 
-    /// Polynomial fitting
+    /// Polynomial fitting via Vandermonde normal equations with Gaussian elimination
     fn polynomial_fit(x: &[f64], y: &[f64], order: usize) -> DeviceResult<ZNEResult> {
         let n = x.len();
-        if order >= n {
+        if n == 0 {
             return Err(DeviceError::APIError(
-                "Polynomial order too high for data".to_string(),
+                "No data points for polynomial fit".to_string(),
             ));
         }
-
-        // Build Vandermonde matrix
-        let mut a = Array2::<f64>::zeros((n, order + 1));
-        for i in 0..n {
-            for j in 0..=order {
-                a[[i, j]] = x[i].powi(j as i32);
-            }
-        }
-
-        // Solve least squares (simplified - would use proper linear algebra)
-        let y_vec = Array1::from_vec(y.to_vec());
-
-        // For demonstration, use simple case for order 2
-        if order == 2 {
-            // Quadratic: y = a + bx + cx²
-            let sum_x: f64 = x.iter().sum();
-            let sum_x2: f64 = x.iter().map(|xi| xi * xi).sum();
-            let sum_x3: f64 = x.iter().map(|xi| xi * xi * xi).sum();
-            let sum_x4: f64 = x.iter().map(|xi| xi * xi * xi * xi).sum();
-            let sum_y: f64 = y.iter().sum();
-            let sum_xy: f64 = x.iter().zip(y.iter()).map(|(xi, yi)| xi * yi).sum();
-            let sum_x2y: f64 = x.iter().zip(y.iter()).map(|(xi, yi)| xi * xi * yi).sum();
-
-            // Normal equations (simplified)
-            let det = sum_x2.mul_add(
-                sum_x.mul_add(sum_x3, -(sum_x2 * sum_x2)),
-                (n as f64).mul_add(
-                    sum_x2.mul_add(sum_x4, -(sum_x3 * sum_x3)),
-                    -(sum_x * sum_x.mul_add(sum_x4, -(sum_x2 * sum_x3))),
-                ),
-            );
-
-            let a = sum_x2y.mul_add(
-                sum_x.mul_add(sum_x3, -(sum_x2 * sum_x2)),
-                sum_y.mul_add(
-                    sum_x2.mul_add(sum_x4, -(sum_x3 * sum_x3)),
-                    -(sum_xy * sum_x.mul_add(sum_x4, -(sum_x2 * sum_x3))),
-                ),
-            ) / det;
-
+        if order == 0 {
+            // Constant fit: value = mean(y)
+            let mean_y = y.iter().sum::<f64>() / n as f64;
+            // R² for constant model: if data is constant R²=1, otherwise the model explains nothing
+            let ss_tot: f64 = y.iter().map(|&yi| (yi - mean_y).powi(2)).sum();
+            let r_squared = if ss_tot < 1e-14 { 1.0 } else { 0.0 };
             return Ok(ZNEResult {
-                mitigated_value: a,
+                mitigated_value: mean_y,
                 error_estimate: None,
                 raw_data: x.iter().zip(y.iter()).map(|(&xi, &yi)| (xi, yi)).collect(),
-                fit_params: vec![a],
-                r_squared: 0.9, // Simplified
-                extrapolation_fn: format!("y = {a:.6} + bx + cx²"),
+                fit_params: vec![mean_y],
+                r_squared,
+                extrapolation_fn: format!("y = {mean_y:.6}"),
             });
         }
 
-        // Fallback to linear for other orders
-        Self::linear_fit(x, y)
+        // Cap effective order so we never attempt to fit more coefficients than data points
+        let effective_order = order.min(n - 1);
+        let num_coeffs = effective_order + 1;
+
+        // Build normal equations V^T V c = V^T y using Vandermonde matrix
+        let mut vtv = vec![0.0_f64; num_coeffs * num_coeffs];
+        let mut vty = vec![0.0_f64; num_coeffs];
+
+        for i in 0..n {
+            // Compute powers: powers[j] = x[i]^j
+            let mut powers = vec![1.0_f64; num_coeffs];
+            for j in 1..num_coeffs {
+                powers[j] = powers[j - 1] * x[i];
+            }
+            for j in 0..num_coeffs {
+                vty[j] += powers[j] * y[i];
+                for k in 0..num_coeffs {
+                    vtv[j * num_coeffs + k] += powers[j] * powers[k];
+                }
+            }
+        }
+
+        // Solve the num_coeffs x num_coeffs system V^T V c = V^T y
+        let coeffs = Self::gaussian_elimination(&vtv, &vty, num_coeffs);
+
+        // The zero-noise extrapolated value is the constant term (x=0)
+        let zero_noise_value = coeffs[0];
+
+        // Compute R²
+        let y_mean = y.iter().sum::<f64>() / n as f64;
+        let ss_tot: f64 = y.iter().map(|&yi| (yi - y_mean).powi(2)).sum();
+        let ss_res: f64 = x
+            .iter()
+            .zip(y.iter())
+            .map(|(&xi, &yi)| {
+                let y_pred = coeffs
+                    .iter()
+                    .enumerate()
+                    .map(|(j, &c)| c * xi.powi(j as i32))
+                    .sum::<f64>();
+                (yi - y_pred).powi(2)
+            })
+            .sum();
+        let r_squared = if ss_tot < 1e-14 {
+            1.0
+        } else {
+            1.0 - ss_res / ss_tot
+        };
+
+        let fn_desc = format!("polynomial order {effective_order}");
+        Ok(ZNEResult {
+            mitigated_value: zero_noise_value,
+            error_estimate: None,
+            raw_data: x.iter().zip(y.iter()).map(|(&xi, &yi)| (xi, yi)).collect(),
+            fit_params: coeffs,
+            r_squared,
+            extrapolation_fn: fn_desc,
+        })
+    }
+
+    /// Gaussian elimination with partial pivoting to solve A x = b (A is n×n stored row-major)
+    fn gaussian_elimination(a: &[f64], b: &[f64], n: usize) -> Vec<f64> {
+        // Build augmented matrix [A | b] stored row-major with n+1 columns
+        let cols = n + 1;
+        let mut mat = vec![0.0_f64; n * cols];
+        for i in 0..n {
+            for j in 0..n {
+                mat[i * cols + j] = a[i * n + j];
+            }
+            mat[i * cols + n] = b[i];
+        }
+
+        // Forward elimination with partial pivoting
+        for col in 0..n {
+            // Find pivot row (largest absolute value in this column)
+            let mut max_row = col;
+            for row in (col + 1)..n {
+                if mat[row * cols + col].abs() > mat[max_row * cols + col].abs() {
+                    max_row = row;
+                }
+            }
+            // Swap rows col and max_row
+            for j in 0..cols {
+                mat.swap(col * cols + j, max_row * cols + j);
+            }
+
+            let pivot = mat[col * cols + col];
+            if pivot.abs() < 1e-14 {
+                // Singular or near-singular: skip this column
+                continue;
+            }
+
+            // Eliminate below pivot
+            for row in (col + 1)..n {
+                let factor = mat[row * cols + col] / pivot;
+                for j in col..cols {
+                    let sub = factor * mat[col * cols + j];
+                    mat[row * cols + j] -= sub;
+                }
+            }
+        }
+
+        // Back substitution
+        let mut result = vec![0.0_f64; n];
+        for i in (0..n).rev() {
+            result[i] = mat[i * cols + n];
+            for j in (i + 1)..n {
+                result[i] -= mat[i * cols + j] * result[j];
+            }
+            let diag = mat[i * cols + i];
+            if diag.abs() > 1e-14 {
+                result[i] /= diag;
+            }
+        }
+        result
     }
 
     /// Exponential fitting: y = a * exp(b * x)
@@ -930,5 +1008,60 @@ mod tests {
         assert_eq!(config.scale_factors, vec![1.0, 1.5, 2.0, 2.5, 3.0]);
         assert_eq!(config.scaling_method, NoiseScalingMethod::GlobalFolding);
         assert_eq!(config.extrapolation_method, ExtrapolationMethod::Richardson);
+    }
+
+    #[test]
+    fn test_polynomial_fit_linear() {
+        // y = 2x + 1  →  zero-noise (x=0) value = 1.0, R² ≈ 1.0
+        let x = vec![1.0, 2.0, 3.0, 4.0];
+        let y = vec![3.0, 5.0, 7.0, 9.0];
+        let result =
+            ExtrapolationFitter::fit_and_extrapolate(&x, &y, ExtrapolationMethod::Polynomial(1))
+                .expect("polynomial order-1 fit should succeed");
+        assert!(
+            (result.mitigated_value - 1.0).abs() < 1e-6,
+            "zero-noise intercept should be 1.0, got {}",
+            result.mitigated_value
+        );
+        assert!(
+            result.r_squared > 0.999,
+            "R² should be ≈ 1.0 for perfect linear data, got {}",
+            result.r_squared
+        );
+    }
+
+    #[test]
+    fn test_polynomial_fit_quadratic() {
+        // y = x²  →  zero-noise (x=0) value ≈ 0.0, R² ≈ 1.0
+        let x = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let y: Vec<f64> = x.iter().map(|&xi| xi * xi).collect();
+        let result =
+            ExtrapolationFitter::fit_and_extrapolate(&x, &y, ExtrapolationMethod::Polynomial(2))
+                .expect("polynomial order-2 fit should succeed");
+        assert!(
+            result.mitigated_value.abs() < 1e-4,
+            "zero-noise extrapolation for x² should be ≈ 0, got {}",
+            result.mitigated_value
+        );
+        assert!(
+            result.r_squared > 0.999,
+            "R² should be ≈ 1.0 for perfect quadratic data, got {}",
+            result.r_squared
+        );
+    }
+
+    #[test]
+    fn test_polynomial_fit_higher_order() {
+        // y = x³  →  order-3 fit should have R² ≈ 1.0
+        let x = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let y: Vec<f64> = x.iter().map(|&xi| xi * xi * xi).collect();
+        let result =
+            ExtrapolationFitter::fit_and_extrapolate(&x, &y, ExtrapolationMethod::Polynomial(3))
+                .expect("polynomial order-3 fit should succeed");
+        assert!(
+            result.r_squared > 0.999,
+            "R² for cubic fit on cubic data should be ≈ 1.0, got {}",
+            result.r_squared
+        );
     }
 }
