@@ -197,8 +197,8 @@ thiserror = "2.0.18"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 oxicode = { version = "0.2.4", features = ["std", "derive", "serde"] }
-oxiarc-deflate = "0.3.1"   # Pure Rust DEFLATE/zlib (COOLJAPAN Policy: replaces flate2)
-oxiarc-lz4 = "0.3.1"      # Pure Rust LZ4 (COOLJAPAN Policy: replaces lz4 crate)
+oxiarc-deflate = "0.3.2"   # Pure Rust DEFLATE/zlib (COOLJAPAN Policy: replaces flate2)
+oxiarc-lz4 = "0.3.2"      # Pure Rust LZ4 (COOLJAPAN Policy: replaces lz4 crate)
 # zstd = "0.13"  # REMOVED: Not used in code (COOLJAPAN Pure Rust Policy)
 # flate2 = "1.1"  # REMOVED: Replaced by oxiarc-deflate (COOLJAPAN Pure Rust Policy)
 md5 = "0.8"
@@ -262,8 +262,8 @@ criterion = { version = "0.8", default-features = false, features = ["async_toki
 tempfile = "3.27"
 
 # NumRS2 ecosystem dependencies
-numrs2 = "0.3.3"
-pandrs = "0.3.2"  # Latest available on crates.io
+numrs2 = "0.4.0"
+pandrs = "0.4.1"  # Latest available on crates.io
 
 [profile.dev]
 incremental = true
