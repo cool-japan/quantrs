@@ -83,7 +83,7 @@
 //! Azure Quantum, and AWS Braket. It enables users to run quantum circuits on real
 //! quantum hardware or cloud-based simulators.
 //!
-//! ## Recent Updates (v0.2.0)
+//! ## Recent Updates (v0.2.1)
 //!
 //! - ✅ Re-enabled enhanced SciRS2 modules with full API compliance
 //! - ✅ `scirs2_hardware_benchmarks_enhanced`: ML-driven performance prediction and analysis

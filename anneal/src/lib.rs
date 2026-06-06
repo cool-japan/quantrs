@@ -31,7 +31,7 @@
 //! - D-Wave API client for connecting to quantum annealing hardware
 //! - AWS Braket client for accessing Amazon's quantum computing services
 //!
-//! ## Recent Updates (v0.2.0)
+//! ## Recent Updates (v0.2.1)
 //!
 //! - Enhanced performance using `SciRS2 v0.5.0 Stable Release's parallel algorithms
 //! - Improved minor graph embedding with refined `SciRS2` graph algorithms

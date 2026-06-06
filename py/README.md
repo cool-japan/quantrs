@@ -310,7 +310,7 @@ Default features: `ml`, `anneal`, `tytan`.
 
 ## Performance
 
-QuantRS2-Py v0.2.0 delivers exceptional performance for production quantum computing:
+QuantRS2-Py v0.2.1 delivers exceptional performance for production quantum computing:
 
 ### Simulation Capabilities
 - **Large-Scale Simulation**: Efficiently simulates 30+ qubits on standard hardware

@@ -6,7 +6,7 @@
 
 **Unified facade for QuantRS2: simplified quantum computing in Rust**
 
-**Version 0.2.0** — Released: 2026-06-06 — 132 public items
+**Version 0.2.1** — In development — 132 public items
 
 The `quantrs2` facade crate provides a unified entry point to the entire QuantRS2 quantum computing framework. It offers hierarchical preludes, comprehensive system management, and developer utilities—all with zero runtime overhead.
 
@@ -25,10 +25,10 @@ Add to your `Cargo.toml`:
 ```toml
 [dependencies]
 # Choose your level of functionality
-quantrs2 = { version = "0.2.0", features = ["circuit", "sim"] }
+quantrs2 = { version = "0.2.1", features = ["circuit", "sim"] }
 
 # Or enable everything
-quantrs2 = { version = "0.2.0", features = ["full"] }
+quantrs2 = { version = "0.2.1", features = ["full"] }
 ```
 
 ### Example: Bell State with Hierarchical Prelude
@@ -330,27 +330,27 @@ Some features automatically enable others:
 
 ### Minimal quantum programming:
 ```toml
-quantrs2 = { version = "0.2.0", features = ["circuit"] }
+quantrs2 = { version = "0.2.1", features = ["circuit"] }
 ```
 
 ### Circuit simulation:
 ```toml
-quantrs2 = { version = "0.2.0", features = ["sim"] }
+quantrs2 = { version = "0.2.1", features = ["sim"] }
 ```
 
 ### Quantum machine learning:
 ```toml
-quantrs2 = { version = "0.2.0", features = ["ml"] }
+quantrs2 = { version = "0.2.1", features = ["ml"] }
 ```
 
 ### Hardware interaction:
 ```toml
-quantrs2 = { version = "0.2.0", features = ["device", "sim"] }
+quantrs2 = { version = "0.2.1", features = ["device", "sim"] }
 ```
 
 ### Everything:
 ```toml
-quantrs2 = { version = "0.2.0", features = ["full"] }
+quantrs2 = { version = "0.2.1", features = ["full"] }
 ```
 
 ## Alternative: Individual Crates
@@ -359,9 +359,9 @@ If you prefer to use individual crates instead of the facade:
 
 ```toml
 [dependencies]
-quantrs2-core = "0.2.0"
-quantrs2-circuit = "0.2.0"
-quantrs2-sim = "0.2.0"
+quantrs2-core = "0.2.1"
+quantrs2-circuit = "0.2.1"
+quantrs2-sim = "0.2.1"
 # etc.
 ```
 
@@ -373,7 +373,7 @@ quantrs2-sim = "0.2.0"
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.2.0", features = ["circuit", "sim"] }
+quantrs2 = { version = "0.2.1", features = ["circuit", "sim"] }
 ```
 
 ```rust
@@ -406,7 +406,7 @@ fn main() -> QuantRS2Result<()> {
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.2.0", features = ["ml"] }
+quantrs2 = { version = "0.2.1", features = ["ml"] }
 ```
 
 ```rust
@@ -444,7 +444,7 @@ fn main() -> QuantRS2Result<()> {
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.2.0", features = ["tytan"] }
+quantrs2 = { version = "0.2.1", features = ["tytan"] }
 ```
 
 ```rust
@@ -477,7 +477,7 @@ fn main() -> QuantRS2Result<()> {
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.2.0", features = ["device", "circuit"] }
+quantrs2 = { version = "0.2.1", features = ["device", "circuit"] }
 ```
 
 ```rust
@@ -515,7 +515,7 @@ fn main() -> QuantRS2Result<()> {
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.2.0", features = ["full"] }
+quantrs2 = { version = "0.2.1", features = ["full"] }
 ```
 
 ```rust
@@ -575,9 +575,9 @@ quantrs2 = { features = ["tytan"] }           # ~12s
 quantrs2 = { features = ["full"] }            # ~45s
 
 # Individual crates (for comparison)
-quantrs2-circuit = "0.2.0"             # ~5s
-quantrs2-sim = "0.2.0"                 # ~8s
-quantrs2-ml = "0.2.0"                  # ~18s
+quantrs2-circuit = "0.2.1"             # ~5s
+quantrs2-sim = "0.2.1"                 # ~8s
+quantrs2-ml = "0.2.1"                  # ~18s
 ```
 
 ### Example: Dependency Management Comparison
@@ -585,16 +585,16 @@ quantrs2-ml = "0.2.0"                  # ~18s
 **Using Facade (Recommended for Applications):**
 ```toml
 [dependencies]
-quantrs2 = { version = "0.2.0", features = ["ml"] }
+quantrs2 = { version = "0.2.1", features = ["ml"] }
 ```
 
 **Using Individual Crates (Recommended for Libraries):**
 ```toml
 [dependencies]
-quantrs2-core = "0.2.0"
-quantrs2-circuit = "0.2.0"
-quantrs2-sim = "0.2.0"
-quantrs2-ml = "0.2.0"
+quantrs2-core = "0.2.1"
+quantrs2-circuit = "0.2.1"
+quantrs2-sim = "0.2.1"
+quantrs2-ml = "0.2.1"
 # Must manually ensure version compatibility!
 ```
 

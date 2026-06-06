@@ -1,6 +1,10 @@
 # QuantRS2 Roadmap
 
-## Current Version: 0.2.0
+## Current Version: 0.2.1
+
+## v0.2.1 (in progress, branch: 0.2.1)
+
+- [ ] (next cycle — items TBD)
 
 ## v0.2.0 (released 2026-06-06, branch: 0.2.0)
 

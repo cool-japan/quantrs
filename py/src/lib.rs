@@ -3,7 +3,7 @@
 //! This crate provides Python bindings using `PyO3`,
 //! allowing `QuantRS2` to be used from Python.
 //!
-//! ## Recent Updates (v0.2.0)
+//! ## Recent Updates (v0.2.1)
 //!
 //! - Refined `SciRS2` v0.5.0 integration with unified patterns
 //! - Enhanced cross-platform support (macOS, Linux, Windows)

@@ -89,7 +89,7 @@
 //! - **Multiple Samplers**: Choose from various solvers
 //! - **Auto Result Processing**: Automatically convert solutions to multi-dimensional arrays
 //!
-//! ## Recent Updates (v0.2.0)
+//! ## Recent Updates (v0.2.1)
 //!
 //! - Refined SciRS2 v0.5.0 Stable Release integration for enhanced performance
 //! - High-performance sparse matrix operations via SciRS2
