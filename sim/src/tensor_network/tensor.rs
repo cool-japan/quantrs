@@ -332,8 +332,11 @@ impl Tensor {
 
         let mut left_shape = left_dims.clone();
         left_shape.push(bond_dim);
-        // Flatten us to a vec, then rebuild as ArrayD with the desired shape
-        let us_flat: Vec<Complex64> = us.into_raw_vec_and_offset().0;
+        // Flatten us to a vec, then rebuild as ArrayD with the desired shape.
+        // OxiBLAS returns U/Vᴴ as column-major (Fortran) arrays, so we must
+        // flatten in logical row-major order (not raw memory order) to match
+        // `Array::from_shape_vec`, which interprets the vec as row-major.
+        let us_flat: Vec<Complex64> = us.as_standard_layout().iter().copied().collect();
         let left_data: ArrayD<Complex64> =
             Array::from_shape_vec(IxDyn(left_shape.as_slice()), us_flat).map_err(|e| {
                 QuantRS2Error::CircuitValidationFailed(format!("SVD left reshape failed: {e}"))
@@ -343,7 +346,8 @@ impl Tensor {
         // ---- build right tensor: Vᴴ, shape (bond_dim, *right_dims) -----------
         let mut right_shape = vec![bond_dim];
         right_shape.extend_from_slice(&right_dims);
-        let vt_flat: Vec<Complex64> = vt_trunc.into_raw_vec_and_offset().0;
+        // Same column-major → row-major fix as for the left tensor above.
+        let vt_flat: Vec<Complex64> = vt_trunc.as_standard_layout().iter().copied().collect();
         let right_data: ArrayD<Complex64> =
             Array::from_shape_vec(IxDyn(right_shape.as_slice()), vt_flat).map_err(|e| {
                 QuantRS2Error::CircuitValidationFailed(format!("SVD right reshape failed: {e}"))
