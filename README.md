@@ -17,9 +17,9 @@
 
 QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing framework that provides a modular, high-performance toolkit for quantum simulation, algorithm development, and hardware interaction.
 
-**Current Version**: v0.1.3 (released 2026-03-27)
+**Current Version**: v0.2.0 (released 2026-06-06)
 
-**Project Stats**: 965,802 total LoC | 777,061 Rust LoC across 2,663 files | 4,707 tests passing (0 failures, 69 skipped)
+**Project Stats**: 994,386 total LoC | 804,894 Rust LoC across 2,744 files | 5,237 tests passing (0 failures, 74 skipped)
 
 ### Crate Survey
 
@@ -77,9 +77,9 @@ First, add QuantRS2 to your project:
 
 ```toml
 [dependencies]
-quantrs2-core = "0.1.3"
-quantrs2-circuit = "0.1.3"
-quantrs2-sim = "0.1.3"
+quantrs2-core = "0.2.0"
+quantrs2-circuit = "0.2.0"
+quantrs2-sim = "0.2.0"
 ```
 
 ### Creating a Bell State
@@ -277,7 +277,7 @@ cargo clippy --all -- -D warnings
 
 #### Building on macOS (Apple Silicon)
 
-QuantRS2 v0.1.3 is **Pure Rust** and builds seamlessly on macOS (both Intel and Apple Silicon):
+QuantRS2 v0.2.0 is **Pure Rust** and builds seamlessly on macOS (both Intel and Apple Silicon):
 
 ```bash
 cargo build --release
@@ -309,8 +309,8 @@ To use these features, add them to your dependencies:
 
 ```toml
 [dependencies]
-quantrs2-sim = { version = "0.1.3", features = ["parallel", "gpu"] }
-quantrs2-device = { version = "0.1.3", features = ["ibm"] }
+quantrs2-sim = { version = "0.2.0", features = ["parallel", "gpu"] }
+quantrs2-device = { version = "0.2.0", features = ["ibm"] }
 ```
 
 ### GPU Acceleration
@@ -319,7 +319,7 @@ The `gpu` feature enables GPU-accelerated quantum simulation using WGPU:
 
 ```toml
 [dependencies]
-quantrs2-sim = { version = "0.1.3", features = ["gpu"] }
+quantrs2-sim = { version = "0.2.0", features = ["gpu"] }
 ```
 
 This requires a WGPU-compatible GPU (most modern GPUs). The GPU acceleration implementation uses compute shaders to parallelize quantum operations, providing significant speedup for large qubit counts.
@@ -364,7 +364,7 @@ The `ibm` feature enables connection to IBM Quantum hardware:
 
 ```toml
 [dependencies]
-quantrs2-device = { version = "0.1.3", features = ["ibm"] }
+quantrs2-device = { version = "0.2.0", features = ["ibm"] }
 ```
 
 To use IBM Quantum, you'll need an IBM Quantum account and API token. Use the token to authenticate:
@@ -390,7 +390,7 @@ The `dwave` feature enables symbolic problem formulation for quantum annealing:
 
 ```toml
 [dependencies]
-quantrs2-tytan = { version = "0.1.3", features = ["dwave"] }
+quantrs2-tytan = { version = "0.2.0", features = ["dwave"] }
 ```
 
 QuantRS2 uses a **Pure Rust** symbolic computation engine (`quantrs2-symengine-pure`), eliminating all C/C++ dependencies for symbolic math operations. No external library installation required.
@@ -413,7 +413,7 @@ cargo test --features "parallel,scirs,plotters"
 
 #### All Platforms (Pure Rust)
 
-QuantRS2 v0.1.3 is **100% Pure Rust** and supports `--all-features` on all platforms:
+QuantRS2 v0.2.0 is **100% Pure Rust** and supports `--all-features` on all platforms:
 
 ```bash
 # ✅ Works on all platforms (macOS, Linux, Windows)
@@ -427,6 +427,29 @@ cargo test --features "parallel,scirs,plotters"
 
 - **GPU features**: Require compatible hardware (WGPU-supported GPU)
 - **IBM Quantum**: Requires valid API credentials for integration tests
+
+## Community
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Development workflow, coding policies, and how to submit pull requests
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) - Standards for respectful participation in the project
+- [SECURITY.md](SECURITY.md) - How to report security vulnerabilities responsibly
+
+### Tutorials
+
+Learn by example in `py/python/quantrs2/tutorials/`:
+
+| # | Tutorial | Topic |
+|---|----------|-------|
+| 01 | `01_bell_state` | Bell state preparation and measurement |
+| 02 | `02_vqe_h2` | VQE for H2 ground state energy |
+| 03 | `03_qaoa_maxcut` | QAOA for Max-Cut optimization |
+| 04 | `04_qec_surface_code` | QEC surface code threshold simulation |
+| 05 | `05_qubo_sampling` | QUBO sampling with multiple samplers |
+| 06 | `06_3d_state_visualization` | 3D quantum state visualization |
+| 07 | `07_parameterized_circuits` | Parameterized circuits and gradients |
+| 08 | `08_error_mitigation` | Probabilistic error cancellation |
+
+Run any tutorial with: `python -m quantrs2.tutorials.01_bell_state`
 
 ## License
 

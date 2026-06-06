@@ -964,12 +964,88 @@ impl<const N: usize> OptimizationAnalyzer<N> {
         }
     }
     /// Analyze optimization opportunities
-    pub const fn analyze_optimizations(
+    pub fn analyze_optimizations(
         &self,
         circuit: &Circuit<N>,
         config: &LinterConfig,
     ) -> QuantRS2Result<Vec<OptimizationSuggestion>> {
-        Ok(Vec::new())
+        // Heuristic gate-level analysis: detect adjacent self-inverse single
+        // qubit gates (e.g. H·H, X·X) and emit a `GateElimination` suggestion
+        // for each pair found. This costs O(num_gates) and never depends on
+        // randomness or external solvers, satisfying the no-`rand` policy.
+        let mut suggestions = Vec::new();
+        let gates = circuit.gates();
+        let total = gates.len();
+        let mut idx = 0;
+        while idx + 1 < total {
+            let a = &gates[idx];
+            let b = &gates[idx + 1];
+            let same_name = a.name() == b.name();
+            let aq = a.qubits();
+            let bq = b.qubits();
+            if same_name
+                && aq.len() == 1
+                && bq.len() == 1
+                && aq[0] == bq[0]
+                && matches!(a.name(), "H" | "X" | "Y" | "Z")
+            {
+                let qubit_idx = aq.first().map(|q| q.id() as usize).unwrap_or(0);
+                suggestions.push(OptimizationSuggestion {
+                    suggestion_type: OptimizationType::GateElimination,
+                    description: format!(
+                        "Adjacent self-inverse '{}' gates at indices {idx},{} cancel out",
+                        a.name(),
+                        idx + 1
+                    ),
+                    location: CircuitLocation {
+                        gate_range: (idx, idx + 2),
+                        qubits: vec![qubit_idx],
+                        depth_range: (idx, idx + 2),
+                        line_col: None,
+                    },
+                    expected_improvement: OptimizationImprovement {
+                        gate_count_reduction: 2,
+                        depth_reduction: 1,
+                        execution_time_improvement: 0.05,
+                        memory_improvement: 0.0,
+                        error_rate_improvement: 0.02,
+                    },
+                    difficulty: Difficulty::Easy,
+                    confidence: config.pattern_confidence_threshold.max(0.9),
+                    auto_applicable: true,
+                });
+                idx += 2;
+            } else {
+                idx += 1;
+            }
+        }
+        // When the gate count crosses the configured performance threshold,
+        // surface a `DepthReduction` opportunity at the circuit scope.
+        if total as f64 > config.performance_threshold && config.performance_threshold > 0.0 {
+            suggestions.push(OptimizationSuggestion {
+                suggestion_type: OptimizationType::DepthReduction,
+                description: format!(
+                    "Circuit has {total} gates; consider commuting parallelisable subsequences",
+                ),
+                location: CircuitLocation {
+                    gate_range: (0, total),
+                    qubits: Vec::new(),
+                    depth_range: (0, total),
+                    line_col: None,
+                },
+                expected_improvement: OptimizationImprovement {
+                    gate_count_reduction: 0,
+                    depth_reduction: (total / 4) as i32,
+                    execution_time_improvement: 0.10,
+                    memory_improvement: 0.0,
+                    error_rate_improvement: 0.0,
+                },
+                difficulty: Difficulty::Moderate,
+                confidence: 0.7,
+                auto_applicable: false,
+            });
+        }
+        Ok(suggestions)
     }
 }
 /// Types of optimizations
@@ -1283,12 +1359,61 @@ impl<const N: usize> AntiPatternDetector<N> {
         }
     }
     /// Detect all anti-patterns
-    pub const fn detect_all_antipatterns(
+    pub fn detect_all_antipatterns(
         &self,
         circuit: &Circuit<N>,
         config: &LinterConfig,
     ) -> QuantRS2Result<Vec<LintIssue>> {
-        Ok(Vec::new())
+        // Surface common anti-patterns: an empty circuit is rarely intended,
+        // and oversize gate counts often indicate that an algorithm is missing
+        // a transpiler pass. Both are flagged at low severity so the linter
+        // user can choose to act on them.
+        let mut issues = Vec::new();
+        let total = circuit.num_gates();
+        if total == 0 {
+            issues.push(LintIssue {
+                issue_type: IssueType::AntiPattern,
+                severity: Severity::Warning,
+                title: "empty_circuit".to_string(),
+                description: "Circuit contains no gates; verify intent.".to_string(),
+                location: CircuitLocation {
+                    gate_range: (0, 0),
+                    qubits: Vec::new(),
+                    depth_range: (0, 0),
+                    line_col: None,
+                },
+                suggested_fix: Some("Add at least one gate or remove the circuit".to_string()),
+                auto_fixable: false,
+                rule_id: "QR-AP001".to_string(),
+                confidence: 1.0,
+                performance_impact: None,
+            });
+        }
+        let limit = (config.max_analysis_depth.saturating_mul(64)).max(64);
+        if total > limit {
+            issues.push(LintIssue {
+                issue_type: IssueType::AntiPattern,
+                severity: Severity::Minor,
+                title: "circuit_too_deep".to_string(),
+                description: format!(
+                    "Gate count {total} exceeds soft cap {limit}; transpilation passes recommended.",
+                ),
+                location: CircuitLocation {
+                    gate_range: (0, total),
+                    qubits: Vec::new(),
+                    depth_range: (0, total),
+                    line_col: None,
+                },
+                suggested_fix: Some(
+                    "Run gate fusion / depth reduction passes before execution".to_string(),
+                ),
+                auto_fixable: false,
+                rule_id: "QR-AP002".to_string(),
+                confidence: 0.85,
+                performance_impact: None,
+            });
+        }
+        Ok(issues)
     }
 }
 /// Naming conventions

@@ -6,7 +6,7 @@
 
 QuantRS2-Device is the comprehensive quantum hardware abstraction layer of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing seamless connectivity to quantum computers from major cloud providers, with advanced transpilation, optimization, and characterization capabilities for production quantum computing applications.
 
-## Version 0.1.3 (2026-03-27)
+## Version 0.2.0 (2026-06-06)
 
 This release includes:
 - Stable APIs for IBM Quantum, Azure Quantum, and AWS Braket
@@ -14,7 +14,7 @@ This release includes:
 - Enhanced transpilation using SciRS2's graph algorithms for optimal qubit routing
 - Improved error handling and asynchronous execution
 
-### New in v0.1.3
+### New in v0.2.0
 - **Cloud Provider Optimizers**: Fully implemented AWS Braket, IBM Quantum, Azure Quantum, and Google Quantum provider-specific optimizers
 - **VF2 + Dijkstra Transpiler**: VF2 subgraph isomorphism combined with Dijkstra-based routing for hardware-optimal circuit layout
 - **AdaptiveCompiler**: Runtime-adaptive compilation that adjusts strategies based on device calibration feedback

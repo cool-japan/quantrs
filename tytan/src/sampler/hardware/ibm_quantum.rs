@@ -13,6 +13,7 @@ use super::super::{SampleResult, Sampler, SamplerError, SamplerResult};
 
 /// IBM Quantum backend types
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum IBMBackend {
     /// IBM Quantum simulator
     Simulator,

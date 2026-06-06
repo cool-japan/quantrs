@@ -603,22 +603,29 @@ mod tests {
         let training_data = vec![(Array1::zeros(4), Array1::zeros(2))];
 
         let result = framework.train_ml_model(&training_data);
-        // Should return not implemented error for now
-        assert!(result.is_err());
+        assert!(result.is_ok(), "train_ml_model failed: {result:?}");
+        let ml_result = result.unwrap();
+        // Parameters: (4 inputs + 1 bias) * 2 outputs = 10.
+        assert_eq!(ml_result.parameters.len(), 10);
+        assert!(!ml_result.loss_history.is_empty());
+        assert!((0.0..=1.0).contains(&ml_result.validation_accuracy));
     }
 
     #[test]
     fn test_sampling_placeholder() {
-        let config = QuantumInspiredConfig {
+        let mut config = QuantumInspiredConfig {
             algorithm_category: AlgorithmCategory::Sampling,
             ..Default::default()
         };
+        config.algorithm_config.max_iterations = 200;
 
         let mut framework =
             QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let result = framework.sample();
-        // Should return not implemented error for now
-        assert!(result.is_err());
+        assert!(result.is_ok(), "sample() failed: {result:?}");
+        let sr = result.unwrap();
+        assert_eq!(sr.samples.nrows(), 200);
+        assert!((0.0..=1.0).contains(&sr.acceptance_rate));
     }
 
     #[test]
@@ -630,7 +637,8 @@ mod tests {
 
         let mut framework =
             QuantumInspiredFramework::new(config).expect("Failed to create framework");
-        let matrix = Array2::eye(4);
+        // Identity system: solution should be the rhs.
+        let matrix: Array2<Complex64> = Array2::eye(4);
         let rhs = Array1::from_vec(vec![
             Complex64::new(1.0, 0.0),
             Complex64::new(2.0, 0.0),
@@ -639,8 +647,15 @@ mod tests {
         ]);
 
         let result = framework.solve_linear_algebra(&matrix, &rhs);
-        // Should return not implemented error for now
-        assert!(result.is_err());
+        assert!(result.is_ok(), "solve_linear_algebra failed: {result:?}");
+        let lr = result.unwrap();
+        assert_eq!(lr.solution.len(), 4);
+        // Residual should be very small for an identity system.
+        assert!(
+            lr.residual_norm < 1e-6,
+            "residual too large: {}",
+            lr.residual_norm
+        );
     }
 
     #[test]
@@ -652,11 +667,14 @@ mod tests {
 
         let mut framework =
             QuantumInspiredFramework::new(config).expect("Failed to create framework");
-        let adjacency_matrix = Array2::eye(4);
+        // Identity adjacency = no self-loops (diagonal ignored as edges in the algorithm).
+        let adjacency_matrix: Array2<f64> = Array2::eye(4);
 
         let result = framework.solve_graph_problem(&adjacency_matrix);
-        // Should return not implemented error for now
-        assert!(result.is_err());
+        assert!(result.is_ok(), "solve_graph_problem failed: {result:?}");
+        let gr = result.unwrap();
+        assert_eq!(gr.solution.len(), 4);
+        assert!(gr.objective_value >= 0.0);
     }
 
     #[test]
@@ -841,14 +859,67 @@ mod tests {
     }
 
     #[test]
+    fn test_quantum_differential_evolution_runs() {
+        let mut config = QuantumInspiredConfig::default();
+        config.optimization_config.algorithm_type =
+            OptimizationAlgorithm::QuantumDifferentialEvolution;
+        config.algorithm_config.max_iterations = 15;
+        config.algorithm_config.population_size = 8;
+        config.num_variables = 4;
+        // Sphere bounds: [-5, 5]^4
+        config.optimization_config.bounds = vec![(-5.0, 5.0); 4];
+
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
+        let result = framework.optimize();
+
+        assert!(result.is_ok(), "QDE should succeed: {result:?}");
+        let opt = result.expect("QDE optimize failed");
+        assert!(opt.iterations <= 15, "QDE ran too many iterations");
+        assert!(
+            opt.objective_value.is_finite(),
+            "QDE produced non-finite objective"
+        );
+        assert_eq!(opt.solution.len(), 4, "QDE solution dimension mismatch");
+        assert!(
+            opt.runtime_stats.function_evaluations > 0,
+            "QDE should have evaluated the objective at least once"
+        );
+    }
+
+    #[test]
+    fn test_quantum_harmony_search_runs() {
+        let mut config = QuantumInspiredConfig::default();
+        config.optimization_config.algorithm_type = OptimizationAlgorithm::QuantumHarmonySearch;
+        config.algorithm_config.max_iterations = 15;
+        config.algorithm_config.population_size = 6;
+        config.num_variables = 4;
+        // Sphere bounds: [-5, 5]^4
+        config.optimization_config.bounds = vec![(-5.0, 5.0); 4];
+
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
+        let result = framework.optimize();
+
+        assert!(result.is_ok(), "QHS should succeed: {result:?}");
+        let opt = result.expect("QHS optimize failed");
+        assert!(opt.iterations <= 15, "QHS ran too many iterations");
+        assert!(
+            opt.objective_value.is_finite(),
+            "QHS produced non-finite objective"
+        );
+        assert_eq!(opt.solution.len(), 4, "QHS solution dimension mismatch");
+        assert!(
+            opt.runtime_stats.function_evaluations > 0,
+            "QHS should have evaluated the objective at least once"
+        );
+    }
+
+    #[test]
     fn test_error_handling_unimplemented_algorithms() {
-        let unimplemented_algorithms = vec![
-            OptimizationAlgorithm::QuantumDifferentialEvolution,
-            OptimizationAlgorithm::ClassicalQAOA,
-            OptimizationAlgorithm::ClassicalVQE,
-            OptimizationAlgorithm::QuantumAntColony,
-            OptimizationAlgorithm::QuantumHarmonySearch,
-        ];
+        // All previously-stubbed algorithms are now implemented; keep the test but with
+        // an empty list so nothing is expected to fail with NotImplemented.
+        let unimplemented_algorithms: Vec<OptimizationAlgorithm> = vec![];
 
         for algorithm in unimplemented_algorithms {
             let mut config = QuantumInspiredConfig::default();
@@ -872,6 +943,106 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn test_classical_qaoa_runs() {
+        let mut config = QuantumInspiredConfig::default();
+        config.optimization_config.algorithm_type = OptimizationAlgorithm::ClassicalQAOA;
+        config.algorithm_config.max_iterations = 20;
+        config.num_variables = 5;
+        config.optimization_config.bounds = vec![(-5.0_f64, 5.0_f64); 5];
+
+        let mut framework = QuantumInspiredFramework::new(config)
+            .expect("Failed to create ClassicalQAOA framework");
+        let result = framework.optimize();
+
+        assert!(result.is_ok(), "ClassicalQAOA should succeed: {result:?}");
+        let opt = result.expect("ClassicalQAOA optimize failed");
+        assert!(
+            opt.iterations <= 20,
+            "ClassicalQAOA ran too many iterations"
+        );
+        assert!(
+            opt.objective_value.is_finite(),
+            "ClassicalQAOA produced non-finite objective"
+        );
+        assert_eq!(
+            opt.solution.len(),
+            5,
+            "ClassicalQAOA solution dimension mismatch"
+        );
+        assert!(
+            opt.runtime_stats.function_evaluations > 0,
+            "ClassicalQAOA should have evaluated the objective at least once"
+        );
+    }
+
+    #[test]
+    fn test_classical_vqe_runs() {
+        let mut config = QuantumInspiredConfig::default();
+        config.optimization_config.algorithm_type = OptimizationAlgorithm::ClassicalVQE;
+        config.algorithm_config.max_iterations = 15;
+        config.num_variables = 4;
+        config.optimization_config.bounds = vec![(-3.0_f64, 3.0_f64); 4];
+
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create ClassicalVQE framework");
+        let result = framework.optimize();
+
+        assert!(result.is_ok(), "ClassicalVQE should succeed: {result:?}");
+        let opt = result.expect("ClassicalVQE optimize failed");
+        assert!(opt.iterations <= 15, "ClassicalVQE ran too many iterations");
+        assert!(
+            opt.objective_value.is_finite(),
+            "ClassicalVQE produced non-finite objective"
+        );
+        assert_eq!(
+            opt.solution.len(),
+            4,
+            "ClassicalVQE solution dimension mismatch"
+        );
+        assert!(
+            opt.runtime_stats.function_evaluations > 0,
+            "ClassicalVQE should have evaluated the objective at least once"
+        );
+    }
+
+    #[test]
+    fn test_quantum_ant_colony_runs() {
+        let mut config = QuantumInspiredConfig::default();
+        config.optimization_config.algorithm_type = OptimizationAlgorithm::QuantumAntColony;
+        config.algorithm_config.max_iterations = 10;
+        config.algorithm_config.population_size = 6;
+        config.num_variables = 3;
+        config.optimization_config.bounds = vec![(-4.0_f64, 4.0_f64); 3];
+
+        let mut framework = QuantumInspiredFramework::new(config)
+            .expect("Failed to create QuantumAntColony framework");
+        let result = framework.optimize();
+
+        assert!(
+            result.is_ok(),
+            "QuantumAntColony should succeed: {result:?}"
+        );
+        let opt = result.expect("QuantumAntColony optimize failed");
+        assert!(
+            opt.iterations <= 10,
+            "QuantumAntColony ran too many iterations"
+        );
+        assert!(
+            opt.objective_value.is_finite(),
+            "QuantumAntColony produced non-finite objective"
+        );
+        assert_eq!(
+            opt.solution.len(),
+            3,
+            "QuantumAntColony solution dimension mismatch"
+        );
+        assert!(
+            opt.runtime_stats.function_evaluations > 0,
+            "QuantumAntColony should have evaluated the objective at least once"
+        );
     }
 
     #[test]

@@ -76,7 +76,7 @@ cargo run -p quantrs2-examples --bin tytan_3rooks --features tytan
 
 ## Part of QuantRS2
 
-This crate is part of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework (v0.1.3).
+This crate is part of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework (v0.2.0).
 
 ## License
 

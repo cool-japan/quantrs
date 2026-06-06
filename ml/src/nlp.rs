@@ -1,3 +1,9 @@
+//! Quantum natural language processing (QNLP) models and utilities.
+//!
+//! Provides quantum circuit encodings for text data and [`QuantumNLPModel`]
+//! for tasks such as classification, sequence labelling, and question
+//! answering using quantum neural network backends.
+
 use crate::error::{MLError, Result};
 use crate::qnn::QuantumNeuralNetwork;
 use scirs2_core::ndarray::{Array1, Array2};

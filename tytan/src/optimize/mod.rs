@@ -3,8 +3,9 @@
 //! This module provides optimization utilities and algorithms for
 //! solving QUBO and HOBO problems, with optional SciRS2 integration.
 
-use scirs2_core::ndarray::{Array, ArrayD, Ix2};
+use scirs2_core::ndarray::{Array, ArrayD, Dimension, Ix2};
 use scirs2_core::random::prelude::*;
+use scirs2_core::random::{SeedableRng, StdRng};
 use std::collections::HashMap;
 
 use crate::sampler::SampleResult;
@@ -208,23 +209,102 @@ pub fn optimize_hobo(
     optimize_hobo_basic(tensor, var_map, initial_guess, max_iterations)
 }
 
-/// Basic HOBO optimization implementation
-fn optimize_hobo_basic(
-    _tensor: &ArrayD<f64>,
-    var_map: &HashMap<String, usize>,
-    _initial_guess: Option<Vec<bool>>,
-    _max_iterations: usize,
-) -> Vec<SampleResult> {
-    // For now, implement a simple fallback
-    // In a full implementation, this would handle arbitrary tensor orders
+/// Compute HOBO energy for an arbitrary-rank tensor and a binary assignment.
+///
+/// `E = Σ_{i₁,…,iₐ} T[i₁,…,iₐ] · x[i₁] · … · x[iₐ]`
+///
+/// Indices that exceed the length of `state` are treated as `false`.
+fn hobo_energy(tensor: &ArrayD<f64>, state: &[bool]) -> f64 {
+    let mut energy = 0.0_f64;
+    for (idx, &coeff) in tensor.indexed_iter() {
+        if coeff.abs() < 1e-14 {
+            continue;
+        }
+        // All indices in this multi-index entry must refer to `true` variables.
+        let all_active = idx
+            .slice()
+            .iter()
+            .all(|&i| state.get(i).copied().unwrap_or(false));
+        if all_active {
+            energy += coeff;
+        }
+    }
+    energy
+}
 
-    // Return placeholder
-    let assignments: HashMap<String, bool> =
-        var_map.keys().map(|name| (name.clone(), false)).collect();
+/// Basic HOBO optimization using simulated annealing.
+///
+/// This performs sweep-based SA over all variables, accepting up-hill moves
+/// probabilistically (Metropolis criterion).  The best configuration seen
+/// across all sweeps is returned.
+fn optimize_hobo_basic(
+    tensor: &ArrayD<f64>,
+    var_map: &HashMap<String, usize>,
+    initial_guess: Option<Vec<bool>>,
+    max_iterations: usize,
+) -> Vec<SampleResult> {
+    let n = var_map.len();
+    if n == 0 {
+        return vec![];
+    }
+
+    let mut rng = StdRng::seed_from_u64(42);
+
+    // Initialise the binary state vector (indexed by var_map position).
+    let mut state: Vec<bool> = match initial_guess {
+        Some(guess) if guess.len() == n => guess,
+        _ => (0..n).map(|_| rng.random_bool()).collect(),
+    };
+
+    let mut energy = hobo_energy(tensor, &state);
+    let mut best_state = state.clone();
+    let mut best_energy = energy;
+
+    // Simulated-annealing schedule: start at a temperature proportional to
+    // the largest coefficient magnitude so that the initial acceptance ratio
+    // is reasonable, and cool geometrically.
+    let max_coeff = tensor
+        .iter()
+        .fold(0.0_f64, |m, &v| if v.abs() > m { v.abs() } else { m });
+    let initial_temperature = if max_coeff > 0.0 { max_coeff } else { 1.0 };
+    let cooling_rate = 0.99_f64;
+    let mut temperature = initial_temperature;
+
+    let num_sweeps = max_iterations.max(1);
+    for _sweep in 0..num_sweeps {
+        // One sweep: try flipping each variable once in order.
+        for i in 0..n {
+            state[i] = !state[i];
+            let new_energy = hobo_energy(tensor, &state);
+            let delta = new_energy - energy;
+
+            // Accept if the move decreases energy, or with Boltzmann probability.
+            let accept = delta < 0.0
+                || (temperature > 1e-14 && rng.random::<f64>() < (-delta / temperature).exp());
+
+            if accept {
+                energy = new_energy;
+                if energy < best_energy {
+                    best_energy = energy;
+                    best_state = state.clone();
+                }
+            } else {
+                // Revert the flip.
+                state[i] = !state[i];
+            }
+        }
+        temperature *= cooling_rate;
+    }
+
+    // Build the assignment map from the best state found.
+    let assignments: HashMap<String, bool> = var_map
+        .iter()
+        .filter_map(|(name, &idx)| best_state.get(idx).map(|&v| (name.clone(), v)))
+        .collect();
 
     vec![SampleResult {
         assignments,
-        energy: 0.0,
+        energy: best_energy,
         occurrences: 1,
     }]
 }

@@ -1,3 +1,9 @@
+//! Quantum kernel methods for support vector machines and kernel PCA.
+//!
+//! Computes quantum kernel matrices by estimating the overlap
+//! ⟨φ(x)|φ(x′)⟩ between feature-map states encoded by parameterised
+//! quantum circuits, enabling quantum-enhanced SVMs and kernel regression.
+
 use crate::error::{MLError, Result};
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_sim::statevector::StateVectorSimulator;

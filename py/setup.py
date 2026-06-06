@@ -51,7 +51,6 @@ setup(
         "Topic :: Scientific/Engineering :: Physics",
         "Topic :: Scientific/Engineering :: Mathematics",
         "Intended Audience :: Science/Research",
-        "License :: OSI Approved :: MIT License",
         "License :: OSI Approved :: Apache Software License",
     ],
 )

@@ -6,9 +6,10 @@ use crate::error::{Result, SimulatorError};
 use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
 
+use super::extra_types::QuantumInspiredUtils;
 use super::types::{
     AlgorithmCategory, BenchmarkingResults, OptimizationAlgorithm, QuantumInspiredConfig,
-    QuantumInspiredFramework, QuantumInspiredUtils, QuantumParameters, StatisticalAnalysis,
+    QuantumInspiredFramework, QuantumParameters, StatisticalAnalysis,
 };
 
 /// Benchmark quantum-inspired algorithms

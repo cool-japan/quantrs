@@ -89,7 +89,15 @@ name = "qulacs_backend_bench"
 harness = false
 
 [[bench]]
+name = "simd_state_vector"
+harness = false
+
+[[bench]]
 name = "stabilizer_bench"
+harness = false
+
+[[bench]]
+name = "large_scale_simulation"
 harness = false
 
 [package.metadata.docs.rs]

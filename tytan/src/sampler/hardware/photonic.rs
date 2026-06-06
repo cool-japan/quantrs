@@ -473,12 +473,24 @@ impl Sampler for PhotonicIsingMachineSampler {
 
     fn run_hobo(
         &self,
-        _hobo: &(scirs2_core::ndarray::ArrayD<f64>, HashMap<String, usize>),
-        _shots: usize,
+        hobo: &(scirs2_core::ndarray::ArrayD<f64>, HashMap<String, usize>),
+        shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
-        Err(SamplerError::NotImplemented(
-            "HOBO not supported by photonic hardware".to_string(),
-        ))
+        let (tensor, var_map) = hobo;
+
+        // Quadratize HOBO → QUBO via Rosenberg polynomial reduction.
+        let (qubo, ext_var_map) = crate::sampler::energy::hobo_to_qubo(tensor, var_map)
+            .map_err(SamplerError::InvalidModel)?;
+
+        // Delegate to the QUBO solver implemented above.
+        let mut results = self.run_qubo(&(qubo, ext_var_map), shots)?;
+
+        // Strip auxiliary variables introduced by quadratization.
+        for result in &mut results {
+            result.assignments.retain(|k, _| !k.starts_with("_aux_"));
+        }
+
+        Ok(results)
     }
 }
 

@@ -1,3 +1,9 @@
+//! IBM Quantum cloud backend connector.
+//!
+//! Implements job submission, result polling, and device discovery against the
+//! IBM Quantum REST API.  Requires the `ibm` Cargo feature and a valid
+//! IBM Quantum API token.
+
 use quantrs2_circuit::prelude::Circuit;
 #[cfg(feature = "ibm")]
 use std::collections::HashMap;
@@ -261,6 +267,7 @@ pub struct IBMJobResult {
 
 /// Errors specific to IBM Quantum
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum IBMQuantumError {
     #[error("Authentication error: {0}")]
     Authentication(String),

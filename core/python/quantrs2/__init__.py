@@ -10,7 +10,7 @@ Modules:
 
 __version__ = "0.1.2"
 __author__ = "COOLJAPAN OU (Team KitaSan)"
-__license__ = "MIT OR Apache-2.0"
+__license__ = "Apache-2.0"
 
 # The core module is the compiled Rust extension
 # It will be available as quantrs2.core after installation

@@ -7,6 +7,7 @@ pub type Result<T> = std::result::Result<T, MLError>;
 
 /// Error type for Machine Learning operations
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum MLError {
     /// Error during training or inference
     #[error("Machine learning error: {0}")]

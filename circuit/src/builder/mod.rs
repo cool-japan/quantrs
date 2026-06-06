@@ -132,11 +132,21 @@ impl GatePool {
         Self { gates }
     }
 
-    /// Get a gate from the pool if available, otherwise create new
+    /// Get a gate from the pool if available, otherwise create new.
+    ///
+    /// Parameterized gates (RX, RY, RZ, rotation angles, etc.) are NEVER cached
+    /// because two gates with the same name and target qubit can have different
+    /// rotation angles.  Caching them by (name, qubits) alone would incorrectly
+    /// return a stale angle on repeated calls — which breaks variational circuits.
     pub fn get_gate<G: GateOp + Clone + Send + Sync + 'static>(
         &mut self,
         gate: G,
     ) -> Arc<dyn GateOp + Send + Sync> {
+        // Parameterized gates must not be pooled: always allocate fresh.
+        if gate.is_parameterized() {
+            return Arc::new(gate) as Arc<dyn GateOp + Send + Sync>;
+        }
+
         let key = format!("{}_{:?}", gate.name(), gate.qubits());
 
         if let Some(cached_gate) = self.gates.get(&key) {
@@ -244,7 +254,23 @@ pub struct BarrierInfo {
     pub qubits: Vec<QubitId>,
 }
 
-/// A quantum circuit with a fixed number of qubits
+/// A quantum circuit with a fixed number of qubits.
+///
+/// `Circuit<N>` stores a sequence of quantum gate operations over `N` qubits.
+/// Gates can be appended with the builder methods (e.g. [`Circuit::h`],
+/// [`Circuit::cnot`]) and the circuit can be simulated by passing it to any
+/// type that implements [`Simulator`].
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_circuit::builder::Circuit;
+///
+/// // Build a 2-qubit Bell state preparation circuit
+/// let mut circ: Circuit<2> = Circuit::new();
+/// circ.h(0).expect("h failed").cnot(0, 1).expect("cnot failed");
+/// assert_eq!(circ.num_gates(), 2);
+/// ```
 pub struct Circuit<const N: usize> {
     /// Vector of gates to be applied in sequence using Arc for shared ownership
     gates: Vec<Arc<dyn GateOp + Send + Sync>>,
@@ -277,7 +303,15 @@ impl<const N: usize> fmt::Debug for Circuit<N> {
 }
 
 impl<const N: usize> Circuit<N> {
-    /// Create a new empty circuit with N qubits
+    /// Create a new empty circuit with N qubits.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use quantrs2_circuit::builder::Circuit;
+    /// let circ: Circuit<3> = Circuit::new();
+    /// assert_eq!(circ.num_gates(), 0);
+    /// ```
     #[must_use]
     pub fn new() -> Self {
         Self {

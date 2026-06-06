@@ -423,6 +423,69 @@ impl CacheOptimizedStateVector {
         Ok(())
     }
 
+    /// Apply a 4×4 two-qubit gate with cache-aware memory traversal.
+    ///
+    /// Iterates over basis states grouped so that the two target-qubit axes are
+    /// the innermost loop, maximising spatial locality for the four amplitude
+    /// reads/writes per iteration. The logical↔physical permutation is applied
+    /// to each index before accessing `self.data`.
+    pub fn apply_two_qubit_gate_cache_optimized(
+        &mut self,
+        control: usize,
+        target: usize,
+        gate_matrix: &Array2<Complex64>,
+    ) -> Result<()> {
+        let start_time = Instant::now();
+        let n = self.data.len();
+        let mask_c = 1_usize << control;
+        let mask_t = 1_usize << target;
+        let num_qubits = (n as f64).log2() as usize;
+        if control >= num_qubits || target >= num_qubits {
+            return Err(SimulatorError::InvalidParameter(
+                "Qubit index out of range for two-qubit cache-optimized gate".to_string(),
+            ));
+        }
+        // Iterate over all basis states with both qubits = 0 (i00).
+        for i in 0..n {
+            let li = self.physical_to_logical(i);
+            if (li & mask_c) != 0 || (li & mask_t) != 0 {
+                continue; // Only process the |00⟩ corner once per 4-state group.
+            }
+            let li01 = li | mask_t;
+            let li10 = li | mask_c;
+            let li11 = li | mask_c | mask_t;
+            let pi00 = self.logical_to_physical(li);
+            let pi01 = self.logical_to_physical(li01);
+            let pi10 = self.logical_to_physical(li10);
+            let pi11 = self.logical_to_physical(li11);
+            if pi00 >= n || pi01 >= n || pi10 >= n || pi11 >= n {
+                continue;
+            }
+            let a00 = self.data[pi00];
+            let a01 = self.data[pi01];
+            let a10 = self.data[pi10];
+            let a11 = self.data[pi11];
+            self.data[pi00] = gate_matrix[[0, 0]] * a00
+                + gate_matrix[[0, 1]] * a01
+                + gate_matrix[[0, 2]] * a10
+                + gate_matrix[[0, 3]] * a11;
+            self.data[pi01] = gate_matrix[[1, 0]] * a00
+                + gate_matrix[[1, 1]] * a01
+                + gate_matrix[[1, 2]] * a10
+                + gate_matrix[[1, 3]] * a11;
+            self.data[pi10] = gate_matrix[[2, 0]] * a00
+                + gate_matrix[[2, 1]] * a01
+                + gate_matrix[[2, 2]] * a10
+                + gate_matrix[[2, 3]] * a11;
+            self.data[pi11] = gate_matrix[[3, 0]] * a00
+                + gate_matrix[[3, 1]] * a01
+                + gate_matrix[[3, 2]] * a10
+                + gate_matrix[[3, 3]] * a11;
+        }
+        self.update_access_statistics(start_time.elapsed());
+        Ok(())
+    }
+
     /// Apply single-qubit gate with blocked access pattern
     fn apply_single_qubit_blocked(
         &mut self,
@@ -877,10 +940,11 @@ impl CacheOptimizedGateManager {
                     .apply_single_qubit_gate_cache_optimized(target_qubits[0], gate_matrix)?;
             }
             2 => {
-                // Two-qubit gate implementation would go here
-                return Err(SimulatorError::NotImplemented(
-                    "Two-qubit cache-optimized gates not implemented".to_string(),
-                ));
+                state_vector.apply_two_qubit_gate_cache_optimized(
+                    target_qubits[0],
+                    target_qubits[1],
+                    gate_matrix,
+                )?;
             }
             _ => {
                 return Err(SimulatorError::InvalidParameter(

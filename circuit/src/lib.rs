@@ -89,10 +89,10 @@
 //! This crate provides a comprehensive toolkit for creating, manipulating,
 //! and analyzing quantum circuits with a fluent API and modern Rust patterns.
 //!
-//! ## Recent Updates (v0.1.3)
+//! ## Recent Updates (v0.2.0)
 //!
 //! - Enhanced code quality with clippy warning fixes
-//! - **SciRS2 v0.1.3 Stable Release Integration** with unified patterns
+//! - **SciRS2 v0.5.0 Stable Release Integration** with unified patterns
 //! - Enhanced graph-based circuit optimization algorithms (60+ strategies)
 //! - Improved hardware-aware compilation with `SciRS2` graph algorithms
 //! - Comprehensive policy documentation for quantum circuit development
@@ -118,6 +118,19 @@
 //! - **Hardware**: `transpiler`, `routing`, `pulse`, `crosstalk`
 //! - **Analysis**: `profiler`, `debugger`, `equivalence`, `validation`
 //! - **Advanced**: `synthesis`, `zx_calculus`, `tensor_network`, `topological`
+//!
+//! ## Quick Start
+//!
+//! ```rust
+//! use quantrs2_circuit::builder::Circuit;
+//!
+//! // Build a 3-qubit GHZ state circuit
+//! let mut circ: Circuit<3> = Circuit::new();
+//! circ.h(0).expect("h")
+//!     .cnot(0, 1).expect("cnot 0-1")
+//!     .cnot(0, 2).expect("cnot 0-2");
+//! assert_eq!(circ.num_gates(), 3);
+//! ```
 pub mod buffer_manager;
 pub mod builder;
 pub mod circuit_cache;
@@ -157,7 +170,9 @@ pub mod scirs2_similarity;
 pub mod scirs2_transpiler_enhanced;
 pub mod simulator_interface;
 pub mod slicing;
+pub mod solovay_kitaev;
 pub mod synthesis;
+pub mod template_matching;
 pub mod tensor_network;
 pub mod topological;
 pub mod topology;

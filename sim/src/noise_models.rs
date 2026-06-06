@@ -101,7 +101,10 @@ pub trait NoiseChannel: Send + Sync {
         }
 
         // Fallback: apply last operator
-        let result = kraus_ops.last().unwrap().dot(state);
+        let last_op = kraus_ops
+            .last()
+            .ok_or_else(|| SimulatorError::InvalidState("empty Kraus operators".into()))?;
+        let result = last_op.dot(state);
         let norm = result.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
         Ok(result.mapv(|c| c / norm))
     }
@@ -208,7 +211,7 @@ impl NoiseChannel for DepolarizingNoise {
                         Complex64::new(0.0, 0.0),
                     ],
                 )
-                .unwrap(),
+                .expect("2x2 matrix with 4 elements"),
                 // √(p/3) Y
                 Array2::from_shape_vec(
                     (2, 2),
@@ -219,7 +222,7 @@ impl NoiseChannel for DepolarizingNoise {
                         Complex64::new(0.0, 0.0),
                     ],
                 )
-                .unwrap(),
+                .expect("2x2 matrix with 4 elements"),
                 // √(p/3) Z
                 Array2::from_shape_vec(
                     (2, 2),
@@ -230,7 +233,7 @@ impl NoiseChannel for DepolarizingNoise {
                         Complex64::new(-sqrt_p3, 0.0),
                     ],
                 )
-                .unwrap(),
+                .expect("2x2 matrix with 4 elements"),
             ]
         } else {
             // Two-qubit depolarizing (15 Pauli operators)
@@ -314,7 +317,7 @@ impl NoiseChannel for BitFlipNoise {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("2x2 matrix with 4 elements"),
         ]
     }
 
@@ -364,7 +367,7 @@ impl NoiseChannel for PhaseFlipNoise {
                     Complex64::new(-p.sqrt(), 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("2x2 matrix with 4 elements"),
         ]
     }
 
@@ -410,7 +413,7 @@ impl NoiseChannel for AmplitudeDampingNoise {
                     Complex64::new((1.0 - g).sqrt(), 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("2x2 matrix with 4 elements"),
             // K1 = [[0, √γ], [0, 0]]
             Array2::from_shape_vec(
                 (2, 2),
@@ -421,7 +424,7 @@ impl NoiseChannel for AmplitudeDampingNoise {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("2x2 matrix with 4 elements"),
         ]
     }
 
@@ -467,7 +470,7 @@ impl NoiseChannel for PhaseDampingNoise {
                     Complex64::new((1.0 - l).sqrt(), 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("2x2 matrix with 4 elements"),
             // K1 = [[0, 0], [0, √λ]]
             Array2::from_shape_vec(
                 (2, 2),
@@ -478,7 +481,7 @@ impl NoiseChannel for PhaseDampingNoise {
                     Complex64::new(l.sqrt(), 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("2x2 matrix with 4 elements"),
         ]
     }
 
@@ -553,7 +556,7 @@ impl NoiseChannel for ThermalRelaxationNoise {
                     Complex64::new((1.0 - p_reset - p_z).sqrt(), 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("2x2 matrix with 4 elements"),
             // K1: Amplitude damping to ground
             Array2::from_shape_vec(
                 (2, 2),
@@ -564,7 +567,7 @@ impl NoiseChannel for ThermalRelaxationNoise {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("2x2 matrix with 4 elements"),
             // K2: Pure dephasing
             Array2::from_shape_vec(
                 (2, 2),
@@ -575,7 +578,7 @@ impl NoiseChannel for ThermalRelaxationNoise {
                     Complex64::new(-p_z.sqrt(), 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("2x2 matrix with 4 elements"),
         ]
     }
 

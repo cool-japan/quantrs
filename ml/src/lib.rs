@@ -31,9 +31,9 @@
 //! - **Quantum Reservoir Computing**: Leverages quantum dynamics for temporal data processing with quantum advantages
 //! - **Quantum Graph Attention Networks**: Combines graph neural networks with quantum attention mechanisms for complex graph analysis
 //!
-//! ## Recent Updates (v0.1.3)
+//! ## Recent Updates (v0.2.0)
 //!
-//! - Refined SciRS2 v0.1.3 Stable Release integration with unified patterns
+//! - Refined SciRS2 v0.5.0 Stable Release integration with unified patterns
 //! - Automatic differentiation leveraging SciRS2's linear algebra operations
 //! - Parallel training with `scirs2_core::parallel_ops`
 //! - SIMD-accelerated quantum kernel computations
@@ -121,6 +121,12 @@ pub mod tutorials;
 
 // Utilities module for calibration, metrics, preprocessing, etc.
 pub mod utils;
+
+// QAOA warm-start initialisation via spectral relaxation
+pub mod qaoa_warm_start;
+
+// VQE Natural Gradient entry point (wraps autodiff::QuantumAutoDiff)
+pub mod vqe_natural_gradient;
 
 // Advanced Quantum-Classical Hybrid AutoML Engine
 pub mod hybrid_automl_engine;

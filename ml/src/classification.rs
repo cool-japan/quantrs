@@ -1,3 +1,9 @@
+//! Quantum classification models and performance metrics.
+//!
+//! Provides the [`Classifier`] trait, [`ClassificationMetrics`] for
+//! accuracy / precision / recall reporting, and a quantum circuit–based
+//! classification pipeline compatible with QNN and kernel-based models.
+
 use crate::error::{MLError, Result};
 use scirs2_core::ndarray::{Array1, Array2};
 

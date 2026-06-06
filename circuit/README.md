@@ -6,17 +6,17 @@
 
 QuantRS2-Circuit is the comprehensive quantum circuit construction and optimization engine of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing advanced circuit representation, analysis, optimization, and compilation capabilities for quantum computing applications.
 
-## Version 0.1.3 (2026-03-27)
+## Version 0.2.0 (2026-06-06)
 
 **2,004 public items, 0 stubs** — complete production-ready implementation.
 
-This release leverages [SciRS2](https://github.com/cool-japan/scirs2) v0.1.3 integration with refined patterns for enhanced performance in:
+This release leverages [SciRS2](https://github.com/cool-japan/scirs2) v0.5.0 integration with refined patterns for enhanced performance in:
 - Graph-based circuit optimization algorithms
 - Parallel circuit analysis and transformation
 - Memory-efficient circuit representations
 - Hardware-aware compilation optimizations
 
-### New in v0.1.3
+### New in v0.2.0
 - **SABRE Routing**: Real coupling-map distance-based swap scoring for optimal qubit mapping
 - **Noise-Aware Scheduling**: ASAP scheduling with XY4/CPMG/XY8 dynamical decoupling sequences
 - **Template Matching Optimization**: H-H, X-X cancellation and H-X-H→Z rewrite rules

@@ -204,11 +204,100 @@ impl EnhancedNoiseCharacterizer {
     }
 
     /// Generate recommendations
-    pub(super) const fn generate_recommendations(
-        _result: &NoiseCharacterizationResult,
+    ///
+    /// Examines the noise characterization result and emits remediation
+    /// recommendations whenever a sub-result indicates degraded behaviour.
+    /// The function is intentionally non-const because it inspects the
+    /// `NoiseCharacterizationResult` value at runtime; removing `const` is
+    /// safe — the only caller is `NoiseCharacterizationResult`'s reporting
+    /// pipeline which itself is non-const.
+    pub(super) fn generate_recommendations(
+        result: &NoiseCharacterizationResult,
     ) -> QuantRS2Result<Vec<Recommendation>> {
-        // Stub implementation
-        Ok(vec![])
+        let mut recommendations: Vec<Recommendation> = Vec::new();
+
+        // RB-derived recommendations: large average error rate (from the RB
+        // exponential fit) is the canonical recalibration trigger.
+        if let Some(rb) = &result.rb_results {
+            let err_rate = rb.fit_params.average_error_rate;
+            if err_rate > 0.01 {
+                recommendations.push(Recommendation {
+                    rec_type: RecommendationType::Recalibration,
+                    priority: if err_rate > 0.05 {
+                        Priority::High
+                    } else {
+                        Priority::Medium
+                    },
+                    description: format!(
+                        "Randomized benchmarking reports average error rate {err_rate:.4} (> 1%). Schedule recalibration of single- and two-qubit gates."
+                    ),
+                    expected_improvement: err_rate.min(0.5_f64),
+                });
+            }
+        }
+
+        // Spectral analysis: 1/f noise components indicate low-frequency
+        // drifts that benefit from dynamical decoupling.
+        if let Some(spectral) = &result.spectral_results {
+            // Total power = sum of power_density samples.
+            let total_power: f64 = spectral
+                .spectral_data
+                .power_spectrum
+                .power_density
+                .iter()
+                .sum();
+            let has_one_over_f = spectral.spectral_data.one_over_f_params.is_some();
+            if total_power > 1e-3 || has_one_over_f {
+                recommendations.push(Recommendation {
+                    rec_type: RecommendationType::DecouplingSequence,
+                    priority: Priority::Medium,
+                    description: format!(
+                        "Spectral analysis reports total power {total_power:.3e} (1/f detected: {has_one_over_f}). Apply CPMG / XY8 dynamical decoupling sequences to suppress low- and mid-frequency noise."
+                    ),
+                    expected_improvement: total_power.min(0.1_f64),
+                });
+            }
+        }
+
+        // Correlation analysis: presence of error clusters indicates cross-talk
+        // and benefits from algorithm-level mitigation.
+        if let Some(correlations) = &result.correlation_results {
+            if !correlations.corr_data.error_clusters.is_empty() {
+                let max_cluster_strength = correlations
+                    .corr_data
+                    .error_clusters
+                    .iter()
+                    .map(|c| c.correlation_strength)
+                    .fold(0.0_f64, f64::max);
+                recommendations.push(Recommendation {
+                    rec_type: RecommendationType::ErrorMitigation,
+                    priority: Priority::Medium,
+                    description: format!(
+                        "Detected {} error cluster(s); max correlation strength {:.3}. Apply correlated-error mitigation (e.g. zero-noise extrapolation) or qubit re-mapping.",
+                        correlations.corr_data.error_clusters.len(),
+                        max_cluster_strength
+                    ),
+                    expected_improvement: max_cluster_strength.min(0.5_f64),
+                });
+            }
+        }
+
+        // ML insights: high anomaly score warrants hardware maintenance.
+        if let Some(insights) = &result.ml_insights {
+            if insights.anomaly_score > 0.8 {
+                recommendations.push(Recommendation {
+                    rec_type: RecommendationType::HardwareMaintenance,
+                    priority: Priority::Urgent,
+                    description: format!(
+                        "ML anomaly detector reports score {:.3} (> 0.8). Initiate hardware maintenance check.",
+                        insights.anomaly_score
+                    ),
+                    expected_improvement: insights.anomaly_score,
+                });
+            }
+        }
+
+        Ok(recommendations)
     }
 
     /// Generate visualizations
@@ -287,22 +376,46 @@ impl EnhancedNoiseCharacterizer {
         }
     }
 
-    /// Calculate error bars
-    pub(super) const fn calculate_error_bars(_survival_prob: f64, _shots: usize) -> f64 {
-        // Stub implementation using standard error
-        0.01 // placeholder
+    /// Calculate error bars using Wald 95% confidence interval half-width for binomial proportion.
+    pub(super) fn calculate_error_bars(survival_prob: f64, shots: usize) -> f64 {
+        if shots == 0 {
+            return 1.0;
+        }
+        let p = survival_prob.clamp(0.0, 1.0);
+        // Wald 95% CI half-width: z * sqrt(p*(1-p)/n)
+        1.96 * (p * (1.0 - p) / shots as f64).sqrt()
     }
 
-    /// Calculate fit confidence interval
-    pub(super) const fn calculate_fit_confidence_interval(
-        _x: &[f64],
-        _y: &[f64],
-        _a: f64,
-        _p: f64,
-        _b: f64,
+    /// Calculate fit confidence interval for exponential decay f(x) = a * p^x + b.
+    ///
+    /// Returns a 95% CI `(lower, upper)` for the decay constant `p` based on
+    /// the residual standard error of the fit across all provided data points.
+    pub(super) fn calculate_fit_confidence_interval(
+        x: &[f64],
+        y: &[f64],
+        a: f64,
+        p: f64,
+        b: f64,
     ) -> QuantRS2Result<(f64, f64)> {
-        // Stub implementation
-        Ok((0.0, 1.0)) // placeholder
+        if x.len() != y.len() || x.is_empty() {
+            return Ok((0.0, 1.0));
+        }
+        let n = x.len() as f64;
+        // Sum of squared residuals from the exponential decay model
+        let sse: f64 = x
+            .iter()
+            .zip(y.iter())
+            .map(|(&xi, &yi)| {
+                let predicted = a * p.powf(xi) + b;
+                (yi - predicted).powi(2)
+            })
+            .sum();
+        // 3 free parameters: a, p, b
+        let degrees_of_freedom = (n - 3.0_f64).max(1.0);
+        let s = (sse / degrees_of_freedom).sqrt();
+        // 95% CI half-width centred on the estimated decay constant p
+        let half_width = 1.96 * s;
+        Ok((p - half_width, p + half_width))
     }
 
     /// Calculate survival probability from RB results

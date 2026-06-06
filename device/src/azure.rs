@@ -1,3 +1,8 @@
+//! Azure Quantum cloud backend connector.
+//!
+//! Implements job submission and result retrieval against the Azure Quantum
+//! REST API.  Requires the `azure` Cargo feature and valid Azure credentials.
+
 use quantrs2_circuit::prelude::Circuit;
 use std::collections::HashMap;
 #[cfg(feature = "azure")]
@@ -153,6 +158,7 @@ pub struct AzureJobResult {
 
 /// Errors specific to Azure Quantum
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum AzureQuantumError {
     #[error("Authentication error: {0}")]
     Authentication(String),

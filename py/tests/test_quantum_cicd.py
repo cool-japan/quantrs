@@ -1462,5 +1462,68 @@ class TestErrorHandlingAndEdgeCases:
         assert all(isinstance(result, PipelineRun) for result in results)
 
 
+@pytest.mark.skipif(not HAS_QUANTUM_CICD, reason="quantum cicd not available")
+class TestSchedulerTrigger:
+    """Tests for the cron-style scheduler trigger (stub 4c)."""
+
+    def _make_manager(self, temp_workspace):
+        return QuantumCICDManager(working_dir=str(temp_workspace))
+
+    def test_evaluate_trigger_wildcard_matches_all(self, temp_workspace):
+        """Wildcard trigger '* * * * *' matches any datetime."""
+        from datetime import datetime
+        manager = self._make_manager(temp_workspace)
+        now = datetime(2026, 5, 13, 14, 30)
+        assert manager._evaluate_trigger("* * * * *", now) is True
+
+    def test_evaluate_trigger_exact_match(self, temp_workspace):
+        """Exact-value fields must all match."""
+        from datetime import datetime
+        manager = self._make_manager(temp_workspace)
+        # May 13 2026 is Wednesday => weekday()=2
+        now = datetime(2026, 5, 13, 14, 30)
+        assert manager._evaluate_trigger("30 14 13 5 2", now) is True
+
+    def test_evaluate_trigger_exact_no_match(self, temp_workspace):
+        """Exact-value fields: single mismatch returns False."""
+        from datetime import datetime
+        manager = self._make_manager(temp_workspace)
+        now = datetime(2026, 5, 13, 14, 30)
+        # minute=31 doesn't match 30
+        assert manager._evaluate_trigger("31 14 13 5 2", now) is False
+
+    def test_scheduler_trigger_matches(self, temp_workspace):
+        """'0 */1 * * *' fires when minute==0 (any hour)."""
+        from datetime import datetime
+        manager = self._make_manager(temp_workspace)
+        # minute=0 → 0 % 1 == 0 → True
+        matching_now = datetime(2026, 5, 13, 10, 0)
+        assert manager._evaluate_trigger("0 */1 * * *", matching_now) is True
+
+    def test_scheduler_trigger_no_match(self, temp_workspace):
+        """'0 */2 * * *' does not fire when minute==30."""
+        from datetime import datetime
+        manager = self._make_manager(temp_workspace)
+        non_matching_now = datetime(2026, 5, 13, 10, 30)
+        assert manager._evaluate_trigger("0 */2 * * *", non_matching_now) is False
+
+    def test_evaluate_trigger_step_every_2_hours(self, temp_workspace):
+        """'* */2 * * *' matches even hours only."""
+        from datetime import datetime
+        manager = self._make_manager(temp_workspace)
+        assert manager._evaluate_trigger("* */2 * * *", datetime(2026, 5, 13, 0, 0)) is True
+        assert manager._evaluate_trigger("* */2 * * *", datetime(2026, 5, 13, 2, 0)) is True
+        assert manager._evaluate_trigger("* */2 * * *", datetime(2026, 5, 13, 1, 0)) is False
+
+    def test_evaluate_trigger_invalid_field_count(self, temp_workspace):
+        """Trigger strings with wrong field count return False."""
+        from datetime import datetime
+        manager = self._make_manager(temp_workspace)
+        now = datetime(2026, 5, 13, 14, 30)
+        assert manager._evaluate_trigger("* * * *", now) is False
+        assert manager._evaluate_trigger("", now) is False
+        assert manager._evaluate_trigger("* * * * * *", now) is False
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

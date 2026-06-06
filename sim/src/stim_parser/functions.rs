@@ -456,10 +456,17 @@ fn parse_qubit_coords(parts: &[&str]) -> Result<StimInstruction> {
         .collect::<Result<Vec<_>>>()?;
     Ok(StimInstruction::QubitCoords { qubit, coordinates })
 }
-fn parse_repeat(_parts: &[&str]) -> Result<StimInstruction> {
-    Err(SimulatorError::NotImplemented(
-        "REPEAT blocks not yet implemented".to_string(),
-    ))
+fn parse_repeat(parts: &[&str]) -> Result<StimInstruction> {
+    // REPEAT blocks are handled at the `StimCircuit::from_str` level (multi-line).
+    // This fallback handles single-line `REPEAT N {}` with an empty body.
+    let count = parts
+        .get(1)
+        .and_then(|s| s.trim_end_matches('{').trim().parse::<usize>().ok())
+        .unwrap_or(1);
+    Ok(StimInstruction::Repeat {
+        count,
+        instructions: Vec::new(),
+    })
 }
 #[cfg(test)]
 mod tests {

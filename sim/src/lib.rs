@@ -77,21 +77,37 @@
 #![allow(clippy::new_without_default)] // new() without Default impl
 #![allow(clippy::legacy_numeric_constants)] // Allow std::f64::MAX etc.
 
-//! Quantum circuit simulators for the `QuantRS2` framework.
+//! # quantrs2-sim
 //!
-//! This crate provides various simulation backends for quantum circuits,
-//! including state vector simulation on CPU and optionally GPU.
+//! Quantum circuit simulators for the QuantRS2 framework.
 //!
-//! It includes both standard and optimized implementations, with the optimized
-//! versions leveraging SIMD, memory-efficient algorithms, and parallel processing
-//! to enable simulation of larger qubit counts (30+).
+//! This crate is part of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing
+//! framework. It provides multiple simulation backends for quantum circuits, including state-vector,
+//! MPS (Matrix Product State), stabilizer, and GPU-accelerated simulation.
 //!
-//! ## Recent Updates (v0.1.3)
+//! ## Simulation Backends
 //!
-//! - Refined `SciRS2 v0.1.3 Stable Release integration for enhanced performance
-//! - All simulators use `scirs2_core::parallel_ops` for automatic parallelization
-//! - SIMD-accelerated quantum operations via `SciRS2` abstractions
-//! - Advanced linear algebra leveraging `SciRS2`'s optimized BLAS/LAPACK bindings
+//! - **State Vector**: Exact simulation up to ~30 qubits using dense vectors
+//! - **MPS Simulator**: Tensor-network simulation for structured circuits
+//! - **Stabilizer**: Efficient Clifford circuit simulation via Gottesman-Knill
+//! - **GPU-Accelerated**: CUDA/Metal-backed simulation for large circuits
+//! - **Distributed**: Multi-node quantum simulation via MPI
+//!
+//! ## Quick Start
+//!
+//! ```rust
+//! use quantrs2_sim::statevector::StateVectorSimulator;
+//! use quantrs2_circuit::builder::{Circuit, Simulator};
+//!
+//! // Build a 2-qubit Bell state circuit
+//! let mut circ: Circuit<2> = Circuit::new();
+//! circ.h(0).expect("h").cnot(0, 1).expect("cnot");
+//!
+//! // Simulate and inspect the resulting register
+//! let sim = StateVectorSimulator::new();
+//! let reg = sim.run(&circ).expect("simulation failed");
+//! assert_eq!(reg.num_qubits(), 2);
+//! ```
 
 pub mod adaptive_gate_fusion;
 pub mod adaptive_ml_error_correction;
@@ -187,6 +203,7 @@ pub mod sparse;
 pub mod specialized_gates;
 pub mod specialized_simulator;
 pub mod stabilizer;
+pub mod state_vector_simd;
 pub mod statevector;
 pub mod stim_dem;
 pub mod stim_executor;
@@ -199,7 +216,6 @@ pub mod tpu_acceleration;
 pub mod trotter;
 pub mod visualization_hooks;
 
-#[cfg(feature = "advanced_math")]
 pub mod tensor_network;
 pub mod utils;
 // Optimization modules refactored into specialized implementations:
@@ -210,6 +226,9 @@ pub mod circuit_optimization;
 pub mod circuit_optimizer;
 pub mod clifford_sparse;
 pub mod performance_prediction;
+
+/// PennyLane device backend (JSON protocol)
+pub mod pennylane;
 
 /// New organized API for QuantRS2 Simulation 1.0
 ///
@@ -742,7 +761,6 @@ pub mod gpu_metal;
 #[cfg(all(feature = "gpu", target_os = "macos"))]
 pub mod gpu_linalg_metal;
 
-#[cfg(feature = "advanced_math")]
 pub use crate::tensor_network::*;
 
 // Old monolithic optimization modules have been refactored into specialized implementations

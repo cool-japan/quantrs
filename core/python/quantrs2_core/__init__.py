@@ -112,7 +112,7 @@ from .quantrs2_core import *
 __version__ = "0.1.0-alpha.5"
 __author__ = "QuantRS2 Team"
 __description__ = "Python bindings for QuantRS2-Core quantum computing framework"
-__license__ = "MIT OR Apache-2.0"
+__license__ = "Apache-2.0"
 __homepage__ = "https://github.com/quantrs2/quantrs2-core"
 
 # Re-export main classes and functions for convenience

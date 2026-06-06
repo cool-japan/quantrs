@@ -1,3 +1,8 @@
+//! Utility functions shared across quantum simulation backends.
+//!
+//! Provides Kronecker-product assembly, gate-matrix conversion, bit-flip
+//! helpers, and other low-level routines used internally by the simulators.
+
 use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::parallel_ops::{
     IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator,

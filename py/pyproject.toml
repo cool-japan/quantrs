@@ -4,14 +4,14 @@ build-backend = "maturin"
 
 [project]
 name = "quantrs2"
-version = "0.1.3"
+version = "0.2.0"
 description = "High-performance quantum computing framework with ML, error mitigation, and annealing capabilities"
 authors = [
     {name = "COOLJAPAN OU (Team KitaSan) ", email = "contact@cooljapan.tech"}
 ]
 readme = "README.md"
 requires-python = ">=3.8"
-license = {text = "MIT/Apache-2.0"}
+license = {text = "Apache-2.0"}
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
@@ -27,7 +27,6 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "License :: OSI Approved :: Apache Software License",
 ]
 dependencies = [

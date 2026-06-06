@@ -258,12 +258,35 @@ impl<const N: usize> LayoutOptimizer<N> {
         Self {}
     }
 
-    pub const fn optimize_layout(
+    pub fn optimize_layout(
         &self,
         code: &CodeStructure,
-        _config: &FormatterConfig,
+        config: &FormatterConfig,
     ) -> QuantRS2Result<Vec<FormattingChange>> {
-        Ok(Vec::new())
+        // Emit a layout change whenever a section's reported span exceeds
+        // `max_line_length` — we cannot move gates around without the underlying
+        // AST, so we surface the breach as a `LineBreak` change positioned at
+        // the start of the offending section.
+        let max_len = config.max_line_length;
+        let mut changes = Vec::new();
+        for section in &code.sections {
+            if section.content.chars().count() > max_len {
+                changes.push(FormattingChange {
+                    change_type: ChangeType::LineBreak,
+                    start: Position {
+                        line: section.start_line,
+                        column: 0,
+                    },
+                    end: Position {
+                        line: section.end_line,
+                        column: max_len,
+                    },
+                    old_text: section.content.clone(),
+                    new_text: format!("// section '{}' exceeds {} cols\n", section.name, max_len),
+                });
+            }
+        }
+        Ok(changes)
     }
 }
 
@@ -284,12 +307,37 @@ impl<const N: usize> StyleEnforcer<N> {
         Self {}
     }
 
-    pub const fn enforce_style(
+    pub fn enforce_style(
         &self,
         code: &CodeStructure,
-        _config: &FormatterConfig,
+        config: &FormatterConfig,
     ) -> QuantRS2Result<Vec<FormattingChange>> {
-        Ok(Vec::new())
+        // Emit a `Spacing` change for sections that omit a space after commas
+        // when the spacing config requires it — this is a cheap heuristic that
+        // does not require any tokeniser yet still surfaces real violations
+        // when a `CodeStructure` is materialised.
+        let mut changes = Vec::new();
+        if !config.spacing.after_commas {
+            return Ok(changes);
+        }
+        for section in &code.sections {
+            if section.content.contains(",") && !section.content.contains(", ") {
+                changes.push(FormattingChange {
+                    change_type: ChangeType::Spacing,
+                    start: Position {
+                        line: section.start_line,
+                        column: 0,
+                    },
+                    end: Position {
+                        line: section.end_line,
+                        column: 0,
+                    },
+                    old_text: section.content.clone(),
+                    new_text: section.content.replace(",", ", "),
+                });
+            }
+        }
+        Ok(changes)
     }
 }
 
@@ -310,12 +358,51 @@ impl<const N: usize> CodeOrganizer<N> {
         Self {}
     }
 
-    pub const fn organize_code(
+    pub fn organize_code(
         &self,
         code: &CodeStructure,
-        _config: &FormatterConfig,
+        config: &FormatterConfig,
     ) -> QuantRS2Result<Vec<FormattingChange>> {
-        Ok(Vec::new())
+        // If `section_ordering` is configured, emit one `Organization` change
+        // per section that is currently out-of-order relative to the desired
+        // ordering. This lets the caller materialise the moves later without
+        // mutating the structure here.
+        let order = &config.organization.section_ordering;
+        if order.is_empty() {
+            return Ok(Vec::new());
+        }
+        let rank = |name: &str| -> Option<usize> {
+            order.iter().position(|n| n.eq_ignore_ascii_case(name))
+        };
+        let mut changes = Vec::new();
+        let mut last_rank: Option<usize> = None;
+        for section in &code.sections {
+            let r = rank(&section.name);
+            if let (Some(prev), Some(cur)) = (last_rank, r) {
+                if cur < prev {
+                    changes.push(FormattingChange {
+                        change_type: ChangeType::Organization,
+                        start: Position {
+                            line: section.start_line,
+                            column: 0,
+                        },
+                        end: Position {
+                            line: section.end_line,
+                            column: 0,
+                        },
+                        old_text: section.name.clone(),
+                        new_text: format!(
+                            "move '{}' to position {} per section_ordering",
+                            section.name, cur
+                        ),
+                    });
+                }
+            }
+            if r.is_some() {
+                last_rank = r;
+            }
+        }
+        Ok(changes)
     }
 }
 
@@ -342,12 +429,47 @@ impl<const N: usize> CommentFormatter<N> {
         }
     }
 
-    pub const fn format_comments(
+    pub fn format_comments(
         &self,
         code: &CodeStructure,
-        _config: &FormatterConfig,
+        config: &FormatterConfig,
     ) -> QuantRS2Result<Vec<FormattingChange>> {
-        Ok(Vec::new())
+        // Estimate comment density per section and emit a `Comment` change
+        // when it falls below `target_comment_density`. This mirrors the
+        // existing comment configuration without rewriting any source.
+        let target = config.comments.target_comment_density;
+        let mut changes = Vec::new();
+        for section in &code.sections {
+            let total_lines = section.content.lines().count().max(1);
+            let comment_lines = section
+                .content
+                .lines()
+                .filter(|line| {
+                    let trimmed = line.trim_start();
+                    trimmed.starts_with("//") || trimmed.starts_with('#')
+                })
+                .count();
+            let density = comment_lines as f64 / total_lines as f64;
+            if density + f64::EPSILON < target {
+                changes.push(FormattingChange {
+                    change_type: ChangeType::Comment,
+                    start: Position {
+                        line: section.start_line,
+                        column: 0,
+                    },
+                    end: Position {
+                        line: section.end_line,
+                        column: 0,
+                    },
+                    old_text: section.content.clone(),
+                    new_text: format!(
+                        "// section '{}' has {:.2} comment density (< {:.2})\n",
+                        section.name, density, target
+                    ),
+                });
+            }
+        }
+        Ok(changes)
     }
 }
 
@@ -397,12 +519,41 @@ impl<const N: usize> WhitespaceManager<N> {
         }
     }
 
-    pub const fn manage_whitespace(
+    pub fn manage_whitespace(
         &self,
         code: &CodeStructure,
         _config: &FormatterConfig,
     ) -> QuantRS2Result<Vec<FormattingChange>> {
-        Ok(Vec::new())
+        // Detect trailing whitespace and emit `Spacing` changes that strip it.
+        // We honour `WhitespaceOptimization::remove_trailing` from our own
+        // optimisation state because the caller-side `FormatterConfig` does
+        // not expose a per-section toggle.
+        let mut changes = Vec::new();
+        if !self.optimization.remove_trailing {
+            return Ok(changes);
+        }
+        for section in &code.sections {
+            for (offset, line) in section.content.lines().enumerate() {
+                let stripped = line.trim_end();
+                if stripped.len() != line.len() {
+                    let line_no = section.start_line + offset;
+                    changes.push(FormattingChange {
+                        change_type: ChangeType::Spacing,
+                        start: Position {
+                            line: line_no,
+                            column: stripped.len(),
+                        },
+                        end: Position {
+                            line: line_no,
+                            column: line.len(),
+                        },
+                        old_text: line.to_string(),
+                        new_text: stripped.to_string(),
+                    });
+                }
+            }
+        }
+        Ok(changes)
     }
 }
 
@@ -449,12 +600,47 @@ impl<const N: usize> AlignmentEngine<N> {
         }
     }
 
-    pub const fn apply_alignment(
+    pub fn apply_alignment(
         &self,
         code: &CodeStructure,
-        _config: &FormatterConfig,
+        config: &FormatterConfig,
     ) -> QuantRS2Result<Vec<FormattingChange>> {
-        Ok(Vec::new())
+        // Emit one `Alignment` change per section whose lines differ in their
+        // indentation prefix length — a strong signal that an alignment pass
+        // would be useful. The threshold and column count come from the
+        // configured `AlignmentConfig`.
+        let threshold = config.alignment.column_alignment_threshold.max(1);
+        let mut changes = Vec::new();
+        for section in &code.sections {
+            let mut indents: Vec<usize> = section
+                .content
+                .lines()
+                .filter(|line| !line.trim().is_empty())
+                .map(|line| line.len() - line.trim_start().len())
+                .collect();
+            if indents.len() < threshold {
+                continue;
+            }
+            indents.sort_unstable();
+            let min = indents.first().copied().unwrap_or(0);
+            let max = indents.last().copied().unwrap_or(0);
+            if max > min {
+                changes.push(FormattingChange {
+                    change_type: ChangeType::Alignment,
+                    start: Position {
+                        line: section.start_line,
+                        column: min,
+                    },
+                    end: Position {
+                        line: section.end_line,
+                        column: max,
+                    },
+                    old_text: section.content.clone(),
+                    new_text: format!("// align to column {min} for section '{}'\n", section.name),
+                });
+            }
+        }
+        Ok(changes)
     }
 }
 

@@ -124,20 +124,59 @@ pub mod fallback_scirs2 {
 #[cfg(not(feature = "scirs2"))]
 pub use fallback_scirs2::*;
 
-/// Main VQA execution entry point
+/// Main VQA execution entry point — synchronous gradient-descent loop.
+///
+/// Uses the parameter-shift gradient via `objective_function.compute_gradient`
+/// with a fixed step size of 0.01. Runs for `config.optimization_config.max_iterations`
+/// steps and reports convergence when the objective change falls below `config.optimization_config.convergence_tolerance`.
 pub fn execute_vqa(
     config: VQAConfig,
     ansatz: &circuits::ParametricCircuit,
     objective_function: &dyn ObjectiveFunction,
 ) -> DeviceResult<VQAResult> {
-    let mut executor =
-        VQAExecutor::new(config, crate::calibration::CalibrationManager::new(), None);
+    use scirs2_core::ndarray::Array1;
+    use std::time::Instant;
 
-    // Note: This would need to be updated to handle async execution
-    // For now, returning a placeholder
-    Err(DeviceError::NotImplemented(
-        "Async execution not implemented in modular interface".to_string(),
-    ))
+    let max_iter = config.optimization_config.max_iterations;
+    let tol = config.optimization_config.convergence_tolerance;
+    let step = 0.01_f64;
+
+    let mut params = Array1::from_vec(ansatz.parameters.clone());
+    let mut best_value = f64::INFINITY;
+    let mut best_params = params.clone();
+    let mut history = Vec::with_capacity(max_iter);
+    let mut converged = false;
+    let start = Instant::now();
+
+    for _ in 0..max_iter {
+        let result = objective_function.evaluate(&params)?;
+        history.push(result.value);
+        if result.value < best_value {
+            best_value = result.value;
+            best_params = params.clone();
+        }
+        if history.len() > 1 {
+            let prev = history[history.len() - 2];
+            if (prev - result.value).abs() < tol {
+                converged = true;
+                break;
+            }
+        }
+        // Gradient descent step.
+        let grad = objective_function.compute_gradient(&params)?;
+        params = params - grad * step;
+    }
+
+    let statistics = statistical::analyze_convergence(&history);
+    Ok(VQAResult {
+        optimal_parameters: best_params.to_vec(),
+        best_value,
+        iterations: history.len(),
+        execution_time: start.elapsed(),
+        converged,
+        statistics,
+        history,
+    })
 }
 
 /// Create VQA configuration for VQE algorithm

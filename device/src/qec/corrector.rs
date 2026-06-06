@@ -474,7 +474,7 @@ impl QuantumErrorCorrector {
             .generate_noise_scaled_circuits(
                 &mitigation_result.circuit,
                 &zne_config.noise_scaling_factors,
-                &FoldingConfig::default(), // TODO: Add proper FoldingConfig conversion
+                &zne_config.folding.clone(),
             )
             .await?;
 
@@ -1129,6 +1129,50 @@ impl QuantumErrorCorrector {
             correlation_matrix: Array2::eye(3),
             significant_correlations: vec![("error_1".to_string(), "error_2".to_string(), 0.6)],
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::qec::mitigation::FoldingConfig;
+
+    #[test]
+    fn test_folding_config_default_fields() {
+        use crate::qec::mitigation::{FoldingType, OverlapHandling, RegionSelectionStrategy};
+        let cfg = FoldingConfig::default();
+        assert_eq!(
+            cfg.folding_type,
+            FoldingType::Global,
+            "default folding_type must be Global"
+        );
+        assert!(cfg.global_folding, "default global_folding must be true");
+        assert!(
+            cfg.local_folding.regions.is_empty(),
+            "default local_folding.regions must be empty"
+        );
+        assert_eq!(
+            cfg.local_folding.selection_strategy,
+            RegionSelectionStrategy::Automatic,
+        );
+        assert_eq!(cfg.local_folding.overlap_handling, OverlapHandling::Merge,);
+    }
+
+    #[test]
+    fn test_folding_config_default_gate_specific_empty() {
+        let cfg = FoldingConfig::default();
+        assert!(
+            cfg.gate_specific.folding_rules.is_empty(),
+            "gate_specific.folding_rules must be empty by default"
+        );
+        assert!(
+            cfg.gate_specific.priority_ordering.is_empty(),
+            "gate_specific.priority_ordering must be empty by default"
+        );
+        assert!(
+            !cfg.gate_specific.error_rate_weighting,
+            "error_rate_weighting must be false by default"
+        );
     }
 }
 

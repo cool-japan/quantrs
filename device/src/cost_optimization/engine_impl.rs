@@ -168,8 +168,161 @@ impl CostOptimizationEngine {
         cost_trends: &CostTrends,
         context: &OptimizationContext,
     ) -> DeviceResult<Vec<OptimizationRecommendation>> {
-        // Implementation for generating optimization recommendations
-        Ok(vec![])
+        // Build concrete cost-optimization recommendations based on the
+        // current budget situation, observed cost trends, and the requesting
+        // user's preferences. Recommendations carry an `estimated_savings`
+        // expressed as a fraction of remaining budget where applicable, so
+        // downstream consumers can rank them numerically.
+        let mut recommendations: Vec<OptimizationRecommendation> = Vec::new();
+
+        // 1. Budget pressure: utilization above 80% triggers a budget review
+        //    recommendation with very high priority.
+        if budget_status.utilization_percentage > 80.0 {
+            recommendations.push(OptimizationRecommendation {
+                recommendation_type: RecommendationType::BudgetAdjustment,
+                description: format!(
+                    "Budget utilization is at {:.1}%, exceeding the 80% safety threshold. Review allocations and consider reallocating from providers with under-utilized budgets.",
+                    budget_status.utilization_percentage
+                ),
+                estimated_savings: budget_status.remaining_budget * 0.05,
+                implementation_effort: ImplementationEffort::Low,
+                confidence_score: 0.85,
+                action_items: vec![
+                    ActionItem {
+                        description: "Audit current spending breakdown by provider".to_string(),
+                        priority: ActionPriority::High,
+                        estimated_time: Duration::from_secs(60 * 60),
+                        required_resources: vec!["finance_team".to_string()],
+                    },
+                ],
+            });
+        }
+
+        // 2. Pricing trend response: any provider with an increasing pricing
+        //    trend suggests switching to alternates that are stable / decreasing.
+        let mut increasing_providers: Vec<&HardwareBackend> = Vec::new();
+        let mut decreasing_providers: Vec<&HardwareBackend> = Vec::new();
+        for (provider, trend) in &context.market_conditions.pricing_trends {
+            match trend {
+                PricingTrend::Increasing | PricingTrend::Volatile => {
+                    increasing_providers.push(provider);
+                }
+                PricingTrend::Decreasing => {
+                    decreasing_providers.push(provider);
+                }
+                PricingTrend::Stable => {}
+            }
+        }
+        if !increasing_providers.is_empty() && !decreasing_providers.is_empty() {
+            recommendations.push(OptimizationRecommendation {
+                recommendation_type: RecommendationType::ProviderSwitch,
+                description: format!(
+                    "Detected {} provider(s) with rising prices. Consider migrating workloads to {} provider(s) with falling prices.",
+                    increasing_providers.len(),
+                    decreasing_providers.len()
+                ),
+                estimated_savings: budget_status.remaining_budget * 0.10,
+                implementation_effort: ImplementationEffort::Medium,
+                confidence_score: 0.7,
+                action_items: vec![ActionItem {
+                    description: "Run provider comparison for top workloads".to_string(),
+                    priority: ActionPriority::Medium,
+                    estimated_time: Duration::from_secs(2 * 60 * 60),
+                    required_resources: vec!["benchmarking".to_string()],
+                }],
+            });
+        }
+
+        // 3. Off-peak optimization: high demand periods on currently-used
+        //    providers suggest scheduling jobs in off-peak windows.
+        let high_demand = context
+            .market_conditions
+            .demand_levels
+            .values()
+            .any(|d| matches!(d, DemandLevel::High | DemandLevel::Peak));
+        if high_demand && context.user_preferences.cost_sensitivity > 0.5 {
+            recommendations.push(OptimizationRecommendation {
+                recommendation_type: RecommendationType::TimingOptimization,
+                description: "High demand on selected providers detected. Schedule non-urgent jobs during off-peak windows to access lower pricing tiers.".to_string(),
+                estimated_savings: budget_status.remaining_budget * 0.08,
+                implementation_effort: ImplementationEffort::Low,
+                confidence_score: 0.75,
+                action_items: vec![ActionItem {
+                    description: "Configure off-peak job scheduling policy".to_string(),
+                    priority: ActionPriority::Medium,
+                    estimated_time: Duration::from_secs(30 * 60),
+                    required_resources: vec!["scheduler_config".to_string()],
+                }],
+            });
+        }
+
+        // 4. Anomaly response: surface anomalies from cost_trends as a
+        //    resource-reallocation recommendation.
+        if !cost_trends.anomalies.is_empty() {
+            recommendations.push(OptimizationRecommendation {
+                recommendation_type: RecommendationType::ResourceReallocation,
+                description: format!(
+                    "{} cost anomalies detected. Investigate root causes and reallocate budget away from anomalous providers.",
+                    cost_trends.anomalies.len()
+                ),
+                estimated_savings: budget_status.remaining_budget * 0.04,
+                implementation_effort: ImplementationEffort::Medium,
+                confidence_score: 0.65,
+                action_items: vec![ActionItem {
+                    description: "Investigate cost anomaly root causes".to_string(),
+                    priority: ActionPriority::High,
+                    estimated_time: Duration::from_secs(60 * 60),
+                    required_resources: vec!["operations".to_string()],
+                }],
+            });
+        }
+
+        // 5. Batching: when there are many pending circuits, batching can
+        //    amortize per-job overhead.
+        if context.current_workload.pending_circuits > 10 {
+            recommendations.push(OptimizationRecommendation {
+                recommendation_type: RecommendationType::BatchingOptimization,
+                description: format!(
+                    "Pending workload of {} circuits. Group jobs into larger batches to amortize submission overhead.",
+                    context.current_workload.pending_circuits
+                ),
+                estimated_savings: budget_status.remaining_budget * 0.03,
+                implementation_effort: ImplementationEffort::Low,
+                confidence_score: 0.8,
+                action_items: vec![ActionItem {
+                    description: "Enable batch submission in scheduler".to_string(),
+                    priority: ActionPriority::Medium,
+                    estimated_time: Duration::from_secs(15 * 60),
+                    required_resources: vec!["scheduler_config".to_string()],
+                }],
+            });
+        }
+
+        // Sort by priority of the highest-priority action item, then by
+        // confidence_score descending.
+        recommendations.sort_by(|a, b| {
+            let pa = a
+                .action_items
+                .iter()
+                .map(|x| &x.priority)
+                .max()
+                .cloned()
+                .unwrap_or(ActionPriority::Low);
+            let pb = b
+                .action_items
+                .iter()
+                .map(|x| &x.priority)
+                .max()
+                .cloned()
+                .unwrap_or(ActionPriority::Low);
+            pb.cmp(&pa).then_with(|| {
+                b.confidence_score
+                    .partial_cmp(&a.confidence_score)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+        });
+
+        Ok(recommendations)
     }
 }
 

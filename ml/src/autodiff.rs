@@ -323,20 +323,110 @@ impl QuantumAutoDiff {
         self.solve_linear_system(&fisher, gradients)
     }
 
-    /// Compute element of quantum Fisher information matrix
+    /// Compute element of quantum Fisher information matrix using 4-point parameter-shift QFIM formula.
+    ///
+    /// F_ij = (E(θ+π/2·e_i+π/2·e_j) - E(θ+π/2·e_i-π/2·e_j)
+    ///        - E(θ-π/2·e_i+π/2·e_j) + E(θ-π/2·e_i-π/2·e_j)) / 4
     fn compute_fisher_element(&self, params: &[f64], i: usize, j: usize) -> Result<f64> {
-        // Simplified - would compute <∂ψ/∂θᵢ|∂ψ/∂θⱼ>
-        if i == j {
-            Ok(1.0 + 0.1 * fastrand::f64())
-        } else {
-            Ok(0.1 * fastrand::f64())
-        }
+        let shift = PI / 2.0;
+
+        let mut p_pp = params.to_vec();
+        let mut p_pm = params.to_vec();
+        let mut p_mp = params.to_vec();
+        let mut p_mm = params.to_vec();
+
+        p_pp[i] += shift;
+        p_pp[j] += shift;
+
+        p_pm[i] += shift;
+        p_pm[j] -= shift;
+
+        p_mp[i] -= shift;
+        p_mp[j] += shift;
+
+        p_mm[i] -= shift;
+        p_mm[j] -= shift;
+
+        let e_pp = (self.executor)(&p_pp);
+        let e_pm = (self.executor)(&p_pm);
+        let e_mp = (self.executor)(&p_mp);
+        let e_mm = (self.executor)(&p_mm);
+
+        Ok((e_pp - e_pm - e_mp + e_mm) / 4.0)
     }
 
-    /// Solve linear system (simplified)
+    /// Solve linear system A·x = b using Gaussian elimination with partial pivoting.
+    ///
+    /// Returns `Ok(x)` on success, `Err(NumericalError)` if the matrix is singular
+    /// (i.e., |pivot| < 1e-12 at any elimination step).
     fn solve_linear_system(&self, matrix: &Array2<f64>, rhs: &[f64]) -> Result<Vec<f64>> {
-        // Simplified - would use proper linear algebra
-        Ok(rhs.to_vec())
+        let n = rhs.len();
+        if matrix.nrows() != n || matrix.ncols() != n {
+            return Err(MLError::DimensionMismatch(format!(
+                "Matrix ({} x {}) incompatible with rhs length {}",
+                matrix.nrows(),
+                matrix.ncols(),
+                n
+            )));
+        }
+
+        // Build augmented matrix [A | b]
+        let mut a: Vec<Vec<f64>> = (0..n)
+            .map(|i| {
+                let mut row: Vec<f64> = (0..n).map(|j| matrix[[i, j]]).collect();
+                row.push(rhs[i]);
+                row
+            })
+            .collect();
+
+        // Forward elimination with partial pivoting
+        for k in 0..n {
+            // Find pivot row: row with max |a[row][k]| for row >= k
+            let mut max_val = a[k][k].abs();
+            let mut max_idx = k;
+            for row in (k + 1)..n {
+                let val = a[row][k].abs();
+                if val > max_val {
+                    max_val = val;
+                    max_idx = row;
+                }
+            }
+
+            if max_val < 1e-12 {
+                return Err(MLError::NumericalError(format!(
+                    "Singular matrix: |pivot| = {:.2e} < 1e-12 at column {}",
+                    max_val, k
+                )));
+            }
+
+            // Swap rows k and max_idx
+            if max_idx != k {
+                a.swap(k, max_idx);
+            }
+
+            let pivot = a[k][k];
+
+            // Eliminate below pivot
+            for i in (k + 1)..n {
+                let factor = a[i][k] / pivot;
+                for col in k..=n {
+                    let sub = factor * a[k][col];
+                    a[i][col] -= sub;
+                }
+            }
+        }
+
+        // Back substitution
+        let mut x = vec![0.0_f64; n];
+        for i in (0..n).rev() {
+            let mut sum = a[i][n]; // rhs column
+            for j in (i + 1)..n {
+                sum -= a[i][j] * x[j];
+            }
+            x[i] = sum / a[i][i];
+        }
+
+        Ok(x)
     }
 }
 

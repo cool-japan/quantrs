@@ -36,37 +36,42 @@ pub trait ProviderOptimizer {
     ) -> DeviceResult<CostEstimate>;
 }
 
-// Stub traits for internal use (TODO: Implement properly)
+// Plug-in marker traits used as `Box<dyn Trait + Send + Sync>` storage in the
+// provider-optimizations type hierarchy.  No methods are called through these
+// trait objects today — they serve as future extension points so that external
+// crates can register custom strategies without forking this crate.  Adding
+// required methods here would break every existing impl; prefer default-bodied
+// methods if functionality ever needs to be surfaced through the trait.
 
-/// Feature extraction trait
+/// Marker trait for feature-extraction plug-ins.
 pub trait FeatureExtractor: Send + Sync {}
 
-/// Clustering engine trait
+/// Marker trait for clustering-engine plug-ins.
 pub trait ClusteringEngine: Send + Sync {}
 
-/// Similarity metric trait
+/// Marker trait for similarity-metric plug-ins.
 pub trait SimilarityMetric: Send + Sync {}
 
-/// Nearest neighbor engine trait
+/// Marker trait for nearest-neighbor-engine plug-ins.
 pub trait NearestNeighborEngine: Send + Sync {}
 
-/// Pattern analysis algorithm trait
+/// Marker trait for pattern-analysis-algorithm plug-ins.
 pub trait PatternAnalysisAlgorithm: Send + Sync {}
 
-/// Recommendation algorithm trait
+/// Marker trait for recommendation-algorithm plug-ins.
 pub trait RecommendationAlgorithm: Send + Sync {}
 
-/// Learning algorithm trait
+/// Marker trait for learning-algorithm plug-ins.
 pub trait LearningAlgorithm: Send + Sync {}
 
-/// Update strategy trait
+/// Marker trait for update-strategy plug-ins.
 pub trait UpdateStrategy: Send + Sync {}
 
-/// Feedback validator trait
+/// Marker trait for feedback-validator plug-ins.
 pub trait FeedbackValidator: Send + Sync {}
 
-/// Feedback analyzer trait
+/// Marker trait for feedback-analyzer plug-ins.
 pub trait FeedbackAnalyzer: Send + Sync {}
 
-/// Feedback aggregator trait
+/// Marker trait for feedback-aggregator plug-ins.
 pub trait FeedbackAggregator: Send + Sync {}

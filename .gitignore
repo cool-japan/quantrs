@@ -71,6 +71,9 @@ Thumbs.db
 **/venv/
 **/.venv/
 
+# Hypothesis (Python property-based testing) - cache only, keep examples/
+**/.hypothesis/constants/
+
 # Python
 *.pyc
 *.pyo
@@ -101,3 +104,5 @@ sim/clippy_output.txt
 **/CLAUDE.local.md
 **/.claude/
 **/CLAUDE.md
+
+target

@@ -3,15 +3,21 @@
 //! This crate provides Python bindings using `PyO3`,
 //! allowing `QuantRS2` to be used from Python.
 //!
-//! ## Recent Updates (v0.1.3)
+//! ## Recent Updates (v0.2.0)
 //!
-//! - Refined `SciRS2` v0.1.3 integration with unified patterns
+//! - Refined `SciRS2` v0.5.0 integration with unified patterns
 //! - Enhanced cross-platform support (macOS, Linux, Windows)
 //! - Improved GPU acceleration with CUDA support
 //! - Advanced quantum ML capabilities with autograd support
 //! - Comprehensive policy documentation for Python quantum computing
 
 use pyo3::prelude::*;
+
+// Include the QEC module
+mod qec;
+
+// Include the 3D state visualization module
+mod state_viz_3d;
 
 // Include the visualization module
 mod visualization;
@@ -64,6 +70,12 @@ mod tytan;
 // Include the multi-GPU module
 mod multi_gpu;
 
+// Include the quantum networking module
+mod networking;
+
+// Include the ecosystem integration module (QASM 2.0 + PennyLane)
+mod ecosystem;
+
 // Include the simulators module
 mod simulators;
 
@@ -84,7 +96,7 @@ pub(crate) use simulation_result::PySimulationResult;
 
 /// Python module for `QuantRS2`
 #[pymodule]
-fn quantrs2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn quantrs2(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.setattr("__version__", env!("CARGO_PKG_VERSION"))?;
 
     // Add classes to the module
@@ -142,8 +154,20 @@ fn quantrs2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Register the multi-GPU module
     multi_gpu::register_multi_gpu_module(m)?;
 
+    // Register the ecosystem module (QASM 2.0 + PennyLane)
+    ecosystem::register_ecosystem_module(m)?;
+
     // Register the simulators module
     simulators::register_simulators_module(m)?;
+
+    // Register the QEC submodule
+    qec::register_qec_module(m)?;
+
+    // Register the 3D state visualization submodule
+    state_viz_3d::register_state_viz_3d_module(m)?;
+
+    // Register the networking module (BB84, E91, Teleportation)
+    networking::register_networking_module(py, m)?;
 
     // Add metadata
     m.setattr(

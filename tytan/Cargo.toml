@@ -79,6 +79,14 @@ colored.workspace = true
 # name = "performance_benchmark"
 # harness = false
 
+[[bench]]
+name = "sampler_scalability"
+harness = false
+
+[[bench]]
+name = "energy_eval"
+harness = false
+
 [package.metadata.docs.rs]
 all-features = false
 features = ["parallel", "scirs"]

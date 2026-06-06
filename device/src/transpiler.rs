@@ -1,4 +1,10 @@
+//! Circuit transpilation utilities for hardware device connectivity.
+//!
+//! Converts QuantRS2 circuits to QASM and transpiles them to match device
+//! qubit connectivity graphs, basis gate sets, and physical qubit mappings.
+
 use quantrs2_circuit::prelude::Circuit;
+use quantrs2_core::gate::single::{RotationX, RotationY, RotationZ};
 use quantrs2_core::prelude::QubitId;
 use std::collections::{HashMap, VecDeque};
 
@@ -18,7 +24,25 @@ pub struct QasmCircuit {
     pub gate_counts: HashMap<String, usize>,
 }
 
-/// Circuit transpiler that converts between different quantum circuit representations
+/// Circuit transpiler that converts between different quantum circuit representations.
+///
+/// Converts QuantRS2 [`Circuit`] instances to OpenQASM 2.0 text format and
+/// performs physical qubit remapping for hardware connectivity constraints.
+///
+/// # Examples
+///
+/// ```rust
+/// use quantrs2_device::transpiler::CircuitTranspiler;
+/// use quantrs2_circuit::builder::Circuit;
+///
+/// let mut circ: Circuit<2> = Circuit::new();
+/// circ.h(0).expect("h").cnot(0, 1).expect("cnot");
+///
+/// let qasm = CircuitTranspiler::circuit_to_qasm(&circ, None)
+///     .expect("transpile failed");
+/// assert!(qasm.content.contains("OPENQASM 2.0"));
+/// assert_eq!(qasm.qubit_count, 2);
+/// ```
 pub struct CircuitTranspiler;
 
 impl CircuitTranspiler {
@@ -150,12 +174,15 @@ impl CircuitTranspiler {
                     if gate.qubits().len() != 1 {
                         continue;
                     }
-                    // For rotation gates, we can't easily get the angle parameter
-                    // In a full implementation, you would handle this properly
                     let qubit = gate.qubits()[0];
                     let q = map_qubit(qubit.id() as usize, &qubit_mapping);
+                    let theta = gate
+                        .as_any()
+                        .downcast_ref::<RotationX>()
+                        .map(|g| g.theta)
+                        .unwrap_or(0.0);
                     *gate_counts.entry("rx".to_string()).or_insert(0) += 1;
-                    format!("rx(0) q[{q}];") // Placeholder value
+                    format!("rx({theta}) q[{q}];")
                 }
                 "RY" => {
                     if gate.qubits().len() != 1 {
@@ -163,8 +190,13 @@ impl CircuitTranspiler {
                     }
                     let qubit = gate.qubits()[0];
                     let q = map_qubit(qubit.id() as usize, &qubit_mapping);
+                    let theta = gate
+                        .as_any()
+                        .downcast_ref::<RotationY>()
+                        .map(|g| g.theta)
+                        .unwrap_or(0.0);
                     *gate_counts.entry("ry".to_string()).or_insert(0) += 1;
-                    format!("ry(0) q[{q}];") // Placeholder value
+                    format!("ry({theta}) q[{q}];")
                 }
                 "RZ" => {
                     if gate.qubits().len() != 1 {
@@ -172,8 +204,13 @@ impl CircuitTranspiler {
                     }
                     let qubit = gate.qubits()[0];
                     let q = map_qubit(qubit.id() as usize, &qubit_mapping);
+                    let theta = gate
+                        .as_any()
+                        .downcast_ref::<RotationZ>()
+                        .map(|g| g.theta)
+                        .unwrap_or(0.0);
                     *gate_counts.entry("rz".to_string()).or_insert(0) += 1;
-                    format!("rz(0) q[{q}];") // Placeholder value
+                    format!("rz({theta}) q[{q}];")
                 }
                 _ => {
                     // For now, return an error for unsupported gates
@@ -493,4 +530,56 @@ fn find_shortest_path(start: usize, end: usize, coupling_map: &[(usize, usize)])
 
     // No path found
     Vec::new()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use quantrs2_circuit::builder::Circuit;
+
+    #[test]
+    fn test_qasm_export_rotation_angles() {
+        // Build a 3-qubit circuit with RX(0.5), RY(1.0), RZ(1.5)
+        let mut circ: Circuit<3> = Circuit::new();
+        circ.rx(0u32, 0.5).expect("rx gate");
+        circ.ry(1u32, 1.0).expect("ry gate");
+        circ.rz(2u32, 1.5).expect("rz gate");
+
+        let qasm = CircuitTranspiler::circuit_to_qasm(&circ, None)
+            .expect("circuit_to_qasm should succeed");
+
+        assert!(
+            qasm.content.contains("rx(0.5)"),
+            "QASM should contain rx(0.5), got: {}",
+            qasm.content
+        );
+        // Rust formats 1.0_f64 as "1" via Display
+        assert!(
+            qasm.content.contains("ry(1)") || qasm.content.contains("ry(1.0)"),
+            "QASM should contain ry(1) or ry(1.0), got: {}",
+            qasm.content
+        );
+        assert!(
+            qasm.content.contains("rz(1.5)"),
+            "QASM should contain rz(1.5), got: {}",
+            qasm.content
+        );
+
+        // Ensure old placeholder values are absent — "rx(0) " (with trailing space) was the bug
+        assert!(
+            !qasm.content.contains("rx(0) "),
+            "QASM must not contain hardcoded placeholder rx(0), got: {}",
+            qasm.content
+        );
+        assert!(
+            !qasm.content.contains("ry(0) "),
+            "QASM must not contain hardcoded placeholder ry(0), got: {}",
+            qasm.content
+        );
+        assert!(
+            !qasm.content.contains("rz(0) "),
+            "QASM must not contain hardcoded placeholder rz(0), got: {}",
+            qasm.content
+        );
+    }
 }

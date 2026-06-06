@@ -1,3 +1,9 @@
+//! Quantum Reinforcement Learning (QRL) agents and environments.
+//!
+//! Defines the [`Environment`] trait plus [`QuantumRLAgent`] which uses a
+//! quantum neural network as its policy / value function approximator,
+//! trained via policy gradient or Q-learning objectives.
+
 use crate::error::{MLError, Result};
 use crate::qnn::QuantumNeuralNetwork;
 use quantrs2_circuit::prelude::Circuit;

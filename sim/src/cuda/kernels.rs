@@ -271,11 +271,9 @@ impl CudaKernel {
     fn calculate_max_blocks_per_sm(&self, block_size: usize) -> Result<usize> {
         // Simplified calculation based on register and shared memory usage
         let max_blocks_by_registers = 65_536 / (self.register_count as usize * block_size);
-        let max_blocks_by_shared_memory = if self.shared_memory_size > 0 {
-            98_304 / self.shared_memory_size // 96KB shared memory per SM
-        } else {
-            usize::MAX
-        };
+        let max_blocks_by_shared_memory = 98_304_usize
+            .checked_div(self.shared_memory_size)
+            .unwrap_or(usize::MAX); // 96KB shared memory per SM
         Ok(max_blocks_by_registers
             .min(max_blocks_by_shared_memory)
             .min(32)) // Max 32 blocks per SM

@@ -5,6 +5,7 @@ use thiserror::Error;
 
 /// Error types for quantum simulation
 #[derive(Debug, Clone, Error)]
+#[non_exhaustive]
 pub enum SimulatorError {
     /// Invalid number of qubits
     #[error("Invalid number of qubits: {0}")]

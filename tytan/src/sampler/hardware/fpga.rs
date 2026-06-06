@@ -405,12 +405,33 @@ impl Sampler for FPGASampler {
 
     fn run_hobo(
         &self,
-        _hobo: &(scirs2_core::ndarray::ArrayD<f64>, HashMap<String, usize>),
-        _shots: usize,
+        hobo: &(scirs2_core::ndarray::ArrayD<f64>, HashMap<String, usize>),
+        shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
-        Err(SamplerError::NotImplemented(
-            "HOBO not supported by FPGA hardware".to_string(),
-        ))
+        let (tensor, var_map) = hobo;
+
+        // Quadratize HOBO → QUBO via Rosenberg reduction.
+        let (qubo, ext_var_map) = crate::sampler::energy::hobo_to_qubo(tensor, var_map)
+            .map_err(SamplerError::InvalidModel)?;
+
+        // Enforce hardware capacity on the (possibly enlarged) QUBO.
+        if qubo.shape()[0] > self.max_problem_size {
+            return Err(SamplerError::InvalidModel(format!(
+                "HOBO quadratization produced {} variables, which exceeds FPGA capacity {}",
+                qubo.shape()[0],
+                self.max_problem_size
+            )));
+        }
+
+        // Delegate to the QUBO solver.
+        let mut results = self.run_qubo(&(qubo, ext_var_map), shots)?;
+
+        // Strip auxiliary variables (introduced by quadratization) from every result.
+        for result in &mut results {
+            result.assignments.retain(|k, _| !k.starts_with("_aux_"));
+        }
+
+        Ok(results)
     }
 }
 
