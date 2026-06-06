@@ -6,17 +6,17 @@
 
 QuantRS2-Anneal is the premier quantum annealing module of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing comprehensive support for quantum annealing, optimization problems, and quantum-inspired algorithms.
 
-## Version 0.1.3
+## Version 0.2.0
 
-Released: 2026-03-27
+Released: 2026-06-06
 
 This release features:
 - Stable APIs for D-Wave, AWS Braket, and Fujitsu integrations
-- Enhanced performance using SciRS2 v0.1.3's parallel algorithms for large-scale optimization
+- Enhanced performance using SciRS2 v0.5.0's parallel algorithms for large-scale optimization
 - Improved minor graph embedding with refined SciRS2 graph algorithms
 - Memory-efficient sparse matrix operations via SciRS2
 
-### What's New in v0.1.3
+### What's New in v0.2.0
 - **Zeno Annealing Protocol**: Full implementation of quantum Zeno effect-based annealing with configurable measurement schedules and decoherence control
 - **3,895 public items**: 0 stubs — complete production-ready implementation
 
@@ -90,10 +90,10 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-quantrs2-anneal = "0.1.3"
+quantrs2-anneal = "0.2.0"
 
 # Optional features for cloud integration
-quantrs2-anneal = { version = "0.1.3", features = ["dwave", "braket", "fujitsu"] }
+quantrs2-anneal = { version = "0.2.0", features = ["dwave", "braket", "fujitsu"] }
 ```
 
 ## 🎯 Feature Flags

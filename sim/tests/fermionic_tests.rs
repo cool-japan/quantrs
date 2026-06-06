@@ -104,12 +104,11 @@ fn test_pauli_z_expectation_both_occupied() {
     let n0 = sim1
         .expectation_value(&FermionicOperator::Number(0))
         .expect("n0 expectation");
-    let z_exp = 1.0 - 2.0 * n0.re;
+    let z_exp = 2.0_f64.mul_add(-n0.re, 1.0);
 
     assert!(
         (z_exp - (-1.0)).abs() < 1e-10,
-        "⟨Z⟩ for occupied mode: expected -1.0, got {:.6}",
-        z_exp
+        "⟨Z⟩ for occupied mode: expected -1.0, got {z_exp:.6}"
     );
 
     // Also verify for the 2-mode "ZI" case: ⟨11|ZI|11⟩ should be −1.
@@ -117,11 +116,10 @@ fn test_pauli_z_expectation_both_occupied() {
     let n0_2mode = sim
         .expectation_value(&FermionicOperator::Number(0))
         .expect("n0 2-mode");
-    let z0_2mode = 1.0 - 2.0 * n0_2mode.re;
+    let z0_2mode = 2.0_f64.mul_add(-n0_2mode.re, 1.0);
     assert!(
         (z0_2mode - (-1.0)).abs() < 1e-10,
-        "⟨Z_0⟩ in |11⟩: expected -1.0, got {:.6}",
-        z0_2mode
+        "⟨Z_0⟩ in |11⟩: expected -1.0, got {z0_2mode:.6}"
     );
 
     // Verify the string itself doesn't cause a panic

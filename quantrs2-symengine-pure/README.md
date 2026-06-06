@@ -28,7 +28,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-quantrs2-symengine-pure = "0.1.3"
+quantrs2-symengine-pure = "0.2.0"
 ```
 
 ## Quick Start

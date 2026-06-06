@@ -17,7 +17,7 @@
 
 QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing framework that provides a modular, high-performance toolkit for quantum simulation, algorithm development, and hardware interaction.
 
-**Current Version**: v0.1.3 (released 2026-03-27)
+**Current Version**: v0.2.0 (released 2026-06-06)
 
 **Project Stats**: 965,802 total LoC | 777,061 Rust LoC across 2,663 files | 4,707 tests passing (0 failures, 69 skipped)
 
@@ -77,9 +77,9 @@ First, add QuantRS2 to your project:
 
 ```toml
 [dependencies]
-quantrs2-core = "0.1.3"
-quantrs2-circuit = "0.1.3"
-quantrs2-sim = "0.1.3"
+quantrs2-core = "0.2.0"
+quantrs2-circuit = "0.2.0"
+quantrs2-sim = "0.2.0"
 ```
 
 ### Creating a Bell State
@@ -277,7 +277,7 @@ cargo clippy --all -- -D warnings
 
 #### Building on macOS (Apple Silicon)
 
-QuantRS2 v0.1.3 is **Pure Rust** and builds seamlessly on macOS (both Intel and Apple Silicon):
+QuantRS2 v0.2.0 is **Pure Rust** and builds seamlessly on macOS (both Intel and Apple Silicon):
 
 ```bash
 cargo build --release
@@ -309,8 +309,8 @@ To use these features, add them to your dependencies:
 
 ```toml
 [dependencies]
-quantrs2-sim = { version = "0.1.3", features = ["parallel", "gpu"] }
-quantrs2-device = { version = "0.1.3", features = ["ibm"] }
+quantrs2-sim = { version = "0.2.0", features = ["parallel", "gpu"] }
+quantrs2-device = { version = "0.2.0", features = ["ibm"] }
 ```
 
 ### GPU Acceleration
@@ -319,7 +319,7 @@ The `gpu` feature enables GPU-accelerated quantum simulation using WGPU:
 
 ```toml
 [dependencies]
-quantrs2-sim = { version = "0.1.3", features = ["gpu"] }
+quantrs2-sim = { version = "0.2.0", features = ["gpu"] }
 ```
 
 This requires a WGPU-compatible GPU (most modern GPUs). The GPU acceleration implementation uses compute shaders to parallelize quantum operations, providing significant speedup for large qubit counts.
@@ -364,7 +364,7 @@ The `ibm` feature enables connection to IBM Quantum hardware:
 
 ```toml
 [dependencies]
-quantrs2-device = { version = "0.1.3", features = ["ibm"] }
+quantrs2-device = { version = "0.2.0", features = ["ibm"] }
 ```
 
 To use IBM Quantum, you'll need an IBM Quantum account and API token. Use the token to authenticate:
@@ -390,7 +390,7 @@ The `dwave` feature enables symbolic problem formulation for quantum annealing:
 
 ```toml
 [dependencies]
-quantrs2-tytan = { version = "0.1.3", features = ["dwave"] }
+quantrs2-tytan = { version = "0.2.0", features = ["dwave"] }
 ```
 
 QuantRS2 uses a **Pure Rust** symbolic computation engine (`quantrs2-symengine-pure`), eliminating all C/C++ dependencies for symbolic math operations. No external library installation required.
@@ -413,7 +413,7 @@ cargo test --features "parallel,scirs,plotters"
 
 #### All Platforms (Pure Rust)
 
-QuantRS2 v0.1.3 is **100% Pure Rust** and supports `--all-features` on all platforms:
+QuantRS2 v0.2.0 is **100% Pure Rust** and supports `--all-features` on all platforms:
 
 ```bash
 # ✅ Works on all platforms (macOS, Linux, Windows)

@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v0.2.0
+## [0.2.0] - 2026-06-06
 
 ### Added
 
@@ -38,6 +38,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Determinism tests: same seed → identical results.
   - HOBO smoke tests: 3-body PUBO instances for all new samplers.
   - Random-QUBO property tests: 20-seed sweep over n=4 instances with brute-force optimal verification.
+
+- **Tytan Energy Engine** (`tytan/src/sampler/energy.rs`, new module): shared, allocation-free QUBO/PUBO energy primitives consumed by every native sampler:
+  - QUBO kernels `energy_full`, `energy_delta`, `compute_influence`, `update_influence` (O(1) incremental ΔE via a maintained influence vector), each with an autovectorized `_simd`-suffixed companion (`opt-level=3` autovectorization — no nightly `std::simd` required) plus `*_from_array` convenience wrappers.
+  - HOBO/PUBO kernels `hobo_energy_full`, specialized `hobo_energy_full_3body` / `hobo_energy_full_4body`, `hobo_energy_delta*`, `hobo_compute_influence`, and `hobo_update_influence` for higher-order tensors.
+  - `hobo_to_qubo` — Rosenberg-polynomial quadratization reducing arbitrary-order PUBO tensors to QUBO with auxiliary (`_aux_*`) variables.
+
+- **HOBO Parallelization**: `hobo_energy_full_3body` (n ≥ 32) and `hobo_energy_full_4body` (n ≥ 16) parallelize their outer loop via rayon (`scirs2_core::parallel_ops`), with a scalar fallback below the threshold to avoid spawn overhead. Validated by `tytan/tests/energy_correctness.rs` (parallel vs. scalar agreement) and `tytan/tests/scalability_smoke.rs`.
+
+- **HOBO Support for CIM and Photonic Samplers**: `CIMSimulator::run_hobo` and the photonic sampler's `run_hobo` (`tytan/src/sampler/hardware/photonic.rs`) — previously `NotImplemented` — now accept higher-order problems by quadratizing through `hobo_to_qubo`, solving the resulting QUBO, and stripping auxiliary variables. Covered by `tytan/tests/hobo_completion_tests.rs`.
+
+- **PennyLane Device Backend** (`sim/src/pennylane/`, new module): `QuantRS2Device` executes PennyLane circuits against the state-vector simulator over a JSON protocol (`execute`, `execute_json`), with `PennyLaneCircuit` / `PennyLaneOperation` / `PennyLaneObservable` / `PennyLaneResult` payload types and a `WireMap`/`WireId` wire-to-qubit translation layer. Registered as `pub mod pennylane`; integration tests in `sim/tests/pennylane_device_tests.rs`.
+
+- **VQF Multilevel Factorization** (`tytan/src/variational_quantum_factoring.rs`): opt-in `with_multilevel(true)` builder enabling `multilevel_factorization` — recursive full prime factorization (`factorize_recursive`) that decomposes composite inputs into their complete prime spectrum rather than a single bi-factor split. New tests for 15, 13 (prime), and 105.
+
+- **Circuit Formatter Layout & Style** (`circuit/src/formatter/mod.rs`): `optimize_layout`, `enforce_style`, `organize_code`, `format_comments`, `manage_whitespace`, and `apply_alignment` — layout-optimization passes and style-enforcement rules for circuit source emission.
+
+- **Clustering Implementations** (`ml/src/clustering/core.rs`): functional `KMeans.fit` returning cluster centers, labels, and within-cluster inertia via `run_kmeans`, plus density-driven cluster-count inference through `fit_dbscan` (DBSCAN). Verified by `ml/tests/clustering_kmeans_tests.rs` (separability, inertia, predict-before-fit error, DBSCAN blobs).
+
+- **Quantum-Inspired Classical Algorithms** (`sim/src/quantum_inspired_classical/framework.rs`): completed `quantum_differential_evolution` (QDE) and `quantum_harmony_search` (QHS) implementations behind the `QuantumInspiredExecutor::optimize` dispatch; framework extracted into its own module. Exercised by `sim/src/tests_quantum_inspired_classical.rs`.
+
+- **Device Benchmarking Intelligence** (`device/src/unified_benchmarking/`, `device/src/cost_optimization/`): the unified benchmarking system now derives actionable recommendations from collected metrics (`generate_recommendations_from_metrics`, `generate_recommendations_from_perf_metrics`), maintains historical baselines, and auto-triggers optimization when thresholds are breached; the cost-optimization engine and mid-circuit analytics gain anomaly detection emitting point / trend / collective `AnomalyEvent`s.
+
+### Changed
+
+- **SciRS2 ecosystem 0.4.0 → 0.5.0**: bumped the entire SciRS2 family — `scirs2-core`, `-autograd`, `-linalg`, `-optimize`, `-special`, `-sparse`, `-fft` (with `oxifft`), `-neural`, `-metrics`, `-stats`, `-cluster`, `-graph`, and `scirs2-numpy`.
+- **COOLJAPAN Pure-Rust dependencies bumped**: `oxicode` 0.2.1 → 0.2.4; `oxiarc-deflate` / `oxiarc-lz4` 0.2.6 → 0.3.2.
+- **Data-stack dependencies bumped**: `numrs2` 0.3.2 → 0.4.0; `pandrs` 0.3.0 → 0.4.0.
+- **Supporting crate bumps**: `pyo3` 0.28.2 → 0.28.3, `tokio` 1.50.0 → 1.52.1, `uuid` 1.23.0 → 1.23.1, `nalgebra` 0.34.1 → 0.34.2; added `plotters` for visualization rendering. (MSRV unchanged at Rust 1.86.0, edition 2021.)
+
+### Fixed
+
+- **Coherent Ising Machine noise injection** (`tytan/src/coherent_ising_machine.rs`): the SDE noise term was previously hardcoded to zero (`Complex64::new(0.0, 0.0)` with a `TODO: Fix rand version conflicts`), making the simulator effectively deterministic. It now injects independent Gaussian real/imaginary Wiener increments scaled by `noise_strength` under the Euler–Maruyama scheme (`dA = f(A)dt + g·dW`). Verified by `tytan/tests/cim_noise_tests.rs` (4 tests confirming stochastic, noise-strength-dependent behavior).
 
 ---
 
@@ -329,12 +361,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
-
-No unreleased changes yet.
-
----
-
+[0.2.0]: https://github.com/cool-japan/quantrs/releases/tag/v0.2.0
 [0.1.3]: https://github.com/cool-japan/quantrs/releases/tag/v0.1.3
 [0.1.2]: https://github.com/cool-japan/quantrs/releases/tag/v0.1.2
 [0.1.1]: https://github.com/cool-japan/quantrs/releases/tag/v0.1.1

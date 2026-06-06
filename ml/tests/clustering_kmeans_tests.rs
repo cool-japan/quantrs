@@ -118,7 +118,7 @@ fn test_kmeans_single_cluster() {
     let result = cl.fit(&data).expect("fit should succeed");
 
     assert_eq!(result.n_clusters, 1);
-    for label in result.labels.iter() {
+    for label in &result.labels {
         assert_eq!(*label, 0, "all points must map to cluster 0");
     }
     assert!(result.inertia.unwrap() >= 0.0);

@@ -21,7 +21,7 @@ fn make_tensor(shape: &[usize], values: Vec<Complex64>) -> Tensor {
 }
 
 /// Purely-real shorthand: wrap f64 as Complex64.
-fn c(re: f64) -> Complex64 {
+const fn c(re: f64) -> Complex64 {
     Complex64::new(re, 0.0)
 }
 
@@ -89,10 +89,9 @@ fn test_contract_matrix_multiplication() {
         [c(1.0), c(2.0), c(3.0), c(0.0)],
         [c(4.0), c(5.0), c(6.0), c(0.0)],
     ];
-    for i in 0..2 {
-        for j in 0..4 {
+    for (i, exp_row) in expected.iter().enumerate() {
+        for (j, &exp) in exp_row.iter().enumerate() {
             let got = result.data[IxDyn(&[i, j])];
-            let exp = expected[i][j];
             assert!(
                 (got - exp).norm() < 1e-10,
                 "mismatch at [{i},{j}]: expected {exp}, got {got}"
@@ -148,13 +147,12 @@ fn test_contract_non_trivial_axis_selection() {
     assert_eq!(result.dimensions, vec![2, 2]);
 
     let expected = [[c(23.0), c(31.0)], [c(34.0), c(46.0)]];
-    for i in 0..2 {
-        for j in 0..2 {
+    for (i, exp_row) in expected.iter().enumerate() {
+        for (j, &exp) in exp_row.iter().enumerate() {
             let got = result.data[IxDyn(&[i, j])];
             assert!(
-                (got - expected[i][j]).norm() < 1e-10,
-                "mismatch at [{i},{j}]: expected {}, got {got}",
-                expected[i][j]
+                (got - exp).norm() < 1e-10,
+                "mismatch at [{i},{j}]: expected {exp}, got {got}"
             );
         }
     }
@@ -202,7 +200,7 @@ fn test_svd_reconstruction() {
         c(2.0), c(3.0), c(4.0), c(3.0),
         c(1.0), c(2.0), c(3.0), c(4.0),
     ];
-    let t = make_tensor(&[4, 4], vals.clone());
+    let t = make_tensor(&[4, 4], vals);
 
     // SVD with full bond dimension (no truncation)
     let (left, right) = t.svd(&[0], &[1], 4).expect("SVD failed");

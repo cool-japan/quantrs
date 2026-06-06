@@ -99,7 +99,7 @@ unwrap_used = "allow"
 ptr_eq = "allow"
 
 [workspace.package]
-version = "0.1.3"
+version = "0.2.0"
 authors = ["COOLJAPAN OU"]
 edition = "2021"
 rust-version = "1.86.0"
@@ -110,17 +110,17 @@ categories = ["science", "simulation"]
 
 [workspace.dependencies]
 # Core quantum computing dependencies
-quantrs2-core = { path = "core", version = "0.1.3" }
-quantrs2-circuit = { path = "circuit", version = "0.1.3" }
-quantrs2-sim = { path = "sim", version = "0.1.3" }
-quantrs2-anneal = { path = "anneal", version = "0.1.3" }
-quantrs2-device = { path = "device", version = "0.1.3", default-features = false }
-quantrs2-ml = { path = "ml", version = "0.1.3" }
-quantrs2-tytan = { path = "tytan", version = "0.1.3" }
+quantrs2-core = { path = "core", version = "0.2.0" }
+quantrs2-circuit = { path = "circuit", version = "0.2.0" }
+quantrs2-sim = { path = "sim", version = "0.2.0" }
+quantrs2-anneal = { path = "anneal", version = "0.2.0" }
+quantrs2-device = { path = "device", version = "0.2.0", default-features = false }
+quantrs2-ml = { path = "ml", version = "0.2.0" }
+quantrs2-tytan = { path = "tytan", version = "0.2.0" }
 
 # Symbolic computation - Pure Rust only (SciRS2 POLICY: No C/C++ dependencies)
 # quantrs2-symengine and quantrs2-symengine-sys removed - use pure Rust implementation
-quantrs2-symengine-pure = { path = "quantrs2-symengine-pure", version = "0.1.3" }
+quantrs2-symengine-pure = { path = "quantrs2-symengine-pure", version = "0.2.0" }
 
 # Pure Rust symbolic math dependencies (MIT licensed)
 egg = "0.11"
@@ -197,8 +197,8 @@ thiserror = "2.0.18"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 oxicode = { version = "0.2.4", features = ["std", "derive", "serde"] }
-oxiarc-deflate = "0.3.2"   # Pure Rust DEFLATE/zlib (COOLJAPAN Policy: replaces flate2)
-oxiarc-lz4 = "0.3.2"      # Pure Rust LZ4 (COOLJAPAN Policy: replaces lz4 crate)
+oxiarc-deflate = "0.3.3"   # Pure Rust DEFLATE/zlib (COOLJAPAN Policy: replaces flate2)
+oxiarc-lz4 = "0.3.3"      # Pure Rust LZ4 (COOLJAPAN Policy: replaces lz4 crate)
 # zstd = "0.13"  # REMOVED: Not used in code (COOLJAPAN Pure Rust Policy)
 # flate2 = "1.1"  # REMOVED: Replaced by oxiarc-deflate (COOLJAPAN Pure Rust Policy)
 md5 = "0.8"
