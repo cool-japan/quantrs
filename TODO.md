@@ -1,8 +1,8 @@
 # QuantRS2 Roadmap
 
-## Current Version: 0.2.0 (in progress)
+## Current Version: 0.2.0
 
-## v0.2.0 (in progress, branch: 0.2.0)
+## v0.2.0 (released 2026-06-06, branch: 0.2.0)
 
 - [x] **Build fix** — removed broken `serialization` feature from scirs2-core in workspace `Cargo.toml`; this feature transitively pulled `oxiarc-lz4/zstd 0.2.8` which referenced `oxiarc_core::cancel`/`progress` paths that don't exist in `oxiarc-core 0.3.0`, blocking the entire workspace from compiling.
 - [x] **HOBO energy library** (`tytan/src/sampler/energy.rs`) — unified 3-body and 4-body PUBO energy evaluation with early-out pruning; wired into `PopulationAnnealing`, `SimulatedAnnealing`, and `GASampler` replacing per-sampler incomplete implementations. See [tytan/TODO.md](tytan/TODO.md) for full design notes.
@@ -37,7 +37,7 @@
 - [x] QML encoding: Mottonen amplitude encoding + IQP ZZ interaction (`core/src/qml/encoding.rs`)
 - [x] QML layer gradients: parameter-shift rule (`core/src/qml/layers.rs`)
 - [x] QML NLP `parameters()` / `parameters_mut()` accessors (`core/src/qml/nlp.rs`)
-- [x] License migration: MIT OR Apache-2.0 → Apache-2.0 only (COOLJAPAN Policy 2026+)
+- [x] License standardized to Apache-2.0 only (COOLJAPAN Policy 2026+)
 - [x] SciRS2 upgraded from 0.3.4 → 0.4.0
 - [x] PyO3 0.28.2 compatibility fixes (`PyObject`→`Py<PyAny>`, `with_gil`→`attach_unchecked`)
 - [x] Circuit ML optimization (Q-learning, genetic algorithm, neural network optimizers)

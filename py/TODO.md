@@ -1,5 +1,10 @@
 # quantrs2-py Roadmap
 
+## v0.2.0 (released 2026-06-06)
+
+- [x] **Quantum Error Correction bindings** (`py::qec`): `PyRotatedSurfaceCode`, `PyMwpmSurfaceDecoder`, `PyUnionFindDecoder`, `PyPauliFrame`.
+- [x] **3D quantum-state visualization bindings**: `PyQuantumState3DVisualizer` with `{bloch_array, qsphere, wigner, husimi, density_bars}_html()` Plotly renderers.
+
 ## v0.1.3 (2026-03-27)
 - 108 public API items; aligned with QuantRS2 v0.1.3 workspace
 

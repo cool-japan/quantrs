@@ -63,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **SciRS2 ecosystem 0.4.0 → 0.5.0**: bumped the entire SciRS2 family — `scirs2-core`, `-autograd`, `-linalg`, `-optimize`, `-special`, `-sparse`, `-fft` (with `oxifft`), `-neural`, `-metrics`, `-stats`, `-cluster`, `-graph`, and `scirs2-numpy`.
-- **COOLJAPAN Pure-Rust dependencies bumped**: `oxicode` 0.2.1 → 0.2.4; `oxiarc-deflate` / `oxiarc-lz4` 0.2.6 → 0.3.2.
+- **COOLJAPAN Pure-Rust dependencies bumped**: `oxicode` 0.2.1 → 0.2.4; `oxiarc-deflate` / `oxiarc-lz4` 0.2.6 → 0.3.3.
 - **Data-stack dependencies bumped**: `numrs2` 0.3.2 → 0.4.0; `pandrs` 0.3.0 → 0.4.0.
 - **Supporting crate bumps**: `pyo3` 0.28.2 → 0.28.3, `tokio` 1.50.0 → 1.52.1, `uuid` 1.23.0 → 1.23.1, `nalgebra` 0.34.1 → 0.34.2; added `plotters` for visualization rendering. (MSRV unchanged at Rust 1.86.0, edition 2021.)
 
@@ -346,7 +346,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - WebAssembly (wasm32)
 
 ### License
-- Dual licensed under Apache-2.0
+- Licensed under Apache-2.0
 
 ### Authors
 - COOLJAPAN OU (Team Kitasan)

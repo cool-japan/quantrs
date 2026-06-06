@@ -19,7 +19,7 @@ QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing fr
 
 **Current Version**: v0.2.0 (released 2026-06-06)
 
-**Project Stats**: 965,802 total LoC | 777,061 Rust LoC across 2,663 files | 4,707 tests passing (0 failures, 69 skipped)
+**Project Stats**: 994,386 total LoC | 804,894 Rust LoC across 2,744 files | 5,237 tests passing (0 failures, 74 skipped)
 
 ### Crate Survey
 

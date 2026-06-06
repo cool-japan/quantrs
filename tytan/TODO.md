@@ -1,5 +1,16 @@
 # quantrs2-tytan Roadmap
 
+## v0.2.0 (released 2026-06-06)
+
+- [x] **Advanced samplers** (`src/sampler/`): `TabuSampler` (FIFO-ring tabu search, O(n) incremental ΔE, aspiration + restart-from-best); `SBSampler` (Toshiba Simulated Bifurcation, Ballistic + Discrete variants, symplectic Euler); `PopulationAnnealingSampler` (Hukushima–Iba population annealing with importance-weighted resampling).
+- [x] **Tytan Energy Engine** (`src/sampler/energy.rs`): shared QUBO/PUBO energy kernels with autovectorized `_simd` companions, specialized 3-/4-body HOBO fast paths (`hobo_energy_full_dispatch` picks `ArrayView3`/`ArrayView4` for ndim∈{3,4} with ≥90% early-out pruning; generic `indexed_iter` for ndim≥5), delta/influence API (`hobo_energy_delta_{3,4}body`, `hobo_compute/update/recompute_influence`), and `hobo_to_qubo` Rosenberg quadratization. `PopulationAnnealing`/`SimulatedAnnealing`/`GASampler` routed through the shared kernel.
+- [x] **HOBO 3/4-body parallelization** — rayon `into_par_iter` outer loop in `hobo_energy_full_3body` (n≥32) / `_4body` (n≥16) with scalar fallback below threshold.
+- [x] **Hardware / CIM / photonic HOBO support via Rosenberg quadratization** — `run_hobo` (previously `NotImplemented`) now quadratizes via `hobo_to_qubo` (y_{ij}=x_i·x_j, penalty P=(1+max|T|)·n, `_aux_i_j` vars), solves the QUBO, and strips auxiliary keys; wired for CIM, photonic, and the four hardware samplers (FPGA/NEC/Hitachi/Fujitsu).
+- [x] **CIM stochastic noise fix** (`src/coherent_ising_machine.rs`) — replaced hardcoded `Complex64::new(0.0, 0.0)` noise with seeded Euler–Maruyama Gaussian Wiener increments (`scirs2_core::random::RandNormal`); 4 tests in `tytan/tests/cim_noise_tests.rs`.
+- [x] **VQF multilevel factorization** (`src/variational_quantum_factoring.rs`) — opt-in `with_multilevel` recursive full prime factorization.
+- [x] **Build fix** — removed broken `serialization` feature from scirs2-core (was pulling `oxiarc-lz4/zstd 0.2.8` with unresolved import paths against the `oxiarc-core 0.3.0` API).
+- [x] **Expanded test coverage** — `tests/sampler_tests.rs` (cross-sampler agreement, determinism, HOBO smoke, random-QUBO property tests) and `tests/energy_correctness.rs` (HOBO energy/delta correctness for n∈{4,16,32,64,128}).
+
 ## v0.1.3 (2026-03-27)
 
 - [x] Advanced optimization algorithms — TabuSampler, SBSampler (bSB/dSB), PopulationAnnealingSampler implemented
@@ -18,19 +29,6 @@
   - **Tests:** `cargo test --doc -p quantrs2-tytan` + `cargo doc --no-deps -p quantrs2-tytan` zero warnings.
   - **Risk:** Doc-test runtime — keep each example ≤ 10 lines, ≤ 20 shots.
 - [x] Testing improvements — sampler property + integration tests (2026-04-27)
-
-## v0.2.0 (2026-05-17)
-
-- [x] HOBO energy library (`tytan/src/sampler/energy.rs`) — 3-body and 4-body specialized fast paths plus generic ndim dispatch; all CPU samplers routed through single shared kernel.
-  - **Design:** `hobo_energy_full_dispatch` picks specialized `ArrayView3`/`ArrayView4` paths for ndim ∈ {3,4} (early-out pruning ≥ 90% on 50% dense state), generic `indexed_iter` for ndim ≥ 5, existing scalar QUBO path for ndim == 2.
-  - **Delta / influence API:** `hobo_energy_delta_{3,4}body`, `hobo_compute_influence`, `hobo_update_influence`, `hobo_recompute_influence`.
-  - **Key correctness insight:** ΔE = (1 − 2x[k]) · g[k] where g[k] counts each tensor entry containing k ONCE regardless of k-multiplicity (binary identity x[k]^m = x[k]).
-  - **Samplers updated:** `PopulationAnnealing`, `SimulatedAnnealing`, `GASampler` — all ndim warnings / silent-zero returns eliminated.
-  - **Tests added:** 8 HOBO correctness tests in `tytan/tests/energy_correctness.rs`; all 507 tytan tests pass.
-- [x] Build fix — removed broken `serialization` feature from scirs2-core (was pulling oxiarc-lz4/zstd 0.2.8 with unresolved import paths against oxiarc-core 0.3.0 API).
-- [x] CIM noise injection (2026-05-18) — replaced hardcoded `Complex64::new(0.0, 0.0)` noise at `coherent_ising_machine.rs:172` with Euler-Maruyama Gaussian increments via existing `scirs2_core::random::RandNormal`. Seeded from `self.seed`; deterministic replay guaranteed. Added 4 tests in `tytan/tests/cim_noise_tests.rs`.
-- [x] HOBO 3/4-body outer-loop parallelization (2026-05-18) — added `into_par_iter` outer loop to `hobo_energy_full_3body` (threshold n≥32) and `hobo_energy_full_4body` (threshold n≥16) in `energy.rs`. Scalar fallback for small n avoids rayon spawn overhead. FP accumulation tolerance 1e-7 (3body n=64) / 1e-9 (4body n=16). 2 new tests added.
-- [x] Hardware HOBO support via Rosenberg quadratization (2026-05-18) — added `hobo_to_qubo` to `energy.rs`: Rosenberg substitution y_{ij}=x_i*x_j with penalty P=(1+max|T|)*n; builds extended var_map with `_aux_i_j` entries. All four hardware samplers (FPGA, NEC, Hitachi, Fujitsu) now call `hobo_to_qubo` + `run_qubo` and strip auxiliary variable keys from results.
 
 ## Proposed follow-ups
 
