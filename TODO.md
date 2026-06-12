@@ -91,3 +91,36 @@
 
 - [quantrs2-tytan](tytan/TODO.md)
 - [quantrs2-py](py/TODO.md)
+
+## Stubs to implement (added 2026-06-12 by /cooljapan-stub-check)
+
+- [ ] `quantrs-sim`: `gpu_metal.rs:30,31,32,49,58` — Implement Metal GPU backend: initialize Metal device, create command queue, query available Metal devices, check framework availability
+  - Priority: P2 | Scope: medium | Hint: metal-rs crate (feature-gate behind `metal` feature; Pure Rust policy: C API via metal-rs is acceptable as optional feature)
+
+- [ ] `quantrs-sim`: `gpu_linalg_metal.rs:27,28,29,39,55,66,77,85,94` — Wire Metal MPS matrix multiply (MPSMatrixMultiplication), LAPACK routines via Accelerate framework, and MPS availability check for QML linalg
+  - Priority: P2 | Scope: medium | Hint: accelerate-framework crate; MPS via metal-rs; feature-gate `metal-linalg`
+
+- [ ] `quantrs-tytan`: `gpu_kernels.rs:531`, `gpu_memory_pool.rs:240`, `gpu_benchmark.rs:397`, `benchmark/hardware.rs:357,371` — Implement GPU stub methods: `compile_kernel`, `free_raw`, `get_device_info`, `measure_kernel_latency` in the GPU stub backend
+  - Priority: P2 | Scope: medium | Hint: wgpu-based compute pipeline compilation; align with scirs2-core GpuNdarray pattern
+  - Locations: tytan/src/gpu_kernels.rs:531, gpu_memory_pool.rs:240, gpu_benchmark.rs:397, benchmark/hardware.rs:357,371
+
+- [ ] `quantrs-device`: `photonic/cv_gates.rs:613` — Implement more sophisticated CV gate optimizations (Gaussian boson sampling approximations, symplectic compilation)
+  - Priority: P2 | Scope: medium | Hint: symplectic matrix decomposition for linear-optical circuits
+
+- [ ] `quantrs-device`: `tests/advanced_scheduling_tests.rs:38,212,290,320,355,529` — Expose public API for backend registration and scheduling; refactor tests to use public API instead of internal access
+  - Priority: P2 | Scope: medium | Hint: add `BackendRegistry::register_public` or builder pattern; design stable public API surface
+
+- [ ] `quantrs-ml`: `gpu_backend_impl.rs:147` — Re-implement parameter application when GPU API is updated (currently commented out pending API change)
+  - Priority: P2 | Scope: small | Hint: use updated scirs2-core GpuNdarray write-back pattern; re-enable after GPU API stabilizes
+
+- [ ] `quantrs-core`: `batch/operations.rs:365` — Add batch-optimized gate detection for common patterns (CNOT chains, Toffoli, etc.)
+  - Priority: P2 | Scope: small | Hint: pattern-match on GateOp sequence; cache compiled gate matrices for batch dispatch
+
+- [ ] `quantrs-core`: `gpu/scirs2_adapter.rs:293,737` — Implement SciRS2 kernel compilation and kernel registration when scirs2 GPU API is available
+  - Priority: P2 | Scope: small | Hint: blocked on scirs2-core GPU kernel registry API; add when available
+
+- [ ] `quantrs-core`: `platform/detector.rs:9,52` — Use SciRS2 platform detection and SIMD capability detection once scirs2 exposes stable API
+  - Priority: P2 | Scope: trivial | Hint: scirs2-core::platform module; add dependency then delegate
+
+- [ ] `quantrs-circuit`: `qasm/parser.rs:585,651` — Replace placeholder qubit count (hardcoded 4) with actual qubit count parsed from QASM circuit definition
+  - Priority: P2 | Scope: small | Hint: track qubit declarations during QASM parsing; resolve qubit_count from `qreg` statements
