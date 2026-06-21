@@ -891,23 +891,38 @@ impl EstimatorV2 {
         eigenvalue
     }
 
-    /// Apply resilience techniques
+    /// Apply error-mitigation (resilience) to a measured expectation value.
+    ///
+    /// Genuine Zero-Noise Extrapolation requires executing the *same* circuit at
+    /// several amplified noise scale factors (e.g. via gate folding) and
+    /// extrapolating the resulting expectation values to the zero-noise limit;
+    /// PEC and twirling likewise require additional, specially-constructed
+    /// circuit executions. This estimator submits a single, un-amplified circuit
+    /// per observable (see [`Self::run`]), so none of those techniques can be
+    /// performed from the data available here.
+    ///
+    /// Returning a single value scaled by an arbitrary constant would be a
+    /// fabricated "mitigation" that silently biases results, so when ZNE is
+    /// requested we return an honest error. (Circuit-folding-based ZNE belongs in
+    /// the dedicated [`crate::zero_noise_extrapolation`] module, which generates
+    /// and runs the noise-scaled circuits.)
     fn apply_resilience(
         &self,
         value: f64,
         std_err: f64,
         _observable: &ObservableV2,
     ) -> DeviceResult<(f64, f64)> {
-        // Placeholder for actual resilience implementation
-        // In production, this would apply ZNE, PEC, or twirling
-
         if self.options.resilience.zne.is_some() {
-            // ZNE would extrapolate to zero noise
-            // For now, just return slightly adjusted values
-            Ok((value * 0.95, std_err * 1.1))
-        } else {
-            Ok((value, std_err))
+            return Err(DeviceError::UnsupportedOperation(
+                "Zero-Noise Extrapolation requires executing the circuit at multiple noise \
+                 scale factors, but this estimator measured a single un-amplified circuit. \
+                 Use the `zero_noise_extrapolation` module to fold and run the scaled circuits."
+                    .to_string(),
+            ));
         }
+        // No resilience technique is configured: pass the raw estimate through
+        // unchanged (honest: nothing was mitigated).
+        Ok((value, std_err))
     }
 }
 

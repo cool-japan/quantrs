@@ -418,12 +418,22 @@ impl CompilationOptimizer {
                             "Removed unused imports from modules: {}",
                             recommendation.modules.join(", ")
                         ));
+                    } else {
+                        applied_optimizations.push(format!(
+                            "Manual action needed (unused-import removal not auto-applied): {}",
+                            recommendation.modules.join(", ")
+                        ));
                     }
                 }
                 OptimizationType::FeatureOptimization => {
                     if self.apply_feature_optimization(&recommendation.modules)? {
                         applied_optimizations.push(format!(
                             "Optimized feature flags for modules: {}",
+                            recommendation.modules.join(", ")
+                        ));
+                    } else {
+                        applied_optimizations.push(format!(
+                            "Manual action needed (feature-flag optimization not auto-applied): {}",
                             recommendation.modules.join(", ")
                         ));
                     }
@@ -441,23 +451,33 @@ impl CompilationOptimizer {
         Ok(applied_optimizations)
     }
 
-    /// Apply unused import removal
+    /// Attempt automatic unused-import removal for the given modules.
+    ///
+    /// This analyzer does not own a safe in-place Rust source rewriter, and
+    /// silently editing user source would be destructive. Removing unused imports
+    /// reliably requires the compiler's own analysis (e.g. `cargo fix` /
+    /// `cargo clippy --fix`). We therefore do NOT claim to have removed anything:
+    /// this returns `false` ("not auto-applied") so the caller reports the item as
+    /// needing manual action rather than fabricating a successful edit.
     fn apply_unused_import_removal(
         &self,
         _modules: &[String],
     ) -> Result<bool, Box<dyn std::error::Error>> {
-        // In practice, this would use tools like `cargo clippy` or custom analysis
-        // For now, return success indicating the optimization was noted
-        Ok(true)
+        Ok(false)
     }
 
-    /// Apply feature flag optimization
+    /// Attempt automatic Cargo feature-flag optimization for the given modules.
+    ///
+    /// Editing `Cargo.toml` feature flags safely requires whole-workspace
+    /// dependency/feature-usage analysis that this module does not perform, and
+    /// is governed by the workspace policy. Rather than report a change that never
+    /// happened, this returns `false` ("not auto-applied") so the caller surfaces
+    /// it as a manual action.
     fn apply_feature_optimization(
         &self,
         _modules: &[String],
     ) -> Result<bool, Box<dyn std::error::Error>> {
-        // This would optimize Cargo.toml feature flags
-        Ok(true)
+        Ok(false)
     }
 
     /// Generate compilation optimization report

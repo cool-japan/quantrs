@@ -417,13 +417,40 @@ impl VariationalQuantumAnnealer {
         Ok(vqa)
     }
 
-    /// Count the number of parameters in an ansatz
+    /// Count the number of parameters in an ansatz.
+    ///
+    /// The hardware-efficient ansatz parameter count depends on the number of
+    /// qubits, which is not known until a problem is supplied. At construction
+    /// time we therefore size it with a single-qubit estimate; [`optimize`]
+    /// recomputes the exact count for the actual problem (via
+    /// [`Self::exact_parameter_count`]) and resizes the parameter vector before
+    /// optimization begins, so no gates are ever silently dropped.
     fn count_parameters(ansatz: &AnsatzType) -> VqaResult<usize> {
+        Self::exact_parameter_count(ansatz, 1)
+    }
+
+    /// Exact number of variational parameters for `ansatz` on `num_qubits`.
+    ///
+    /// This mirrors the gate-emission logic of the circuit builders so the
+    /// parameter vector is always exactly the size the circuit consumes:
+    /// - hardware-efficient: `depth · (2·n + e)` where `e` is the per-layer
+    ///   count of parameterised entangling gates (`n-1` for `ZZ`/`XY`, `0` for
+    ///   `CNot`/`CZ`),
+    /// - QAOA-inspired: `2·layers` (one γ and one β per layer),
+    /// - adiabatic-inspired: one angle per time step,
+    /// - custom: one past the largest referenced parameter index.
+    fn exact_parameter_count(ansatz: &AnsatzType, num_qubits: usize) -> VqaResult<usize> {
         match ansatz {
-            AnsatzType::HardwareEfficient { depth, .. } => {
-                // For hardware-efficient: 3 rotations per qubit per layer + entangling layers
-                // Assuming this will be determined by the problem size when used
-                Ok(depth * 10) // Placeholder - should be calculated based on problem size
+            AnsatzType::HardwareEfficient {
+                depth,
+                entangling_gates,
+            } => {
+                let rotations_per_layer = 2 * num_qubits;
+                let entangling_params_per_layer = match entangling_gates {
+                    EntanglingGateType::ZZ | EntanglingGateType::XY => num_qubits.saturating_sub(1),
+                    EntanglingGateType::CNot | EntanglingGateType::CZ => 0,
+                };
+                Ok(depth * (rotations_per_layer + entangling_params_per_layer))
             }
 
             AnsatzType::QaoaInspired { layers, .. } => {
@@ -526,6 +553,18 @@ impl VariationalQuantumAnnealer {
     /// Optimize the variational quantum annealing problem
     pub fn optimize(&mut self, problem: &IsingModel) -> VqaResult<VqaResults> {
         println!("Starting variational quantum annealing optimization...");
+
+        // The exact parameter count of (e.g.) the hardware-efficient ansatz is
+        // problem-dependent. Recompute it for this problem and resize/reinit the
+        // parameter vector and optimizer state if it differs from the
+        // construction-time estimate, so the circuit is parameterised exactly.
+        let exact_params = Self::exact_parameter_count(&self.config.ansatz, problem.num_qubits)?;
+        if exact_params != self.parameters.len() {
+            self.parameters = vec![0.0; exact_params];
+            self.initialize_parameters()?;
+            self.optimizer_state =
+                Self::initialize_optimizer_state(&self.config.optimizer, exact_params)?;
+        }
 
         self.history.start_time = Instant::now();
         let mut best_energy = f64::INFINITY;
@@ -1234,16 +1273,55 @@ impl VariationalQuantumAnnealer {
         // Calculate parameter statistics
         let parameter_stats = self.calculate_parameter_statistics();
 
+        // Wall-clock time spent in optimization (dominated by the annealing
+        // shots). Computed from the run's start instant rather than reported as
+        // a fixed zero.
+        let total_annealing_time = self.history.start_time.elapsed();
+
+        // Step acceptance rate: fraction of optimization steps that strictly
+        // lowered the objective, measured from the recorded energy trajectory.
+        let step_acceptance_rate = if self.history.energies.len() > 1 {
+            let improving = self
+                .history
+                .energies
+                .windows(2)
+                .filter(|w| w[1] < w[0])
+                .count();
+            improving as f64 / (self.history.energies.len() - 1) as f64
+        } else {
+            0.0
+        };
+
+        // Average step size: mean Euclidean distance between consecutive
+        // parameter vectors actually visited during optimization.
+        let average_step_size = if self.history.parameters.len() > 1 {
+            let total: f64 = self
+                .history
+                .parameters
+                .windows(2)
+                .map(|w| {
+                    w[0].iter()
+                        .zip(w[1].iter())
+                        .map(|(a, b)| (a - b).powi(2))
+                        .sum::<f64>()
+                        .sqrt()
+                })
+                .sum();
+            total / (self.history.parameters.len() - 1) as f64
+        } else {
+            0.0
+        };
+
         VqaStatistics {
             function_evaluations: self.history.function_evals,
             gradient_evaluations: self.history.gradient_evals,
-            total_annealing_time: Duration::from_secs(0), // Would be tracked in real implementation
+            total_annealing_time,
             average_energy,
             energy_variance,
             parameter_stats,
             optimizer_stats: OptimizerStatistics {
-                step_acceptance_rate: 1.0, // Placeholder
-                average_step_size: 0.01,   // Placeholder
+                step_acceptance_rate,
+                average_step_size,
                 line_search_iterations: 0,
                 optimizer_metrics: HashMap::new(),
             },
@@ -1269,11 +1347,28 @@ impl VariationalQuantumAnnealer {
             0.0
         };
 
+        // Per-parameter maximum absolute change observed across consecutive
+        // recorded parameter vectors during optimization.
+        let max_parameter_change = if self.history.parameters.len() > 1 {
+            let num_params = self.parameters.len();
+            let mut max_change = vec![0.0_f64; num_params];
+            for window in self.history.parameters.windows(2) {
+                for (idx, slot) in max_change.iter_mut().enumerate() {
+                    if let (Some(&prev), Some(&curr)) = (window[0].get(idx), window[1].get(idx)) {
+                        *slot = slot.max((curr - prev).abs());
+                    }
+                }
+            }
+            max_change
+        } else {
+            Vec::new()
+        };
+
         ParameterStatistics {
             average_magnitude,
             parameter_variance,
             num_updates: self.history.parameters.len(),
-            max_parameter_change: Vec::new(), // Would track in real implementation
+            max_parameter_change,
         }
     }
 }

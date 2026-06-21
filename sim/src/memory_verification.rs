@@ -149,7 +149,9 @@ impl MemoryVerifier {
         if let Some(efficiency) = gpu_buffer_efficiency {
             println!("✅ GPU buffer efficiency: {:.2}%", efficiency * 100.0);
         } else {
-            println!("⚠️  GPU buffer testing skipped (GPU not available)");
+            println!(
+                "⚠️  GPU buffer efficiency not measured (no GPU, or no device-side buffer-pool instrumentation)"
+            );
         }
 
         // Test 5: Overall memory improvement
@@ -306,7 +308,13 @@ impl MemoryVerifier {
         }
     }
 
-    /// Test GPU buffer efficiency (if available)
+    /// Measure GPU buffer-pool efficiency, if it can be measured.
+    ///
+    /// Returns `None` in all current configurations: GPU buffers live in device
+    /// memory, which the host `TrackingAllocator` cannot observe, and the GPU
+    /// simulator exposes no buffer-pool reuse/hit statistics. Reporting `None`
+    /// ("not measurable") is the honest signal here; a numeric value is only
+    /// returned once the GPU backend grows a real buffer-pool stats API.
     fn test_gpu_buffer_efficiency(&self) -> Option<f64> {
         #[cfg(all(feature = "gpu", not(target_os = "macos")))]
         {
@@ -316,12 +324,14 @@ impl MemoryVerifier {
                 return None;
             }
 
-            // Test GPU buffer pool efficiency
-            // This would require implementing buffer pool statistics in GPU module
-            Some(0.85) // Placeholder - would be actual measurement
+            // GPU device-memory allocations are not visible to the host global
+            // allocator, and the GPU simulator currently exposes no buffer-pool
+            // reuse/cache-hit counters. There is therefore no real value to
+            // report; do not fabricate one.
+            None
         }
 
-        #[cfg(not(feature = "gpu"))]
+        #[cfg(not(all(feature = "gpu", not(target_os = "macos"))))]
         None
     }
 

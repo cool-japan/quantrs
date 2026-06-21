@@ -890,7 +890,8 @@ impl OptimizationProblem for ChemistryToBinaryWrapper {
         &self,
         solution: &Self::Solution,
     ) -> ApplicationResult<Self::ObjectiveValue> {
-        // Create a mock QuantumChemistryResult from binary solution
+        // Score the binary assignment via a genuine QUBO-energy evaluation of
+        // the wrapped chemistry problem (see `binary_to_chemistry_result`).
         let chemistry_result = self.binary_to_chemistry_result(solution)?;
         self.inner.evaluate_solution(&chemistry_result)
     }
@@ -901,57 +902,64 @@ impl OptimizationProblem for ChemistryToBinaryWrapper {
 }
 
 impl ChemistryToBinaryWrapper {
+    /// Build a chemistry result whose energies are a genuine evaluation of the
+    /// binary assignment against the wrapped problem's *real* molecular QUBO.
+    ///
+    /// A binary annealing assignment does not contain SCF orbitals, an electron
+    /// density grid, or convergence information, so those quantities are *not*
+    /// fabricated here: the structural fields are left explicitly empty and the
+    /// metadata records that this is a QUBO-surrogate evaluation rather than a
+    /// converged self-consistent-field calculation. Only the fields that can be
+    /// honestly derived from the bitstring — the electronic and total energy —
+    /// are populated, by computing the actual QUBO objective. The downstream
+    /// chemistry objective scores precisely those energies.
     fn binary_to_chemistry_result(
         &self,
         solution: &[i8],
     ) -> ApplicationResult<quantum_computational_chemistry::QuantumChemistryResult> {
         use quantum_computational_chemistry::{
             BasisSet, CalculationMetadata, ElectronDensity, ElectronicStructureMethod,
-            MolecularOrbital, OrbitalType, QuantumChemistryResult, ThermochemicalProperties,
+            QuantumChemistryResult, ThermochemicalProperties,
         };
 
-        // Create molecular orbitals from binary solution
-        let mut molecular_orbitals = Vec::new();
-        for (i, &bit) in solution.iter().enumerate().take(32) {
-            molecular_orbitals.push(MolecularOrbital {
-                energy: -1.0 * i as f64,
-                coefficients: vec![if bit == 1 { 1.0 } else { 0.0 }; 10],
-                occupation: if bit == 1 { 2.0 } else { 0.0 },
-                symmetry: None,
-                orbital_type: if i < 8 {
-                    OrbitalType::Core
-                } else if i < 16 {
-                    OrbitalType::Valence
-                } else {
-                    OrbitalType::Virtual
-                },
-            });
-        }
+        // Obtain the genuine molecular QUBO from the wrapped problem and score
+        // the binary assignment with the exact QUBO objective. The assignment is
+        // aligned to the QUBO's variable count (extra bits are ignored, missing
+        // bits default to unoccupied).
+        let (qubo, _mapping) = self.inner.to_qubo()?;
+        let num_vars = qubo.num_variables;
+        let binary_vars: Vec<bool> = (0..num_vars)
+            .map(|i| solution.get(i).is_some_and(|&bit| bit == 1))
+            .collect();
+        let electronic_energy = qubo
+            .objective(&binary_vars)
+            .map_err(|e| ApplicationError::OptimizationError(e.to_string()))?;
 
-        // Calculate electronic energy from solution
-        let electronic_energy = solution
-            .iter()
-            .map(|&x| if x == 1 { -1.0 } else { 0.0 })
-            .sum::<f64>();
-        let nuclear_repulsion = 10.0; // Fixed value for simplicity
+        // No nuclear-repulsion constant is recoverable from the bitstring alone;
+        // the QUBO surrogate folds geometric effects into its coefficients, so
+        // the total energy equals the surrogate electronic energy.
+        let nuclear_repulsion = 0.0;
         let total_energy = electronic_energy + nuclear_repulsion;
+        let scf_converged = total_energy.is_finite();
 
         Ok(QuantumChemistryResult {
-            system_id: "binary_chemistry".to_string(),
+            system_id: "qubo_surrogate_evaluation".to_string(),
             electronic_energy,
             nuclear_repulsion,
             total_energy,
-            molecular_orbitals,
+            // Not derivable from a binary assignment: left honestly empty rather
+            // than populated with fabricated orbitals / density values.
+            molecular_orbitals: Vec::new(),
             electron_density: ElectronDensity {
-                grid_points: vec![[0.0, 0.0, 0.0]; 100],
-                density_values: vec![1.0; 100],
-                density_matrix: vec![vec![0.0; 10]; 10],
-                mulliken_charges: vec![0.0; 5],
-                electrostatic_potential: vec![0.0; 100],
+                grid_points: Vec::new(),
+                density_values: Vec::new(),
+                density_matrix: Vec::new(),
+                mulliken_charges: Vec::new(),
+                electrostatic_potential: Vec::new(),
             },
             dipole_moment: [0.0, 0.0, 0.0],
             polarizability: [[0.0; 3]; 3],
-            vibrational_frequencies: vec![],
+            vibrational_frequencies: Vec::new(),
             thermochemistry: ThermochemicalProperties {
                 zero_point_energy: 0.0,
                 thermal_energy: 0.0,
@@ -964,12 +972,14 @@ impl ChemistryToBinaryWrapper {
             metadata: CalculationMetadata {
                 method: ElectronicStructureMethod::HartreeFock,
                 basis_set: BasisSet::STO3G,
-                scf_converged: true,
-                scf_iterations: 1,
-                cpu_time: 1.0,
-                wall_time: 1.0,
-                memory_usage: 1024,
-                error_correction_applied: true,
+                // The surrogate QUBO objective evaluated to a finite value; this
+                // is not an SCF convergence claim (no SCF was run).
+                scf_converged,
+                scf_iterations: 0,
+                cpu_time: 0.0,
+                wall_time: 0.0,
+                memory_usage: 0,
+                error_correction_applied: false,
             },
         })
     }

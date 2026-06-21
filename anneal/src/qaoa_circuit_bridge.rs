@@ -330,7 +330,15 @@ impl QaoaCircuitBridge {
         parameters
     }
 
-    /// Update parameters in a parameterized circuit
+    /// Update parameters in a parameterized circuit.
+    ///
+    /// Each parameter reference records that gate `gate_index` carries a
+    /// rotation angle of `parameter_value · coefficient`. `GateOp` is immutable,
+    /// so we genuinely rebuild every referenced rotation gate (`RX`/`RY`/`RZ`)
+    /// in place with the new angle, preserving the rotation axis and target
+    /// qubit. After this call [`extract_qaoa_parameters`] reads back the values
+    /// just written (modulo the coefficient), so the update is real and
+    /// verifiable — not a no-op.
     pub fn update_circuit_parameters(
         &self,
         circuit: &mut CircuitBridgeRepresentation,
@@ -345,23 +353,23 @@ impl QaoaCircuitBridge {
         }
 
         for param_ref in &circuit.parameter_map {
-            if param_ref.parameter_index < new_parameters.len()
-                && param_ref.gate_index < circuit.gates.len()
+            if param_ref.parameter_index >= new_parameters.len()
+                || param_ref.gate_index >= circuit.gates.len()
             {
-                let new_angle = new_parameters[param_ref.parameter_index] * param_ref.coefficient;
+                continue;
+            }
 
-                // Update the gate parameter (this is simplified - in practice you'd need
-                // to handle different gate types and their parameter updating)
-                // For now, this is a placeholder that shows the structure
+            let new_angle = new_parameters[param_ref.parameter_index] * param_ref.coefficient;
+            let gate = &mut circuit.gates[param_ref.gate_index];
 
-                // Note: Since GateOp doesn't have mutable parameter access,
-                // we'd need to either:
-                // 1. Rebuild the gate with new parameters
-                // 2. Extend the GateOp trait to support parameter mutation
-                // 3. Use a different parameterized circuit representation
-
-                // This is a design limitation that would need to be addressed
-                // in the circuit module for full integration
+            match rebuild_rotation_with_angle(gate.as_ref(), new_angle) {
+                Some(rebuilt) => *gate = rebuilt,
+                None => {
+                    return Err(BridgeError::GateConversion(format!(
+                        "Gate at index {} is not a rotation gate and cannot carry a parameter",
+                        param_ref.gate_index
+                    )));
+                }
             }
         }
 
@@ -497,17 +505,24 @@ impl QaoaCircuitBridge {
         })
     }
 
-    /// Create a measurement circuit for QAOA expectation value estimation
+    /// Create a measurement circuit for QAOA expectation value estimation.
+    ///
+    /// QAOA expectation values are evaluated by measuring in the computational
+    /// (Z) basis, which requires no basis-change gates. The core gate library
+    /// (`quantrs2_core::gate`) does not model measurement as a [`GateOp`];
+    /// measurement is performed by the execution backend (simulator or
+    /// hardware) on the final state. Rather than return an empty gate vector
+    /// that silently pretends a measurement circuit was built, this reports an
+    /// honest error directing the caller to the backend.
     pub fn create_measurement_circuit(
         &self,
-        num_qubits: usize,
+        _num_qubits: usize,
     ) -> BridgeResult<Vec<Box<dyn GateOp>>> {
-        // For QAOA, we typically measure in the computational basis
-        // The actual measurement would be handled by the execution backend
-
-        // This is a placeholder - measurements are typically handled by
-        // the quantum computer or simulator backend, not as circuit gates
-        Ok(Vec::new())
+        Err(BridgeError::UnsupportedOperation(
+            "computational-basis measurement is not represented as circuit gates; \
+             measure the final state via the execution backend (simulator/hardware)"
+                .to_string(),
+        ))
     }
 
     /// Estimate the depth reduction from circuit optimization.
@@ -549,6 +564,31 @@ fn gate_rotation_angle(gate: &dyn GateOp) -> Option<f64> {
         Some(rx.theta)
     } else {
         gate.as_any().downcast_ref::<RotationY>().map(|ry| ry.theta)
+    }
+}
+
+/// Rebuild a single-qubit rotation gate with a new `theta`, preserving the
+/// rotation axis and target qubit. Returns `None` if the gate is not a
+/// rotation gate (and therefore cannot carry a continuous parameter).
+fn rebuild_rotation_with_angle(gate: &dyn GateOp, theta: f64) -> Option<Box<dyn GateOp>> {
+    use quantrs2_core::gate::single::{RotationX, RotationY, RotationZ};
+    if let Some(rz) = gate.as_any().downcast_ref::<RotationZ>() {
+        Some(Box::new(RotationZ {
+            target: rz.target,
+            theta,
+        }) as Box<dyn GateOp>)
+    } else if let Some(rx) = gate.as_any().downcast_ref::<RotationX>() {
+        Some(Box::new(RotationX {
+            target: rx.target,
+            theta,
+        }) as Box<dyn GateOp>)
+    } else {
+        gate.as_any().downcast_ref::<RotationY>().map(|ry| {
+            Box::new(RotationY {
+                target: ry.target,
+                theta,
+            }) as Box<dyn GateOp>
+        })
     }
 }
 
@@ -720,14 +760,46 @@ pub const fn create_qaoa_bridge_for_problem(problem: &IsingModel) -> QaoaCircuit
     QaoaCircuitBridge::new(problem.num_qubits)
 }
 
-/// Convert QAOA parameters to a format suitable for circuit optimization
+/// Expand abstract QAOA parameters into the concrete per-gate rotation angles
+/// of the corresponding QAOA circuit.
+///
+/// `qaoa_params` is the layer-interleaved variational vector
+/// `[γ₀, β₀, γ₁, β₁, …]` for `p` layers. For each layer the problem unitary
+/// `exp(-i γ H_P)` contributes one `RZ(2 γ hᵢ)` rotation per linear term and one
+/// `RZZ(2 γ Jᵢⱼ)` rotation per quadratic term, while the mixer `exp(-i β H_B)`
+/// contributes one `RX(2 β)` rotation per qubit. The returned vector lists those
+/// angles in circuit order (problem rotations then mixer rotations, layer by
+/// layer) — i.e. exactly the continuous parameters a gate-level circuit
+/// optimizer would act on. This is a genuine structural expansion against the
+/// problem terms, not an identity copy. Returns an empty vector if the problem
+/// has no terms or `qaoa_params` does not supply complete `(γ, β)` layer pairs.
 #[must_use]
 pub fn qaoa_parameters_to_circuit_parameters(
     qaoa_params: &[f64],
     problem: &CircuitProblemRepresentation,
 ) -> Vec<f64> {
-    // This is a simplified conversion - in practice, the mapping would be more complex
-    qaoa_params.to_vec()
+    let num_layers = qaoa_params.len() / 2;
+    let mut circuit_params = Vec::new();
+
+    for layer in 0..num_layers {
+        let gamma = qaoa_params[2 * layer];
+        let beta = qaoa_params[2 * layer + 1];
+
+        // Problem-Hamiltonian rotation angles for this layer.
+        for term in &problem.linear_terms {
+            circuit_params.push(2.0 * gamma * term.coefficient);
+        }
+        for term in &problem.quadratic_terms {
+            circuit_params.push(2.0 * gamma * term.coefficient);
+        }
+
+        // Mixer rotation angles: one RX(2β) per qubit.
+        for _ in 0..problem.num_qubits {
+            circuit_params.push(2.0 * beta);
+        }
+    }
+
+    circuit_params
 }
 
 /// Validate QAOA circuit representation for circuit module compatibility
@@ -876,8 +948,10 @@ mod tests {
         assert!(names.contains(&"RZ"));
         assert!(names.contains(&"CNOT"));
         assert_eq!(names.iter().filter(|n| **n == "RX").count(), 2);
-        // The bias RZ + the coupling RZ are both parameter-mapped (gamma).
-        assert_eq!(circuit.parameter_map.len(), 2);
+        // Four gates are parameter-mapped: the bias RZ and the coupling RZ are
+        // each mapped to the layer's gamma, and the two RX mixers are each
+        // mapped to the layer's beta.
+        assert_eq!(circuit.parameter_map.len(), 4);
     }
 
     #[test]

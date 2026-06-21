@@ -273,29 +273,27 @@ impl DistributedGpuStateVector {
         Ok(contexts)
     }
     #[cfg(not(feature = "advanced_math"))]
-    fn initialize_gpu_contexts(config: &DistributedGpuConfig) -> Result<Vec<GpuContextWrapper>> {
-        let num_gpus = if config.num_gpus == 0 {
-            1
-        } else {
-            config.num_gpus
-        };
-        let mut contexts = Vec::new();
-        for device_id in 0..num_gpus {
-            contexts.push(GpuContextWrapper {
-                device_id,
-                memory_available: 1_000_000_000,
-                compute_capability: 1.0,
-            });
-        }
-        Ok(contexts)
+    fn initialize_gpu_contexts(_config: &DistributedGpuConfig) -> Result<Vec<GpuContextWrapper>> {
+        // HONEST: without the `advanced_math` feature there is no GPU runtime
+        // linked (`scirs2_core::gpu` is unavailable), so we cannot create any
+        // real GPU context. Fabricating placeholder "GPU" wrappers here would
+        // falsely imply a device exists. Fail loudly instead; callers should
+        // gate on `is_gpu_available()` (which honestly returns `false` here).
+        Err(SimulatorError::UnsupportedOperation(
+            "distributed GPU backend: no GPU runtime available in this build \
+             (the `advanced_math` feature is not enabled); enable it to use \
+             real GPU devices"
+                .to_string(),
+        ))
     }
     #[cfg(feature = "advanced_math")]
     fn create_gpu_context(device_id: usize) -> Result<GpuContextWrapper> {
         let context = GpuContext::new(GpuBackend::preferred()).map_err(|e| {
-            SimulatorError::InitializationFailed(format!("GPU context creation failed: {}", e))
+            SimulatorError::InitializationFailed(format!("GPU context creation failed: {e}"))
         })?;
-        let memory_available = Self::query_gpu_memory(&context)?;
-        let compute_capability = Self::query_compute_capability(&context)?;
+        // Query REAL device properties from the backend detection result rather
+        // than fabricating fixed numbers.
+        let (memory_available, compute_capability) = Self::query_device_properties(device_id);
         Ok(GpuContextWrapper {
             context,
             device_id,
@@ -303,17 +301,42 @@ impl DistributedGpuStateVector {
             compute_capability,
         })
     }
+    /// Query the real memory (bytes) and compute capability of device `device_id`.
+    ///
+    /// Uses `scirs2_core::gpu::backends::detect_gpu_backends()`. When the backend
+    /// does not report a value, falls back to `0`, never a fabricated figure.
     #[cfg(feature = "advanced_math")]
-    fn query_gpu_memory(context: &GpuContext) -> Result<usize> {
-        Ok(8_000_000_000)
-    }
-    #[cfg(feature = "advanced_math")]
-    fn query_compute_capability(context: &GpuContext) -> Result<f64> {
-        Ok(7.5)
+    fn query_device_properties(device_id: usize) -> (usize, f64) {
+        let detection = scirs2_core::gpu::backends::detect_gpu_backends();
+        let info = detection
+            .devices
+            .iter()
+            .filter(|d| d.backend != GpuBackend::Cpu)
+            .nth(device_id);
+        let memory = info
+            .and_then(|d| d.memory_bytes)
+            .map_or(0usize, |bytes| bytes as usize);
+        let capability = info
+            .and_then(|d| d.compute_capability.as_deref())
+            .and_then(|cap| cap.trim().parse::<f64>().ok())
+            .unwrap_or(0.0);
+        (memory, capability)
     }
     #[cfg(feature = "advanced_math")]
     fn detect_available_gpus() -> Result<usize> {
-        Ok(1)
+        // Count REAL non-CPU devices reported by backend detection.
+        let detection = scirs2_core::gpu::backends::detect_gpu_backends();
+        let count = detection
+            .devices
+            .iter()
+            .filter(|d| d.backend != GpuBackend::Cpu)
+            .count();
+        if count == 0 {
+            return Err(SimulatorError::InitializationFailed(
+                "distributed GPU backend: no GPU devices detected at runtime".to_string(),
+            ));
+        }
+        Ok(count)
     }
     pub(crate) fn select_partition_scheme(
         num_qubits: usize,

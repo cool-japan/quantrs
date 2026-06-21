@@ -44,126 +44,32 @@ pub struct CalibrationData {
 }
 
 impl CalibrationData {
-    /// Create calibration data from a backend
+    /// Fetch device calibration data from IBM Quantum.
+    ///
+    /// Real per-qubit coherence (T1/T2), qubit frequencies, readout errors and
+    /// per-gate error rates are served by IBM Quantum's backend *properties*
+    /// endpoint (`/backends/{name}/properties`), which is distinct from the
+    /// backend *configuration* this client currently retrieves via
+    /// [`crate::ibm::IBMQuantumClient::get_backend`] (which carries only id,
+    /// name, qubit count, status and version — no calibration numbers).
+    ///
+    /// Rather than fabricate plausible-looking T1/T2/error values (which would
+    /// silently corrupt every noise-aware optimisation, fidelity estimate and
+    /// scheduling decision that consumes this data), this returns an honest
+    /// error until the properties endpoint is wired in.
     #[cfg(feature = "ibm")]
     pub async fn fetch(
         client: &crate::ibm::IBMQuantumClient,
         backend_name: &str,
     ) -> DeviceResult<Self> {
-        // In a real implementation, this would fetch from IBM Quantum API
-        // For now, create placeholder data
-        let backend = client.get_backend(backend_name).await?;
-
-        let mut qubits = Vec::new();
-        for i in 0..backend.n_qubits {
-            qubits.push(QubitCalibration {
-                qubit_id: i,
-                t1: Duration::from_micros(100 + (i as u64 * 5)), // Placeholder
-                t2: Duration::from_micros(80 + (i as u64 * 3)),
-                frequency: 5.0 + (i as f64 * 0.1), // GHz
-                anharmonicity: -0.34,              // GHz
-                readout_error: 0.01 + (i as f64 * 0.001),
-                readout_length: Duration::from_nanos(500),
-                prob_meas0_prep1: 0.02,
-                prob_meas1_prep0: 0.01,
-            });
-        }
-
-        let mut gates = HashMap::new();
-
-        // Single-qubit gates
-        let mut sx_gates = Vec::new();
-        let mut x_gates = Vec::new();
-        let mut rz_gates = Vec::new();
-
-        for i in 0..backend.n_qubits {
-            sx_gates.push(GateCalibration {
-                gate_name: "sx".to_string(),
-                qubits: vec![i],
-                gate_error: 0.0002 + (i as f64 * 0.00001),
-                gate_length: Duration::from_nanos(35),
-                parameters: HashMap::new(),
-            });
-
-            x_gates.push(GateCalibration {
-                gate_name: "x".to_string(),
-                qubits: vec![i],
-                gate_error: 0.0003 + (i as f64 * 0.00001),
-                gate_length: Duration::from_nanos(35),
-                parameters: HashMap::new(),
-            });
-
-            rz_gates.push(GateCalibration {
-                gate_name: "rz".to_string(),
-                qubits: vec![i],
-                gate_error: 0.0, // Virtual gate
-                gate_length: Duration::from_nanos(0),
-                parameters: HashMap::new(),
-            });
-        }
-
-        gates.insert("sx".to_string(), sx_gates);
-        gates.insert("x".to_string(), x_gates);
-        gates.insert("rz".to_string(), rz_gates);
-
-        // Two-qubit gates (CX) for connected pairs
-        let mut cx_gates = Vec::new();
-        for i in 0..backend.n_qubits.saturating_sub(1) {
-            cx_gates.push(GateCalibration {
-                gate_name: "cx".to_string(),
-                qubits: vec![i, i + 1],
-                gate_error: 0.005 + (i as f64 * 0.0005),
-                gate_length: Duration::from_nanos(300),
-                parameters: HashMap::new(),
-            });
-        }
-        gates.insert("cx".to_string(), cx_gates);
-
-        Ok(Self {
-            backend_name: backend_name.to_string(),
-            last_update_date: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .map(|d| d.as_secs().to_string())
-                .unwrap_or_else(|_| "0".to_string()),
-            qubits,
-            gates,
-            general: GeneralProperties {
-                backend_name: backend_name.to_string(),
-                backend_version: backend.version,
-                n_qubits: backend.n_qubits,
-                basis_gates: vec![
-                    "id".to_string(),
-                    "rz".to_string(),
-                    "sx".to_string(),
-                    "x".to_string(),
-                    "cx".to_string(),
-                ],
-                supported_instructions: vec![
-                    "cx".to_string(),
-                    "id".to_string(),
-                    "rz".to_string(),
-                    "sx".to_string(),
-                    "x".to_string(),
-                    "measure".to_string(),
-                    "reset".to_string(),
-                    "delay".to_string(),
-                ],
-                local: false,
-                simulator: backend.simulator,
-                conditional: true,
-                open_pulse: true,
-                memory: true,
-                max_shots: 100000,
-                coupling_map: (0..backend.n_qubits.saturating_sub(1))
-                    .map(|i| (i, i + 1))
-                    .collect(),
-                dynamic_reprate_enabled: true,
-                rep_delay_range: (0.0, 500.0),
-                default_rep_delay: 250.0,
-                max_experiments: 300,
-                processor_type: ProcessorType::Eagle,
-            },
-        })
+        // Confirm the backend exists / is reachable, then refuse to fabricate.
+        let _backend = client.get_backend(backend_name).await?;
+        Err(DeviceError::UnsupportedOperation(format!(
+            "Live calibration for IBM backend '{backend_name}' is unavailable: the backend \
+             configuration endpoint does not expose T1/T2/frequency/error data, and the \
+             properties endpoint that does is not yet implemented in this client. Refusing to \
+             return fabricated calibration values."
+        )))
     }
 
     #[cfg(not(feature = "ibm"))]

@@ -6,6 +6,7 @@
 
 use crate::embedding::Embedding;
 use crate::ising::{IsingError, IsingResult};
+use scirs2_core::random::{thread_rng, ChaCha8Rng, Rng, RngExt, SeedableRng};
 use std::collections::{HashMap, HashSet};
 
 /// Represents a solution from quantum annealing hardware
@@ -26,7 +27,13 @@ pub struct ResolvedSolution {
     pub logical_spins: Vec<i8>,
     /// Number of broken chains
     pub chain_breaks: usize,
-    /// Energy after resolution
+    /// Energy of the resolved *logical* configuration.
+    ///
+    /// When a [`LogicalProblem`] is supplied to the resolver this is the exact
+    /// energy of `logical_spins` under that problem. When no logical problem is
+    /// available the resolver cannot recompute the logical energy, so it reports
+    /// the measured hardware energy (a real quantity) as the best available
+    /// estimate.
     pub energy: f64,
     /// Original hardware solution
     pub hardware_solution: HardwareSolution,
@@ -75,10 +82,10 @@ impl ChainBreakResolver {
     ) -> IsingResult<ResolvedSolution> {
         match self.method {
             ResolutionMethod::MajorityVote => {
-                self.resolve_majority_vote(hardware_solution, embedding)
+                self.resolve_majority_vote(hardware_solution, embedding, logical_problem)
             }
             ResolutionMethod::WeightedMajority => {
-                self.resolve_weighted_majority(hardware_solution, embedding)
+                self.resolve_weighted_majority(hardware_solution, embedding, logical_problem)
             }
             ResolutionMethod::EnergyMinimization => {
                 let problem = logical_problem.ok_or_else(|| {
@@ -123,10 +130,12 @@ impl ChainBreakResolver {
         &self,
         hardware_solution: &HardwareSolution,
         embedding: &Embedding,
+        logical_problem: Option<&LogicalProblem>,
     ) -> IsingResult<ResolvedSolution> {
         let mut logical_spins = Vec::new();
         let mut chain_breaks = 0;
         let num_vars = embedding.chains.len();
+        let mut rng = self.tie_break_rng();
 
         for var in 0..num_vars {
             let chain = embedding
@@ -156,17 +165,9 @@ impl ChainBreakResolver {
             } else if minus_votes > plus_votes {
                 -1
             } else {
-                // Tie - use random or default to +1
-                if self.tie_break_random {
-                    // Simple deterministic tie-break based on variable index
-                    if var % 2 == 0 {
-                        1
-                    } else {
-                        -1
-                    }
-                } else {
-                    1
-                }
+                // Genuine tie: break it with the (optionally seeded) RNG when
+                // random tie-breaking is enabled, otherwise default to +1.
+                self.break_tie(&mut rng)
             };
 
             // Check for chain breaks
@@ -178,10 +179,12 @@ impl ChainBreakResolver {
             logical_spins.push(logical_value);
         }
 
+        let energy = Self::resolved_energy(&logical_spins, hardware_solution, logical_problem);
+
         Ok(ResolvedSolution {
             logical_spins,
             chain_breaks,
-            energy: hardware_solution.energy, // Will be recalculated if needed
+            energy,
             hardware_solution: hardware_solution.clone(),
         })
     }
@@ -191,6 +194,7 @@ impl ChainBreakResolver {
         &self,
         hardware_solution: &HardwareSolution,
         embedding: &Embedding,
+        logical_problem: Option<&LogicalProblem>,
     ) -> IsingResult<ResolvedSolution> {
         // Weighted majority voting: weight each qubit's vote by the number of
         // other qubits in the chain that agree with it. This gives more influence
@@ -199,6 +203,7 @@ impl ChainBreakResolver {
         let num_vars = embedding.chains.len();
         let mut logical_spins = vec![0i8; num_vars];
         let mut chain_breaks = 0;
+        let mut rng = self.tie_break_rng();
 
         for var in 0..num_vars {
             if let Some(chain) = embedding.chains.get(&var) {
@@ -251,14 +256,14 @@ impl ChainBreakResolver {
                 } else if weight_minus > weight_plus {
                     logical_spins[var] = -1;
                 } else {
-                    // Tie - use random or first qubit
-                    if self.tie_break_random {
-                        use scirs2_core::random::{thread_rng, Rng};
-                        let mut rng = thread_rng();
-                        logical_spins[var] = if rng.random::<bool>() { 1 } else { -1 };
+                    // Genuine tie: break it with the (optionally seeded) RNG
+                    // when random tie-breaking is enabled, otherwise fall back
+                    // to the first qubit's measured spin.
+                    logical_spins[var] = if self.tie_break_random {
+                        self.break_tie(&mut rng)
                     } else {
-                        logical_spins[var] = hardware_solution.spins[chain[0]];
-                    }
+                        hardware_solution.spins[chain[0]]
+                    };
                 }
 
                 if has_disagreement {
@@ -267,10 +272,12 @@ impl ChainBreakResolver {
             }
         }
 
+        let energy = Self::resolved_energy(&logical_spins, hardware_solution, logical_problem);
+
         Ok(ResolvedSolution {
             logical_spins,
             chain_breaks,
-            energy: hardware_solution.energy,
+            energy,
             hardware_solution: hardware_solution.clone(),
         })
     }
@@ -282,7 +289,8 @@ impl ChainBreakResolver {
         embedding: &Embedding,
         logical_problem: &LogicalProblem,
     ) -> IsingResult<ResolvedSolution> {
-        let mut resolved = self.resolve_majority_vote(hardware_solution, embedding)?;
+        let mut resolved =
+            self.resolve_majority_vote(hardware_solution, embedding, Some(logical_problem))?;
 
         // For each broken chain, try flipping the logical variable
         for var in 0..resolved.logical_spins.len() {
@@ -313,7 +321,7 @@ impl ChainBreakResolver {
         hardware_solution: &HardwareSolution,
         embedding: &Embedding,
     ) -> IsingResult<ResolvedSolution> {
-        let resolved = self.resolve_majority_vote(hardware_solution, embedding)?;
+        let resolved = self.resolve_majority_vote(hardware_solution, embedding, None)?;
 
         if resolved.chain_breaks > 0 {
             Err(IsingError::HardwareConstraint(format!(
@@ -350,6 +358,49 @@ impl ChainBreakResolver {
         }
 
         Ok(false)
+    }
+
+    /// Construct the RNG used for tie-breaking.
+    ///
+    /// When a `seed` is configured the generator is deterministic (reproducible
+    /// runs); otherwise it is seeded from the thread RNG so ties are broken
+    /// genuinely at random.
+    fn tie_break_rng(&self) -> ChaCha8Rng {
+        match self.seed {
+            Some(seed) => ChaCha8Rng::seed_from_u64(seed),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
+        }
+    }
+
+    /// Break a vote tie. With `tie_break_random` enabled this draws a genuine
+    /// random spin from `rng`; otherwise it deterministically defaults to `+1`.
+    fn break_tie(&self, rng: &mut ChaCha8Rng) -> i8 {
+        if self.tie_break_random {
+            if rng.random_bool(0.5) {
+                1
+            } else {
+                -1
+            }
+        } else {
+            1
+        }
+    }
+
+    /// Energy of the resolved logical configuration.
+    ///
+    /// If a [`LogicalProblem`] is available the exact logical energy is
+    /// computed from the resolved spins. Otherwise the measured hardware energy
+    /// is returned, since the logical energy is not derivable without the
+    /// problem definition.
+    fn resolved_energy(
+        logical_spins: &[i8],
+        hardware_solution: &HardwareSolution,
+        logical_problem: Option<&LogicalProblem>,
+    ) -> f64 {
+        match logical_problem {
+            Some(problem) => problem.calculate_energy(logical_spins),
+            None => hardware_solution.energy,
+        }
     }
 }
 

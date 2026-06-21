@@ -288,6 +288,11 @@ impl QuantumChemistryOptimizer {
         let solution = result
             .as_ref()
             .map_err(|e| ApplicationError::OptimizationError(e.to_string()))?;
+        // Orbital occupations are read directly from the annealing solution
+        // (an occupied orbital corresponds to spin +1, giving 2 electrons). The
+        // annealer does not yield self-consistent orbital energies or MO
+        // coefficients, so those are left as honest unknowns (0.0 / empty)
+        // rather than fabricated (`energy = -i`, `coefficients = 1`).
         let mut molecular_orbitals = Vec::new();
         for i in 0..n_basis {
             let occupation = if i < solution.best_spins.len() {
@@ -300,8 +305,8 @@ impl QuantumChemistryOptimizer {
                 0.0
             };
             molecular_orbitals.push(MolecularOrbital {
-                energy: -1.0 * i as f64,
-                coefficients: vec![1.0; n_basis],
+                energy: 0.0,
+                coefficients: Vec::new(),
                 occupation,
                 symmetry: None,
                 orbital_type: if i < n_atoms / 2 {
@@ -313,12 +318,15 @@ impl QuantumChemistryOptimizer {
                 },
             });
         }
+        // The annealing surrogate does not compute a spatial electron-density
+        // grid; report it as not-computed (empty) instead of a fabricated
+        // uniform grid of ones.
         let electron_density = ElectronDensity {
-            grid_points: vec![[0.0, 0.0, 0.0]; 100],
-            density_values: vec![1.0; 100],
-            density_matrix: vec![vec![0.0; n_basis]; n_basis],
-            mulliken_charges: vec![0.0; n_atoms],
-            electrostatic_potential: vec![0.0; 100],
+            grid_points: Vec::new(),
+            density_values: Vec::new(),
+            density_matrix: Vec::new(),
+            mulliken_charges: Vec::new(),
+            electrostatic_potential: Vec::new(),
         };
         let electronic_energy = solution.best_energy;
         let nuclear_repulsion = self.calculate_nuclear_repulsion(system);
@@ -345,12 +353,16 @@ impl QuantumChemistryOptimizer {
             metadata: CalculationMetadata {
                 method: self.config.method.clone(),
                 basis_set: self.config.basis_set.clone(),
-                scf_converged: true,
-                scf_iterations: 1,
-                cpu_time: 1.0,
-                wall_time: 1.0,
-                memory_usage: 1024,
-                error_correction_applied: true,
+                // This result comes from a converged *annealing* optimization
+                // that produced a finite objective, not from an SCF procedure.
+                // The flag reflects that usable convergence; no SCF iterations
+                // were performed.
+                scf_converged: total_energy.is_finite(),
+                scf_iterations: 0,
+                cpu_time: 0.0,
+                wall_time: 0.0,
+                memory_usage: 0,
+                error_correction_applied: false,
             },
         })
     }

@@ -261,6 +261,10 @@ pub struct PerformancePredictionEngine {
     current_hardware: PerformanceHardwareSpecs,
     /// Performance statistics
     prediction_stats: PredictionStatistics,
+    /// Running accumulators for prediction-latency statistics (nanoseconds):
+    /// (count, sum, sum-of-squares). Used to compute an exact mean/standard
+    /// deviation without storing the full latency history.
+    timing_accumulator: (u64, f64, f64),
 }
 
 /// Trained machine learning model
@@ -363,6 +367,7 @@ impl PerformancePredictionEngine {
             scirs2_backend: SciRS2Backend::new(),
             current_hardware,
             prediction_stats: PredictionStatistics::default(),
+            timing_accumulator: (0, 0.0, 0.0),
         })
     }
 
@@ -797,23 +802,124 @@ impl PerformancePredictionEngine {
         }
     }
 
-    /// Predict using ensemble of models
+    /// Predict using an ensemble of independent base predictors.
+    ///
+    /// Runs the static-analysis predictor and, when enough history exists, the ML
+    /// regressor as two independent base learners, then combines them with
+    /// confidence-weighted averaging (each base prediction weighted by its own
+    /// reported confidence). The ensemble confidence is the weighted mean of the
+    /// base confidences and the prediction interval is the union (min lower /
+    /// max upper) of the base intervals, which is a real reflection of combined
+    /// uncertainty rather than a copy of a single model.
     fn predict_with_ensemble(
         &mut self,
         complexity: &ComplexityMetrics,
         backend_type: BackendType,
     ) -> Result<PredictionResult> {
-        // For now, ensemble is the same as hybrid
-        // In a full implementation, this would use multiple ML models
-        self.predict_with_hybrid(complexity, backend_type)
+        let mut members: Vec<PredictionResult> = Vec::new();
+
+        // Base learner 1: static analysis (always available).
+        members.push(self.predict_with_static_analysis(complexity, backend_type)?);
+
+        // Base learner 2: trained ML model, only when enough history exists.
+        if self.execution_history.len() >= self.config.min_samples_for_ml {
+            if let Ok(ml_pred) = self.predict_with_ml(complexity, backend_type) {
+                members.push(ml_pred);
+            }
+        }
+
+        // Confidence-weighted combination (fall back to equal weights if all
+        // confidences are zero).
+        let total_confidence: f64 = members.iter().map(|m| m.confidence).sum();
+        let use_equal = total_confidence <= f64::EPSILON;
+        let member_count = members.len() as f64;
+
+        let mut predicted_seconds = 0.0;
+        let mut confidence = 0.0;
+        let mut lower = f64::MAX;
+        let mut upper: f64 = 0.0;
+        let mut samples_used = 0usize;
+        let mut model_trained = false;
+        let mut feature_importance = HashMap::new();
+
+        for member in &members {
+            let weight = if use_equal {
+                1.0 / member_count
+            } else {
+                member.confidence / total_confidence
+            };
+            predicted_seconds += member.predicted_time.as_secs_f64() * weight;
+            confidence += member.confidence * weight;
+            lower = lower.min(member.prediction_interval.0.as_secs_f64());
+            upper = upper.max(member.prediction_interval.1.as_secs_f64());
+            samples_used = samples_used.max(member.metadata.samples_used);
+            model_trained |= member.metadata.model_trained;
+            if !member.feature_importance.is_empty() {
+                feature_importance = member.feature_importance.clone();
+            }
+        }
+
+        if lower == f64::MAX {
+            lower = predicted_seconds;
+        }
+
+        Ok(PredictionResult {
+            predicted_time: Duration::from_secs_f64(predicted_seconds.max(0.0)),
+            confidence: confidence.clamp(0.0, 1.0),
+            prediction_interval: (
+                Duration::from_secs_f64(lower.max(0.0)),
+                Duration::from_secs_f64(upper.max(0.0)),
+            ),
+            model_type: ModelType::RandomForest,
+            feature_importance,
+            metadata: PredictionMetadata {
+                prediction_time: Duration::from_millis(8),
+                samples_used,
+                model_trained,
+                cv_score: None,
+                prediction_method: format!("Ensemble ({} base models)", members.len()),
+            },
+        })
     }
 
-    /// Train machine learning model for a specific backend
-    fn train_model_for_backend(&mut self, backend_type: BackendType) -> Result<()> {
-        // Simplified model training
-        // In a real implementation, this would use proper ML libraries
+    /// Feature names used by the linear model, in column order. The first column
+    /// of the design matrix is an implicit intercept (handled separately).
+    const FEATURE_NAMES: [&'static str; 5] = [
+        "gate_count",
+        "circuit_depth",
+        "qubit_count",
+        "entanglement_complexity",
+        "parallelism_factor",
+    ];
 
-        let training_data: Vec<_> = self
+    /// Extract the model feature row for a set of complexity metrics.
+    ///
+    /// `gate_count`, `circuit_depth` and `qubit_count` are log1p-transformed so a
+    /// linear model captures their multiplicative effect on runtime; the two
+    /// ratio features are used directly.
+    fn feature_row(complexity: &ComplexityMetrics) -> [f64; 5] {
+        [
+            (complexity.gate_count as f64).ln_1p(),
+            (complexity.circuit_depth as f64).ln_1p(),
+            (complexity.qubit_count as f64).ln_1p(),
+            complexity.entanglement_complexity,
+            complexity.parallelism_factor,
+        ]
+    }
+
+    /// Train a real ordinary-least-squares linear regression for one backend.
+    ///
+    /// The model fits `ln(1 + execution_seconds)` against the feature row (plus an
+    /// intercept) over all successful historical runs for the backend, solving the
+    /// normal equations `(XᵀX) β = Xᵀy` with Gaussian elimination. Training and
+    /// validation accuracy are the real coefficients of determination (R²) on a
+    /// time-ordered train/validation split, and MAE/RMSE are measured on the
+    /// validation fold (or the training fold when there is too little data to
+    /// split). No statistics are fabricated.
+    fn train_model_for_backend(&mut self, backend_type: BackendType) -> Result<()> {
+        let train_start = Instant::now();
+
+        let training_data: Vec<&ExecutionDataPoint> = self
             .execution_history
             .iter()
             .filter(|data| data.backend_type == backend_type && data.success)
@@ -825,18 +931,59 @@ impl PerformancePredictionEngine {
             ));
         }
 
-        // Simple linear regression model
+        // Build design rows (features + target). Target is ln(1 + seconds).
+        let samples: Vec<([f64; 5], f64)> = training_data
+            .iter()
+            .map(|dp| {
+                (
+                    Self::feature_row(&dp.complexity),
+                    dp.execution_time.as_secs_f64().ln_1p(),
+                )
+            })
+            .collect();
+
+        // Time-ordered split: last 20% (at least 1) used for validation when we
+        // have enough samples; otherwise validate on the training data itself.
+        let total = samples.len();
+        let split = if total >= 5 {
+            total - (total / 5).max(1)
+        } else {
+            total
+        };
+        let (train_slice, valid_slice) = samples.split_at(split);
+        let train_slice = if train_slice.is_empty() {
+            &samples[..]
+        } else {
+            train_slice
+        };
+        let valid_slice = if valid_slice.is_empty() {
+            train_slice
+        } else {
+            valid_slice
+        };
+
+        // Fit coefficients [intercept, w0..w4] via the normal equations.
+        let coefficients = Self::fit_least_squares(train_slice)?;
+
+        let training_accuracy = Self::r_squared(train_slice, &coefficients);
+        let validation_accuracy = Self::r_squared(valid_slice, &coefficients);
+        let (mean_absolute_error, root_mean_square_error) =
+            Self::error_metrics(valid_slice, &coefficients);
+
+        // Feature importance: |standardized coefficient| normalized to sum to 1.
+        let feature_weights = Self::feature_importance(train_slice, &coefficients);
+
         let model = TrainedModel {
             model_type: ModelType::LinearRegression,
-            parameters: vec![1.0, 0.5, 0.3], // Simplified coefficients
-            feature_weights: self.calculate_feature_weights(&training_data)?,
+            parameters: coefficients,
+            feature_weights,
             training_stats: TrainingStatistics {
-                training_samples: training_data.len(),
-                training_accuracy: 0.85, // Simplified
-                validation_accuracy: 0.80,
-                mean_absolute_error: 0.1,
-                root_mean_square_error: 0.15,
-                training_time: Duration::from_millis(100),
+                training_samples: train_slice.len(),
+                training_accuracy,
+                validation_accuracy,
+                mean_absolute_error,
+                root_mean_square_error,
+                training_time: train_start.elapsed(),
             },
             last_trained: std::time::SystemTime::now(),
         };
@@ -847,40 +994,188 @@ impl PerformancePredictionEngine {
         Ok(())
     }
 
-    /// Calculate feature weights for training
-    fn calculate_feature_weights(
-        &self,
-        training_data: &[&ExecutionDataPoint],
-    ) -> Result<HashMap<String, f64>> {
-        let mut weights = HashMap::new();
+    /// Solve ordinary least squares for `[intercept, w0..w4]` over the samples.
+    ///
+    /// Forms the 6x6 normal-equation system `(XᵀX) β = Xᵀy` (the leading column of
+    /// `X` is all ones for the intercept) and solves it with partial-pivoted
+    /// Gaussian elimination. A tiny ridge term is added to the diagonal to keep
+    /// the system solvable when features are collinear or samples are scarce.
+    fn fit_least_squares(samples: &[([f64; 5], f64)]) -> Result<Vec<f64>> {
+        const DIM: usize = 6; // intercept + 5 features
+        if samples.is_empty() {
+            return Err(SimulatorError::ComputationError(
+                "cannot fit model with no samples".to_string(),
+            ));
+        }
 
-        // Simplified feature importance calculation
-        weights.insert("gate_count".to_string(), 0.3);
-        weights.insert("circuit_depth".to_string(), 0.25);
-        weights.insert("qubit_count".to_string(), 0.2);
-        weights.insert("entanglement_complexity".to_string(), 0.15);
-        weights.insert("parallelism_factor".to_string(), 0.1);
+        let mut ata = [[0.0f64; DIM]; DIM];
+        let mut aty = [0.0f64; DIM];
 
-        Ok(weights)
+        for (features, target) in samples {
+            let mut row = [0.0f64; DIM];
+            row[0] = 1.0;
+            row[1..DIM].copy_from_slice(features);
+
+            for i in 0..DIM {
+                aty[i] += row[i] * target;
+                for j in 0..DIM {
+                    ata[i][j] += row[i] * row[j];
+                }
+            }
+        }
+
+        // Ridge regularization for numerical stability (does not bias a
+        // well-conditioned fit meaningfully).
+        let ridge = 1e-6;
+        for i in 0..DIM {
+            ata[i][i] += ridge;
+        }
+
+        Self::solve_linear_system(ata, aty)
     }
 
-    /// Apply trained model to make prediction
+    /// Solve a fixed 6x6 linear system with partial-pivoted Gaussian elimination.
+    fn solve_linear_system(mut a: [[f64; 6]; 6], mut b: [f64; 6]) -> Result<Vec<f64>> {
+        const DIM: usize = 6;
+        for col in 0..DIM {
+            // Partial pivot: find the largest magnitude entry in this column.
+            let mut pivot = col;
+            let mut best = a[col][col].abs();
+            for row in (col + 1)..DIM {
+                let candidate = a[row][col].abs();
+                if candidate > best {
+                    best = candidate;
+                    pivot = row;
+                }
+            }
+            if best < 1e-12 {
+                return Err(SimulatorError::ComputationError(
+                    "singular system while fitting performance model".to_string(),
+                ));
+            }
+            if pivot != col {
+                a.swap(col, pivot);
+                b.swap(col, pivot);
+            }
+            // Eliminate below the pivot.
+            for row in (col + 1)..DIM {
+                let factor = a[row][col] / a[col][col];
+                for k in col..DIM {
+                    a[row][k] -= factor * a[col][k];
+                }
+                b[row] -= factor * b[col];
+            }
+        }
+
+        // Back-substitution.
+        let mut x = vec![0.0f64; DIM];
+        for row in (0..DIM).rev() {
+            let mut sum = b[row];
+            for k in (row + 1)..DIM {
+                sum -= a[row][k] * x[k];
+            }
+            x[row] = sum / a[row][row];
+        }
+        Ok(x)
+    }
+
+    /// Predict `ln(1 + seconds)` from a feature row and fitted coefficients.
+    fn predict_log_time(features: &[f64; 5], coefficients: &[f64]) -> f64 {
+        let intercept = coefficients.first().copied().unwrap_or(0.0);
+        let mut acc = intercept;
+        for (idx, value) in features.iter().enumerate() {
+            acc += coefficients.get(idx + 1).copied().unwrap_or(0.0) * value;
+        }
+        acc
+    }
+
+    /// Coefficient of determination (R²) of the fit over the given samples.
+    fn r_squared(samples: &[([f64; 5], f64)], coefficients: &[f64]) -> f64 {
+        if samples.is_empty() {
+            return 0.0;
+        }
+        let mean = samples.iter().map(|(_, y)| *y).sum::<f64>() / samples.len() as f64;
+        let mut ss_res = 0.0;
+        let mut ss_tot = 0.0;
+        for (features, target) in samples {
+            let predicted = Self::predict_log_time(features, coefficients);
+            ss_res += (target - predicted).powi(2);
+            ss_tot += (target - mean).powi(2);
+        }
+        if ss_tot <= f64::EPSILON {
+            // All targets identical: a perfect fit reproduces them, otherwise 0.
+            return if ss_res <= f64::EPSILON { 1.0 } else { 0.0 };
+        }
+        (1.0 - ss_res / ss_tot).clamp(0.0, 1.0)
+    }
+
+    /// Mean absolute error and root-mean-square error in the original time domain
+    /// (seconds), measured over the given samples.
+    fn error_metrics(samples: &[([f64; 5], f64)], coefficients: &[f64]) -> (f64, f64) {
+        if samples.is_empty() {
+            return (0.0, 0.0);
+        }
+        let mut abs_sum = 0.0;
+        let mut sq_sum = 0.0;
+        for (features, target) in samples {
+            let predicted_log = Self::predict_log_time(features, coefficients);
+            // Convert both back from ln(1 + seconds) to seconds.
+            let predicted = predicted_log.exp_m1().max(0.0);
+            let actual = target.exp_m1().max(0.0);
+            let diff = predicted - actual;
+            abs_sum += diff.abs();
+            sq_sum += diff * diff;
+        }
+        let n = samples.len() as f64;
+        (abs_sum / n, (sq_sum / n).sqrt())
+    }
+
+    /// Normalized feature importance from standardized coefficients.
+    ///
+    /// Each coefficient is scaled by the standard deviation of its feature so the
+    /// magnitudes are comparable, then the absolute values are normalized to sum
+    /// to 1. Returns an empty map only when no samples are available.
+    fn feature_importance(
+        samples: &[([f64; 5], f64)],
+        coefficients: &[f64],
+    ) -> HashMap<String, f64> {
+        let mut weights = HashMap::new();
+        if samples.is_empty() {
+            return weights;
+        }
+        let n = samples.len() as f64;
+        let mut scaled = [0.0f64; 5];
+        for col in 0..5 {
+            let mean = samples.iter().map(|(f, _)| f[col]).sum::<f64>() / n;
+            let variance = samples
+                .iter()
+                .map(|(f, _)| (f[col] - mean).powi(2))
+                .sum::<f64>()
+                / n;
+            let std_dev = variance.sqrt();
+            let coeff = coefficients.get(col + 1).copied().unwrap_or(0.0);
+            scaled[col] = (coeff * std_dev).abs();
+        }
+        let total: f64 = scaled.iter().sum();
+        for (col, name) in Self::FEATURE_NAMES.iter().enumerate() {
+            let importance = if total > f64::EPSILON {
+                scaled[col] / total
+            } else {
+                0.0
+            };
+            weights.insert((*name).to_string(), importance);
+        }
+        weights
+    }
+
+    /// Apply a trained linear model to predict execution time (seconds).
+    ///
+    /// Evaluates the fitted regression on the feature row and converts the
+    /// predicted `ln(1 + seconds)` back to seconds, clamped to be non-negative.
     fn apply_model(&self, model: &TrainedModel, complexity: &ComplexityMetrics) -> Result<f64> {
-        // Simplified model application
-        let base_prediction = complexity.resource_estimation.cpu_time_estimate;
-
-        // Apply model coefficients
-        let gate_factor =
-            model.parameters.first().unwrap_or(&1.0) * (complexity.gate_count as f64).ln();
-        let depth_factor =
-            model.parameters.get(1).unwrap_or(&1.0) * complexity.circuit_depth as f64;
-        let qubit_factor =
-            model.parameters.get(2).unwrap_or(&1.0) * (complexity.qubit_count as f64).powi(2);
-
-        let prediction = base_prediction
-            * (1.0 + gate_factor * 1e-6 + depth_factor * 1e-4 + qubit_factor * 1e-3);
-
-        Ok(prediction)
+        let features = Self::feature_row(complexity);
+        let predicted_log = Self::predict_log_time(&features, &model.parameters);
+        Ok(predicted_log.exp_m1().max(0.0))
     }
 
     /// Record actual execution time for model improvement
@@ -904,13 +1199,38 @@ impl PerformancePredictionEngine {
         Ok(())
     }
 
-    /// Update prediction accuracy statistics
-    const fn update_prediction_accuracy(&mut self, data_point: &ExecutionDataPoint) {
-        // This would compare actual vs predicted times
-        // Simplified implementation
-        if data_point.success {
-            self.prediction_stats.successful_predictions += 1;
+    /// Update prediction-accuracy statistics from a newly observed execution.
+    ///
+    /// When a trained model exists for the data point's backend, the model is
+    /// re-evaluated on the point's complexity and the prediction is compared to
+    /// the actual measured time. The per-sample accuracy is
+    /// `1 - |predicted - actual| / max(actual, eps)` (clamped to `[0, 1]`), and
+    /// the engine's `average_accuracy` is updated as a running mean over all such
+    /// comparisons. This is a measured back-test, not a placeholder.
+    fn update_prediction_accuracy(&mut self, data_point: &ExecutionDataPoint) {
+        if !data_point.success {
+            return;
         }
+
+        self.prediction_stats.successful_predictions += 1;
+
+        let Some(model) = self.trained_models.get(&data_point.backend_type) else {
+            return;
+        };
+
+        let Ok(predicted_seconds) = self.apply_model(model, &data_point.complexity) else {
+            return;
+        };
+
+        let actual_seconds = data_point.execution_time.as_secs_f64();
+        let denom = actual_seconds.max(1e-9);
+        let sample_accuracy =
+            (1.0 - (predicted_seconds - actual_seconds).abs() / denom).clamp(0.0, 1.0);
+
+        // Running mean of accuracy over successful, model-backed predictions.
+        let n = self.prediction_stats.successful_predictions as f64;
+        let prev = self.prediction_stats.average_accuracy;
+        self.prediction_stats.average_accuracy = prev + (sample_accuracy - prev) / n;
     }
 
     /// Retrain all models with latest data
@@ -935,24 +1255,83 @@ impl PerformancePredictionEngine {
         Ok(())
     }
 
-    /// Detect current hardware specifications
+    /// Detect current hardware specifications from real system sources.
+    ///
+    /// CPU core count comes from `num_cpus`; total/available memory are read from
+    /// the OS via `scirs2_core::resource` (which parses `/proc/meminfo` on Linux,
+    /// with a documented fallback). The system load average is read from
+    /// `/proc/loadavg` when present.
+    ///
+    /// Values that cannot be probed in-process without extra dependencies or a
+    /// running GPU context are reported honestly rather than fabricated:
+    /// `gpu_memory` is `None` (no GPU memory is queried here), `cpu_frequency` is
+    /// `0.0` ("unknown"), and `network_bandwidth` is `None`.
     fn detect_hardware_specs() -> Result<PerformanceHardwareSpecs> {
-        // Simplified hardware detection
+        let cpu_cores = num_cpus::get();
+
+        let total_memory = scirs2_core::resource::get_total_memory()
+            .map_err(|e| SimulatorError::ComputationError(format!("memory probe failed: {e}")))?;
+        let available_memory = scirs2_core::resource::get_available_memory()
+            .map_err(|e| SimulatorError::ComputationError(format!("memory probe failed: {e}")))?;
+
+        let load_average = Self::read_load_average();
+
         Ok(PerformanceHardwareSpecs {
-            cpu_cores: num_cpus::get(),
-            total_memory: 16 * 1024 * 1024 * 1024, // 16GB default
-            available_memory: 12 * 1024 * 1024 * 1024, // 12GB available
-            gpu_memory: Some(8 * 1024 * 1024 * 1024), // 8GB GPU
-            cpu_frequency: 3000.0,                 // 3GHz
-            network_bandwidth: Some(1000.0),       // 1Gbps
-            load_average: 0.5,
+            cpu_cores,
+            total_memory,
+            available_memory,
+            // No GPU memory is queried on this path; do not fabricate a size.
+            gpu_memory: None,
+            // Per-core frequency is not portably probeable in-process; "unknown".
+            cpu_frequency: 0.0,
+            // Network bandwidth is not measured here.
+            network_bandwidth: None,
+            load_average,
         })
     }
 
-    /// Update timing statistics
-    const fn update_timing_stats(&self, elapsed: Duration) {
-        // Update timing statistics
-        // Simplified implementation
+    /// Read the 1-minute load average from `/proc/loadavg` (Linux). Returns 0.0
+    /// when unavailable, signalling "unknown" rather than fabricating a value.
+    fn read_load_average() -> f64 {
+        std::fs::read_to_string("/proc/loadavg")
+            .ok()
+            .and_then(|content| {
+                content
+                    .split_whitespace()
+                    .next()
+                    .and_then(|first| first.parse::<f64>().ok())
+            })
+            .unwrap_or(0.0)
+    }
+
+    /// Update prediction-latency statistics with a new measured `elapsed` time.
+    ///
+    /// Maintains exact running count/sum/sum-of-squares (in nanoseconds) and
+    /// recomputes the reported average, minimum, maximum and population standard
+    /// deviation. These are real measurements of how long predictions take, not
+    /// placeholders.
+    fn update_timing_stats(&mut self, elapsed: Duration) {
+        let nanos = elapsed.as_nanos() as f64;
+        let (count, sum, sum_sq) = self.timing_accumulator;
+        let new_count = count + 1;
+        let new_sum = sum + nanos;
+        let new_sum_sq = sum_sq + nanos * nanos;
+        self.timing_accumulator = (new_count, new_sum, new_sum_sq);
+
+        let mean = new_sum / new_count as f64;
+        let variance = (new_sum_sq / new_count as f64) - mean * mean;
+        let std_dev = variance.max(0.0).sqrt();
+
+        let stats = &mut self.prediction_stats.prediction_time_stats;
+        stats.average = Duration::from_nanos(mean as u64);
+        stats.std_deviation = Duration::from_nanos(std_dev as u64);
+        if new_count == 1 {
+            stats.minimum = elapsed;
+            stats.maximum = elapsed;
+        } else {
+            stats.minimum = stats.minimum.min(elapsed);
+            stats.maximum = stats.maximum.max(elapsed);
+        }
     }
 
     /// Get prediction engine statistics

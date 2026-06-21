@@ -9,10 +9,10 @@ use quantrs2_circuit::builder::Simulator as CircuitSimulator;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
 use quantrs2_core::gpu::{
-    is_gpu_available, GpuBackend as QuantRS2GpuBackend, GpuConfig, SciRS2GpuBackend,
+    is_gpu_available, GpuBackend as QuantRS2GpuBackend, GpuBackendFactory, GpuConfig,
+    SciRS2GpuBackend,
 };
 use quantrs2_core::prelude::QubitId;
-use scirs2_core::gpu::{GpuBackend, GpuBuffer, GpuContext};
 use scirs2_core::Complex64;
 use std::fmt::Write;
 use std::sync::Arc;
@@ -25,10 +25,8 @@ use crate::simulator::{Simulator, SimulatorResult};
 /// This simulator leverages SciRS2's unified GPU abstraction layer to provide
 /// optimal performance across different GPU backends (CUDA, Metal, OpenCL).
 pub struct SciRS2GpuStateVectorSimulator {
-    /// QuantRS2 GPU backend (wrapper around SciRS2)
+    /// QuantRS2 GPU backend (wrapper around SciRS2), kept for the profiling report API.
     backend: Option<Arc<SciRS2GpuBackend>>,
-    /// SciRS2 GPU context for direct GPU operations
-    gpu_context: Option<GpuContext>,
     /// Performance tracking enabled
     enable_profiling: bool,
 }
@@ -43,12 +41,13 @@ impl SciRS2GpuStateVectorSimulator {
     pub fn new() -> QuantRS2Result<Self> {
         // Probe for GPU availability through quantrs2_core's backend factory.
         // The factory tries CUDA, then Metal, then OpenCL in order and returns
-        // Ok only when at least one backend is functional.
-        let gpu_available = is_gpu_available();
+        // Ok only when at least one backend is functional. The concrete backend
+        // is created per-run inside `Simulator::run` so that allocation failures
+        // surface as honest errors at execution time.
+        let _gpu_available = is_gpu_available();
 
         Ok(Self {
-            backend: None, // Full GPU kernel integration is handled in Simulator::run
-            gpu_context: None,
+            backend: None,
             enable_profiling: false,
         })
     }
@@ -60,7 +59,6 @@ impl SciRS2GpuStateVectorSimulator {
     pub fn with_config(config: GpuConfig) -> QuantRS2Result<Self> {
         Ok(Self {
             backend: None,
-            gpu_context: None,
             enable_profiling: config.enable_profiling,
         })
     }
@@ -72,7 +70,6 @@ impl SciRS2GpuStateVectorSimulator {
     pub fn new_qml_optimized() -> QuantRS2Result<Self> {
         Ok(Self {
             backend: None,
-            gpu_context: None,
             enable_profiling: true,
         })
     }
@@ -111,118 +108,34 @@ impl SciRS2GpuStateVectorSimulator {
 
 impl Simulator for SciRS2GpuStateVectorSimulator {
     fn run<const N: usize>(&mut self, circuit: &Circuit<N>) -> Result<SimulatorResult<N>> {
-        // GPU backend not available in beta.3, use CPU fallback
-        let cpu_sim = crate::statevector::StateVectorSimulator::new();
-        let cpu_result = cpu_sim
-            .run(circuit)
+        // Acquire the best real backend exposed by quantrs2_core. The factory
+        // selects CUDA/Metal/OpenCL when one is genuinely functional and otherwise
+        // returns the core CPU backend. Both paths execute the gates for real;
+        // none of them fabricates a result that claims hardware ran when it did not.
+        let backend = GpuBackendFactory::create_best_available()
             .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
-        return Ok(SimulatorResult {
-            amplitudes: cpu_result.amplitudes().to_vec(),
-            num_qubits: N,
-        });
 
-        // Original GPU implementation (disabled in beta.3):
-        #[allow(unreachable_code)]
-        let backend = self
-            .backend
-            .as_ref()
-            .ok_or(SimulatorError::GPUNotAvailable)?;
-        let mut state_vector = match backend.allocate_state_vector(N) {
-            Ok(buffer) => buffer,
-            Err(e) => {
-                // Fallback to CPU simulation for small circuits or on error
-                if N < 4 {
-                    let cpu_sim = crate::statevector::StateVectorSimulator::new();
-                    let result = quantrs2_circuit::builder::Simulator::<N>::run(&cpu_sim, circuit)
-                        .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
-                    return Ok(SimulatorResult {
-                        amplitudes: result.amplitudes().to_vec(),
-                        num_qubits: N,
-                    });
-                } else {
-                    return Err(SimulatorError::BackendError(format!(
-                        "Failed to allocate GPU state vector: {}",
-                        e
-                    )));
-                }
-            }
-        };
+        let state_size = 1usize << N;
+        let mut state_vector = backend
+            .allocate_state_vector(N)
+            .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
 
-        // Initialize to |0...0⟩ state
-        let state_size = 1 << N;
+        // Initialize to |0...0⟩.
         let mut initial_state = vec![Complex64::new(0.0, 0.0); state_size];
         initial_state[0] = Complex64::new(1.0, 0.0);
-
         state_vector
             .upload(&initial_state)
             .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
 
-        // Apply gates using SciRS2 GPU kernel
-        let kernel = backend.kernel();
-
+        // Apply every gate through the backend's real kernel dispatch.
         for gate in circuit.gates() {
             let qubits = gate.qubits();
-
-            match qubits.len() {
-                1 => {
-                    // Single-qubit gate
-                    let matrix = gate
-                        .matrix()
-                        .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
-                    if matrix.len() < 4 {
-                        return Err(SimulatorError::BackendError(
-                            "Invalid single-qubit gate matrix size".to_string(),
-                        ));
-                    }
-                    let gate_matrix = [matrix[0], matrix[1], matrix[2], matrix[3]];
-
-                    kernel
-                        .apply_single_qubit_gate(state_vector.as_mut(), &gate_matrix, qubits[0], N)
-                        .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
-                }
-                2 => {
-                    // Two-qubit gate
-                    let matrix = gate
-                        .matrix()
-                        .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
-                    if matrix.len() < 16 {
-                        return Err(SimulatorError::BackendError(
-                            "Invalid two-qubit gate matrix size".to_string(),
-                        ));
-                    }
-                    let mut gate_matrix = [Complex64::new(0.0, 0.0); 16];
-                    for (i, &val) in matrix.iter().take(16).enumerate() {
-                        gate_matrix[i] = val;
-                    }
-
-                    kernel
-                        .apply_two_qubit_gate(
-                            state_vector.as_mut(),
-                            &gate_matrix,
-                            qubits[0],
-                            qubits[1],
-                            N,
-                        )
-                        .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
-                }
-                _ => {
-                    // Multi-qubit gate
-                    let matrix = gate
-                        .matrix()
-                        .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
-                    let size = 1 << qubits.len();
-                    let matrix_array =
-                        scirs2_core::ndarray::Array2::from_shape_vec((size, size), matrix)
-                            .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
-
-                    kernel
-                        .apply_multi_qubit_gate(state_vector.as_mut(), &matrix_array, &qubits, N)
-                        .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
-                }
-            }
+            backend
+                .apply_gate(state_vector.as_mut(), gate.as_ref(), &qubits, N)
+                .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
         }
 
-        // Retrieve final state vector
+        // Retrieve the final amplitudes from the backend buffer.
         let mut final_state = vec![Complex64::new(0.0, 0.0); state_size];
         state_vector
             .download(&mut final_state)
@@ -253,7 +166,6 @@ impl GpuStateVectorSimulator {
                 // Fallback simulator when GPU initialization fails
                 SciRS2GpuStateVectorSimulator {
                     backend: None,
-                    gpu_context: None,
                     enable_profiling: false,
                 }
             }

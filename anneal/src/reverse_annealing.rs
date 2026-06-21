@@ -119,6 +119,13 @@ pub struct ReverseAnnealingParams {
     pub reinitialize_fraction: f64,
     /// Local search radius (for targeted reverse annealing)
     pub local_search_radius: Option<usize>,
+    /// Base thermal temperature for the Metropolis acceptance criterion.
+    ///
+    /// The effective temperature governing spin flips is
+    /// `base_temperature + A(s)`, where `A(s)` is the schedule's transverse
+    /// field. This couples the acceptance to both thermal and quantum
+    /// fluctuations rather than to an arbitrary constant.
+    pub base_temperature: f64,
 }
 
 impl ReverseAnnealingParams {
@@ -133,6 +140,7 @@ impl ReverseAnnealingParams {
             seed: None,
             reinitialize_fraction: 0.0,
             local_search_radius: None,
+            base_temperature: 0.1,
         }
     }
 
@@ -147,6 +155,20 @@ impl ReverseAnnealingParams {
     #[must_use]
     pub const fn with_reinitialization(mut self, fraction: f64) -> Self {
         self.reinitialize_fraction = fraction.clamp(0.0, 1.0);
+        self
+    }
+
+    /// Set the base thermal temperature used for the Metropolis acceptance.
+    ///
+    /// During reverse annealing the *effective* fluctuation scale is the sum of
+    /// this base thermal temperature and the (Schedule-derived) transverse
+    /// field, so that flips are driven by both thermal and quantum
+    /// fluctuations. The value must be strictly positive.
+    #[must_use]
+    pub fn with_base_temperature(mut self, temperature: f64) -> Self {
+        if temperature.is_finite() && temperature > 0.0 {
+            self.base_temperature = temperature;
+        }
         self
     }
 }
@@ -202,7 +224,7 @@ impl ReverseAnnealingSimulator {
         for rep in 0..self.params.num_repetitions {
             // Initialize state
             let initial_state = self.params.initial_state.clone();
-            let mut state = self.prepare_initial_state(&initial_state);
+            let mut state = self.prepare_initial_state(model, &initial_state);
 
             // Run reverse annealing
             let solution = self.run_reverse_annealing(model, &mut state)?;
@@ -235,7 +257,7 @@ impl ReverseAnnealingSimulator {
     }
 
     /// Prepare initial state with optional reinitialization
-    fn prepare_initial_state(&mut self, base_state: &[i8]) -> Vec<i8> {
+    fn prepare_initial_state(&mut self, model: &IsingModel, base_state: &[i8]) -> Vec<i8> {
         let mut state = base_state.to_vec();
 
         // Apply partial reinitialization
@@ -249,7 +271,7 @@ impl ReverseAnnealingSimulator {
 
         // Build and store the local-search update mask if a radius is specified.
         if let Some(radius) = self.params.local_search_radius {
-            self.update_mask = Some(self.build_local_search_mask(state.len(), radius));
+            self.update_mask = Some(self.build_local_search_mask(model, &state, radius));
         } else {
             self.update_mask = None;
         }
@@ -259,27 +281,78 @@ impl ReverseAnnealingSimulator {
 
     /// Build the local-search update mask for targeted reverse annealing.
     ///
-    /// In targeted reverse annealing only spins within `radius` of a set of
+    /// In targeted reverse annealing only spins in the neighbourhood of a set of
     /// "active" centers are allowed to change (hardware realizes this via
-    /// anneal-offsets). We choose ~10% of the qubits as centers and mark every
-    /// qubit within `radius` index-distance of a center as updatable; all other
-    /// qubits are frozen. The returned mask is consumed by
-    /// [`run_reverse_annealing`], so the restriction genuinely affects the
-    /// Monte-Carlo update selection (it is not discarded).
-    fn build_local_search_mask(&mut self, num_qubits: usize, radius: usize) -> Vec<bool> {
+    /// anneal-offsets). Rather than choosing centers at random, the centers are
+    /// the *most frustrated* spins of the incoming state: those whose local
+    /// energy contribution
+    /// `e_i = s_i (h_i + Σ_j J_ij s_j)`
+    /// is largest (most positive), i.e. the spins that most want to flip given
+    /// the current configuration. Starting from each center we mark every spin
+    /// reachable within `radius` hops *along the coupling graph* (a breadth-first
+    /// expansion), which is the problem-structure analogue of "within `radius`
+    /// of the center". All other spins are frozen at their initial value. The
+    /// returned mask is consumed by [`run_reverse_annealing`], so the
+    /// restriction genuinely affects the Monte-Carlo update selection.
+    fn build_local_search_mask(
+        &self,
+        model: &IsingModel,
+        state: &[i8],
+        radius: usize,
+    ) -> Vec<bool> {
+        let num_qubits = model.num_qubits;
         if num_qubits == 0 {
             return Vec::new();
         }
 
-        let num_centers = ((num_qubits as f64 * 0.1).round() as usize).max(1);
-        let mut can_update = vec![false; num_qubits];
+        // Build the adjacency list once from the (sparse) coupling list.
+        let mut adjacency: Vec<Vec<usize>> = vec![Vec::new(); num_qubits];
+        for coupling in model.couplings() {
+            if coupling.i < num_qubits && coupling.j < num_qubits {
+                adjacency[coupling.i].push(coupling.j);
+                adjacency[coupling.j].push(coupling.i);
+            }
+        }
 
-        for _ in 0..num_centers {
-            let center = self.rng.random_range(0..num_qubits);
-            let lo = center.saturating_sub(radius);
-            let hi = (center + radius).min(num_qubits - 1);
-            for slot in can_update.iter_mut().take(hi + 1).skip(lo) {
-                *slot = true;
+        // Per-spin local energy contribution under the current state. A large
+        // positive value means the spin is frustrated and flipping it lowers the
+        // energy, so its neighbourhood is the most useful to relax.
+        let mut frustration: Vec<(usize, f64)> = Vec::with_capacity(num_qubits);
+        for i in 0..num_qubits {
+            let mut local_field = model.get_bias(i).unwrap_or(0.0);
+            for &j in &adjacency[i] {
+                if let Ok(coupling) = model.get_coupling(i, j) {
+                    local_field += coupling * f64::from(state[j]);
+                }
+            }
+            let energy_contribution = f64::from(state[i]) * local_field;
+            frustration.push((i, energy_contribution));
+        }
+
+        // Sort by descending frustration; pick the most frustrated spins as the
+        // seeds. The seed count scales with the problem size but is at least one.
+        frustration.sort_by(|a, b| b.1.total_cmp(&a.1));
+        let num_centers = ((num_qubits as f64 * 0.1).ceil() as usize).clamp(1, num_qubits);
+
+        let mut can_update = vec![false; num_qubits];
+        for &(center, _) in frustration.iter().take(num_centers) {
+            // Breadth-first expansion to `radius` hops along the coupling graph.
+            let mut frontier = vec![center];
+            can_update[center] = true;
+            for _ in 0..radius {
+                let mut next_frontier = Vec::new();
+                for &node in &frontier {
+                    for &neighbor in &adjacency[node] {
+                        if !can_update[neighbor] {
+                            can_update[neighbor] = true;
+                            next_frontier.push(neighbor);
+                        }
+                    }
+                }
+                if next_frontier.is_empty() {
+                    break;
+                }
+                frontier = next_frontier;
             }
         }
 
@@ -335,15 +408,24 @@ impl ReverseAnnealingSimulator {
                     }
                 }
 
-                // Add transverse field term (simplified)
-                let quantum_term = transverse_field;
-
-                // Calculate energy difference for flip
+                // Energy difference for flipping spin i. With s_i -> -s_i the
+                // longitudinal contribution changes by -2 s_i (h_i + Σ_j J_ij
+                // s_j), so the energy change is +2 s_i * h_local.
                 let delta_e = 2.0 * f64::from(state[i]) * h_local;
 
-                // Metropolis acceptance with quantum fluctuations
-                let effective_temp = quantum_term.mul_add(0.5, 0.1); // Simplified
-                let accept_prob = (-delta_e / effective_temp).exp().min(1.0);
+                // Mean-field reverse-annealing acceptance. The effective
+                // fluctuation scale is the base thermal temperature plus the
+                // schedule's transverse field A(s): early in the reversal A(s)
+                // is large (many flips, broad exploration) and it shrinks back
+                // to the thermal floor as the system re-anneals towards s=1.
+                // This ties the dynamics to the real schedule rather than to a
+                // hand-tuned constant.
+                let effective_temp = self.params.base_temperature + transverse_field;
+                let accept_prob = if delta_e <= 0.0 {
+                    1.0
+                } else {
+                    (-delta_e / effective_temp).exp()
+                };
 
                 if self.rng.random_bool(accept_prob) {
                     state[i] *= -1;

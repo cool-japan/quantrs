@@ -789,10 +789,16 @@ impl QuantumRestrictedBoltzmannMachine {
         // Sample using quantum annealing
         if let Ok(sample) = self.quantum_annealing_sample(&ising_model) {
             let sampling_time = start_time.elapsed();
+            // The annealing energy is the exact Ising energy of the returned
+            // sample under the sampling Hamiltonian. With a single annealing
+            // call the average over draws is just this value.
+            let annealing_energy = ising_model
+                .energy(&sample)
+                .map_err(|e| QbmError::SamplingError(e.to_string()))?;
             let stats = QuantumSamplingStats {
                 total_sampling_time: sampling_time,
                 sampling_calls: 1,
-                average_annealing_energy: 0.0, // Would compute from result
+                average_annealing_energy: annealing_energy,
                 success_rate: 1.0,
                 classical_fallback_rate: 0.0,
             };
@@ -805,12 +811,22 @@ impl QuantumRestrictedBoltzmannMachine {
 
             Ok((binary_sample, stats))
         } else {
-            // Fallback to classical sampling
+            // Fallback to classical sampling. No annealing took place, so the
+            // reported energy is the Ising energy of the classically-drawn
+            // configuration under the same Hamiltonian (binary 0/1 mapped to
+            // spins -1/+1) — a real quantity, not a fabricated zero.
             let sample = self.sample_binary_units(probabilities)?;
+            let spins: Vec<i8> = sample
+                .iter()
+                .map(|&v| if v > 0.5 { 1 } else { -1 })
+                .collect();
+            let annealing_energy = ising_model
+                .energy(&spins)
+                .map_err(|e| QbmError::SamplingError(e.to_string()))?;
             let stats = QuantumSamplingStats {
                 total_sampling_time: start_time.elapsed(),
                 sampling_calls: 1,
-                average_annealing_energy: 0.0,
+                average_annealing_energy: annealing_energy,
                 success_rate: 0.0,
                 classical_fallback_rate: 1.0,
             };

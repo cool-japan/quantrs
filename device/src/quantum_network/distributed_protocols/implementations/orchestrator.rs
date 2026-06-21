@@ -66,25 +66,26 @@ impl DistributedQuantumOrchestrator {
         &self,
         request: ExecutionRequest,
     ) -> Result<ComputationResult> {
-        // Partition the circuit
+        // Partition the circuit across the available nodes (this part is real).
         let nodes = self.nodes.read().expect("Nodes RwLock poisoned").clone();
         let partitions =
             self.circuit_partitioner
                 .partition_circuit(&request.circuit, &nodes, &self.config)?;
 
-        // Simplified - resource allocation and execution simplified
-        // Return dummy result for now
-        Ok(ComputationResult {
-            result_id: request.request_id,
-            node_id: NodeId("simplified".to_string()),
-            final_state: None,
-            fidelity: 1.0,
-            error_rate: 0.0,
-            metadata: HashMap::new(),
-            computation_id: request.request_id,
-            measurements: HashMap::new(),
-            execution_time: Duration::from_millis(0),
-        })
+        // Distributed execution requires allocating the partitions to live nodes,
+        // teleporting/entangling shared qubits between them, executing each
+        // partition on its node and aggregating the measurement results. None of
+        // that is implemented yet. Returning a fabricated `fidelity: 1.0,
+        // error_rate: 0.0` result would falsely report a perfect distributed run
+        // that never happened, so we return an honest error instead.
+        let _ = &partitions;
+        Err(DistributedComputationError::ResourceAllocation(format!(
+            "Circuit for request {:?} was partitioned into {} sub-circuit(s), but distributed \
+             allocation, cross-node entanglement and result aggregation are not implemented; \
+             refusing to return a fabricated computation result",
+            request.request_id,
+            partitions.len()
+        )))
     }
 
     async fn execute_partitions_parallel(

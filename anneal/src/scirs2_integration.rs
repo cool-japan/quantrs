@@ -279,6 +279,13 @@ impl SciRS2QuboModel {
         linear_mem + sparse_mem
     }
 
+    /// Iterate over the stored (non-zero) quadratic entries as
+    /// `(row, col, value)` triples. The matrix is stored symmetrically, so each
+    /// off-diagonal pair appears twice (once as `(i, j)` and once as `(j, i)`).
+    pub fn iter_quadratic(&self) -> impl Iterator<Item = (usize, usize, f64)> + '_ {
+        self.iter_nonzeros()
+    }
+
     /// Helper to iterate over non-zero elements in COO format
     fn iter_nonzeros(&self) -> impl Iterator<Item = (usize, usize, f64)> + '_ {
         let indices = self.quadratic_matrix.get_indices();

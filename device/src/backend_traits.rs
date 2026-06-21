@@ -3,6 +3,7 @@
 //! This module provides shared functionality for working with different
 //! quantum hardware backends and their gate sets.
 
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -480,26 +481,314 @@ impl DecompositionValidator {
         Self { tolerance }
     }
 
-    /// Validate that a decomposition is equivalent to original gate
+    /// Validate that a decomposition is equivalent to original gate.
+    ///
+    /// Reconstructs the product unitary of the decomposed native gates and
+    /// compares it to the original gate's matrix (up to a global phase). Returns
+    /// `true` iff the two unitaries agree within `self.tolerance`.
     pub fn validate(
         &self,
         original: &dyn GateOp,
         decomposed: &[DecomposedGate],
     ) -> QuantRS2Result<bool> {
-        // Would implement matrix multiplication and comparison
-        // For now, return true
-        Ok(true)
+        let fidelity = self.calculate_fidelity(original, decomposed)?;
+        Ok((1.0 - fidelity).abs() <= self.tolerance)
     }
 
-    /// Calculate fidelity between original and decomposed
+    /// Calculate the (global-phase-invariant) gate fidelity between the original
+    /// gate and the product of its decomposition.
+    ///
+    /// For a `d`-dimensional Hilbert space the average-gate-fidelity-equivalent
+    /// quantity used here is `|Tr(U_orig† · U_decomp)|² / d²`, which equals 1
+    /// exactly when the two unitaries are identical up to a global phase.
+    ///
+    /// Returns an honest [`QuantRS2Error::UnsupportedOperation`] when the
+    /// decomposition uses a native gate this validator cannot reconstruct a
+    /// matrix for (rather than fabricating a high fidelity).
     pub fn calculate_fidelity(
         &self,
         original: &dyn GateOp,
         decomposed: &[DecomposedGate],
     ) -> QuantRS2Result<f64> {
-        // Would implement proper fidelity calculation
-        // For now, return high fidelity
-        Ok(0.999)
+        let original_qubits = original.qubits();
+        let num_qubits = original_qubits.len();
+        if num_qubits == 0 {
+            return Err(QuantRS2Error::InvalidInput(
+                "Original gate acts on zero qubits".to_string(),
+            ));
+        }
+        // Build a canonical ordering of the qubits the decomposition acts on.
+        let mut qubit_order: Vec<QubitId> = original_qubits.clone();
+        for gate in decomposed {
+            for q in &gate.qubits {
+                if !qubit_order.contains(q) {
+                    qubit_order.push(*q);
+                }
+            }
+        }
+        let dim = 1usize << qubit_order.len();
+
+        // Original unitary embedded into the (possibly larger) qubit space.
+        let original_matrix = flat_to_square(&original.matrix()?)?;
+        let original_embedded = embed_unitary(&original_matrix, &original_qubits, &qubit_order)?;
+        // Start from identity and left-multiply the decomposed gates in order.
+        let mut product = identity_matrix(dim);
+        for gate in decomposed {
+            let gate_matrix = native_gate_matrix(&gate.native_gate, &gate.parameters)?;
+            let embedded = embed_unitary(&gate_matrix, &gate.qubits, &qubit_order)?;
+            product = matmul(&embedded, &product);
+        }
+        if original_embedded.len() != product.len() {
+            return Err(QuantRS2Error::InvalidInput(
+                "Dimension mismatch between original and decomposed unitaries".to_string(),
+            ));
+        }
+
+        // Fidelity = |Tr(U_orig† U_decomp)|² / d².
+        let mut trace = Complex64::new(0.0, 0.0);
+        for row in 0..dim {
+            for col in 0..dim {
+                // (U_orig†)[row][col] = conj(U_orig[col][row]).
+                trace += original_embedded[col * dim + row].conj() * product[row * dim + col];
+            }
+        }
+        let d = dim as f64;
+        let fidelity = trace.norm_sqr() / (d * d);
+        // Numerical guard: clamp into [0, 1].
+        Ok(fidelity.clamp(0.0, 1.0))
+    }
+}
+
+/// Convert a row-major flat unitary into a square `Vec<Complex64>` of the same
+/// row-major layout, validating that the length is a perfect square.
+fn flat_to_square(flat: &[Complex64]) -> QuantRS2Result<Vec<Complex64>> {
+    let dim = (flat.len() as f64).sqrt().round() as usize;
+    if dim * dim != flat.len() {
+        return Err(QuantRS2Error::InvalidInput(format!(
+            "Gate matrix length {} is not a perfect square",
+            flat.len()
+        )));
+    }
+    Ok(flat.to_vec())
+}
+
+/// Identity matrix of dimension `dim` in row-major layout.
+fn identity_matrix(dim: usize) -> Vec<Complex64> {
+    let mut m = vec![Complex64::new(0.0, 0.0); dim * dim];
+    for i in 0..dim {
+        m[i * dim + i] = Complex64::new(1.0, 0.0);
+    }
+    m
+}
+
+/// Row-major dense matrix multiply `a · b` (both `dim×dim`).
+fn matmul(a: &[Complex64], b: &[Complex64]) -> Vec<Complex64> {
+    let dim = (a.len() as f64).sqrt().round() as usize;
+    let mut out = vec![Complex64::new(0.0, 0.0); dim * dim];
+    for row in 0..dim {
+        for k in 0..dim {
+            let a_rk = a[row * dim + k];
+            if a_rk == Complex64::new(0.0, 0.0) {
+                continue;
+            }
+            for col in 0..dim {
+                out[row * dim + col] += a_rk * b[k * dim + col];
+            }
+        }
+    }
+    out
+}
+
+/// Embed a unitary acting on `gate_qubits` into the full Hilbert space spanned
+/// by `qubit_order`, using the framework's little-endian convention (qubit at
+/// position `p` in `qubit_order` is bit `p` of the basis index).
+fn embed_unitary(
+    gate_matrix: &[Complex64],
+    gate_qubits: &[QubitId],
+    qubit_order: &[QubitId],
+) -> QuantRS2Result<Vec<Complex64>> {
+    let total = qubit_order.len();
+    let full_dim = 1usize << total;
+    let sub = gate_qubits.len();
+    let sub_dim = 1usize << sub;
+    if gate_matrix.len() != sub_dim * sub_dim {
+        return Err(QuantRS2Error::InvalidInput(format!(
+            "Gate on {} qubits has matrix of length {} (expected {})",
+            sub,
+            gate_matrix.len(),
+            sub_dim * sub_dim
+        )));
+    }
+    // Map each gate qubit to its bit position in the full index.
+    let mut positions = Vec::with_capacity(sub);
+    for q in gate_qubits {
+        let pos = qubit_order.iter().position(|p| p == q).ok_or_else(|| {
+            QuantRS2Error::InvalidInput("Gate qubit not in qubit ordering".to_string())
+        })?;
+        positions.push(pos);
+    }
+
+    let mut out = vec![Complex64::new(0.0, 0.0); full_dim * full_dim];
+    for full_col in 0..full_dim {
+        // Decode the sub-index of the columns spanned by the gate qubits.
+        let mut sub_col = 0usize;
+        for (i, &pos) in positions.iter().enumerate() {
+            if full_col & (1usize << pos) != 0 {
+                sub_col |= 1usize << i;
+            }
+        }
+        // The "rest" bits (qubits the gate does not touch) must be preserved.
+        for sub_row in 0..sub_dim {
+            let amp = gate_matrix[sub_row * sub_dim + sub_col];
+            if amp == Complex64::new(0.0, 0.0) {
+                continue;
+            }
+            // Build the full row index: copy untouched bits from full_col, set
+            // gate-qubit bits from sub_row.
+            let mut full_row = full_col;
+            for (i, &pos) in positions.iter().enumerate() {
+                let bit = 1usize << pos;
+                if sub_row & (1usize << i) != 0 {
+                    full_row |= bit;
+                } else {
+                    full_row &= !bit;
+                }
+            }
+            out[full_row * full_dim + full_col] = amp;
+        }
+    }
+    Ok(out)
+}
+
+/// Reconstruct the 2x2 / 4x4 unitary of a native gate from its name and
+/// parameters. Returns an honest error for names this function does not yet
+/// know, so callers never silently assume a fabricated identity.
+fn native_gate_matrix(name: &str, params: &[f64]) -> QuantRS2Result<Vec<Complex64>> {
+    let frac = std::f64::consts::FRAC_1_SQRT_2;
+    let c = Complex64::new;
+    let upper = name.to_ascii_uppercase();
+    let param = |i: usize| -> QuantRS2Result<f64> {
+        params.get(i).copied().ok_or_else(|| {
+            QuantRS2Error::InvalidInput(format!(
+                "Native gate {upper} requires parameter index {i} but only {} provided",
+                params.len()
+            ))
+        })
+    };
+    match upper.as_str() {
+        "I" | "ID" => Ok(vec![c(1.0, 0.0), c(0.0, 0.0), c(0.0, 0.0), c(1.0, 0.0)]),
+        "X" | "NOT" => Ok(vec![c(0.0, 0.0), c(1.0, 0.0), c(1.0, 0.0), c(0.0, 0.0)]),
+        "Y" => Ok(vec![c(0.0, 0.0), c(0.0, -1.0), c(0.0, 1.0), c(0.0, 0.0)]),
+        "Z" => Ok(vec![c(1.0, 0.0), c(0.0, 0.0), c(0.0, 0.0), c(-1.0, 0.0)]),
+        "H" => Ok(vec![
+            c(frac, 0.0),
+            c(frac, 0.0),
+            c(frac, 0.0),
+            c(-frac, 0.0),
+        ]),
+        "S" => Ok(vec![c(1.0, 0.0), c(0.0, 0.0), c(0.0, 0.0), c(0.0, 1.0)]),
+        "SDG" | "SDAGGER" => Ok(vec![c(1.0, 0.0), c(0.0, 0.0), c(0.0, 0.0), c(0.0, -1.0)]),
+        "T" => Ok(vec![
+            c(1.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            Complex64::from_polar(1.0, std::f64::consts::FRAC_PI_4),
+        ]),
+        "TDG" | "TDAGGER" => Ok(vec![
+            c(1.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            Complex64::from_polar(1.0, -std::f64::consts::FRAC_PI_4),
+        ]),
+        "SX" => {
+            // sqrt(X) = 1/2 [[1+i, 1-i],[1-i, 1+i]].
+            let half = Complex64::new(0.5, 0.5);
+            let half_conj = Complex64::new(0.5, -0.5);
+            Ok(vec![half, half_conj, half_conj, half])
+        }
+        "RX" => {
+            let theta = param(0)?;
+            let cos = (theta / 2.0).cos();
+            let sin = (theta / 2.0).sin();
+            Ok(vec![c(cos, 0.0), c(0.0, -sin), c(0.0, -sin), c(cos, 0.0)])
+        }
+        "RY" => {
+            let theta = param(0)?;
+            let cos = (theta / 2.0).cos();
+            let sin = (theta / 2.0).sin();
+            Ok(vec![c(cos, 0.0), c(-sin, 0.0), c(sin, 0.0), c(cos, 0.0)])
+        }
+        "RZ" => {
+            let theta = param(0)?;
+            Ok(vec![
+                Complex64::from_polar(1.0, -theta / 2.0),
+                c(0.0, 0.0),
+                c(0.0, 0.0),
+                Complex64::from_polar(1.0, theta / 2.0),
+            ])
+        }
+        "P" | "PHASE" | "U1" => {
+            let lambda = param(0)?;
+            Ok(vec![
+                c(1.0, 0.0),
+                c(0.0, 0.0),
+                c(0.0, 0.0),
+                Complex64::from_polar(1.0, lambda),
+            ])
+        }
+        "U" | "U3" => {
+            let theta = param(0)?;
+            let phi = param(1)?;
+            let lambda = param(2)?;
+            let cos = (theta / 2.0).cos();
+            let sin = (theta / 2.0).sin();
+            Ok(vec![
+                c(cos, 0.0),
+                -Complex64::from_polar(sin, lambda),
+                Complex64::from_polar(sin, phi),
+                Complex64::from_polar(cos, phi + lambda),
+            ])
+        }
+        "CNOT" | "CX" => Ok(vec![
+            c(1.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(1.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(1.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(1.0, 0.0),
+            c(0.0, 0.0),
+        ]),
+        "CZ" => Ok(vec![
+            c(1.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(1.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(1.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(0.0, 0.0),
+            c(-1.0, 0.0),
+        ]),
+        other => Err(QuantRS2Error::UnsupportedOperation(format!(
+            "DecompositionValidator cannot reconstruct a matrix for native gate '{other}': \
+             add it to native_gate_matrix to validate decompositions that use it"
+        ))),
     }
 }
 

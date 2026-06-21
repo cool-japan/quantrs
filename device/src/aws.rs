@@ -464,19 +464,18 @@ impl AWSBraketClient {
             )));
         }
 
-        // In a real implementation, this would fetch the result from S3
-        // For now, this is a placeholder
-        // The actual S3 fetching would use the aws-sdk-s3 crate
-
-        let dummy_result = AWSTaskResult {
-            measurements: HashMap::new(),
-            measurement_probabilities: HashMap::new(),
-            shots: 0,
-            task_metadata: HashMap::new(),
-            additional_metadata: HashMap::new(),
-        };
-
-        Ok(dummy_result)
+        // The task is complete, but its measurement results live in the
+        // customer's S3 result bucket. Fetching them requires authenticated
+        // S3 access (the `aws-sdk-s3` client and the caller's credentials),
+        // which this connector does not have. Returning fabricated empty
+        // measurement counts here would silently feed fake data into any
+        // downstream analysis, so we return an honest error instead.
+        Err(DeviceError::UnsupportedOperation(format!(
+            "Task {task_arn} is completed, but retrieving its results requires authenticated \
+             S3 access to the Braket result bucket (not implemented in this connector). \
+             Fetch the result object from the task's `outputS3Bucket`/`outputS3Directory` \
+             using the AWS S3 SDK."
+        )))
     }
 
     /// Wait for a task to complete with timeout
