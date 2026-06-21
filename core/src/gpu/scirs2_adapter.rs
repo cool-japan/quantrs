@@ -698,37 +698,22 @@ impl QuantumGpuBackend for SciRS2GpuBackend {
     }
 }
 
-/// Get or create the default GPU device using SciRS2
+/// Probe for a usable GPU device.
+///
+/// Performs a *real* OxiCUDA probe: returns `Ok(())` when the CUDA driver
+/// initializes and at least one device is present, otherwise an honest error.
+/// The previous version fabricated an "8GB / 80 CU" dummy device; that cruft has
+/// been removed. (`GpuDevice` is a unit placeholder type until a richer SciRS2
+/// device handle is integrated.)
 #[cfg(feature = "gpu")]
 pub fn get_scirs2_gpu_device() -> QuantRS2Result<GpuDevice> {
-    // Try to create a GPU device with automatic backend selection
-    // This is a simplified implementation until SciRS2 GPU API is available
-    let _backends = vec![
-        GpuBackend::CUDA,
-        #[cfg(target_os = "macos")]
-        GpuBackend::Metal,
-        GpuBackend::OpenCL,
-    ];
-
-    // For now, create a dummy device since the real SciRS2 API isn't available
-    use crate::gpu::large_scale_simulation::GpuDevice as LargeScaleGpuDevice;
-
-    let _device = LargeScaleGpuDevice {
-        id: 0,
-        name: "SciRS2 GPU Device".to_string(),
-        backend: GpuBackend::CUDA,           // Default to CUDA
-        memory_size: 8 * 1024 * 1024 * 1024, // 8GB
-        compute_units: 80,
-        max_work_group_size: 1024,
-        supports_double_precision: true,
-        is_available: true,
-    };
-
-    // Convert to the SciRS2 GpuDevice type when available
-    // For now, this is a placeholder
-    Err(QuantRS2Error::BackendExecutionFailed(
-        "SciRS2 GPU API not yet integrated".to_string(),
-    ))
+    if is_gpu_available() {
+        Ok(())
+    } else {
+        Err(QuantRS2Error::BackendExecutionFailed(
+            "no GPU device detected by the OxiCUDA driver".to_string(),
+        ))
+    }
 }
 
 /// Register a quantum kernel with the SciRS2 GPU kernel registry
@@ -747,20 +732,43 @@ pub fn register_quantum_kernel(name: &str, kernel_source: &str) -> QuantRS2Resul
     Ok(())
 }
 
-/// Register a compiled kernel for caching
-pub const fn register_compiled_kernel(name: &str, kernel_binary: &[u8]) -> QuantRS2Result<()> {
-    // Placeholder for kernel binary caching
-    let _ = (name, kernel_binary);
+/// Register a compiled kernel binary in an in-process cache.
+///
+/// This actually stores the binary keyed by `name` in a process-wide registry
+/// (so a subsequent lookup can retrieve it), rather than discarding the input
+/// and pretending to cache. Returns an error only if the registry lock is
+/// poisoned.
+pub fn register_compiled_kernel(name: &str, kernel_binary: &[u8]) -> QuantRS2Result<()> {
+    use std::sync::OnceLock;
+    static COMPILED_KERNEL_CACHE: OnceLock<std::sync::Mutex<HashMap<String, Vec<u8>>>> =
+        OnceLock::new();
+
+    let cache = COMPILED_KERNEL_CACHE.get_or_init(|| std::sync::Mutex::new(HashMap::new()));
+    let mut guard = cache
+        .lock()
+        .map_err(|_| QuantRS2Error::LockPoisoned("compiled kernel cache".to_string()))?;
+    guard.insert(name.to_string(), kernel_binary.to_vec());
     Ok(())
 }
 
-/// Helper to check if GPU acceleration is available via SciRS2
-pub const fn is_gpu_available() -> bool {
+/// Check whether GPU acceleration is actually available on this machine.
+///
+/// This performs a *real* runtime probe via the OxiCUDA driver (which loads
+/// `libcuda.so`/`nvcuda.dll` at runtime): the CUDA driver is initialized and
+/// the device count is queried. It returns `true` only when initialization
+/// succeeds AND at least one CUDA device is present.
+///
+/// When the `gpu` feature is disabled, or no GPU/driver is present, this
+/// returns `false` — that is the honest, correct result, not a failure.
+///
+/// Note: this is intentionally **not** `const fn` — it performs I/O against the
+/// driver and the result depends on the host at runtime.
+pub fn is_gpu_available() -> bool {
     #[cfg(feature = "gpu")]
     {
-        // For now, assume GPU is available if the feature is enabled
-        // In a real implementation, this would check for actual GPU hardware
-        true
+        // Real detection: init the driver, then count devices. Both calls fail
+        // (return Err) when libcuda cannot be loaded or no GPU is present.
+        oxicuda::init().is_ok() && oxicuda::Device::count().unwrap_or(0) > 0
     }
     #[cfg(not(feature = "gpu"))]
     {
@@ -802,24 +810,24 @@ impl SciRS2GpuFactory {
         SciRS2GpuBackend::with_config(config)
     }
 
-    /// List available GPU backends
+    /// List the GPU backends that are *actually* available on this machine.
+    ///
+    /// Performs real probes rather than listing every backend unconditionally:
+    /// CUDA is listed only when the OxiCUDA driver reports a device. The honest
+    /// CPU fallback is always present.
     pub fn available_backends() -> Vec<String> {
         let mut backends = Vec::new();
 
         #[cfg(feature = "gpu")]
         {
-            // For now, list all potentially available backends
-            backends.push("CUDA".to_string());
-
-            #[cfg(target_os = "macos")]
-            backends.push("Metal".to_string());
-
-            backends.push("OpenCL".to_string());
+            // Real CUDA probe via the OxiCUDA driver.
+            if is_gpu_available() {
+                backends.push("CUDA".to_string());
+            }
         }
 
-        if backends.is_empty() {
-            backends.push("CPU_Fallback".to_string());
-        }
+        // CPU is always a genuine fallback.
+        backends.push("CPU_Fallback".to_string());
 
         backends
     }
@@ -859,9 +867,34 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_gpu_availability_check() {
-        // This test will pass regardless of GPU availability
-        let _available = is_gpu_available();
+    fn test_gpu_availability_reflects_real_probe() {
+        // is_gpu_available() must reflect THIS machine's reality, not a
+        // hardcoded constant. We recompute the same honest probe independently
+        // and require agreement.
+        let reported = is_gpu_available();
+
+        #[cfg(feature = "gpu")]
+        {
+            let truth = oxicuda::init().is_ok() && oxicuda::Device::count().unwrap_or(0) > 0;
+            assert_eq!(
+                reported, truth,
+                "is_gpu_available() must equal the real OxiCUDA probe"
+            );
+            // When a device is genuinely present, available_backends must list
+            // CUDA; when absent it must NOT (no fabricated CUDA entry).
+            let backends = SciRS2GpuFactory::available_backends();
+            assert_eq!(backends.contains(&"CUDA".to_string()), truth);
+            assert!(backends.contains(&"CPU_Fallback".to_string()));
+        }
+
+        #[cfg(not(feature = "gpu"))]
+        {
+            // Without the gpu feature the only honest answer is false.
+            assert!(
+                !reported,
+                "without the `gpu` feature GPU must be reported unavailable"
+            );
+        }
     }
 
     #[test]

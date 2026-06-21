@@ -186,7 +186,18 @@ impl ShannonDecomposer {
         })
     }
 
-    /// Block diagonalize a 2x2 block matrix using SVD
+    /// Block-diagonalise a 2×2 block matrix `[[A,B],[C,D]]` for the Shannon recursion
+    /// `U = (I ⊗ V) · U_d · (I ⊗ W)` with `U_d` block diagonal.
+    ///
+    /// Correct, exact case: when the off-diagonal blocks already vanish
+    /// (`‖B‖, ‖C‖ ≈ 0`) the matrix is `diag(A, D)` and the factorisation is trivial
+    /// with `V = W = I` and `U_d = diag(A, D)`. This branch is exact and is preserved.
+    ///
+    /// General case: a faithful demultiplexing requires the full cosine-sine
+    /// decomposition together with uniformly-controlled-rotation synthesis, which this
+    /// recursion does not yet provide. Rather than silently returning identity factors
+    /// and the *unfactored* matrix (which would misrepresent the state — the former
+    /// behaviour), an honest [`QuantRS2Error::UnsupportedOperation`] is returned.
     fn block_diagonalize(
         &self,
         a: &Array2<Complex<f64>>,
@@ -200,14 +211,7 @@ impl ShannonDecomposer {
     )> {
         let size = a.shape()[0];
 
-        // For block diagonalization, we need to find V, W such that:
-        // [A B] = [I 0] [Λ₁ 0 ] [I 0]
-        // [C D]   [0 V] [0  Λ₂] [0 W]
-
-        // This is equivalent to finding the CS decomposition
-        // For now, use a simpler approach based on QR decomposition
-
-        // If B = 0 and C = 0, already block diagonal
+        // Already block diagonal: U = diag(A, D); exact trivial factorisation.
         let b_norm = b.iter().map(|z| z.norm_sqr()).sum::<f64>().sqrt();
         let c_norm = c.iter().map(|z| z.norm_sqr()).sum::<f64>().sqrt();
 
@@ -217,14 +221,13 @@ impl ShannonDecomposer {
             return Ok((identity.clone(), identity, combined));
         }
 
-        // Use SVD-based approach for general case
-        // This is a placeholder - full CS decomposition would be more efficient
-        let combined = self.combine_blocks(a, b, c, d);
-
-        // For simplicity, return identity matrices and the full unitary
-        // A proper implementation would compute the actual CS decomposition
-        let identity = Array2::eye(size);
-        Ok((identity.clone(), identity, combined))
+        // General (genuinely block-coupled) case is not yet supported here.
+        Err(QuantRS2Error::UnsupportedOperation(
+            "quantum Shannon block-diagonalization for matrices with non-zero off-diagonal \
+             blocks requires cosine-sine decomposition and is not yet implemented; \
+             use the multi-qubit KAK decomposer (CSD/block-diagonal paths) instead"
+                .to_string(),
+        ))
     }
 
     /// Combine 2x2 blocks into a single matrix
@@ -712,6 +715,95 @@ mod tests {
             "merged theta should be 0.8, got {}",
             rx.theta
         );
+    }
+
+    /// Site-4: the block-diagonal branch of `block_diagonalize` is exact — for
+    /// `U = diag(A, D)` it returns `V = W = I` and `U_d = diag(A, D)`, which recomposes
+    /// to the input.
+    #[test]
+    fn test_block_diagonalize_exact_block_diagonal() {
+        let decomposer = ShannonDecomposer::new();
+        // A and D are 2x2 unitaries; off-diagonal blocks are zero.
+        let a = Array2::from_shape_vec(
+            (2, 2),
+            vec![
+                Complex::new(0.0, 0.0),
+                Complex::new(1.0, 0.0),
+                Complex::new(1.0, 0.0),
+                Complex::new(0.0, 0.0),
+            ],
+        )
+        .expect("A");
+        let d = Array2::from_shape_vec(
+            (2, 2),
+            vec![
+                Complex::new(0.0, 0.0),
+                Complex::new(0.0, -1.0),
+                Complex::new(0.0, 1.0),
+                Complex::new(0.0, 0.0),
+            ],
+        )
+        .expect("D");
+        let zero = Array2::<Complex<f64>>::zeros((2, 2));
+
+        let (v, w, u_diag) = decomposer
+            .block_diagonalize(&a, &zero, &zero, &d)
+            .expect("block-diagonal case must succeed");
+
+        // V and W are identity.
+        let id = Array2::<Complex<f64>>::eye(2);
+        let v_err = v
+            .iter()
+            .zip(id.iter())
+            .map(|(x, y)| (x - y).norm_sqr())
+            .sum::<f64>()
+            .sqrt();
+        let w_err = w
+            .iter()
+            .zip(id.iter())
+            .map(|(x, y)| (x - y).norm_sqr())
+            .sum::<f64>()
+            .sqrt();
+        assert!(v_err < 1e-12 && w_err < 1e-12, "V, W should be identity");
+
+        // u_diag == diag(A, D), i.e. (I⊗V)·u_diag·(I⊗W) == original block matrix.
+        let original = decomposer.combine_blocks(&a, &zero, &zero, &d);
+        let err = u_diag
+            .iter()
+            .zip(original.iter())
+            .map(|(x, y)| (x - y).norm_sqr())
+            .sum::<f64>()
+            .sqrt();
+        assert!(err < 1e-12, "u_diag must equal diag(A, D), err {err}");
+    }
+
+    /// Site-4: the general (block-coupled) case returns an honest error instead of the
+    /// previous fabricated identity-factor / full-matrix result.
+    #[test]
+    fn test_block_diagonalize_general_honest_error() {
+        let decomposer = ShannonDecomposer::new();
+        let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
+        // A genuinely block-coupled unitary (a 4x4 rotation mixing the blocks): use the
+        // Hadamard-like structure so B and C are non-zero.
+        let a = Array2::from_shape_vec(
+            (2, 2),
+            vec![
+                Complex::new(inv_sqrt2, 0.0),
+                Complex::new(0.0, 0.0),
+                Complex::new(0.0, 0.0),
+                Complex::new(inv_sqrt2, 0.0),
+            ],
+        )
+        .expect("A");
+        let b = a.clone();
+        let c = a.clone();
+        let d = a.mapv(|z| -z);
+
+        let result = decomposer.block_diagonalize(&a, &b, &c, &d);
+        assert!(matches!(
+            result,
+            Err(QuantRS2Error::UnsupportedOperation(_))
+        ));
     }
 
     #[test]

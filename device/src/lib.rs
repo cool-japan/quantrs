@@ -156,7 +156,6 @@ pub mod noise_model;
 pub mod noise_modeling_scirs2;
 pub mod noise_scirs2_characterization;
 pub mod optimization;
-pub mod optimization_old;
 pub mod parametric;
 pub mod performance_analytics_dashboard;
 pub mod performance_dashboard;

@@ -649,21 +649,133 @@ impl CspProblem {
         Ok(())
     }
 
-    /// Add linear constraint
+    /// Add a linear constraint via the quadratic penalty method.
+    ///
+    /// A linear constraint `Σ aᵢ·xᵢ  ⋈  rhs` over **boolean (`Direct`)**
+    /// variables is enforced by adding the penalty `P·(Σ aᵢ·xᵢ − rhs)²` to the
+    /// QUBO, which is zero exactly when the constraint is satisfied and positive
+    /// otherwise. Because `xᵢ² = xᵢ` for binary variables, the square expands to
+    ///
+    /// ```text
+    /// P·[ Σ (aᵢ² − 2·rhs·aᵢ)·xᵢ + Σ_{i<j} 2·aᵢ·aⱼ·xᵢ·xⱼ + rhs² ]
+    /// ```
+    ///
+    /// Inequalities are reduced to an equality by introducing a non-negative
+    /// integer **slack** variable `s` (binary-encoded): `≤` becomes
+    /// `Σ aᵢxᵢ + s = rhs` and `≥` becomes `Σ aᵢxᵢ − s = rhs`, with `s` ranging
+    /// over `[0, slack_max]` where `slack_max` bounds the maximum possible
+    /// violation. Strict `<`/`>` are treated as `≤ rhs−1` / `≥ rhs+1`
+    /// (CSP linear constraints use integer coefficients). The constant `P·rhs²`
+    /// offset does not affect the optimizer's argmin and is therefore omitted.
+    ///
+    /// Returns [`CspError::UnsupportedConstraint`] if any referenced variable is
+    /// not boolean (one-hot / binary-encoded integer variables in linear
+    /// constraints are not yet supported).
     fn add_linear_constraint(
         &self,
-        _builder: &mut QuboBuilder,
-        _var_encoding: &HashMap<String, VariableEncoding>,
-        _terms: &[(String, f64)],
-        _comparison: &ComparisonOp,
-        _rhs: f64,
-        _info: &mut CspCompilationInfo,
+        builder: &mut QuboBuilder,
+        var_encoding: &HashMap<String, VariableEncoding>,
+        terms: &[(String, f64)],
+        comparison: &ComparisonOp,
+        rhs: f64,
+        info: &mut CspCompilationInfo,
     ) -> CspResult<()> {
-        // This would require implementing slack variables and penalty methods
-        // For now, return unsupported
-        Err(CspError::UnsupportedConstraint(
-            "Linear constraints not yet implemented".to_string(),
-        ))
+        // Collect (variable, coefficient) for boolean-encoded variables only.
+        let mut coeff_terms: Vec<(crate::qubo::Variable, f64)> = Vec::with_capacity(terms.len());
+        for (var_name, coeff) in terms {
+            match var_encoding.get(var_name) {
+                Some(VariableEncoding::Direct(var)) => {
+                    coeff_terms.push((var.clone(), *coeff));
+                }
+                Some(_) => {
+                    return Err(CspError::UnsupportedConstraint(format!(
+                        "Linear constraint on non-boolean variable '{var_name}' not supported"
+                    )));
+                }
+                None => {
+                    return Err(CspError::CompilationFailed(format!(
+                        "Unknown variable '{var_name}' in linear constraint"
+                    )));
+                }
+            }
+        }
+
+        // Normalize the comparison to an equality `Σ aᵢxᵢ (+/- s) = effective_rhs`.
+        let penalty = self.compilation_params.constraint_penalty;
+        let mut effective_rhs = rhs;
+
+        // Determine the slack contribution (sign and binary bound) for inequalities.
+        // `slack_sign` is +1 for `<=` (add slack) and -1 for `>=` (subtract slack).
+        let slack_sign = match comparison {
+            ComparisonOp::Equal => 0.0,
+            ComparisonOp::LessEqual => 1.0,
+            ComparisonOp::GreaterEqual => -1.0,
+            ComparisonOp::Less => {
+                effective_rhs = rhs - 1.0; // integer strict: x <= rhs - 1
+                1.0
+            }
+            ComparisonOp::Greater => {
+                effective_rhs = rhs + 1.0; // integer strict: x >= rhs + 1
+                -1.0
+            }
+        };
+
+        // Build the full coefficient list, appending slack bits if needed.
+        let num_real_terms = coeff_terms.len();
+        if slack_sign != 0.0 {
+            // Maximum value the linear form can take with all positive coeffs.
+            let max_positive: f64 = coeff_terms
+                .iter()
+                .filter(|(_, c)| *c > 0.0)
+                .map(|(_, c)| *c)
+                .sum();
+            let min_negative: f64 = coeff_terms
+                .iter()
+                .filter(|(_, c)| *c < 0.0)
+                .map(|(_, c)| c.abs())
+                .sum();
+            // Slack must cover the gap between the achievable range and the rhs.
+            let slack_max = (max_positive + min_negative + effective_rhs.abs()).max(0.0);
+            let slack_max_int = slack_max.ceil() as u64;
+
+            if slack_max_int > 0 {
+                let num_bits = (64 - slack_max_int.leading_zeros()) as usize;
+                for bit in 0..num_bits {
+                    let weight = f64::from(1u32 << bit.min(31));
+                    let slack_name = format!("__slack_{}_{bit}", self.constraints.len());
+                    let slack_var = builder
+                        .add_variable(slack_name)
+                        .map_err(|e| CspError::CompilationFailed(e.to_string()))?;
+                    coeff_terms.push((slack_var, slack_sign * weight));
+                }
+            }
+        }
+
+        // Apply the expanded penalty terms.
+        // Linear: P·(aᵢ² − 2·rhs·aᵢ)·xᵢ ; Quadratic: P·2·aᵢ·aⱼ·xᵢ·xⱼ.
+        for (var, a) in &coeff_terms {
+            let linear_coeff = penalty * a.mul_add(*a, -2.0 * effective_rhs * a);
+            builder
+                .add_bias(var.index, linear_coeff)
+                .map_err(|e| CspError::CompilationFailed(e.to_string()))?;
+        }
+
+        for i in 0..coeff_terms.len() {
+            for j in (i + 1)..coeff_terms.len() {
+                let (var_i, a_i) = &coeff_terms[i];
+                let (var_j, a_j) = &coeff_terms[j];
+                let quad_coeff = penalty * 2.0 * a_i * a_j;
+                if quad_coeff != 0.0 {
+                    builder
+                        .add_coupling(var_i.index, var_j.index, quad_coeff)
+                        .map_err(|e| CspError::CompilationFailed(e.to_string()))?;
+                }
+            }
+        }
+
+        let slack_bits = coeff_terms.len() - num_real_terms;
+        info.add_constraint_info("Linear".to_string(), slack_bits);
+        Ok(())
     }
 
     /// Add exactly-one constraint
@@ -736,19 +848,54 @@ impl CspProblem {
         Ok(())
     }
 
-    /// Add objective function
+    /// Add a CSP objective function to the QUBO.
+    ///
+    /// A **linear** objective `Σ cᵢ·xᵢ` over boolean variables is added directly
+    /// to the variable biases. Since QUBO solvers minimize, a maximization
+    /// objective is negated (`bias += −cᵢ`). The objective coefficients are
+    /// added *on top of* any constraint penalties (using `add_bias`, which
+    /// accumulates), so a feasible minimum-cost solution is recovered.
+    ///
+    /// A **custom** objective is an opaque closure that cannot be represented as
+    /// a quadratic form, so it returns [`CspError::UnsupportedConstraint`]
+    /// rather than silently ignoring it.
     fn add_objective_function(
         &self,
-        _builder: &mut QuboBuilder,
-        _var_encoding: &HashMap<String, VariableEncoding>,
-        _objective: &CspObjective,
+        builder: &mut QuboBuilder,
+        var_encoding: &HashMap<String, VariableEncoding>,
+        objective: &CspObjective,
         _info: &mut CspCompilationInfo,
     ) -> CspResult<()> {
-        // Implementation would depend on objective type and variable encodings
-        // For now, return unsupported
-        Err(CspError::UnsupportedConstraint(
-            "Objective functions not yet implemented".to_string(),
-        ))
+        match objective {
+            CspObjective::Linear { terms, minimize } => {
+                // Minimization adds +c; maximization adds -c.
+                let sign = if *minimize { 1.0 } else { -1.0 };
+                for (var_name, coeff) in terms {
+                    match var_encoding.get(var_name) {
+                        Some(VariableEncoding::Direct(var)) => {
+                            builder
+                                .add_bias(var.index, sign * coeff)
+                                .map_err(|e| CspError::CompilationFailed(e.to_string()))?;
+                        }
+                        Some(_) => {
+                            return Err(CspError::UnsupportedConstraint(format!(
+                                "Linear objective on non-boolean variable '{var_name}' not supported"
+                            )));
+                        }
+                        None => {
+                            return Err(CspError::CompilationFailed(format!(
+                                "Unknown variable '{var_name}' in objective"
+                            )));
+                        }
+                    }
+                }
+                Ok(())
+            }
+            CspObjective::Custom { .. } => Err(CspError::UnsupportedConstraint(
+                "Custom (closure) objectives cannot be compiled to QUBO; use a Linear objective"
+                    .to_string(),
+            )),
+        }
     }
 
     /// Get variables involved in a constraint
@@ -843,6 +990,13 @@ impl CspCompilationInfo {
             constraints_compiled: 0,
             variable_info: HashMap::new(),
         }
+    }
+
+    /// Record that one constraint of the given kind was compiled, optionally
+    /// accounting for `extra_qubo_vars` auxiliary variables (e.g. slack bits).
+    fn add_constraint_info(&mut self, _kind: String, extra_qubo_vars: usize) {
+        self.constraints_compiled += 1;
+        self.qubo_variables += extra_qubo_vars;
     }
 
     fn add_variable_info(&mut self, name: String, domain_size: usize) {

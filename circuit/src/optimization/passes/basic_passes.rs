@@ -9,6 +9,7 @@ use quantrs2_core::gate::{
     GateOp,
 };
 use quantrs2_core::qubit::QubitId;
+use scirs2_core::Complex64;
 use std::collections::HashSet;
 use std::f64::consts::PI;
 
@@ -23,6 +24,71 @@ impl GateCancellation {
     #[must_use]
     pub const fn new(aggressive: bool) -> Self {
         Self { aggressive }
+    }
+
+    /// Multiply two 2x2 matrices stored row-major as 4-element slices.
+    fn mul_2x2(a: &[Complex64; 4], b: &[Complex64; 4]) -> [Complex64; 4] {
+        [
+            a[0] * b[0] + a[1] * b[2],
+            a[0] * b[1] + a[1] * b[3],
+            a[2] * b[0] + a[3] * b[2],
+            a[2] * b[1] + a[3] * b[3],
+        ]
+    }
+
+    /// Extract a single-qubit gate's matrix as a fixed 2x2 array.
+    ///
+    /// Returns `None` if the gate cannot produce a 2x2 matrix (e.g. its matrix
+    /// computation fails or it is not a single-qubit gate), so callers fall back
+    /// to keeping the gates untouched.
+    fn single_qubit_matrix(gate: &dyn GateOp) -> Option<[Complex64; 4]> {
+        let data = gate.matrix().ok()?;
+        if data.len() != 4 {
+            return None;
+        }
+        Some([data[0], data[1], data[2], data[3]])
+    }
+
+    /// Check whether four single-qubit gates, applied in order
+    /// `g1` then `g2` then `g3` then `g4`, compose to the identity up to an
+    /// unobservable global phase.
+    ///
+    /// The combined unitary is `U = M4 · M3 · M2 · M1` (gates apply left-to-right
+    /// in circuit order, so later gates left-multiply). `U` equals identity up to
+    /// global phase iff it is diagonal with both diagonal entries equal and of
+    /// unit modulus. Removing such a block is always physically correct.
+    fn four_gate_block_is_identity(
+        g1: &dyn GateOp,
+        g2: &dyn GateOp,
+        g3: &dyn GateOp,
+        g4: &dyn GateOp,
+    ) -> bool {
+        let (Some(m1), Some(m2), Some(m3), Some(m4)) = (
+            Self::single_qubit_matrix(g1),
+            Self::single_qubit_matrix(g2),
+            Self::single_qubit_matrix(g3),
+            Self::single_qubit_matrix(g4),
+        ) else {
+            return false;
+        };
+
+        // Compose in application order: U = M4 * (M3 * (M2 * M1)).
+        let u = Self::mul_2x2(&m2, &m1);
+        let u = Self::mul_2x2(&m3, &u);
+        let u = Self::mul_2x2(&m4, &u);
+
+        const TOL: f64 = 1e-10;
+
+        // Off-diagonals must vanish.
+        if u[1].norm() > TOL || u[2].norm() > TOL {
+            return false;
+        }
+        // Diagonal entries must be equal (a single global phase) ...
+        if (u[0] - u[3]).norm() > TOL {
+            return false;
+        }
+        // ... and that phase must have unit modulus (genuinely a phase).
+        (u[0].norm() - 1.0).abs() <= TOL
     }
 }
 
@@ -101,28 +167,32 @@ impl OptimizationPass for GateCancellation {
                     }
                 }
 
-                // Look for more complex cancellations if aggressive mode is enabled
-                if self.aggressive && i + 2 < gates.len() {
-                    // Check for patterns like X-Y-X-Y or Z-H-Z-H
+                // Aggressive mode: cancel any block of four consecutive
+                // single-qubit gates on the *same* qubit whose combined unitary
+                // is the identity (up to an unobservable global phase). Unlike a
+                // name-pattern heuristic, this is verified by actually
+                // multiplying the gate matrices, so it can never remove gates
+                // that do not truly cancel.
+                if self.aggressive && i + 3 < gates.len() {
                     let gate3 = &gates[i + 2];
-                    if gate1.qubits() == gate3.qubits()
-                        && gate1.name() == gate3.name()
-                        && i + 3 < gates.len()
+                    let gate4 = &gates[i + 3];
+
+                    let same_single_qubit = gate1.qubits() == gate2.qubits()
+                        && gate2.qubits() == gate3.qubits()
+                        && gate3.qubits() == gate4.qubits()
+                        && gate1.qubits().len() == 1;
+
+                    if same_single_qubit
+                        && Self::four_gate_block_is_identity(
+                            gate1.as_ref(),
+                            gate2.as_ref(),
+                            gate3.as_ref(),
+                            gate4.as_ref(),
+                        )
                     {
-                        let gate4 = &gates[i + 3];
-                        if gate2.qubits() == gate4.qubits()
-                            && gate2.name() == gate4.name()
-                            && gate1.qubits() == gate2.qubits()
-                        {
-                            // Pattern detected, check if it simplifies
-                            match (gate1.name(), gate2.name()) {
-                                ("X", "Y") | ("Y", "X") | ("Z", "H") | ("H", "Z") => {
-                                    // These patterns can sometimes simplify
-                                    // For now, we'll keep them as they might not always cancel
-                                }
-                                _ => {}
-                            }
-                        }
+                        // The four gates compose to identity: drop all of them.
+                        i += 4;
+                        continue;
                     }
                 }
             }
@@ -524,5 +594,79 @@ impl OptimizationPass for RotationMerging {
         }
 
         Ok(optimized)
+    }
+}
+
+#[cfg(test)]
+mod basic_passes_tests {
+    use super::*;
+    use crate::optimization::cost_model::{AbstractCostModel, CostWeights};
+    use quantrs2_core::gate::single::{Hadamard, PauliX, PauliY, PauliZ};
+
+    fn cost() -> AbstractCostModel {
+        AbstractCostModel::new(CostWeights::default())
+    }
+
+    #[test]
+    fn test_aggressive_cancels_xyxy_block() {
+        // X-Y-X-Y on the same qubit composes to -I (identity up to global
+        // phase), so all four must be removed. Pairwise cancellation does NOT
+        // catch this (adjacent gates differ), exercising the matrix-based block
+        // check.
+        let pass = GateCancellation::new(true);
+        let gates: Vec<Box<dyn GateOp>> = vec![
+            Box::new(PauliX { target: QubitId(0) }),
+            Box::new(PauliY { target: QubitId(0) }),
+            Box::new(PauliX { target: QubitId(0) }),
+            Box::new(PauliY { target: QubitId(0) }),
+        ];
+
+        let result = pass
+            .apply_to_gates(gates, &cost())
+            .expect("cancellation pass must succeed");
+        assert!(
+            result.is_empty(),
+            "XYXY block should fully cancel, got {} gates",
+            result.len()
+        );
+    }
+
+    #[test]
+    fn test_aggressive_preserves_non_cancelling_block() {
+        // H-X-Y-Z does NOT compose to identity, so every gate must be kept.
+        let pass = GateCancellation::new(true);
+        let gates: Vec<Box<dyn GateOp>> = vec![
+            Box::new(Hadamard { target: QubitId(0) }),
+            Box::new(PauliX { target: QubitId(0) }),
+            Box::new(PauliY { target: QubitId(0) }),
+            Box::new(PauliZ { target: QubitId(0) }),
+        ];
+
+        let result = pass
+            .apply_to_gates(gates, &cost())
+            .expect("cancellation pass must succeed");
+        assert_eq!(
+            result.len(),
+            4,
+            "non-cancelling block must be preserved entirely"
+        );
+    }
+
+    #[test]
+    fn test_block_identity_check_direct() {
+        // Direct unit check of the matrix-based predicate.
+        let x = PauliX { target: QubitId(0) };
+        let y = PauliY { target: QubitId(0) };
+        let z = PauliZ { target: QubitId(0) };
+        let h = Hadamard { target: QubitId(0) };
+
+        // XYXY = -I (cancels).
+        assert!(GateCancellation::four_gate_block_is_identity(
+            &x, &y, &x, &y
+        ));
+        // HXYZ is not a global phase times identity.
+        assert!(!GateCancellation::four_gate_block_is_identity(
+            &h, &x, &y, &z
+        ));
     }
 }

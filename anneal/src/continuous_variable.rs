@@ -434,11 +434,13 @@ impl ContinuousVariableAnnealer {
         for iteration in 0..self.config.max_refinement_iterations {
             // Solve discretized problem
             let anneal_start = Instant::now();
-            let binary_solution = self.solve_discretized_problem(&current_problem)?;
+            let binary_solution = self.solve_discretized_problem(problem, &current_problem)?;
             let annealing_time = anneal_start.elapsed();
 
-            // Convert to continuous solution
-            let continuous_values = problem.binary_to_continuous_solution(&binary_solution)?;
+            // Convert to continuous solution using the same focus mapping the
+            // search used, so the reported values match the optimized window.
+            let continuous_values =
+                Self::decode_with_focus(problem, &current_problem, &binary_solution)?;
             let objective_value = problem.evaluate_penalized_objective(&continuous_values);
 
             // Check for improvement
@@ -517,44 +519,149 @@ impl ContinuousVariableAnnealer {
         })
     }
 
-    /// Create discretized QUBO problem
-    const fn create_discretized_problem(
+    /// Create the binary (discretized) representation of the continuous problem.
+    ///
+    /// The number of binary spins equals the sum of every variable's
+    /// `precision_bits`; the encoding itself is defined by the problem's
+    /// [`ContinuousOptimizationProblem::create_binary_mapping`]. Initially no
+    /// refinement focus is set, so the full bound box of each variable is
+    /// searched.
+    fn create_discretized_problem(
         &self,
-        _problem: &ContinuousOptimizationProblem,
+        problem: &ContinuousOptimizationProblem,
     ) -> ContinuousVariableResult<DiscretizedProblem> {
-        // This would create a QUBO representation of the continuous problem
-        // For now, return a placeholder
+        let num_variables = problem.total_binary_variables();
+        if num_variables == 0 {
+            return Err(ContinuousVariableError::DiscretizationError(
+                "Problem has no continuous variables to discretize".to_string(),
+            ));
+        }
         Ok(DiscretizedProblem {
-            num_variables: 0,
-            q_matrix: Vec::new(),
+            num_variables,
+            focus: HashMap::new(),
         })
     }
 
-    /// Solve discretized problem using annealing
-    fn solve_discretized_problem(
-        &mut self,
-        _problem: &DiscretizedProblem,
-    ) -> ContinuousVariableResult<Vec<i8>> {
-        // This would solve the QUBO using quantum annealing
-        // For now, return a random solution
-        let num_vars = 16; // Placeholder
-        let solution: Vec<i8> = (0..num_vars)
-            .map(|_| if self.rng.random_bool(0.5) { 1 } else { -1 })
-            .collect();
-
-        Ok(solution)
+    /// Decode a binary spin vector into continuous values, applying the
+    /// refinement `focus` window (if any) for each variable so the same encoding
+    /// is used during the search and when reading back the final solution.
+    fn decode_with_focus(
+        problem: &ContinuousOptimizationProblem,
+        discretized: &DiscretizedProblem,
+        bits: &[i8],
+    ) -> ContinuousVariableResult<HashMap<String, f64>> {
+        let mut values = problem.binary_to_continuous_solution(bits)?;
+        for (name, &(lo, hi)) in &discretized.focus {
+            if let (Some(value), Some(var)) =
+                (values.get(name).copied(), problem.variables.get(name))
+            {
+                let span = var.upper_bound - var.lower_bound;
+                if span > 0.0 {
+                    let t = (value - var.lower_bound) / span;
+                    values.insert(name.clone(), t.mul_add(hi - lo, lo));
+                }
+            }
+        }
+        Ok(values)
     }
 
-    /// Refine discretization around current solution
-    const fn refine_discretization(
+    /// Solve the discretized problem with simulated annealing over the binary
+    /// spins, scoring each candidate with the *true* penalized objective.
+    ///
+    /// This is a genuine optimizer, not a random draw: it runs a Metropolis
+    /// Monte-Carlo chain over single-bit flips with a geometric cooling schedule
+    /// derived from the configured annealing parameters, always returning the
+    /// best configuration encountered. When a refinement `focus` is present, the
+    /// decoded value of each variable is mapped into the focused sub-interval so
+    /// the search zooms in around the incumbent solution.
+    fn solve_discretized_problem(
+        &mut self,
+        problem: &ContinuousOptimizationProblem,
+        discretized: &DiscretizedProblem,
+    ) -> ContinuousVariableResult<Vec<i8>> {
+        let num_vars = discretized.num_variables;
+        if num_vars == 0 {
+            return Err(ContinuousVariableError::DiscretizationError(
+                "Discretized problem has zero binary variables".to_string(),
+            ));
+        }
+
+        // Random initial configuration.
+        let mut current: Vec<i8> = (0..num_vars)
+            .map(|_| if self.rng.random_bool(0.5) { 1 } else { -1 })
+            .collect();
+        let mut current_energy = problem.evaluate_penalized_objective(&Self::decode_with_focus(
+            problem,
+            discretized,
+            &current,
+        )?);
+
+        let mut best = current.clone();
+        let mut best_energy = current_energy;
+
+        // Cooling schedule from the annealing parameters.
+        let num_sweeps = self.config.annealing_params.num_sweeps.max(1);
+        let t_start = 1.0_f64.max(current_energy.abs());
+        let t_end = 1e-3;
+        let cooling = (t_end / t_start).powf(1.0 / num_sweeps as f64);
+        let mut temperature = t_start;
+
+        for _ in 0..num_sweeps {
+            for _ in 0..num_vars {
+                let flip = self.rng.random_range(0..num_vars);
+                current[flip] = -current[flip];
+
+                let candidate_energy = problem.evaluate_penalized_objective(
+                    &Self::decode_with_focus(problem, discretized, &current)?,
+                );
+                let delta = candidate_energy - current_energy;
+
+                if delta <= 0.0 || self.rng.random_bool((-delta / temperature).exp().min(1.0)) {
+                    current_energy = candidate_energy;
+                    if current_energy < best_energy {
+                        best_energy = current_energy;
+                        best.copy_from_slice(&current);
+                    }
+                } else {
+                    // Reject: undo the flip.
+                    current[flip] = -current[flip];
+                }
+            }
+            temperature *= cooling;
+        }
+
+        Ok(best)
+    }
+
+    /// Refine the discretization around the current solution.
+    ///
+    /// Builds a new [`DiscretizedProblem`] whose search focus is a contracted
+    /// window centered on each variable's current value (a fraction of its
+    /// original range), so subsequent annealing rounds resolve the solution more
+    /// finely without increasing the bit count.
+    fn refine_discretization(
         &self,
-        _problem: &ContinuousOptimizationProblem,
-        _current_solution: &HashMap<String, f64>,
+        problem: &ContinuousOptimizationProblem,
+        current_solution: &HashMap<String, f64>,
     ) -> ContinuousVariableResult<DiscretizedProblem> {
-        // This would create a refined discretization focused on the current solution region
+        let mut focus = HashMap::new();
+        // Contract each window to 25% of the original range around the incumbent.
+        const CONTRACTION: f64 = 0.25;
+
+        for (name, var) in &problem.variables {
+            if let Some(&value) = current_solution.get(name) {
+                let half_width = 0.5 * CONTRACTION * (var.upper_bound - var.lower_bound);
+                let lo = (value - half_width).max(var.lower_bound);
+                let hi = (value + half_width).min(var.upper_bound);
+                if hi > lo {
+                    focus.insert(name.clone(), (lo, hi));
+                }
+            }
+        }
+
         Ok(DiscretizedProblem {
-            num_variables: 0,
-            q_matrix: Vec::new(),
+            num_variables: problem.total_binary_variables(),
+            focus,
         })
     }
 
@@ -621,11 +728,22 @@ impl ContinuousVariableAnnealer {
     }
 }
 
-/// Placeholder for discretized problem representation
-#[derive(Debug)]
+/// Binary (discretized) representation of a continuous optimization problem.
+///
+/// Each continuous variable is encoded with its `precision_bits` binary spins
+/// (fixed-point encoding, see [`ContinuousVariable::binary_to_continuous`]).
+/// Because the objective is a black-box closure rather than a quadratic form, an
+/// explicit QUBO `Q` matrix cannot in general be extracted; the search therefore
+/// evaluates the *true* (decoded) objective directly. `num_variables` is the real
+/// total spin count, and `focus` optionally restricts the per-variable search
+/// window for adaptive refinement around an incumbent solution.
+#[derive(Debug, Clone)]
 struct DiscretizedProblem {
+    /// Total number of binary spins across all continuous variables.
     num_variables: usize,
-    q_matrix: Vec<Vec<f64>>,
+    /// Optional refinement focus: for each variable name, the (lower, upper)
+    /// sub-interval to search within (used by adaptive discretization).
+    focus: HashMap<String, (f64, f64)>,
 }
 
 /// Helper functions for common continuous optimization problems

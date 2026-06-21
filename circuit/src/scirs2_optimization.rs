@@ -840,7 +840,14 @@ impl QuantumCircuitOptimizer {
         self.best_value.lock().ok().map_or(f64::INFINITY, |g| *g)
     }
 
-    /// Build circuit from parameters
+    /// Build a concrete circuit from the template, binding the current
+    /// `parameters` into each parameterized gate.
+    ///
+    /// Each [`ParameterizedGate`] names a gate (`"H"`, `"RX"`, `"CNOT"`, …),
+    /// the qubits it acts on, and the indices into `parameters` supplying its
+    /// angles.  The gate is materialized via the circuit builder so the result
+    /// is a fully-formed circuit (previously this returned an empty circuit,
+    /// silently discarding the entire template).
     pub fn build_circuit(&self, parameters: &[f64]) -> QuantRS2Result<Circuit<32>> {
         if parameters.len() != self.circuit_template.parameters.len() {
             return Err(QuantRS2Error::InvalidInput(
@@ -848,17 +855,110 @@ impl QuantumCircuitOptimizer {
             ));
         }
 
-        // This is a simplified circuit building - would need actual gate implementations
         let mut circuit = Circuit::<32>::new();
-
-        // Build circuit from template using parameters
         for gate_template in &self.circuit_template.structure {
-            // Apply parameters to gate and add to circuit
-            // This would use the actual gate implementations from quantrs2_core
+            apply_template_gate(&mut circuit, gate_template, parameters)?;
         }
 
         Ok(circuit)
     }
+}
+
+/// Resolve the angle for the `k`-th parameter slot of a template gate.
+///
+/// `parameter_indices` give the positions in the optimizer's parameter vector;
+/// any leftover slots fall back to `fixed_parameters`.
+fn template_gate_angle(
+    gate: &ParameterizedGate,
+    parameters: &[f64],
+    slot: usize,
+) -> QuantRS2Result<f64> {
+    if let Some(&idx) = gate.parameter_indices.get(slot) {
+        parameters.get(idx).copied().ok_or_else(|| {
+            QuantRS2Error::InvalidInput(format!(
+                "Gate '{}' references parameter index {idx} which is out of range",
+                gate.gate_name
+            ))
+        })
+    } else if let Some(&fixed) = gate
+        .fixed_parameters
+        .get(slot - gate.parameter_indices.len())
+    {
+        Ok(fixed)
+    } else {
+        Err(QuantRS2Error::InvalidInput(format!(
+            "Gate '{}' is missing angle #{slot}",
+            gate.gate_name
+        )))
+    }
+}
+
+/// Materialize a single template gate onto `circuit`.
+///
+/// Returns an honest error for an unknown gate name or a malformed qubit list
+/// rather than silently skipping it.
+fn apply_template_gate<const N: usize>(
+    circuit: &mut Circuit<N>,
+    gate: &ParameterizedGate,
+    parameters: &[f64],
+) -> QuantRS2Result<()> {
+    let q = |i: usize| -> QuantRS2Result<QubitId> {
+        gate.qubits
+            .get(i)
+            .map(|&qb| QubitId(qb as u32))
+            .ok_or_else(|| {
+                QuantRS2Error::InvalidInput(format!(
+                    "Gate '{}' expects at least {} qubit(s)",
+                    gate.gate_name,
+                    i + 1
+                ))
+            })
+    };
+
+    match gate.gate_name.as_str() {
+        "H" | "h" => {
+            circuit.h(q(0)?)?;
+        }
+        "X" | "x" => {
+            circuit.x(q(0)?)?;
+        }
+        "Y" | "y" => {
+            circuit.y(q(0)?)?;
+        }
+        "Z" | "z" => {
+            circuit.z(q(0)?)?;
+        }
+        "S" | "s" => {
+            circuit.s(q(0)?)?;
+        }
+        "T" | "t" => {
+            circuit.t(q(0)?)?;
+        }
+        "RX" | "rx" => {
+            circuit.rx(q(0)?, template_gate_angle(gate, parameters, 0)?)?;
+        }
+        "RY" | "ry" => {
+            circuit.ry(q(0)?, template_gate_angle(gate, parameters, 0)?)?;
+        }
+        "RZ" | "rz" => {
+            circuit.rz(q(0)?, template_gate_angle(gate, parameters, 0)?)?;
+        }
+        "P" | "p" | "PHASE" => {
+            circuit.p(q(0)?, template_gate_angle(gate, parameters, 0)?)?;
+        }
+        "CNOT" | "cnot" | "CX" | "cx" => {
+            circuit.cnot(q(0)?, q(1)?)?;
+        }
+        "CZ" | "cz" => {
+            circuit.cz(q(0)?, q(1)?)?;
+        }
+        other => {
+            return Err(QuantRS2Error::UnsupportedOperation(format!(
+                "Template gate '{other}' is not supported by the circuit builder"
+            )));
+        }
+    }
+    Ok(())
 }
 
 /// Variational quantum eigensolver (VQE) objective
@@ -889,19 +989,47 @@ impl VQEObjective {
     }
 }
 
+impl VQEObjective {
+    /// Fallible core of [`ObjectiveFunction::evaluate`]: build the ansatz state
+    /// `|ψ(θ)⟩`, then compute `⟨ψ|H|ψ⟩` directly from the sparse Hamiltonian's
+    /// COO triplets.
+    fn try_evaluate(&self, parameters: &[f64]) -> QuantRS2Result<f64> {
+        let num_qubits = self.circuit_template.num_qubits;
+        let state = statevector::simulate_template(
+            num_qubits,
+            &self.circuit_template.structure,
+            parameters,
+        )?;
+
+        let dim = 1usize << num_qubits;
+        if self.hamiltonian.shape.0 != dim || self.hamiltonian.shape.1 != dim {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Hamiltonian is {}x{} but a {}-qubit circuit needs {dim}x{dim}",
+                self.hamiltonian.shape.0, self.hamiltonian.shape.1, num_qubits
+            )));
+        }
+
+        let expectation = statevector::sparse_expectation(self.hamiltonian.triplets(), &state);
+        if expectation.im.abs() > 1e-6 {
+            return Err(QuantRS2Error::ComputationError(format!(
+                "VQE energy has non-negligible imaginary part ({:.3e}); Hamiltonian is not Hermitian",
+                expectation.im
+            )));
+        }
+        Ok(expectation.re)
+    }
+}
+
 impl ObjectiveFunction for VQEObjective {
+    /// Energy `⟨ψ(θ)|H|ψ(θ)⟩` of the ansatz state produced by the circuit
+    /// template at the given parameters.
+    ///
+    /// On a malformed configuration (dimension mismatch, unsupported gate, …)
+    /// this returns `f64::INFINITY` — the worst possible value for the
+    /// minimizer, so a broken term is rejected rather than silently accepted as
+    /// a plausible energy.
     fn evaluate(&self, parameters: &[f64]) -> f64 {
-        // Build quantum circuit from parameters
-        // Simulate circuit to get state vector
-        // Compute expectation value ⟨ψ|H|ψ⟩
-
-        // This is a placeholder - real implementation would:
-        // 1. Build circuit from template and parameters
-        // 2. Simulate circuit to get final state
-        // 3. Compute expectation value with Hamiltonian
-
-        // For now, return a simple quadratic function for testing
-        parameters.iter().map(|x| x * x).sum::<f64>()
+        self.try_evaluate(parameters).unwrap_or(f64::INFINITY)
     }
 
     fn bounds(&self) -> Vec<(f64, f64)> {
@@ -945,14 +1073,78 @@ impl QAOAObjective {
     }
 }
 
-impl ObjectiveFunction for QAOAObjective {
-    fn evaluate(&self, parameters: &[f64]) -> f64 {
-        // Build QAOA circuit from beta and gamma parameters
-        // Simulate circuit starting from |+⟩^n state
-        // Compute expectation value with problem Hamiltonian
+impl QAOAObjective {
+    /// Fallible core of [`ObjectiveFunction::evaluate`].
+    ///
+    /// Prepares `|+⟩^⊗n`, applies the alternating QAOA layers
+    /// `U(β,γ) = ∏_p exp(-iβ_p H_mixer) exp(-iγ_p H_problem)` and returns the
+    /// problem-Hamiltonian energy `⟨ψ|H_problem|ψ⟩`.  Each layer's parameters
+    /// are taken as `[γ_0, β_0, γ_1, β_1, …]`.
+    fn try_evaluate(&self, parameters: &[f64]) -> QuantRS2Result<f64> {
+        if parameters.len() != 2 * self.num_layers {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "QAOA with {} layers needs {} parameters, got {}",
+                self.num_layers,
+                2 * self.num_layers,
+                parameters.len()
+            )));
+        }
 
-        // Placeholder implementation
-        parameters.iter().map(|x| x.sin().powi(2)).sum::<f64>()
+        let dim = self.problem_hamiltonian.shape.0;
+        if !dim.is_power_of_two() || self.problem_hamiltonian.shape.1 != dim {
+            return Err(QuantRS2Error::InvalidInput(
+                "QAOA problem Hamiltonian must be a square 2^n matrix".to_string(),
+            ));
+        }
+        if self.mixer_hamiltonian.shape != self.problem_hamiltonian.shape {
+            return Err(QuantRS2Error::InvalidInput(
+                "QAOA mixer and problem Hamiltonians must have the same shape".to_string(),
+            ));
+        }
+        let num_qubits = dim.trailing_zeros() as usize;
+
+        // Dense complex operators for exact exponentiation (QAOA Hamiltonians
+        // are small).  exp(-iθH) is applied via scaling-and-squaring Taylor expm.
+        let problem_dense =
+            statevector::dense_from_triplets(self.problem_hamiltonian.triplets(), dim);
+        let mixer_dense = statevector::dense_from_triplets(self.mixer_hamiltonian.triplets(), dim);
+
+        // |+⟩^⊗n = uniform superposition.
+        let amp = Complex64::new(1.0 / (dim as f64).sqrt(), 0.0);
+        let mut state = vec![amp; dim];
+
+        for layer in 0..self.num_layers {
+            let gamma = parameters[2 * layer];
+            let beta = parameters[2 * layer + 1];
+            // exp(-iγ H_problem)
+            let u_problem =
+                statevector::expm_scaled(&problem_dense, dim, Complex64::new(0.0, -gamma))?;
+            state = statevector::matvec(&u_problem, dim, &state);
+            // exp(-iβ H_mixer)
+            let u_mixer = statevector::expm_scaled(&mixer_dense, dim, Complex64::new(0.0, -beta))?;
+            state = statevector::matvec(&u_mixer, dim, &state);
+        }
+
+        let _ = num_qubits; // documented above; retained for clarity of intent
+        let expectation =
+            statevector::sparse_expectation(self.problem_hamiltonian.triplets(), &state);
+        if expectation.im.abs() > 1e-6 {
+            return Err(QuantRS2Error::ComputationError(format!(
+                "QAOA energy has non-negligible imaginary part ({:.3e}); problem Hamiltonian is not Hermitian",
+                expectation.im
+            )));
+        }
+        Ok(expectation.re)
+    }
+}
+
+impl ObjectiveFunction for QAOAObjective {
+    /// Problem-Hamiltonian energy of the QAOA state at the given `[γ,β,…]`.
+    ///
+    /// On a malformed configuration this returns `f64::INFINITY` (worst value
+    /// for a minimizer) rather than a fabricated plausible energy.
+    fn evaluate(&self, parameters: &[f64]) -> f64 {
+        self.try_evaluate(parameters).unwrap_or(f64::INFINITY)
     }
 
     fn bounds(&self) -> Vec<(f64, f64)> {
@@ -984,6 +1176,300 @@ impl Default for OptimizationConfig {
     }
 }
 
+/// Dense state-vector simulation helpers for the variational objectives.
+///
+/// `quantrs2-circuit` is a dependency of `quantrs2-sim`, so it cannot use the
+/// simulator crate (dependency cycle).  These routines provide a small,
+/// self-contained exact engine: gate application via the generic
+/// [`GateOp::matrix`] interface, sparse `⟨ψ|H|ψ⟩`, and a dense complex
+/// matrix exponential (scaling-and-squaring + Taylor) used by QAOA's
+/// `exp(-iθH)` layers.
+mod statevector {
+    use super::{ParameterizedGate, QuantRS2Error, QuantRS2Result};
+    use quantrs2_core::gate::{
+        single::{Phase, RotationX, RotationY, RotationZ, T},
+        GateOp,
+    };
+    use quantrs2_core::qubit::QubitId;
+    use scirs2_core::Complex64;
+
+    /// Simulate a circuit template on `2^num_qubits` amplitudes from `|0…0⟩`.
+    pub fn simulate_template(
+        num_qubits: usize,
+        structure: &[ParameterizedGate],
+        parameters: &[f64],
+    ) -> QuantRS2Result<Vec<Complex64>> {
+        let dim = 1usize << num_qubits;
+        let mut state = vec![Complex64::new(0.0, 0.0); dim];
+        state[0] = Complex64::new(1.0, 0.0);
+
+        for gate in structure {
+            let boxed = super::statevector::boxed_template_gate(gate, parameters)?;
+            apply_gate(&mut state, num_qubits, boxed.as_ref())?;
+        }
+        Ok(state)
+    }
+
+    /// Build the concrete `GateOp` for a template gate, binding its parameters.
+    ///
+    /// Only parameterized rotations need a boxed `core` gate here; the
+    /// non-parameterized Clifford+T gates are produced via their builder-less
+    /// constructors.  Multi-qubit gates (CNOT/CZ) are handled in
+    /// [`apply_gate`] through the matrix interface after construction, so they
+    /// are constructed here too.
+    fn boxed_template_gate(
+        gate: &ParameterizedGate,
+        parameters: &[f64],
+    ) -> QuantRS2Result<Box<dyn GateOp>> {
+        use quantrs2_core::gate::multi::{CNOT, CZ};
+        use quantrs2_core::gate::single::{Hadamard, PauliX, PauliY, PauliZ};
+
+        let target = |i: usize| -> QuantRS2Result<QubitId> {
+            gate.qubits
+                .get(i)
+                .map(|&q| QubitId(q as u32))
+                .ok_or_else(|| {
+                    QuantRS2Error::InvalidInput(format!(
+                        "Gate '{}' expects at least {} qubit(s)",
+                        gate.gate_name,
+                        i + 1
+                    ))
+                })
+        };
+        let angle = |slot: usize| super::template_gate_angle(gate, parameters, slot);
+
+        let boxed: Box<dyn GateOp> = match gate.gate_name.as_str() {
+            "H" | "h" => Box::new(Hadamard { target: target(0)? }),
+            "X" | "x" => Box::new(PauliX { target: target(0)? }),
+            "Y" | "y" => Box::new(PauliY { target: target(0)? }),
+            "Z" | "z" => Box::new(PauliZ { target: target(0)? }),
+            "S" | "s" => Box::new(Phase { target: target(0)? }),
+            "T" | "t" => Box::new(T { target: target(0)? }),
+            "RX" | "rx" => Box::new(RotationX {
+                target: target(0)?,
+                theta: angle(0)?,
+            }),
+            "RY" | "ry" => Box::new(RotationY {
+                target: target(0)?,
+                theta: angle(0)?,
+            }),
+            "RZ" | "rz" => Box::new(RotationZ {
+                target: target(0)?,
+                theta: angle(0)?,
+            }),
+            "CNOT" | "cnot" | "CX" | "cx" => Box::new(CNOT {
+                control: target(0)?,
+                target: target(1)?,
+            }),
+            "CZ" | "cz" => Box::new(CZ {
+                control: target(0)?,
+                target: target(1)?,
+            }),
+            other => {
+                return Err(QuantRS2Error::UnsupportedOperation(format!(
+                    "Template gate '{other}' is not supported by the state-vector engine"
+                )))
+            }
+        };
+        Ok(boxed)
+    }
+
+    /// Apply a (possibly multi-qubit) gate in place, MSB-first convention
+    /// (the first qubit of `qubits()` is the high bit of the gate block).
+    pub fn apply_gate(
+        state: &mut [Complex64],
+        num_qubits: usize,
+        gate: &dyn GateOp,
+    ) -> QuantRS2Result<()> {
+        let targets: Vec<usize> = gate.qubits().iter().map(|q| q.id() as usize).collect();
+        let k = targets.len();
+        if k == 0 {
+            return Ok(());
+        }
+        for &t in &targets {
+            if t >= num_qubits {
+                return Err(QuantRS2Error::InvalidInput(format!(
+                    "Gate '{}' acts on qubit {t} but only {num_qubits} qubits are available",
+                    gate.name()
+                )));
+            }
+        }
+        let matrix = gate.matrix()?;
+        let side = 1usize << k;
+        if matrix.len() != side * side {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Gate '{}' returned {} matrix elements, expected {}",
+                gate.name(),
+                matrix.len(),
+                side * side
+            )));
+        }
+
+        // local bit p (LSB=0) -> targets[k-1-p]  (first qubit = MSB)
+        let bit_masks: Vec<usize> = (0..k).map(|p| 1usize << targets[k - 1 - p]).collect();
+        let mut fixed_mask = 0usize;
+        for &m in &bit_masks {
+            fixed_mask |= m;
+        }
+        let dim = state.len();
+        let mut visited = vec![false; dim];
+        let mut amplitudes = vec![Complex64::new(0.0, 0.0); side];
+        let mut indices = vec![0usize; side];
+
+        for base in 0..dim {
+            if visited[base] || (base & fixed_mask) != 0 {
+                continue;
+            }
+            for (local, slot) in indices.iter_mut().enumerate() {
+                let mut idx = base;
+                for (bit, &mask) in bit_masks.iter().enumerate() {
+                    if (local >> bit) & 1 == 1 {
+                        idx |= mask;
+                    }
+                }
+                *slot = idx;
+                amplitudes[local] = state[idx];
+                visited[idx] = true;
+            }
+            for r in 0..side {
+                let mut acc = Complex64::new(0.0, 0.0);
+                let row = r * side;
+                for (c, amp) in amplitudes.iter().enumerate() {
+                    acc += matrix[row + c] * amp;
+                }
+                state[indices[r]] = acc;
+            }
+        }
+        Ok(())
+    }
+
+    /// `⟨ψ|H|ψ⟩` from a sparse Hamiltonian given as `(row, col, value)` triplets.
+    pub fn sparse_expectation(
+        triplets: &[(usize, usize, Complex64)],
+        state: &[Complex64],
+    ) -> Complex64 {
+        let mut acc = Complex64::new(0.0, 0.0);
+        for &(row, col, value) in triplets {
+            if row < state.len() && col < state.len() {
+                acc += state[row].conj() * value * state[col];
+            }
+        }
+        acc
+    }
+
+    /// Materialize a dense `dim × dim` (row-major) complex matrix from triplets.
+    pub fn dense_from_triplets(
+        triplets: &[(usize, usize, Complex64)],
+        dim: usize,
+    ) -> Vec<Complex64> {
+        let mut dense = vec![Complex64::new(0.0, 0.0); dim * dim];
+        for &(row, col, value) in triplets {
+            if row < dim && col < dim {
+                dense[row * dim + col] += value;
+            }
+        }
+        dense
+    }
+
+    /// Dense matrix-vector product `y = M x` (M row-major `dim × dim`).
+    pub fn matvec(matrix: &[Complex64], dim: usize, x: &[Complex64]) -> Vec<Complex64> {
+        let mut y = vec![Complex64::new(0.0, 0.0); dim];
+        for (row, y_row) in y.iter_mut().enumerate() {
+            let base = row * dim;
+            let mut acc = Complex64::new(0.0, 0.0);
+            for (col, x_col) in x.iter().enumerate() {
+                acc += matrix[base + col] * x_col;
+            }
+            *y_row = acc;
+        }
+        y
+    }
+
+    /// Compute `exp(scale · H)` for a dense `dim × dim` complex matrix `H` using
+    /// scaling-and-squaring with a truncated Taylor series.
+    ///
+    /// This is the standard `expm` algorithm and is exact to machine precision
+    /// for the small dimensions used by the variational objectives.  For
+    /// `exp(-iθH)` pass `scale = Complex64::new(0.0, -θ)`.
+    pub fn expm_scaled(
+        h: &[Complex64],
+        dim: usize,
+        scale: Complex64,
+    ) -> QuantRS2Result<Vec<Complex64>> {
+        // A = scale * H
+        let a: Vec<Complex64> = h.iter().map(|&v| v * scale).collect();
+
+        // Choose squaring count s so that ||A/2^s|| is small (≤ 0.5).
+        let norm = matrix_inf_norm(&a, dim);
+        let s = if norm <= 0.5 {
+            0u32
+        } else {
+            (norm.log2().ceil().max(0.0) as u32) + 1
+        };
+        let scaling = Complex64::new(f64::from(1u32 << s).recip(), 0.0);
+        let a_scaled: Vec<Complex64> = a.iter().map(|&v| v * scaling).collect();
+
+        // Taylor series: exp(B) = Σ B^k / k!, B = a_scaled.
+        let mut result = identity(dim);
+        let mut term = identity(dim);
+        for k in 1..=18u32 {
+            term = matmul(&term, &a_scaled, dim);
+            let inv_factorial = Complex64::new(1.0_f64 / factorial(k), 0.0);
+            for (r, t) in result.iter_mut().zip(term.iter()) {
+                *r += *t * inv_factorial;
+            }
+        }
+
+        // Square s times.
+        for _ in 0..s {
+            result = matmul(&result, &result, dim);
+        }
+        Ok(result)
+    }
+
+    fn factorial(n: u32) -> f64 {
+        (1..=n).fold(1.0_f64, |acc, x| acc * f64::from(x))
+    }
+
+    fn identity(dim: usize) -> Vec<Complex64> {
+        let mut m = vec![Complex64::new(0.0, 0.0); dim * dim];
+        for i in 0..dim {
+            m[i * dim + i] = Complex64::new(1.0, 0.0);
+        }
+        m
+    }
+
+    fn matmul(a: &[Complex64], b: &[Complex64], dim: usize) -> Vec<Complex64> {
+        let mut c = vec![Complex64::new(0.0, 0.0); dim * dim];
+        for i in 0..dim {
+            for k in 0..dim {
+                let a_ik = a[i * dim + k];
+                if a_ik.norm_sqr() == 0.0 {
+                    continue;
+                }
+                let brow = k * dim;
+                let crow = i * dim;
+                for j in 0..dim {
+                    c[crow + j] += a_ik * b[brow + j];
+                }
+            }
+        }
+        c
+    }
+
+    fn matrix_inf_norm(m: &[Complex64], dim: usize) -> f64 {
+        let mut max_row = 0.0_f64;
+        for i in 0..dim {
+            let base = i * dim;
+            let row_sum: f64 = (0..dim).map(|j| m[base + j].norm()).sum();
+            if row_sum > max_row {
+                max_row = row_sum;
+            }
+        }
+        max_row
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -997,9 +1483,15 @@ mod tests {
 
     #[test]
     fn test_vqe_objective() {
+        // ⟨ψ|I|ψ⟩ = 1 for any normalized state, regardless of parameters.
         let hamiltonian = SparseMatrix::identity(4);
         let template = CircuitTemplate {
-            structure: Vec::new(),
+            structure: vec![ParameterizedGate {
+                gate_name: "RY".to_string(),
+                qubits: vec![0],
+                parameter_indices: vec![0],
+                fixed_parameters: Vec::new(),
+            }],
             parameters: vec![Parameter {
                 name: "theta".to_string(),
                 lower_bound: 0.0,
@@ -1012,11 +1504,50 @@ mod tests {
 
         let objective = VQEObjective::new(hamiltonian, template);
         let value = objective.evaluate(&[0.5]);
-        assert!(value >= 0.0);
+        assert!((value - 1.0).abs() < 1e-9, "⟨I⟩ must equal 1, got {value}");
+    }
+
+    /// `⟨0|RY(θ)† Z RY(θ)|0⟩ = cos θ` — pins the VQE objective to an analytic
+    /// value, killing the former `Σ x²` fabrication.
+    #[test]
+    fn test_vqe_objective_matches_cos() {
+        use std::f64::consts::PI;
+        // H = Z on a single qubit: diagonal(+1, -1).
+        let mut hamiltonian = SparseMatrix::zeros(2, 2);
+        hamiltonian.insert(0, 0, Complex64::new(1.0, 0.0));
+        hamiltonian.insert(1, 1, Complex64::new(-1.0, 0.0));
+
+        let template = CircuitTemplate {
+            structure: vec![ParameterizedGate {
+                gate_name: "RY".to_string(),
+                qubits: vec![0],
+                parameter_indices: vec![0],
+                fixed_parameters: Vec::new(),
+            }],
+            parameters: vec![Parameter {
+                name: "theta".to_string(),
+                lower_bound: 0.0,
+                upper_bound: 2.0 * PI,
+                initial_value: 0.0,
+                discrete: false,
+            }],
+            num_qubits: 1,
+        };
+        let objective = VQEObjective::new(hamiltonian, template);
+
+        for &theta in &[0.0, PI / 4.0, PI / 2.0, PI, 3.0 * PI / 2.0] {
+            let value = objective.evaluate(&[theta]);
+            assert!(
+                (value - theta.cos()).abs() < 1e-9,
+                "θ={theta}: got {value}, expected {}",
+                theta.cos()
+            );
+        }
     }
 
     #[test]
     fn test_qaoa_objective() {
+        // For H_problem = I, ⟨ψ|I|ψ⟩ = 1 for the normalized QAOA state.
         let problem_h = SparseMatrix::identity(4);
         let mixer_h = SparseMatrix::identity(4);
 
@@ -1024,7 +1555,93 @@ mod tests {
         assert_eq!(objective.bounds().len(), 4); // 2 parameters per layer
 
         let value = objective.evaluate(&[0.5, 1.0, 1.5, 2.0]);
-        assert!(value >= 0.0);
+        assert!(
+            (value - 1.0).abs() < 1e-9,
+            "⟨I⟩ for QAOA state must equal 1, got {value}"
+        );
+    }
+
+    /// QAOA with a diagonal problem Hamiltonian H = diag(0,1,1,2) (a 2-qubit
+    /// "number operator" Z-cost): the |+⟩^2 start has expectation = mean of the
+    /// diagonal = 1.  With γ=β=0 the layers are identity, so the energy must be
+    /// exactly that mean — would fail for the old `Σ sin² x` fabrication.
+    #[test]
+    fn test_qaoa_objective_zero_angles_is_diagonal_mean() {
+        let mut problem_h = SparseMatrix::zeros(4, 4);
+        problem_h.insert(0, 0, Complex64::new(0.0, 0.0));
+        problem_h.insert(1, 1, Complex64::new(1.0, 0.0));
+        problem_h.insert(2, 2, Complex64::new(1.0, 0.0));
+        problem_h.insert(3, 3, Complex64::new(2.0, 0.0));
+        let mixer_h = SparseMatrix::identity(4);
+
+        let objective = QAOAObjective::new(problem_h, mixer_h, 1);
+        // γ=0, β=0 → identity layers → ⟨+⊗+|H|+⊗+⟩ = mean(diag) = 1.
+        let value = objective.evaluate(&[0.0, 0.0]);
+        assert!(
+            (value - 1.0).abs() < 1e-9,
+            "QAOA zero-angle energy should be diagonal mean 1, got {value}"
+        );
+    }
+
+    /// `exp(-iθH)` for a Pauli-X generator must reproduce an `RX(2θ)` rotation,
+    /// validating the dense matrix-exponential used by QAOA.
+    #[test]
+    fn test_expm_matches_rx_rotation() {
+        use std::f64::consts::PI;
+        // H = X = [[0,1],[1,0]].
+        let x = vec![
+            Complex64::new(0.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
+        ];
+        let theta = PI / 3.0;
+        // exp(-iθX) = cos θ I - i sin θ X.
+        let u = statevector::expm_scaled(&x, 2, Complex64::new(0.0, -theta)).expect("expm");
+        let c = theta.cos();
+        let s = theta.sin();
+        let expected = [
+            Complex64::new(c, 0.0),
+            Complex64::new(0.0, -s),
+            Complex64::new(0.0, -s),
+            Complex64::new(c, 0.0),
+        ];
+        for (got, want) in u.iter().zip(expected.iter()) {
+            assert!((got - want).norm() < 1e-10, "expm element {got} vs {want}");
+        }
+    }
+
+    #[test]
+    fn test_build_circuit_emits_gates() {
+        let template = CircuitTemplate {
+            structure: vec![
+                ParameterizedGate {
+                    gate_name: "RY".to_string(),
+                    qubits: vec![0],
+                    parameter_indices: vec![0],
+                    fixed_parameters: Vec::new(),
+                },
+                ParameterizedGate {
+                    gate_name: "CNOT".to_string(),
+                    qubits: vec![0, 1],
+                    parameter_indices: Vec::new(),
+                    fixed_parameters: Vec::new(),
+                },
+            ],
+            parameters: vec![Parameter {
+                name: "theta".to_string(),
+                lower_bound: 0.0,
+                upper_bound: 2.0 * std::f64::consts::PI,
+                initial_value: 0.3,
+                discrete: false,
+            }],
+            num_qubits: 2,
+        };
+        let config = OptimizationConfig::default();
+        let optimizer = QuantumCircuitOptimizer::new(template, config);
+        let circuit = optimizer.build_circuit(&[0.3]).expect("build");
+        // Previously returned an empty circuit; must now contain both gates.
+        assert_eq!(circuit.gates().len(), 2);
     }
 
     #[test]

@@ -302,16 +302,28 @@ impl QaoaCircuitBridge {
         })
     }
 
-    /// Extract QAOA parameters from a parameterized circuit
+    /// Extract QAOA parameters from a parameterized circuit by reading the
+    /// actual rotation angles stored on the referenced gates.
+    ///
+    /// A parameter reference records that gate `gate_index` carries an angle of
+    /// `parameter_value · coefficient`; we downcast the gate to its rotation
+    /// type, read its `theta`, and divide out the coefficient to recover the
+    /// bare parameter. Gates whose angle cannot be read (non-rotation or zero
+    /// coefficient) leave the corresponding parameter at its default of `0.0`.
     #[must_use]
     pub fn extract_qaoa_parameters(&self, circuit: &CircuitBridgeRepresentation) -> Vec<f64> {
         let mut parameters = vec![0.0; circuit.num_parameters];
 
         for param_ref in &circuit.parameter_map {
-            if param_ref.parameter_index < parameters.len() {
-                // This is simplified - in practice, you'd extract the actual parameter
-                // from the gate at gate_index
-                parameters[param_ref.parameter_index] = 0.1; // Placeholder
+            if param_ref.parameter_index >= parameters.len()
+                || param_ref.gate_index >= circuit.gates.len()
+                || param_ref.coefficient == 0.0
+            {
+                continue;
+            }
+
+            if let Some(theta) = gate_rotation_angle(circuit.gates[param_ref.gate_index].as_ref()) {
+                parameters[param_ref.parameter_index] = theta / param_ref.coefficient;
             }
         }
 
@@ -356,20 +368,91 @@ impl QaoaCircuitBridge {
         Ok(())
     }
 
-    /// Optimize a QAOA circuit using circuit module optimization passes
+    /// Optimize a QAOA circuit by applying gate-cancellation passes.
+    ///
+    /// Implements the standard *self-inverse gate cancellation* optimization:
+    /// two adjacent identical involutory gates (`H·H`, `CNOT·CNOT`, `CZ·CZ`)
+    /// acting on the same qubits, with no intervening gate touching those qubits,
+    /// compose to the identity and are removed. This genuinely shrinks the gate
+    /// count while preserving the unitary the circuit implements (it is not an
+    /// identity transform — for a circuit containing such pairs the output is a
+    /// strictly shorter circuit). The pass is repeated to a fixed point so that
+    /// cancellations exposed by earlier removals are also applied. The parameter
+    /// map is rebuilt with the surviving gate indices so it stays consistent.
     pub fn optimize_qaoa_circuit(
         &self,
         circuit: &CircuitBridgeRepresentation,
     ) -> BridgeResult<CircuitBridgeRepresentation> {
-        // This would integrate with the circuit module's optimization passes
-        // For now, return the circuit unchanged as a placeholder
+        let mut gates = circuit.gates.clone();
+        // Map of original parameter references keyed by current gate index.
+        let mut param_by_index: std::collections::HashMap<usize, ParameterReference> = circuit
+            .parameter_map
+            .iter()
+            .map(|p| (p.gate_index, p.clone()))
+            .collect();
 
-        // In a full implementation, this would:
-        // 1. Convert to the circuit module's format
-        // 2. Apply optimization passes (gate cancellation, rotation merging, etc.)
-        // 3. Convert back to our bridge representation
+        // Iterate cancellation passes until no further gates are removed.
+        loop {
+            let mut removed_any = false;
+            let mut idx = 0;
 
-        Ok(circuit.clone())
+            while idx + 1 < gates.len() {
+                if Self::gates_cancel(gates[idx].as_ref(), gates[idx + 1].as_ref()) {
+                    // Remove the pair [idx, idx+1].
+                    gates.drain(idx..=idx + 1);
+
+                    // Rebuild the parameter index map after removal: every entry
+                    // with index > idx+1 shifts down by two; indices idx/idx+1
+                    // are guaranteed absent (involutory gates carry no params).
+                    let mut rebuilt = std::collections::HashMap::new();
+                    for (gate_index, mut param) in param_by_index.drain() {
+                        let new_index = if gate_index > idx + 1 {
+                            gate_index - 2
+                        } else {
+                            gate_index
+                        };
+                        param.gate_index = new_index;
+                        rebuilt.insert(new_index, param);
+                    }
+                    param_by_index = rebuilt;
+
+                    removed_any = true;
+                    // Do not advance: a new adjacency now exists at `idx`.
+                } else {
+                    idx += 1;
+                }
+            }
+
+            if !removed_any {
+                break;
+            }
+        }
+
+        let mut parameter_map: Vec<ParameterReference> = param_by_index.into_values().collect();
+        parameter_map.sort_by_key(|p| (p.gate_index, p.parameter_index));
+
+        Ok(CircuitBridgeRepresentation {
+            gates,
+            parameter_map,
+            num_qubits: circuit.num_qubits,
+            num_parameters: circuit.num_parameters,
+        })
+    }
+
+    /// Return `true` when two adjacent gates are identical involutory gates on
+    /// the same qubits and therefore cancel to the identity.
+    fn gates_cancel(first: &dyn GateOp, second: &dyn GateOp) -> bool {
+        // Only self-inverse gates are eligible.
+        let name = first.name();
+        if name != second.name() {
+            return false;
+        }
+        let involutory = matches!(name, "H" | "CNOT" | "CZ" | "X" | "Y" | "Z");
+        if !involutory {
+            return false;
+        }
+        // Must act on exactly the same qubits in the same roles.
+        first.qubits() == second.qubits()
     }
 
     /// Convert Ising model to a format compatible with circuit optimization
@@ -427,22 +510,45 @@ impl QaoaCircuitBridge {
         Ok(Vec::new())
     }
 
-    /// Estimate the depth reduction from circuit optimization
+    /// Estimate the depth reduction from circuit optimization.
+    ///
+    /// The estimated speedup is the ratio of original to optimized gate count
+    /// (a proxy for circuit depth/runtime); it is `1.0` only when no gates were
+    /// removed, and `> 1.0` whenever the optimization actually shortened the
+    /// circuit.
     #[must_use]
     pub fn estimate_optimization_benefit(
         &self,
         original_circuit: &CircuitBridgeRepresentation,
         optimized_circuit: &CircuitBridgeRepresentation,
     ) -> OptimizationMetrics {
+        let original_depth = original_circuit.gates.len();
+        let optimized_depth = optimized_circuit.gates.len();
+        let estimated_speedup = if optimized_depth > 0 {
+            original_depth as f64 / optimized_depth as f64
+        } else {
+            1.0
+        };
+
         OptimizationMetrics {
-            original_depth: original_circuit.gates.len(),
-            optimized_depth: optimized_circuit.gates.len(),
-            gate_count_reduction: original_circuit
-                .gates
-                .len()
-                .saturating_sub(optimized_circuit.gates.len()),
-            estimated_speedup: 1.0, // Placeholder
+            original_depth,
+            optimized_depth,
+            gate_count_reduction: original_depth.saturating_sub(optimized_depth),
+            estimated_speedup,
         }
+    }
+}
+
+/// Read the rotation angle (`theta`) of a single-qubit rotation gate, if the
+/// gate is one. Returns `None` for non-rotation gates.
+fn gate_rotation_angle(gate: &dyn GateOp) -> Option<f64> {
+    use quantrs2_core::gate::single::{RotationX, RotationY, RotationZ};
+    if let Some(rz) = gate.as_any().downcast_ref::<RotationZ>() {
+        Some(rz.theta)
+    } else if let Some(rx) = gate.as_any().downcast_ref::<RotationX>() {
+        Some(rx.theta)
+    } else {
+        gate.as_any().downcast_ref::<RotationY>().map(|ry| ry.theta)
     }
 }
 
@@ -745,5 +851,111 @@ mod tests {
 
         let result = validate_circuit_compatibility(&circuit);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_build_optimizable_circuit_structure() {
+        // Known 2-qubit problem: bias on qubit 0, coupling between 0 and 1.
+        let mut problem = IsingModel::new(2);
+        problem.set_bias(0, 1.0).unwrap();
+        problem.set_coupling(0, 1, -0.5).unwrap();
+
+        let bridge = QaoaCircuitBridge::new(2);
+        let circuit = bridge
+            .build_optimizable_qaoa_circuit(&problem, &[0.3, 0.7], 1)
+            .expect("circuit build should succeed");
+
+        // Expected structure for 1 layer:
+        //   2 Hadamards (superposition)
+        //   1 RZ for the bias on qubit 0
+        //   CNOT, RZ, CNOT for the ZZ coupling
+        //   2 RX mixers (one per qubit)
+        let names: Vec<&str> = circuit.gates.iter().map(|g| g.name()).collect();
+        assert_eq!(names[0], "H");
+        assert_eq!(names[1], "H");
+        assert!(names.contains(&"RZ"));
+        assert!(names.contains(&"CNOT"));
+        assert_eq!(names.iter().filter(|n| **n == "RX").count(), 2);
+        // The bias RZ + the coupling RZ are both parameter-mapped (gamma).
+        assert_eq!(circuit.parameter_map.len(), 2);
+    }
+
+    #[test]
+    fn test_optimize_cancels_adjacent_self_inverse_gates() {
+        // Two adjacent identical CNOTs cancel; a lone Hadamard survives.
+        let bridge = QaoaCircuitBridge::new(2);
+        let circuit = CircuitBridgeRepresentation {
+            gates: vec![
+                Box::new(Hadamard { target: QubitId(0) }) as Box<dyn GateOp>,
+                Box::new(CNOT {
+                    control: QubitId(0),
+                    target: QubitId(1),
+                }) as Box<dyn GateOp>,
+                Box::new(CNOT {
+                    control: QubitId(0),
+                    target: QubitId(1),
+                }) as Box<dyn GateOp>,
+                Box::new(Hadamard { target: QubitId(1) }) as Box<dyn GateOp>,
+            ],
+            parameter_map: vec![],
+            num_qubits: 2,
+            num_parameters: 0,
+        };
+
+        let optimized = bridge
+            .optimize_qaoa_circuit(&circuit)
+            .expect("optimization should succeed");
+
+        // The CNOT pair is removed; the two Hadamards remain.
+        assert_eq!(optimized.gates.len(), 2);
+        assert_eq!(optimized.gates[0].name(), "H");
+        assert_eq!(optimized.gates[1].name(), "H");
+
+        // The benefit estimate must reflect a real reduction, not the old 1.0.
+        let metrics = bridge.estimate_optimization_benefit(&circuit, &optimized);
+        assert_eq!(metrics.gate_count_reduction, 2);
+        assert!(metrics.estimated_speedup > 1.0);
+    }
+
+    #[test]
+    fn test_optimize_preserves_parameter_map_indices() {
+        // H, RZ(param), CNOT, CNOT  -> the CNOT pair cancels and the RZ's
+        // parameter mapping must still point at the surviving RZ gate.
+        let bridge = QaoaCircuitBridge::new(2);
+        let circuit = CircuitBridgeRepresentation {
+            gates: vec![
+                Box::new(Hadamard { target: QubitId(0) }) as Box<dyn GateOp>,
+                Box::new(RotationZ {
+                    target: QubitId(0),
+                    theta: 0.5,
+                }) as Box<dyn GateOp>,
+                Box::new(CNOT {
+                    control: QubitId(0),
+                    target: QubitId(1),
+                }) as Box<dyn GateOp>,
+                Box::new(CNOT {
+                    control: QubitId(0),
+                    target: QubitId(1),
+                }) as Box<dyn GateOp>,
+            ],
+            parameter_map: vec![ParameterReference {
+                gate_index: 1,
+                parameter_index: 0,
+                coefficient: 1.0,
+                parameter_type: ParameterType::Gamma,
+            }],
+            num_qubits: 2,
+            num_parameters: 1,
+        };
+
+        let optimized = bridge.optimize_qaoa_circuit(&circuit).unwrap();
+        assert_eq!(optimized.gates.len(), 2); // H + RZ
+        assert_eq!(optimized.parameter_map.len(), 1);
+        let mapped = &optimized.parameter_map[0];
+        assert_eq!(optimized.gates[mapped.gate_index].name(), "RZ");
+
+        // extract_qaoa_parameters reads the real angle back (0.5 / coeff 1.0).
+        let params = bridge.extract_qaoa_parameters(&optimized);
+        assert!((params[0] - 0.5).abs() < 1e-12);
     }
 }

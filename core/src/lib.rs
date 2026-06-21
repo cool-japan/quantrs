@@ -142,6 +142,7 @@
 #![allow(clippy::suspicious_open_options)] // File open options
 #![allow(clippy::new_without_default)] // new() without Default impl
 
+pub mod adapt_vqe;
 pub mod adaptive_precision;
 pub mod adiabatic;
 pub mod advanced_error_mitigation;

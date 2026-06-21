@@ -587,17 +587,305 @@ impl TensorNetwork {
             .ok_or_else(|| QuantRS2Error::InvalidInput("Contraction failed".into()))
     }
 
-    /// Apply Matrix Product State (MPS) decomposition
-    pub const fn to_mps(&self, _max_bond_dim: Option<usize>) -> QuantRS2Result<Vec<Tensor>> {
-        // This would decompose the network into a chain of tensors
-        // For now, return a placeholder
-        Ok(vec![])
+    /// Decompose the (contracted) network into a Matrix Product State (MPS).
+    ///
+    /// The network is first contracted to a single tensor whose open indices are the
+    /// physical legs (each assumed dimension 2). A left-to-right sweep of singular-value
+    /// decompositions then factors that tensor into a chain of rank-3 site tensors
+    /// `A[0], …, A[n-1]` with bond indices between neighbours. Singular values are kept
+    /// up to `max_bond_dim` (when supplied), giving an exact MPS when the bond
+    /// dimension is unrestricted and an optimal truncation otherwise.
+    ///
+    /// The returned tensors carry indices `["phys_k", "bond_{k-1}", "bond_k"]` (the
+    /// boundary bonds are dimension 1), so contracting the chain reproduces the
+    /// original full tensor (up to the truncation error).
+    ///
+    /// Uses a complex one-sided Jacobi SVD (see [`Self::complex_svd`]) since the
+    /// SciRS2 LAPACK SVD currently exposes only the real-valued path.
+    ///
+    /// Note: the network must contract to a single tensor whose open legs are the
+    /// physical sites in order. Disconnected networks (e.g. an un-entangled product of
+    /// independent qubit lines) are limited by [`Self::contract_all`], which returns a
+    /// single connected component; build the network with entangling links between the
+    /// sites to be represented (as a real circuit does) for a faithful MPS.
+    pub fn to_mps(&self, max_bond_dim: Option<usize>) -> QuantRS2Result<Vec<Tensor>> {
+        // Contract the network to a single tensor (operate on a clone: to_mps is &self).
+        let mut work = TensorNetwork {
+            tensors: self.tensors.clone(),
+            edges: self.edges.clone(),
+            open_indices: self.open_indices.clone(),
+            next_id: self.next_id,
+        };
+        let full = work.contract_all()?;
+
+        // Flatten the full tensor into a vector using the *same* extraction as
+        // `to_statevector` (`into_raw_vec`), so the MPS represents exactly the state
+        // that `to_statevector` exposes. We treat the flattened amplitudes as a chain
+        // of qubits (physical dimension 2); the contracted tensor's reported axis
+        // layout may merge legs, so we derive the site count from the amplitude count.
+        let total: usize = full.shape.iter().product();
+        let flat: Vec<Complex64> = full.data.clone().into_raw_vec_and_offset().0;
+        if flat.len() != total {
+            return Err(QuantRS2Error::ComputationError(format!(
+                "contracted tensor buffer length {} does not match element count {total}",
+                flat.len()
+            )));
+        }
+
+        // Determine the number of qubit sites: total must be a power of two.
+        if total == 0 || (total & (total - 1)) != 0 {
+            return Err(QuantRS2Error::UnsupportedOperation(format!(
+                "MPS construction expects a qubit state (2^n amplitudes); got {total}"
+            )));
+        }
+        let n_sites = total.trailing_zeros() as usize;
+        if n_sites == 0 {
+            return Err(QuantRS2Error::InvalidInput(
+                "cannot build an MPS from a scalar (rank-0) tensor".into(),
+            ));
+        }
+        let phys_dims: Vec<usize> = vec![2usize; n_sites];
+
+        let mut mps = Vec::with_capacity(n_sites);
+
+        // `psi` holds the remaining (left_bond * rest) matrix as a flat row-major
+        // buffer with `left_bond` rows; initially left_bond = 1.
+        let mut left_bond = 1usize;
+        let mut psi = flat;
+        let mut remaining = total; // = product of physical dims not yet split off
+
+        for site in 0..n_sites {
+            let d = phys_dims[site];
+            remaining /= d;
+            // Reshape psi (left_bond x (d*remaining)) into a matrix M of shape
+            // (left_bond*d, remaining) so the SVD separates this site from the rest.
+            let rows = left_bond * d;
+            let cols = remaining;
+            let mut m = Array2::<Complex64>::zeros((rows, cols));
+            for lb in 0..left_bond {
+                for phys in 0..d {
+                    for rc in 0..cols {
+                        // psi index: ((lb)*d + phys)*cols + rc  (row-major over [lb, phys, rc])
+                        let src = (lb * d + phys) * cols + rc;
+                        m[[lb * d + phys, rc]] = psi[src];
+                    }
+                }
+            }
+
+            if site == n_sites - 1 {
+                // Last site: no further splitting; the whole matrix is the final
+                // tensor with right bond dimension 1.
+                let right_bond = 1usize;
+                // rows = left_bond * d, cols should be 1 here.
+                let data = Array::from_shape_vec(
+                    IxDyn(&[left_bond, d, right_bond]),
+                    (0..left_bond * d * right_bond)
+                        .map(|idx| {
+                            let lb = idx / d;
+                            let phys = idx % d;
+                            m[[lb * d + phys, 0]]
+                        })
+                        .collect(),
+                )
+                .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {e}")))?;
+                mps.push(Tensor::new(
+                    site,
+                    data,
+                    vec![
+                        format!("bond_{site}"),
+                        format!("phys_{site}"),
+                        format!("bond_{}", site + 1),
+                    ],
+                ));
+                break;
+            }
+
+            // SVD: M = U S V^H.
+            let (u, s, vh) = Self::complex_svd(&m)?;
+
+            // Determine kept rank (truncate tiny singular values and cap at max_bond_dim).
+            let mut rank = s.len();
+            let tol = 1e-12 * s.first().copied().unwrap_or(0.0).max(1.0);
+            while rank > 1 && s[rank - 1] <= tol {
+                rank -= 1;
+            }
+            if let Some(max_b) = max_bond_dim {
+                rank = rank.min(max_b.max(1));
+            }
+            rank = rank.max(1);
+
+            // Site tensor A[site] = U[:, :rank] reshaped to (left_bond, d, rank).
+            let mut a_data = Array::zeros(IxDyn(&[left_bond, d, rank]));
+            for lb in 0..left_bond {
+                for phys in 0..d {
+                    for r in 0..rank {
+                        a_data[[lb, phys, r]] = u[[lb * d + phys, r]];
+                    }
+                }
+            }
+            mps.push(Tensor::new(
+                site,
+                a_data,
+                vec![
+                    format!("bond_{site}"),
+                    format!("phys_{site}"),
+                    format!("bond_{}", site + 1),
+                ],
+            ));
+
+            // Form the remainder S[:rank] * V^H[:rank, :] as the new psi
+            // (shape rank x cols), which becomes the next iteration's left part.
+            let mut new_psi = vec![Complex64::new(0.0, 0.0); rank * cols];
+            for r in 0..rank {
+                let sigma = Complex64::new(s[r], 0.0);
+                for c in 0..cols {
+                    new_psi[r * cols + c] = sigma * vh[[r, c]];
+                }
+            }
+            psi = new_psi;
+            left_bond = rank;
+        }
+
+        Ok(mps)
     }
 
-    /// Apply Matrix Product Operator (MPO) representation
-    pub const fn apply_mpo(&mut self, _mpo: &[Tensor], _qubits: &[usize]) -> QuantRS2Result<()> {
-        // Apply an MPO to specified qubits
-        Ok(())
+    /// Apply a Matrix Product Operator (MPO) to the specified physical qubits.
+    ///
+    /// Honest status: this `TensorNetwork` stores a general tensor network, not an MPS
+    /// state, so there is no canonical MPS chain for an MPO to act on in place. Applying
+    /// an MPO correctly requires first bringing the state into MPS form (see
+    /// [`Self::to_mps`]) and contracting the operator legs site-by-site. Rather than
+    /// silently doing nothing (the previous behaviour), this returns an explicit error.
+    pub fn apply_mpo(&mut self, _mpo: &[Tensor], _qubits: &[usize]) -> QuantRS2Result<()> {
+        Err(QuantRS2Error::UnsupportedOperation(
+            "MPO application requires MPS form; call to_mps first".into(),
+        ))
+    }
+
+    /// Complex one-sided Jacobi SVD: returns `(U, s, Vᴴ)` with `M = U·diag(s)·Vᴴ`,
+    /// `U` (m×k) and `Vᴴ` (k×n) having orthonormal rows/columns and `s` the singular
+    /// values in non-increasing order (`k = min(m, n)`).
+    ///
+    /// One-sided Jacobi rotates pairs of columns of `M` until they are mutually
+    /// orthogonal; the column norms are then the singular values and the accumulated
+    /// rotations form `V`. The method is numerically robust, handles repeated/zero
+    /// singular values gracefully, and works directly on complex data (unlike the
+    /// real-only LAPACK path currently exposed by SciRS2).
+    fn complex_svd(
+        m: &Array2<Complex64>,
+    ) -> QuantRS2Result<(Array2<Complex64>, Vec<f64>, Array2<Complex64>)> {
+        let (rows, cols) = (m.nrows(), m.ncols());
+
+        // Work on whichever orientation has at least as many rows as columns so that
+        // the column-orthogonalisation has full column rank handling; transpose back
+        // afterwards if needed.
+        let transposed = rows < cols;
+        let a0 = if transposed {
+            m.mapv(|z| z.conj()).t().to_owned() // (cols x rows)
+        } else {
+            m.clone()
+        };
+        let (p, q) = (a0.nrows(), a0.ncols()); // p >= q
+
+        let mut a = a0; // columns will be orthogonalised in place
+        let mut v = Array2::<Complex64>::eye(q); // accumulates right rotations
+
+        let max_sweeps = 60;
+        let eps = 1e-15;
+        for _sweep in 0..max_sweeps {
+            let mut off = 0.0_f64;
+            for i in 0..q {
+                for j in (i + 1)..q {
+                    // Compute the 2x2 Hermitian block of A^H A restricted to cols i, j.
+                    let mut alpha = 0.0_f64; // <a_i, a_i>
+                    let mut beta = 0.0_f64; // <a_j, a_j>
+                    let mut gamma = Complex64::new(0.0, 0.0); // <a_i, a_j>
+                    for r in 0..p {
+                        let ai = a[[r, i]];
+                        let aj = a[[r, j]];
+                        alpha += ai.norm_sqr();
+                        beta += aj.norm_sqr();
+                        gamma += ai.conj() * aj;
+                    }
+                    let gamma_abs = gamma.norm();
+                    off += gamma_abs;
+                    if gamma_abs <= eps * (alpha.sqrt() * beta.sqrt()).max(eps) {
+                        continue;
+                    }
+
+                    // Jacobi rotation that diagonalises [[alpha, gamma],[gamma*, beta]].
+                    // Phase factor to make the off-diagonal real-positive.
+                    let phase = gamma / gamma_abs;
+                    let zeta = (beta - alpha) / (2.0 * gamma_abs);
+                    let t = zeta.signum() / (zeta.abs() + (1.0 + zeta * zeta).sqrt());
+                    let c = 1.0 / (1.0 + t * t).sqrt();
+                    let sgn = c * t; // real sine magnitude
+                    let s_ij = phase * Complex64::new(sgn, 0.0);
+
+                    // Apply rotation to columns i, j of A:
+                    //   a_i' =  c·a_i - conj(s)·a_j
+                    //   a_j' =  s·a_i +      c·a_j
+                    for r in 0..p {
+                        let ai = a[[r, i]];
+                        let aj = a[[r, j]];
+                        a[[r, i]] = Complex64::new(c, 0.0) * ai - s_ij.conj() * aj;
+                        a[[r, j]] = s_ij * ai + Complex64::new(c, 0.0) * aj;
+                    }
+                    // Accumulate into V (same rotation on its columns).
+                    for r in 0..q {
+                        let vi = v[[r, i]];
+                        let vj = v[[r, j]];
+                        v[[r, i]] = Complex64::new(c, 0.0) * vi - s_ij.conj() * vj;
+                        v[[r, j]] = s_ij * vi + Complex64::new(c, 0.0) * vj;
+                    }
+                }
+            }
+            if off <= eps {
+                break;
+            }
+        }
+
+        // Singular values are the column norms of the orthogonalised A; U columns are
+        // the normalised columns.
+        let mut sigma: Vec<(f64, usize)> = (0..q)
+            .map(|j| {
+                let norm = (0..p).map(|r| a[[r, j]].norm_sqr()).sum::<f64>().sqrt();
+                (norm, j)
+            })
+            .collect();
+        // Sort singular values in non-increasing order.
+        sigma.sort_by(|x, y| y.0.total_cmp(&x.0));
+
+        let k = q; // number of singular values for the (p x q), p>=q orientation
+        let mut u_mat = Array2::<Complex64>::zeros((p, k));
+        let mut s_vec = vec![0.0_f64; k];
+        let mut v_sorted = Array2::<Complex64>::zeros((q, k));
+        for (new_idx, &(norm, old_idx)) in sigma.iter().enumerate() {
+            s_vec[new_idx] = norm;
+            if norm > 1e-300 {
+                for r in 0..p {
+                    u_mat[[r, new_idx]] = a[[r, old_idx]] / Complex64::new(norm, 0.0);
+                }
+            } else {
+                // Degenerate/zero column: leave U column zero (its singular value is 0).
+                u_mat[[0.min(p - 1), new_idx]] = Complex64::new(0.0, 0.0);
+            }
+            for r in 0..q {
+                v_sorted[[r, new_idx]] = v[[r, old_idx]];
+            }
+        }
+
+        // Reassemble in the original orientation.
+        if transposed {
+            // Original M = (a0)^H. With a0 = U_a S V_a^H we get
+            // M = V_a S U_a^H, i.e. U_M = V_a, V_M^H = U_a^H.
+            let u_m = v_sorted; // (q x k) = (rows? ) ; careful with shapes below
+            let vh_m = u_mat.mapv(|z| z.conj()).t().to_owned(); // (k x p)
+            Ok((u_m, s_vec, vh_m))
+        } else {
+            let vh_m = v_sorted.mapv(|z| z.conj()).t().to_owned(); // (k x q)
+            Ok((u_mat, s_vec, vh_m))
+        }
     }
 
     /// Get a reference to the tensors in the network
@@ -925,6 +1213,196 @@ mod tests {
     fn test_tensor_network_builder() {
         let builder = TensorNetworkBuilder::new(2);
         assert_eq!(builder.network.tensors.len(), 2);
+    }
+
+    /// Contract a returned MPS chain back into the full dense tensor (row-major flat
+    /// vector over the physical indices). Each site tensor has indices
+    /// `[bond_left, phys, bond_right]` with boundary bonds of dimension 1.
+    fn contract_mps(mps: &[Tensor]) -> Vec<Complex64> {
+        // psi is a flat (left_bond x phys_so_far) buffer; start with left_bond = 1 and
+        // a single scalar 1.0.
+        let mut acc: Vec<Complex64> = vec![Complex64::new(1.0, 0.0)];
+        let mut left_bond = 1usize;
+        for t in mps {
+            let lb = t.shape[0];
+            let d = t.shape[1];
+            let rb = t.shape[2];
+            assert_eq!(lb, left_bond, "bond mismatch while contracting MPS");
+            let cols = acc.len() / left_bond; // physical entries accumulated so far
+                                              // new_acc has shape (rb x (cols*d)) flattened row-major over [rb, cols, d].
+            let mut new_acc = vec![Complex64::new(0.0, 0.0); rb * cols * d];
+            for r in 0..rb {
+                for cidx in 0..cols {
+                    for phys in 0..d {
+                        let mut sum = Complex64::new(0.0, 0.0);
+                        for l in 0..lb {
+                            // acc indexed row-major over [l, cidx]
+                            let a_val = acc[l * cols + cidx];
+                            let t_val = t.data[[l, phys, r]];
+                            sum += a_val * t_val;
+                        }
+                        new_acc[(r * cols + cidx) * d + phys] = sum;
+                    }
+                }
+            }
+            acc = new_acc;
+            left_bond = rb;
+        }
+        acc
+    }
+
+    /// Build a single-tensor network wrapping a known statevector `amps` over
+    /// `n` qubits (shape `[2; n]`). `contract_all` returns such a single tensor
+    /// verbatim (deterministically), so this isolates the MPS decomposition from the
+    /// network contraction engine.
+    fn single_tensor_network(amps: Vec<Complex64>, n: usize) -> TensorNetwork {
+        let shape: Vec<usize> = vec![2usize; n];
+        let data = Array::from_shape_vec(IxDyn(&shape), amps).expect("state tensor");
+        let indices: Vec<String> = (0..n).map(|i| format!("phys_{i}")).collect();
+        let mut net = TensorNetwork::new();
+        net.add_tensor(Tensor::new(0, data, indices));
+        net
+    }
+
+    #[test]
+    fn test_to_mps_reconstructs_bell_state() {
+        // Site-6 proof: to_mps reconstructs an entangled (bond-dim-2) Bell state.
+        let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
+        let bell = vec![
+            Complex64::new(inv_sqrt2, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(inv_sqrt2, 0.0),
+        ];
+        let net = single_tensor_network(bell.clone(), 2);
+        let mps = net.to_mps(None).expect("to_mps");
+        assert_eq!(mps.len(), 2, "one MPS tensor per qubit");
+        // Genuine entanglement => inner bond dimension 2.
+        assert_eq!(mps[0].shape[2], 2, "Bell state needs bond dimension 2");
+
+        let recon = contract_mps(&mps);
+        let err: f64 = recon
+            .iter()
+            .zip(bell.iter())
+            .map(|(a, b)| (a - b).norm_sqr())
+            .sum::<f64>()
+            .sqrt();
+        assert!(err < 1e-9, "Bell MPS reconstruction error {err}");
+    }
+
+    #[test]
+    fn test_to_mps_reconstructs_ghz_state() {
+        // 3-qubit GHZ = (|000> + |111>)/sqrt2.
+        let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
+        let mut ghz = vec![Complex64::new(0.0, 0.0); 8];
+        ghz[0] = Complex64::new(inv_sqrt2, 0.0);
+        ghz[7] = Complex64::new(inv_sqrt2, 0.0);
+        let net = single_tensor_network(ghz.clone(), 3);
+        let mps = net.to_mps(None).expect("to_mps");
+        assert_eq!(mps.len(), 3, "one MPS tensor per qubit");
+
+        let recon = contract_mps(&mps);
+        let err: f64 = recon
+            .iter()
+            .zip(ghz.iter())
+            .map(|(a, b)| (a - b).norm_sqr())
+            .sum::<f64>()
+            .sqrt();
+        assert!(err < 1e-9, "GHZ MPS reconstruction error {err}");
+    }
+
+    #[test]
+    fn test_to_mps_reconstructs_generic_state() {
+        // A generic normalised 2-qubit complex state (no special structure).
+        let raw = [
+            Complex64::new(0.3, 0.1),
+            Complex64::new(-0.2, 0.4),
+            Complex64::new(0.5, -0.25),
+            Complex64::new(0.1, 0.35),
+        ];
+        let norm = raw.iter().map(|z| z.norm_sqr()).sum::<f64>().sqrt();
+        let state: Vec<Complex64> = raw.iter().map(|z| z / norm).collect();
+        let net = single_tensor_network(state.clone(), 2);
+        let mps = net.to_mps(None).expect("to_mps");
+        let recon = contract_mps(&mps);
+        let err: f64 = recon
+            .iter()
+            .zip(state.iter())
+            .map(|(a, b)| (a - b).norm_sqr())
+            .sum::<f64>()
+            .sqrt();
+        assert!(err < 1e-9, "generic MPS reconstruction error {err}");
+    }
+
+    #[test]
+    fn test_to_mps_truncation_keeps_bond_dim() {
+        // With max_bond_dim = 1 the Bell state cannot be represented exactly, but the
+        // call must still succeed and cap every bond dimension at 1 (lossy truncation),
+        // proving the truncation path is real (not ignored).
+        let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
+        let bell = vec![
+            Complex64::new(inv_sqrt2, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(inv_sqrt2, 0.0),
+        ];
+        let net = single_tensor_network(bell, 2);
+        let mps = net.to_mps(Some(1)).expect("to_mps truncated");
+        for t in &mps {
+            assert!(
+                t.shape[0] <= 1 && t.shape[2] <= 1,
+                "bond dimension exceeded max_bond_dim=1: {:?}",
+                t.shape
+            );
+        }
+    }
+
+    #[test]
+    fn test_apply_mpo_honest_error() {
+        // Site-6: apply_mpo must report an honest error rather than silently no-op.
+        let mut network = TensorNetwork::new();
+        let result = network.apply_mpo(&[], &[0]);
+        assert!(matches!(
+            result,
+            Err(QuantRS2Error::UnsupportedOperation(_))
+        ));
+    }
+
+    #[test]
+    fn test_complex_svd_roundtrip() {
+        // Validate the complex Jacobi SVD: M ≈ U diag(s) V^H with orthonormal factors.
+        let m = Array2::from_shape_vec(
+            (3, 2),
+            vec![
+                Complex64::new(1.0, 0.5),
+                Complex64::new(-0.3, 0.2),
+                Complex64::new(0.4, -0.1),
+                Complex64::new(0.7, 0.0),
+                Complex64::new(-0.2, 0.9),
+                Complex64::new(0.1, 0.1),
+            ],
+        )
+        .expect("matrix");
+        let (u, s, vh) = TensorNetwork::complex_svd(&m).expect("svd");
+        // Reconstruct.
+        let k = s.len();
+        let mut s_mat = Array2::<Complex64>::zeros((k, k));
+        for i in 0..k {
+            s_mat[[i, i]] = Complex64::new(s[i], 0.0);
+        }
+        let recon = u.dot(&s_mat).dot(&vh);
+        let err: f64 = recon
+            .iter()
+            .zip(m.iter())
+            .map(|(a, b)| (a - b).norm_sqr())
+            .sum::<f64>()
+            .sqrt();
+        assert!(err < 1e-9, "complex SVD reconstruction error {err}");
+        // Singular values non-increasing and non-negative.
+        for i in 1..s.len() {
+            assert!(s[i] <= s[i - 1] + 1e-12);
+            assert!(s[i] >= -1e-12);
+        }
     }
 
     #[test]

@@ -11,6 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 
+pub mod circuit_simulation;
 pub mod classical_integration;
 pub mod gradients;
 pub mod hardware_acceleration;

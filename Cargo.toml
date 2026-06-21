@@ -207,6 +207,13 @@ md5 = "0.8"
 wgpu = { version = "29.0.3" }
 bytemuck = { version = "1.25.0", features = ["derive"] }
 ocl = "0.19.7"
+# OxiCUDA: Pure Rust CUDA replacement (COOLJAPAN). Driver path loads libcuda.so at
+# runtime (no CUDA Toolkit needed at build time); webgpu feature adds the portable
+# wgpu/WGSL backend. oxicuda-webgpu 0.2.0 pins wgpu = "29.0.3" matching the workspace.
+oxicuda = { version = "0.2.0", default-features = false, features = ["driver", "memory", "launch", "ptx", "webgpu"] }
+
+# Minimal block_on executor for synchronous wgpu adapter/device queries
+pollster = "0.4.0"
 
 # Async and networking
 reqwest = { version = "0.13.4", default-features = false, features = ["json", "blocking", "rustls"] }

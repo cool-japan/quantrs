@@ -422,6 +422,31 @@ impl MPS {
 
         result
     }
+
+    /// Contract the MPS into a dense state vector of `2^n` complex amplitudes.
+    ///
+    /// The amplitudes use the little-endian convention `amplitude[index]` where bit `q`
+    /// of `index` is the computational-basis value of qubit `q`. Each amplitude is the
+    /// genuine MPS contraction `A^{s_0} A^{s_1} ... A^{s_{n-1}}` evaluated as a chain of
+    /// matrix products, so an entangled MPS produces the corresponding entangled
+    /// amplitudes rather than a fabricated product state.
+    fn to_statevector(&self) -> QuantRS2Result<Vec<Complex64>> {
+        let dim = 1usize << self.num_qubits;
+        let mut amplitudes = vec![Complex64::new(0.0, 0.0); dim];
+
+        for (index, amplitude) in amplitudes.iter_mut().enumerate() {
+            // Contract the per-qubit slices selected by the bits of `index`.
+            let mut accumulated: Array2<Complex64> = Array2::eye(1);
+            for qubit in 0..self.num_qubits {
+                let bit = (index >> qubit) & 1;
+                let slice = self.tensors[qubit].data.slice(s![.., bit as i32, ..]);
+                accumulated = accumulated.dot(&slice);
+            }
+            *amplitude = accumulated[[0, 0]];
+        }
+
+        Ok(amplitudes)
+    }
 }
 
 /// QR decomposition helper
@@ -462,22 +487,248 @@ fn qr_decomposition(
     Ok((q, r))
 }
 
-/// SVD decomposition with truncation
+/// Full (untruncated) reduced complex SVD `A = U · diag(S) · Vt`.
+///
+/// Implements the one-sided Jacobi SVD algorithm directly on complex matrices. Jacobi
+/// rotations are applied to pairs of columns of a working copy of `A` until all columns
+/// are mutually orthogonal; the resulting column norms are the singular values, the
+/// normalised columns form `U`, and the accumulated rotations form `V` (returned as
+/// `Vt = V^H`). This method is numerically robust for all matrix sizes and converges to
+/// machine precision, unlike eigendecomposition-of-`A^H A` approaches that can yield
+/// non-orthonormal vectors or `NaN` singular values for ill-conditioned inputs.
+///
+/// Returns `(U, S, Vt)` with `U` of shape `(m, r)`, `S` of length `r`, `Vt` of shape
+/// `(r, n)` and `r = min(m, n)`. Singular values are real, non-negative and sorted in
+/// descending order.
+pub(crate) fn complex_jacobi_svd(
+    matrix: &Array2<Complex64>,
+) -> QuantRS2Result<(Array2<Complex64>, Array1<f64>, Array2<Complex64>)> {
+    let (m, n) = matrix.dim();
+    if m == 0 || n == 0 {
+        return Err(QuantRS2Error::ComputationError(
+            "Cannot compute SVD of an empty matrix".to_string(),
+        ));
+    }
+
+    // The one-sided Jacobi method orthogonalises the columns of the matrix with the larger
+    // number of rows. When n > m we transpose, decompose, and swap U and V at the end so
+    // the algorithm always works on a tall-or-square matrix.
+    let transposed = n > m;
+    let mut work = if transposed {
+        // Work on A^H (shape n x m), then U_work plays the role of V and vice versa.
+        let mut ah = Array2::<Complex64>::zeros((n, m));
+        for i in 0..m {
+            for j in 0..n {
+                ah[[j, i]] = matrix[[i, j]].conj();
+            }
+        }
+        ah
+    } else {
+        matrix.clone()
+    };
+
+    let rows = work.nrows();
+    let cols = work.ncols();
+
+    // Accumulate the right rotations into v (cols x cols), starting from the identity.
+    let mut v = Array2::<Complex64>::eye(cols);
+
+    let tolerance = 1e-14_f64;
+    let max_sweeps = 60;
+
+    for _sweep in 0..max_sweeps {
+        let mut off_diagonal = 0.0_f64;
+
+        for p in 0..cols {
+            for q in (p + 1)..cols {
+                // Compute the 2x2 Hermitian block of the column Gram matrix:
+                //   alpha = <col_p, col_p>, beta = <col_q, col_q>, gamma = <col_p, col_q>.
+                let mut alpha = 0.0_f64;
+                let mut beta = 0.0_f64;
+                let mut gamma = Complex64::new(0.0, 0.0);
+                for i in 0..rows {
+                    let cp = work[[i, p]];
+                    let cq = work[[i, q]];
+                    alpha += cp.norm_sqr();
+                    beta += cq.norm_sqr();
+                    gamma += cp.conj() * cq;
+                }
+
+                let gamma_abs = gamma.norm();
+                off_diagonal = off_diagonal.max(gamma_abs);
+                if gamma_abs <= tolerance * (alpha.sqrt() * beta.sqrt()).max(f64::MIN_POSITIVE) {
+                    continue;
+                }
+
+                // Complex one-sided Jacobi rotation. Factor out the phase of gamma so the
+                // remaining 2x2 problem is real-symmetric, then apply the standard Jacobi
+                // angle. The rotation is unitary, preserving the decomposition.
+                let phase = if gamma_abs > 0.0 {
+                    gamma / Complex64::new(gamma_abs, 0.0)
+                } else {
+                    Complex64::new(1.0, 0.0)
+                };
+
+                let zeta = (beta - alpha) / (2.0 * gamma_abs);
+                let sign = if zeta >= 0.0 { 1.0 } else { -1.0 };
+                let t = sign / (zeta.abs() + (zeta * zeta + 1.0).sqrt());
+                let cosine = 1.0 / (t * t + 1.0).sqrt();
+                let sine = cosine * t;
+
+                let c = Complex64::new(cosine, 0.0);
+                let s_pq = phase * Complex64::new(sine, 0.0);
+                let s_pq_conj = s_pq.conj();
+
+                // Rotate columns p and q of the working matrix.
+                for i in 0..rows {
+                    let cp = work[[i, p]];
+                    let cq = work[[i, q]];
+                    work[[i, p]] = c * cp - s_pq_conj * cq;
+                    work[[i, q]] = s_pq * cp + c * cq;
+                }
+                // Apply the same rotation to the accumulated right-singular-vector matrix.
+                for i in 0..cols {
+                    let vp = v[[i, p]];
+                    let vq = v[[i, q]];
+                    v[[i, p]] = c * vp - s_pq_conj * vq;
+                    v[[i, q]] = s_pq * vp + c * vq;
+                }
+            }
+        }
+
+        if off_diagonal <= tolerance {
+            break;
+        }
+    }
+
+    // Column norms of the orthogonalised working matrix are the singular values; the
+    // normalised columns are the left singular vectors.
+    let rank = rows.min(cols);
+    let mut singular = Vec::with_capacity(cols);
+    let mut u_full = Array2::<Complex64>::zeros((rows, cols));
+    for j in 0..cols {
+        let mut norm_sq = 0.0_f64;
+        for i in 0..rows {
+            norm_sq += work[[i, j]].norm_sqr();
+        }
+        let norm = norm_sq.sqrt();
+        singular.push(norm);
+        if norm > tolerance {
+            for i in 0..rows {
+                u_full[[i, j]] = work[[i, j]] / Complex64::new(norm, 0.0);
+            }
+        }
+    }
+
+    // Sort singular values (and corresponding U, V columns) in descending order.
+    let mut order: Vec<usize> = (0..cols).collect();
+    order.sort_by(|&a, &b| {
+        singular[b]
+            .partial_cmp(&singular[a])
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    let mut s = Array1::<f64>::zeros(rank);
+    let mut u = Array2::<Complex64>::zeros((rows, rank));
+    let mut v_sorted = Array2::<Complex64>::zeros((cols, rank));
+    for (new_idx, &old_idx) in order.iter().take(rank).enumerate() {
+        s[new_idx] = singular[old_idx];
+        for i in 0..rows {
+            u[[i, new_idx]] = u_full[[i, old_idx]];
+        }
+        for i in 0..cols {
+            v_sorted[[i, new_idx]] = v[[i, old_idx]];
+        }
+    }
+
+    // For columns with (near-)zero singular value the corresponding U column is zero; fill
+    // it with a vector orthonormal to the others so U has orthonormal columns. This keeps
+    // the factorisation well-formed for rank-deficient inputs.
+    for j in 0..rank {
+        if s[j] <= tolerance {
+            let mut candidate = Array1::<Complex64>::zeros(rows);
+            candidate[j % rows] = Complex64::new(1.0, 0.0);
+            for prev in 0..rank {
+                if prev == j {
+                    continue;
+                }
+                let mut proj = Complex64::new(0.0, 0.0);
+                for i in 0..rows {
+                    proj += u[[i, prev]].conj() * candidate[i];
+                }
+                for i in 0..rows {
+                    candidate[i] -= proj * u[[i, prev]];
+                }
+            }
+            let mut norm_sq = 0.0_f64;
+            for i in 0..rows {
+                norm_sq += candidate[i].norm_sqr();
+            }
+            let norm = norm_sq.sqrt();
+            if norm > tolerance {
+                for i in 0..rows {
+                    u[[i, j]] = candidate[i] / Complex64::new(norm, 0.0);
+                }
+            }
+        }
+    }
+
+    if transposed {
+        // We decomposed A^H = U_work · S · V_work^H, hence A = V_work · S · U_work^H.
+        // So the true U is v_sorted and the true Vt is u^H.
+        let true_u = v_sorted;
+        let mut vt = Array2::<Complex64>::zeros((rank, n));
+        for i in 0..rank {
+            for j in 0..n {
+                vt[[i, j]] = u[[j, i]].conj();
+            }
+        }
+        Ok((true_u, s, vt))
+    } else {
+        // A = U · S · V^H, so Vt = V^H.
+        let mut vt = Array2::<Complex64>::zeros((rank, n));
+        for i in 0..rank {
+            for j in 0..n {
+                vt[[i, j]] = v_sorted[[j, i]].conj();
+            }
+        }
+        Ok((u, s, vt))
+    }
+}
+
+/// SVD decomposition with bond-dimension truncation.
+///
+/// Computes a real, complex-valued singular value decomposition `A = U · diag(S) · Vt`
+/// via [`complex_jacobi_svd`] and truncates the bond to keep the largest singular values
+/// (those above `threshold`, capped at `max_bond`). This decomposition controls MPS
+/// entanglement representation: returning anything other than the genuine factorization
+/// silently corrupts every downstream amplitude.
+///
+/// Returns `(U, S, Vt)` where `U` has shape `(m, k)`, `S` is the vector of `k` retained
+/// singular values (real, non-negative, descending) and `Vt` has shape `(k, n)` such that
+/// `U · diag(S) · Vt` reconstructs `A` within numerical tolerance.
 fn svd_decomposition(
     matrix: &Array2<Complex64>,
     max_bond: usize,
     threshold: f64,
 ) -> QuantRS2Result<(Array2<Complex64>, Array1<f64>, Array2<Complex64>)> {
-    // Placeholder - in real implementation would use proper SVD
-    // For now, return identity-like decomposition
-    let (m, n) = matrix.dim();
-    let k = m.min(n).min(max_bond);
+    let (full_u, full_s, full_vt) = complex_jacobi_svd(matrix)?;
+    let full_rank = full_s.len();
 
-    let u = Array2::eye(m).slice(s![.., ..k]).to_owned();
-    let s = Array1::ones(k);
-    let vt = Array2::eye(n).slice(s![..k, ..]).to_owned();
+    // Determine how many singular values to keep: drop those at or below the truncation
+    // threshold, then cap at the maximum bond dimension. Always keep at least one so the
+    // resulting tensors stay well-formed even for (near-)zero states.
+    let mut kept = full_s.iter().filter(|&&value| value > threshold).count();
+    kept = kept.min(max_bond).min(full_rank);
+    if kept == 0 {
+        kept = full_rank.max(1);
+    }
 
-    Ok((u, s, vt))
+    let u = full_u.slice(s![.., ..kept]).to_owned();
+    let truncated_s = full_s.slice(s![..kept]).to_owned();
+    let vt = full_vt.slice(s![..kept, ..]).to_owned();
+
+    Ok((u, truncated_s, vt))
 }
 
 /// MPS quantum simulator
@@ -506,14 +757,41 @@ impl MPSSimulator {
 
 impl<const N: usize> Simulator<N> for MPSSimulator {
     fn run(&self, circuit: &Circuit<N>) -> QuantRS2Result<Register<N>> {
-        // Create initial MPS state
+        // Create initial MPS state in |0...0>.
         let mut mps = MPS::new(N, self.max_bond_dimension);
         mps.set_truncation_threshold(self.truncation_threshold);
 
-        // Get gate sequence from circuit
-        // Note: This is a placeholder - would need actual circuit introspection
-        // For now, return a register in |0> state
-        Ok(Register::new())
+        // Apply each circuit gate to the MPS. Single-qubit gates act on the local tensor;
+        // two-qubit gates contract, apply, and re-split via the real SVD truncation. Gates
+        // acting on more than two qubits or on non-adjacent qubits are not representable by
+        // this nearest-neighbour MPS, so we surface an honest error instead of silently
+        // skipping them (which would corrupt the resulting state).
+        for gate in circuit.gates() {
+            let qubits = gate.qubits();
+            match qubits.as_slice() {
+                [target] => {
+                    mps.apply_single_qubit_gate(gate.as_ref(), target.id() as usize)?;
+                }
+                [first, second] => {
+                    mps.apply_two_qubit_gate(
+                        gate.as_ref(),
+                        first.id() as usize,
+                        second.id() as usize,
+                    )?;
+                }
+                _ => {
+                    return Err(QuantRS2Error::UnsupportedOperation(format!(
+                        "MPS simulator supports only one- and two-qubit gates, but '{}' acts on {} qubits",
+                        gate.name(),
+                        qubits.len()
+                    )));
+                }
+            }
+        }
+
+        // Contract the MPS into a dense state vector and build the register from it.
+        let amplitudes = mps.to_statevector()?;
+        Register::<N>::with_amplitudes(amplitudes)
     }
 }
 
@@ -567,5 +845,140 @@ mod tests {
         mps.move_orthogonality_center(0)
             .expect("Failed to move orthogonality center to 0");
         assert_eq!(mps.orthogonality_center, 0);
+    }
+
+    #[test]
+    fn test_svd_decomposition_reconstructs_matrix() {
+        // A non-trivial, non-Hermitian complex matrix whose SVD is clearly not identity.
+        let matrix = Array2::from_shape_vec(
+            (3, 3),
+            vec![
+                Complex64::new(1.0, 0.5),
+                Complex64::new(2.0, -1.0),
+                Complex64::new(0.0, 3.0),
+                Complex64::new(-1.0, 2.0),
+                Complex64::new(0.5, 0.5),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(2.0, 1.0),
+                Complex64::new(-3.0, 0.0),
+                Complex64::new(0.0, -2.0),
+            ],
+        )
+        .expect("failed to build test matrix");
+
+        let (u, s, vt) =
+            svd_decomposition(&matrix, 16, 1e-14).expect("real SVD decomposition should succeed");
+
+        // Reconstruct U * diag(S) * Vt and compare to the original within tight tolerance.
+        let k = s.len();
+        let mut reconstructed = Array2::<Complex64>::zeros(matrix.dim());
+        for i in 0..matrix.nrows() {
+            for j in 0..matrix.ncols() {
+                let mut acc = Complex64::new(0.0, 0.0);
+                for r in 0..k {
+                    acc += u[[i, r]] * Complex64::new(s[r], 0.0) * vt[[r, j]];
+                }
+                reconstructed[[i, j]] = acc;
+            }
+        }
+
+        let mut max_err = 0.0_f64;
+        for i in 0..matrix.nrows() {
+            for j in 0..matrix.ncols() {
+                max_err = max_err.max((reconstructed[[i, j]] - matrix[[i, j]]).norm());
+            }
+        }
+        assert!(
+            max_err < 1e-8,
+            "SVD reconstruction error too large: {max_err}"
+        );
+
+        // Singular values must be non-negative and sorted descending.
+        for r in 0..k {
+            assert!(s[r] >= -1e-12, "singular value {r} is negative: {}", s[r]);
+            if r > 0 {
+                assert!(s[r - 1] + 1e-12 >= s[r], "singular values not descending");
+            }
+        }
+
+        // U must have orthonormal columns (genuine left singular vectors), proving this is
+        // a real SVD rather than an arbitrary factorization.
+        for a in 0..k {
+            for b in 0..k {
+                let mut inner = Complex64::new(0.0, 0.0);
+                for i in 0..u.nrows() {
+                    inner += u[[i, a]].conj() * u[[i, b]];
+                }
+                let expected = if a == b { 1.0 } else { 0.0 };
+                assert!(
+                    (inner.re - expected).abs() < 1e-8 && inner.im.abs() < 1e-8,
+                    "U columns not orthonormal at ({a},{b}): {inner:?}"
+                );
+            }
+        }
+
+        // The decomposition must NOT be the fabricated identity-like result: at least one
+        // singular value differs from 1 and U is not the identity.
+        assert!(
+            s.iter().any(|&value| (value - 1.0).abs() > 1e-6),
+            "singular values are all ~1 (identity fabrication not fixed)"
+        );
+        let identity = Array2::<Complex64>::eye(u.nrows());
+        let mut differs_from_identity = false;
+        for i in 0..u.nrows() {
+            for j in 0..k {
+                if (u[[i, j]] - identity[[i, j]]).norm() > 1e-6 {
+                    differs_from_identity = true;
+                }
+            }
+        }
+        assert!(
+            differs_from_identity,
+            "U equals identity (identity fabrication not fixed)"
+        );
+    }
+
+    #[test]
+    fn test_to_statevector_bell_state() {
+        // Build a Bell state (|00> + |11>)/sqrt(2) via H on qubit 0 then CNOT(0, 1).
+        let mut mps = MPS::new(2, 16);
+        let h = Hadamard {
+            target: QubitId::new(0),
+        };
+        mps.apply_single_qubit_gate(&h, 0)
+            .expect("failed to apply Hadamard");
+
+        let cnot = quantrs2_core::gate::multi::CNOT {
+            control: QubitId::new(0),
+            target: QubitId::new(1),
+        };
+        mps.apply_two_qubit_gate(&cnot, 0, 1)
+            .expect("failed to apply CNOT");
+
+        let state = mps
+            .to_statevector()
+            .expect("contraction to state vector should succeed");
+
+        let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
+        assert!((state[0].re - inv_sqrt2).abs() < 1e-10, "amp(|00>) wrong");
+        assert!(state[1].norm() < 1e-10, "amp(|01>) should vanish");
+        assert!(state[2].norm() < 1e-10, "amp(|10>) should vanish");
+        assert!((state[3].re - inv_sqrt2).abs() < 1e-10, "amp(|11>) wrong");
+
+        // Honest check: the contracted state is genuinely entangled, NOT the |00> placeholder.
+        let zero_state = [
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+        ];
+        let is_zero_state = state
+            .iter()
+            .zip(zero_state.iter())
+            .all(|(a, b)| (a - b).norm() < 1e-9);
+        assert!(
+            !is_zero_state,
+            "contraction fabricated the |00> placeholder"
+        );
     }
 }

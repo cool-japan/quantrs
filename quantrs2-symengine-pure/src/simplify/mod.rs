@@ -520,17 +520,177 @@ pub fn simplify_trig(expr: &Expression) -> Expression {
     Expression::from_rec_expr(best)
 }
 
-/// Collect like terms in a polynomial expression
+/// Collect like terms in a polynomial expression with respect to `var`.
 ///
-/// This is a more aggressive simplification that tries to collect
-/// terms with the same variable factors.
+/// Groups the additive terms of `expr` by their power of `var` and sums the
+/// coefficients of each power, producing `Σ_k c_k · var^k`. For example,
+/// `3·x + 2·x` collects to `5·x`, and `a·x + b·x` collects to `(a + b)·x`.
+///
+/// The expression is first fully expanded (so products of sums are distributed)
+/// and the result is run through [`simplify`] to canonicalise the rebuilt sum.
+/// Terms whose collected coefficient is exactly zero are dropped. If `var` is
+/// not a symbol, the expression is returned expanded-and-simplified unchanged,
+/// since there is no variable to collect against.
+#[must_use]
 pub fn collect(expr: &Expression, var: &Expression) -> Expression {
-    // First expand, then simplify
+    // Fully expand so the expression is a flat sum of products.
     let expanded = expand(expr);
 
-    // For now, just return simplified form
-    // Full polynomial collection would require more sophisticated analysis
-    simplify(&expanded)
+    // Without a symbol to collect against there is nothing meaningful to group.
+    let Some(var_name) = var.as_symbol() else {
+        return simplify(&expanded);
+    };
+
+    // Decompose into additive terms (subtraction is represented via negation).
+    let terms = collect_addends(&expanded);
+
+    // Group terms by the power of `var` they contain. The map value accumulates
+    // the coefficient (everything in the term except the `var` factors).
+    let mut by_power: HashMap<u32, Vec<Expression>> = HashMap::new();
+    let mut order: Vec<u32> = Vec::new();
+
+    for term in &terms {
+        let (power, coeff) = split_power_of(term, var_name);
+        if !by_power.contains_key(&power) {
+            order.push(power);
+        }
+        by_power.entry(power).or_default().push(coeff);
+    }
+
+    // Highest power first gives a conventional polynomial ordering.
+    order.sort_unstable_by(|a, b| b.cmp(a));
+
+    let mut result: Option<Expression> = None;
+    for power in order {
+        let coeffs = by_power.remove(&power).unwrap_or_default();
+        let coeff = sum_coefficients(&coeffs);
+
+        // Drop terms whose coefficient collapses to zero.
+        if coeff.to_f64().is_some_and(|v| v.abs() < 1e-15) {
+            continue;
+        }
+
+        // Reattach the var^power factor.
+        let term = match power {
+            0 => coeff,
+            1 => coeff * var.clone(),
+            k => coeff * var.clone().pow(&Expression::int(i64::from(k))),
+        };
+
+        result = Some(match result {
+            Some(acc) => acc + term,
+            None => term,
+        });
+    }
+
+    let collected = result.unwrap_or_else(Expression::zero);
+    simplify(&collected)
+}
+
+/// Split a single multiplicative term into `(power_of_var, remaining_coefficient)`.
+///
+/// Counts how many times `var` appears as a factor, accounting for explicit
+/// powers `var^n` (with non-negative integer `n`). The coefficient is the
+/// product of all remaining factors; if nothing remains it is `1`.
+fn split_power_of(term: &Expression, var_name: &str) -> (u32, Expression) {
+    // Strip an outer negation, folding the sign into the coefficient.
+    if term.is_neg() {
+        if let Some(inner) = term.as_neg() {
+            let (power, coeff) = split_power_of(&inner, var_name);
+            return (power, -coeff);
+        }
+    }
+
+    let factors = flatten_mul(term);
+    let mut power: u32 = 0;
+    let mut coeff_factors: Vec<Expression> = Vec::with_capacity(factors.len());
+
+    for factor in factors {
+        if factor.as_symbol() == Some(var_name) {
+            power += 1;
+        } else if let Some((base, exp)) = factor.as_pow() {
+            // var^n contributes n to the power when n is a non-negative integer.
+            if base.as_symbol() == Some(var_name) {
+                if let Some(n) = exp.to_i64() {
+                    if n >= 0 {
+                        power += u32::try_from(n).unwrap_or(0);
+                        continue;
+                    }
+                }
+            }
+            coeff_factors.push(factor);
+        } else {
+            coeff_factors.push(factor);
+        }
+    }
+
+    let coeff = match coeff_factors.split_first() {
+        Some((first, rest)) => {
+            let mut acc = first.clone();
+            for f in rest {
+                acc = acc * f.clone();
+            }
+            acc
+        }
+        None => Expression::one(),
+    };
+
+    (power, coeff)
+}
+
+/// Flatten a (possibly nested) multiplication into its flat list of factors.
+fn flatten_mul(expr: &Expression) -> Vec<Expression> {
+    if expr.is_mul() {
+        // SAFETY: is_mul() guarantees as_mul() succeeds.
+        let operands = expr.as_mul().expect("is_mul() was true");
+        let mut factors = flatten_mul(&operands[0]);
+        factors.extend(flatten_mul(&operands[1]));
+        factors
+    } else {
+        vec![expr.clone()]
+    }
+}
+
+/// Sum a list of coefficient expressions, folding numeric ones exactly.
+///
+/// Numeric coefficients are accumulated into a single constant; non-numeric
+/// coefficients are kept and combined with the numeric constant via symbolic
+/// addition (the constant is omitted when it is exactly zero).
+fn sum_coefficients(coeffs: &[Expression]) -> Expression {
+    let mut numeric_sum = 0.0_f64;
+    let mut symbolic: Vec<Expression> = Vec::new();
+
+    for c in coeffs {
+        if let Some(v) = c.to_f64() {
+            numeric_sum += v;
+        } else {
+            symbolic.push(c.clone());
+        }
+    }
+
+    if symbolic.is_empty() {
+        return number_expr(numeric_sum);
+    }
+
+    let mut acc = symbolic[0].clone();
+    for s in &symbolic[1..] {
+        acc = acc + s.clone();
+    }
+    if numeric_sum.abs() < 1e-15 {
+        acc
+    } else {
+        acc + number_expr(numeric_sum)
+    }
+}
+
+/// Build a numeric expression from a folded coefficient.
+///
+/// `Expression::float_unchecked` renders integral values as bare integer
+/// literals (e.g. `5.0` becomes the literal `"5"`), so downstream rewrite rules
+/// that match on `"0"`/`"1"`/`"2"` continue to fire without any float-to-int
+/// cast.
+fn number_expr(value: f64) -> Expression {
+    Expression::float_unchecked(value)
 }
 
 /// Factor common terms out of a sum
@@ -745,6 +905,109 @@ mod tests {
 
         assert!((orig_val - coll_val).abs() < 1e-10);
         assert!((coll_val - 10.0).abs() < 1e-10); // 5 + 5 = 10
+    }
+
+    #[test]
+    fn test_collect_combines_like_terms_structurally() {
+        // Regression test: `collect` previously delegated to simplify() and did
+        // NOT combine like terms, so `3*x + 2*x` stayed a two-term sum. It must
+        // now collapse to a single product `5 * x`.
+        let x = Expression::symbol("x");
+        let expr = Expression::int(3) * x.clone() + Expression::int(2) * x.clone();
+        let collected = collect(&expr, &x);
+
+        // Structural assertion: the result is a single multiplicative term, not a
+        // sum. This fails for the old no-op behavior.
+        assert!(
+            collected.is_mul(),
+            "expected a single collected term, got {collected}"
+        );
+        assert!(
+            !collected.is_add(),
+            "collected form must not be a sum, got {collected}"
+        );
+
+        // Numeric coefficient must be exactly 5.
+        let mut values = std::collections::HashMap::new();
+        values.insert("x".to_string(), 1.0);
+        let coeff = collected.eval(&values).expect("eval");
+        assert!((coeff - 5.0).abs() < 1e-10, "coefficient was {coeff}");
+
+        // And the collected form is numerically equivalent everywhere.
+        for x_val in [0.0, 1.0, -2.5, 7.0] {
+            let mut v = std::collections::HashMap::new();
+            v.insert("x".to_string(), x_val);
+            let lhs = expr.eval(&v).expect("orig");
+            let rhs = collected.eval(&v).expect("collected");
+            assert!((lhs - rhs).abs() < 1e-10, "mismatch at x={x_val}");
+        }
+    }
+
+    #[test]
+    fn test_collect_symbolic_coefficients() {
+        // a*x + b*x must collect to (a + b)*x: a single term whose coefficient is
+        // the symbolic sum a + b.
+        let a = Expression::symbol("a");
+        let b = Expression::symbol("b");
+        let x = Expression::symbol("x");
+        let expr = a.clone() * x.clone() + b.clone() * x.clone();
+        let collected = collect(&expr, &x);
+
+        assert!(
+            collected.is_mul(),
+            "expected (a+b)*x as a single term, got {collected}"
+        );
+
+        // Equivalent under evaluation for arbitrary a, b, x.
+        for (a_val, b_val, x_val) in [(2.0, 3.0, 4.0), (1.5, -0.5, 2.0), (0.0, 0.0, 9.0)] {
+            let mut v = std::collections::HashMap::new();
+            v.insert("a".to_string(), a_val);
+            v.insert("b".to_string(), b_val);
+            v.insert("x".to_string(), x_val);
+            let lhs = expr.eval(&v).expect("orig");
+            let rhs = collected.eval(&v).expect("collected");
+            assert!(
+                (lhs - rhs).abs() < 1e-10,
+                "mismatch at a={a_val},b={b_val},x={x_val}: {lhs} vs {rhs}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_collect_polynomial_powers() {
+        // x^2 + 2*x + 3*x + 1 must collect the x^1 terms to 5*x, leaving
+        // x^2 + 5*x + 1 (numerically). Verify across several points.
+        let x = Expression::symbol("x");
+        let expr = x.clone().pow(&Expression::int(2))
+            + Expression::int(2) * x.clone()
+            + Expression::int(3) * x.clone()
+            + Expression::int(1);
+        let collected = collect(&expr, &x);
+
+        for x_val in [-3.0, -1.0, 0.0, 0.5, 2.0, 4.0] {
+            let mut v = std::collections::HashMap::new();
+            v.insert("x".to_string(), x_val);
+            let rhs = collected.eval(&v).expect("collected");
+            // x^2 + 5x + 1
+            let expected = x_val.mul_add(x_val, 5.0_f64.mul_add(x_val, 1.0));
+            assert!(
+                (rhs - expected).abs() < 1e-10,
+                "at x={x_val}: got {rhs}, expected {expected}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_collect_drops_zero_coefficient() {
+        // 3*x - 3*x must collect to 0 (zero coefficient term is dropped).
+        let x = Expression::symbol("x");
+        let expr = Expression::int(3) * x.clone() - Expression::int(3) * x.clone();
+        let collected = collect(&expr, &x);
+
+        let mut v = std::collections::HashMap::new();
+        v.insert("x".to_string(), 12345.0);
+        let val = collected.eval(&v).expect("collected");
+        assert!(val.abs() < 1e-10, "expected 0, got {val}");
     }
 
     #[test]

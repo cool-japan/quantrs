@@ -348,169 +348,38 @@ impl CloudClient {
         }
     }
 
-    /// Connect to the cloud platform and authenticate
+    /// Connect to the cloud platform and authenticate.
+    ///
+    /// Validates that an API token is present, then queries the platform for its available
+    /// devices. Live device enumeration requires a network backend which is not linked into
+    /// this crate, so [`Self::load_devices`] currently returns an honest error rather than
+    /// fabricating a hardcoded device list.
     pub fn connect(&mut self) -> QuantRS2Result<()> {
-        // Simplified: in production would make actual API call
         if self.config.api_token.is_empty() {
             return Err(QuantRS2Error::InvalidInput(
                 "API token is required".to_string(),
             ));
         }
 
-        // Load available devices
+        // Load available devices from the live platform.
         self.devices = self.load_devices()?;
 
         Ok(())
     }
 
-    /// Load available devices from platform
+    /// Load available devices from the platform.
+    ///
+    /// This performs live device enumeration against the configured cloud provider, which
+    /// requires an HTTP/network backend. No such backend is linked into `quantrs2-core`, so
+    /// rather than fabricating a hardcoded list of devices that would be presented as real
+    /// hardware, this returns an honest [`QuantRS2Error::UnsupportedOperation`]. A
+    /// network-enabled device crate must provide the real implementation.
     fn load_devices(&self) -> QuantRS2Result<Vec<DeviceInfo>> {
-        // Simplified: return mock devices based on platform
-        match self.config.platform {
-            CloudPlatform::IBM => Ok(vec![
-                DeviceInfo {
-                    platform: CloudPlatform::IBM,
-                    name: "ibmq_jakarta".to_string(),
-                    device_type: DeviceType::QPU,
-                    num_qubits: 7,
-                    connectivity: vec![(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                    gate_set: vec!["X", "Y", "Z", "H", "CNOT", "RZ"]
-                        .iter()
-                        .map(|s| s.to_string())
-                        .collect(),
-                    gate_fidelities: HashMap::from([
-                        ("X".to_string(), 0.9993),
-                        ("CNOT".to_string(), 0.987),
-                    ]),
-                    t1_times: vec![100.0, 95.0, 110.0, 98.0, 105.0, 92.0, 88.0],
-                    t2_times: vec![120.0, 110.0, 115.0, 108.0, 125.0, 105.0, 98.0],
-                    readout_fidelity: vec![0.98, 0.97, 0.98, 0.96, 0.97, 0.98, 0.97],
-                    is_available: true,
-                    queue_depth: 5,
-                    cost_per_shot: 0.001,
-                },
-                DeviceInfo {
-                    platform: CloudPlatform::IBM,
-                    name: "ibmq_qasm_simulator".to_string(),
-                    device_type: DeviceType::Simulator,
-                    num_qubits: 32,
-                    connectivity: vec![], // Fully connected
-                    gate_set: vec!["X", "Y", "Z", "H", "CNOT", "RX", "RY", "RZ"]
-                        .iter()
-                        .map(|s| s.to_string())
-                        .collect(),
-                    gate_fidelities: HashMap::from([
-                        ("X".to_string(), 1.0),
-                        ("CNOT".to_string(), 1.0),
-                    ]),
-                    t1_times: vec![],
-                    t2_times: vec![],
-                    readout_fidelity: vec![],
-                    is_available: true,
-                    queue_depth: 0,
-                    cost_per_shot: 0.0,
-                },
-            ]),
-            CloudPlatform::AWS => Ok(vec![DeviceInfo {
-                platform: CloudPlatform::AWS,
-                name: "SV1".to_string(),
-                device_type: DeviceType::Simulator,
-                num_qubits: 34,
-                connectivity: vec![],
-                gate_set: vec!["X", "Y", "Z", "H", "CNOT", "RX", "RY", "RZ", "CZ"]
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect(),
-                gate_fidelities: HashMap::from([("X".to_string(), 1.0), ("CNOT".to_string(), 1.0)]),
-                t1_times: vec![],
-                t2_times: vec![],
-                readout_fidelity: vec![],
-                is_available: true,
-                queue_depth: 0,
-                cost_per_shot: 0.00075,
-            }]),
-            CloudPlatform::Google => Ok(vec![DeviceInfo {
-                platform: CloudPlatform::Google,
-                name: "rainbow".to_string(),
-                device_type: DeviceType::QPU,
-                num_qubits: 23,
-                connectivity: vec![(0, 1), (1, 2), (2, 3)], // Simplified
-                gate_set: vec!["X", "Y", "Z", "PhasedXZ", "CZ", "SQRT_ISWAP"]
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect(),
-                gate_fidelities: HashMap::from([
-                    ("X".to_string(), 0.9995),
-                    ("CZ".to_string(), 0.993),
-                ]),
-                t1_times: vec![15.0; 23],
-                t2_times: vec![20.0; 23],
-                readout_fidelity: vec![0.96; 23],
-                is_available: true,
-                queue_depth: 3,
-                cost_per_shot: 0.002,
-            }]),
-            CloudPlatform::Azure => Ok(vec![DeviceInfo {
-                platform: CloudPlatform::Azure,
-                name: "azure-simulator".to_string(),
-                device_type: DeviceType::Simulator,
-                num_qubits: 40,
-                connectivity: vec![],
-                gate_set: vec!["X", "Y", "Z", "H", "CNOT", "T"]
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect(),
-                gate_fidelities: HashMap::from([("X".to_string(), 1.0), ("CNOT".to_string(), 1.0)]),
-                t1_times: vec![],
-                t2_times: vec![],
-                readout_fidelity: vec![],
-                is_available: true,
-                queue_depth: 0,
-                cost_per_shot: 0.0005,
-            }]),
-            CloudPlatform::Rigetti => Ok(vec![DeviceInfo {
-                platform: CloudPlatform::Rigetti,
-                name: "Aspen-M-3".to_string(),
-                device_type: DeviceType::QPU,
-                num_qubits: 80,
-                connectivity: vec![(0, 1), (1, 2)], // Simplified
-                gate_set: vec!["RX", "RZ", "CZ", "XY"]
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect(),
-                gate_fidelities: HashMap::from([
-                    ("RX".to_string(), 0.998),
-                    ("CZ".to_string(), 0.95),
-                ]),
-                t1_times: vec![20.0; 80],
-                t2_times: vec![15.0; 80],
-                readout_fidelity: vec![0.95; 80],
-                is_available: true,
-                queue_depth: 8,
-                cost_per_shot: 0.0015,
-            }]),
-            CloudPlatform::IonQ => Ok(vec![DeviceInfo {
-                platform: CloudPlatform::IonQ,
-                name: "ionq.qpu.aria-1".to_string(),
-                device_type: DeviceType::QPU,
-                num_qubits: 25,
-                connectivity: vec![], // All-to-all connectivity
-                gate_set: vec!["X", "Y", "Z", "RX", "RY", "RZ", "MS"]
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect(),
-                gate_fidelities: HashMap::from([
-                    ("X".to_string(), 0.9999),
-                    ("MS".to_string(), 0.995),
-                ]),
-                t1_times: vec![10000.0; 25], // Very long T1 for trapped ions
-                t2_times: vec![1000.0; 25],
-                readout_fidelity: vec![0.995; 25],
-                is_available: true,
-                queue_depth: 12,
-                cost_per_shot: 0.003,
-            }]),
-        }
+        Err(QuantRS2Error::UnsupportedOperation(format!(
+            "live device enumeration requires a network backend which is not linked; \
+             cannot query real {} devices",
+            self.config.platform.name()
+        )))
     }
 
     /// Get list of available devices
@@ -741,5 +610,41 @@ mod tests {
 
         circuit.measure_all();
         assert_eq!(circuit.measurements.len(), 2);
+    }
+
+    #[test]
+    fn test_connect_requires_api_token() {
+        let mut client = CloudClient::new(CloudConfig::default());
+        let result = client.connect();
+        // Empty token: must fail on the token check before reaching device loading.
+        assert!(matches!(result, Err(QuantRS2Error::InvalidInput(_))));
+    }
+
+    #[test]
+    fn test_connect_returns_honest_error_no_network_backend() {
+        // With a token present, `connect` reaches `load_devices`, which must return an
+        // honest "no network backend" error instead of fabricating mock devices.
+        let config = CloudConfig {
+            platform: CloudPlatform::IBM,
+            api_token: "dummy-token".to_string(),
+            ..CloudConfig::default()
+        };
+        let mut client = CloudClient::new(config);
+        let result = client.connect();
+        match result {
+            Err(QuantRS2Error::UnsupportedOperation(msg)) => {
+                assert!(
+                    msg.contains("network backend"),
+                    "error should explain the missing network backend, got: {msg}"
+                );
+                assert!(
+                    msg.contains("IBM Quantum"),
+                    "error should name the platform, got: {msg}"
+                );
+            }
+            other => panic!("expected honest UnsupportedOperation error, got {other:?}"),
+        }
+        // No devices must have been fabricated into the client state.
+        assert!(client.list_devices().is_empty());
     }
 }

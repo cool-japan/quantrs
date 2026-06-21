@@ -738,20 +738,45 @@ impl CircuitSimilarityAnalyzer {
         format!("{:x}", hasher.finish())
     }
 
-    /// Compute parallelism profile
+    /// Compute the parallelism profile of a circuit via greedy ASAP layering.
+    ///
+    /// Gates are scheduled as soon as their qubits are free: a gate is assigned
+    /// to the earliest layer at or after the latest layer occupied by any qubit
+    /// it touches, and each touched qubit then advances past that layer. Gates
+    /// acting on disjoint qubit sets therefore share a layer. The returned
+    /// vector is the *width* of each layer (number of gates executing in
+    /// parallel at that step), so its length is the circuit depth and its sum is
+    /// the total gate count.
     fn compute_parallelism_profile<const N: usize>(
         circuit: &Circuit<N>,
     ) -> QuantRS2Result<Vec<usize>> {
-        // Simplified parallelism analysis
-        let mut profile = Vec::new();
-        let gate_count = circuit.gates().len();
+        // Next free layer for each qubit.
+        let mut qubit_next_layer = vec![0usize; N];
+        // Width (gate count) per layer, grown on demand.
+        let mut layer_widths: Vec<usize> = Vec::new();
 
-        // For now, assume linear execution (no parallelism)
-        for _ in 0..gate_count {
-            profile.push(1);
+        for gate in circuit.gates() {
+            let qubits = gate.qubits();
+
+            // Earliest layer at which every touched qubit is free.
+            let layer = qubits
+                .iter()
+                .map(|q| qubit_next_layer[q.id() as usize])
+                .max()
+                .unwrap_or(0);
+
+            if layer >= layer_widths.len() {
+                layer_widths.resize(layer + 1, 0);
+            }
+            layer_widths[layer] += 1;
+
+            // Each touched qubit becomes busy for this layer.
+            for qubit in qubits {
+                qubit_next_layer[qubit.id() as usize] = layer + 1;
+            }
         }
 
-        Ok(profile)
+        Ok(layer_widths)
     }
 
     /// Analyze entanglement structure
@@ -1013,6 +1038,46 @@ mod tests {
     fn test_similarity_analyzer_creation() {
         let analyzer = CircuitSimilarityAnalyzer::with_default_config();
         assert_eq!(analyzer.config.algorithms.len(), 3);
+    }
+
+    #[test]
+    fn test_parallelism_profile_disjoint_qubits() {
+        // Two single-qubit gates on disjoint qubits can run in one layer.
+        let mut circuit = Circuit::<2>::new();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("add H on q0");
+        circuit
+            .add_gate(Hadamard { target: QubitId(1) })
+            .expect("add H on q1");
+
+        let profile = CircuitSimilarityAnalyzer::compute_parallelism_profile(&circuit)
+            .expect("profile computation");
+        assert_eq!(
+            profile,
+            vec![2],
+            "disjoint gates share one layer of width 2"
+        );
+    }
+
+    #[test]
+    fn test_parallelism_profile_serial_chain() {
+        // Two gates on the same qubit must be in separate layers.
+        let mut circuit = Circuit::<1>::new();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("add H");
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("add H");
+
+        let profile = CircuitSimilarityAnalyzer::compute_parallelism_profile(&circuit)
+            .expect("profile computation");
+        assert_eq!(
+            profile,
+            vec![1, 1],
+            "serial gates occupy consecutive layers"
+        );
     }
 
     #[test]

@@ -1325,23 +1325,90 @@ impl AutoOptimizer {
 
         // Check if current backend is underperforming
         let expected_performance = &current_selection.expected_performance;
-        let performance_ratio = current_performance.throughput / expected_performance.throughput;
+        let performance_ratio = if expected_performance.throughput > 0.0 {
+            current_performance.throughput / expected_performance.throughput
+        } else {
+            1.0
+        };
 
-        if performance_ratio < 0.7 {
-            // Performance is significantly below expectations
-            // Consider switching to a different backend
-            // This would require re-analysis of the current problem
-            // For now, return None indicating no change
-            return Ok(None);
-        }
+        let underperforming = performance_ratio < 0.7;
+        let poor_memory = current_performance.memory_efficiency < 0.5;
 
-        // Check resource constraints
-        if current_performance.memory_efficiency < 0.5 {
-            // Memory efficiency is poor, might need optimization
-            return Ok(None);
+        if underperforming || poor_memory {
+            // Switch to the highest-scoring alternative backend recorded with the current
+            // selection (chosen by `select_backend`). This is real, immediately-available
+            // re-selection that does not require re-running full problem analysis.
+            if let Some(new_selection) =
+                self.reselect_from_alternatives(current_selection, performance_ratio, poor_memory)?
+            {
+                return Ok(Some(new_selection));
+            }
         }
 
         Ok(None)
+    }
+
+    /// Build a new [`BackendSelection`] from the best alternative recorded on
+    /// `current_selection`, if one exists that differs from the current backend.
+    ///
+    /// Returns `Ok(None)` when there is no viable alternative to switch to (so the caller
+    /// keeps the current backend). The returned selection carries fresh reasoning that
+    /// records *why* the switch was triggered.
+    fn reselect_from_alternatives(
+        &self,
+        current_selection: &BackendSelection,
+        performance_ratio: f64,
+        poor_memory: bool,
+    ) -> QuantRS2Result<Option<BackendSelection>> {
+        // Pick the best-scoring alternative that is not the current backend.
+        let best_alternative = current_selection
+            .alternatives
+            .iter()
+            .filter(|(backend, _)| *backend != current_selection.backend_type)
+            .max_by(|a, b| a.1.total_cmp(&b.1))
+            .copied();
+
+        let Some((new_backend, new_score)) = best_alternative else {
+            return Ok(None);
+        };
+
+        // Look up the profile/metrics for the chosen backend.
+        let Some(profile) = self.backend_profiles.get(&new_backend) else {
+            return Ok(None);
+        };
+
+        let mut reasoning = Vec::new();
+        if performance_ratio < 0.7 {
+            reasoning.push(format!(
+                "Switching from {:?} to {new_backend:?}: measured throughput is {:.0}% of expectation (< 70%)",
+                current_selection.backend_type,
+                performance_ratio * 100.0
+            ));
+        }
+        if poor_memory {
+            reasoning.push(format!(
+                "Switching to {new_backend:?}: current memory efficiency below 0.5 threshold"
+            ));
+        }
+        reasoning.push(format!(
+            "Selected alternative {new_backend:?} with prior score {new_score:.2}"
+        ));
+
+        // Reuse the previous configuration for the new backend; it remains valid for the
+        // same problem shape and avoids re-deriving it without the original analysis.
+        Ok(Some(BackendSelection {
+            backend_type: new_backend,
+            confidence: new_score,
+            reasoning,
+            expected_performance: profile.metrics.clone(),
+            configuration: current_selection.configuration.clone(),
+            alternatives: current_selection
+                .alternatives
+                .iter()
+                .filter(|(backend, _)| *backend != new_backend)
+                .copied()
+                .collect(),
+        }))
     }
 
     /// Update resource monitoring
@@ -1528,5 +1595,82 @@ mod tests {
             .any(|r| r.recommendation_type == RecommendationType::MemoryOptimization);
 
         assert!(has_memory_rec || !recommendations.is_empty());
+    }
+
+    #[test]
+    fn test_monitor_and_update_switches_on_underperformance() {
+        let config = AutoOptimizerConfig::default();
+        let mut optimizer = AutoOptimizer::new(config).expect("Failed to create AutoOptimizer");
+
+        let gates = vec![GateType::H, GateType::CNOT, GateType::X, GateType::H];
+        let analysis = optimizer
+            .analyze_problem(&gates, 8, ProblemType::Simulation)
+            .expect("analysis should succeed");
+        let selection = optimizer
+            .select_backend(&analysis)
+            .expect("backend selection should succeed");
+
+        // Sanity: a real selection should propose alternatives to switch to.
+        assert!(
+            !selection.alternatives.is_empty(),
+            "expected alternative backends to be available"
+        );
+
+        // Feed metrics far below the expected throughput (ratio << 0.7).
+        let bad_metrics = PerformanceMetrics {
+            throughput: selection.expected_performance.throughput * 0.1,
+            latency: 1.0,
+            memory_efficiency: 0.9,
+            cpu_utilization: 0.5,
+            gpu_utilization: 0.0,
+            energy_efficiency: 1.0,
+        };
+
+        let result = optimizer
+            .monitor_and_update(&selection, &bad_metrics)
+            .expect("monitor_and_update should succeed");
+
+        let new_selection =
+            result.expect("underperformance must trigger a real backend switch (Some)");
+        assert_ne!(
+            new_selection.backend_type, selection.backend_type,
+            "switched backend must differ from the original"
+        );
+        assert!(
+            !new_selection.reasoning.is_empty(),
+            "switch must carry reasoning explaining why"
+        );
+    }
+
+    #[test]
+    fn test_monitor_and_update_no_switch_when_healthy() {
+        let config = AutoOptimizerConfig::default();
+        let mut optimizer = AutoOptimizer::new(config).expect("Failed to create AutoOptimizer");
+
+        let gates = vec![GateType::H, GateType::CNOT];
+        let analysis = optimizer
+            .analyze_problem(&gates, 6, ProblemType::Simulation)
+            .expect("analysis should succeed");
+        let selection = optimizer
+            .select_backend(&analysis)
+            .expect("backend selection should succeed");
+
+        // Healthy metrics: meeting/exceeding expectations and good memory efficiency.
+        let good_metrics = PerformanceMetrics {
+            throughput: selection.expected_performance.throughput * 1.2,
+            latency: 0.001,
+            memory_efficiency: 0.9,
+            cpu_utilization: 0.5,
+            gpu_utilization: 0.0,
+            energy_efficiency: 1.0,
+        };
+
+        let result = optimizer
+            .monitor_and_update(&selection, &good_metrics)
+            .expect("monitor_and_update should succeed");
+        assert!(
+            result.is_none(),
+            "healthy performance must keep the current backend (None)"
+        );
     }
 }

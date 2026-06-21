@@ -295,21 +295,18 @@ impl VQE {
 
     /// Execute a circuit on the quantum device (helper function to work around trait object limitations)
     async fn execute_circuit_helper(
-        device: &(dyn QuantumDevice + Send + Sync),
+        _device: &(dyn QuantumDevice + Send + Sync),
         circuit: &ParameterizedQuantumCircuit,
         shots: usize,
     ) -> DeviceResult<CircuitResult> {
-        // For now, return a mock result since we can't execute circuits directly
-        // In a real implementation, this would need proper circuit execution
-        let mut counts = std::collections::HashMap::new();
-        counts.insert("0".repeat(circuit.num_qubits()), shots / 2);
-        counts.insert("1".repeat(circuit.num_qubits()), shots / 2);
-
-        Ok(CircuitResult {
-            counts,
-            shots,
-            metadata: std::collections::HashMap::new(),
-        })
+        // The `QuantumDevice` trait exposes no execution entry point for the
+        // dynamic `ParameterizedQuantumCircuit` type, so we evaluate the circuit
+        // with the in-crate exact state-vector simulator and sample real
+        // measurement counts from its output distribution. This yields genuine,
+        // circuit-dependent statistics for the VQE/QAOA optimisation loops
+        // (previously this returned a fabricated uniform 50/50 split that
+        // silently corrupted every energy estimate and gradient).
+        crate::quantum_ml::circuit_simulation::simulate_and_sample(circuit, shots)
     }
 }
 
@@ -702,21 +699,18 @@ impl QAOA {
 
     /// Execute a circuit on the quantum device (helper function to work around trait object limitations)
     async fn execute_circuit_helper(
-        device: &(dyn QuantumDevice + Send + Sync),
+        _device: &(dyn QuantumDevice + Send + Sync),
         circuit: &ParameterizedQuantumCircuit,
         shots: usize,
     ) -> DeviceResult<CircuitResult> {
-        // For now, return a mock result since we can't execute circuits directly
-        // In a real implementation, this would need proper circuit execution
-        let mut counts = std::collections::HashMap::new();
-        counts.insert("0".repeat(circuit.num_qubits()), shots / 2);
-        counts.insert("1".repeat(circuit.num_qubits()), shots / 2);
-
-        Ok(CircuitResult {
-            counts,
-            shots,
-            metadata: std::collections::HashMap::new(),
-        })
+        // The `QuantumDevice` trait exposes no execution entry point for the
+        // dynamic `ParameterizedQuantumCircuit` type, so we evaluate the circuit
+        // with the in-crate exact state-vector simulator and sample real
+        // measurement counts from its output distribution. This yields genuine,
+        // circuit-dependent statistics for the VQE/QAOA optimisation loops
+        // (previously this returned a fabricated uniform 50/50 split that
+        // silently corrupted every energy estimate and gradient).
+        crate::quantum_ml::circuit_simulation::simulate_and_sample(circuit, shots)
     }
 }
 
@@ -896,6 +890,71 @@ impl ParameterizedQuantumCircuit {
 
     pub const fn num_qubits(&self) -> usize {
         self.num_qubits
+    }
+
+    /// Read-only access to the ordered gate list.
+    ///
+    /// Used by the in-crate state-vector simulator
+    /// ([`crate::quantum_ml::circuit_simulation`]) to execute the circuit and
+    /// produce real measurement statistics.
+    pub fn gates(&self) -> &[QuantumGate] {
+        &self.gates
+    }
+
+    /// Substitute a flat parameter vector into this circuit's parameterized
+    /// rotation gates, returning a new circuit.
+    ///
+    /// Parameterized gates (`RX`/`RY`/`RZ`) consume successive entries from
+    /// `parameters` in gate order; non-parameterized gates are copied
+    /// unchanged.  This is the real implementation of "evaluate circuit with
+    /// parameters" used by the parameter-shift gradient estimators (previously
+    /// a no-op clone that ignored its parameters entirely).
+    pub fn with_parameters(&self, parameters: &[f64]) -> DeviceResult<Self> {
+        let needed = self
+            .gates
+            .iter()
+            .filter(|g| {
+                matches!(
+                    g,
+                    QuantumGate::RX(..) | QuantumGate::RY(..) | QuantumGate::RZ(..)
+                )
+            })
+            .count();
+        if parameters.len() < needed {
+            return Err(DeviceError::InvalidInput(format!(
+                "Circuit has {needed} parameterized gates but only {} parameters were provided",
+                parameters.len()
+            )));
+        }
+
+        let mut new_gates = Vec::with_capacity(self.gates.len());
+        let mut idx = 0;
+        for gate in &self.gates {
+            let replaced = match gate {
+                QuantumGate::RX(q, _) => {
+                    let g = QuantumGate::RX(*q, parameters[idx]);
+                    idx += 1;
+                    g
+                }
+                QuantumGate::RY(q, _) => {
+                    let g = QuantumGate::RY(*q, parameters[idx]);
+                    idx += 1;
+                    g
+                }
+                QuantumGate::RZ(q, _) => {
+                    let g = QuantumGate::RZ(*q, parameters[idx]);
+                    idx += 1;
+                    g
+                }
+                other => other.clone(),
+            };
+            new_gates.push(replaced);
+        }
+
+        Ok(Self {
+            num_qubits: self.num_qubits,
+            gates: new_gates,
+        })
     }
 
     pub fn add_h_gate(&mut self, qubit: usize) -> DeviceResult<()> {

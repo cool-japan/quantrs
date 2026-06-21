@@ -171,129 +171,27 @@ fn match_pattern_rec(pattern: &Pattern, expr: &Expression, captures: &mut Captur
     }
 }
 
-/// Match compound patterns by expression structure
+/// Match a compound pattern against the real AST structure of an expression.
+///
+/// Each branch extracts the operands of the corresponding `ExprLang` node via the
+/// structural accessors in [`crate::expr`] and recurses. Matching is performed on
+/// the actual `RecExpr` tree (not its textual rendering), so it is exact and works
+/// for arbitrarily nested expressions.
 fn match_compound_pattern(pattern: &Pattern, expr: &Expression, captures: &mut Captures) -> bool {
-    // Get the expression string for structural analysis
-    let expr_str = expr.to_string();
-
     match pattern {
-        Pattern::Neg(inner) => {
-            if expr_str.starts_with("(neg ") {
-                // For negation patterns, we'd need to extract the inner expression
-                // This is a simplified implementation
-                let inner_expr = extract_unary_arg(expr, "neg");
-                if let Some(inner_expr) = inner_expr {
-                    return match_pattern_rec(inner, &inner_expr, captures);
-                }
-            }
-            false
-        }
+        Pattern::Neg(inner) => match_unary(inner, expr, "neg", captures),
+        Pattern::Sin(inner) => match_unary(inner, expr, "sin", captures),
+        Pattern::Cos(inner) => match_unary(inner, expr, "cos", captures),
+        Pattern::Exp(inner) => match_unary(inner, expr, "exp", captures),
+        Pattern::Log(inner) => match_unary(inner, expr, "log", captures),
+        Pattern::Dagger(inner) => match_unary(inner, expr, "dagger", captures),
 
-        Pattern::Sin(inner) => {
-            if expr_str.starts_with("(sin ") {
-                if let Some(inner_expr) = extract_unary_arg(expr, "sin") {
-                    return match_pattern_rec(inner, &inner_expr, captures);
-                }
-            }
-            false
-        }
-
-        Pattern::Cos(inner) => {
-            if expr_str.starts_with("(cos ") {
-                if let Some(inner_expr) = extract_unary_arg(expr, "cos") {
-                    return match_pattern_rec(inner, &inner_expr, captures);
-                }
-            }
-            false
-        }
-
-        Pattern::Exp(inner) => {
-            if expr_str.starts_with("(exp ") {
-                if let Some(inner_expr) = extract_unary_arg(expr, "exp") {
-                    return match_pattern_rec(inner, &inner_expr, captures);
-                }
-            }
-            false
-        }
-
-        Pattern::Log(inner) => {
-            if expr_str.starts_with("(log ") {
-                if let Some(inner_expr) = extract_unary_arg(expr, "log") {
-                    return match_pattern_rec(inner, &inner_expr, captures);
-                }
-            }
-            false
-        }
-
-        Pattern::Dagger(inner) => {
-            if expr_str.starts_with("(dagger ") {
-                if let Some(inner_expr) = extract_unary_arg(expr, "dagger") {
-                    return match_pattern_rec(inner, &inner_expr, captures);
-                }
-            }
-            false
-        }
-
-        // Binary patterns - simplified implementation
-        Pattern::Add(left, right) => {
-            if expr_str.starts_with("(+ ") {
-                if let Some((left_expr, right_expr)) = extract_binary_args(expr, "+") {
-                    return match_pattern_rec(left, &left_expr, captures)
-                        && match_pattern_rec(right, &right_expr, captures);
-                }
-            }
-            false
-        }
-
-        Pattern::Mul(left, right) => {
-            if expr_str.starts_with("(* ") {
-                if let Some((left_expr, right_expr)) = extract_binary_args(expr, "*") {
-                    return match_pattern_rec(left, &left_expr, captures)
-                        && match_pattern_rec(right, &right_expr, captures);
-                }
-            }
-            false
-        }
-
-        Pattern::Pow(base, exp) => {
-            if expr_str.starts_with("(^ ") {
-                if let Some((base_expr, exp_expr)) = extract_binary_args(expr, "^") {
-                    return match_pattern_rec(base, &base_expr, captures)
-                        && match_pattern_rec(exp, &exp_expr, captures);
-                }
-            }
-            false
-        }
-
-        Pattern::Commutator(a, b) => {
-            if expr_str.starts_with("(comm ") {
-                if let Some((a_expr, b_expr)) = extract_binary_args(expr, "comm") {
-                    return match_pattern_rec(a, &a_expr, captures)
-                        && match_pattern_rec(b, &b_expr, captures);
-                }
-            }
-            false
-        }
-
-        Pattern::Anticommutator(a, b) => {
-            if expr_str.starts_with("(anticomm ") {
-                if let Some((a_expr, b_expr)) = extract_binary_args(expr, "anticomm") {
-                    return match_pattern_rec(a, &a_expr, captures)
-                        && match_pattern_rec(b, &b_expr, captures);
-                }
-            }
-            false
-        }
-
-        Pattern::TensorProduct(a, b) => {
-            if expr_str.starts_with("(tensor ") {
-                if let Some((a_expr, b_expr)) = extract_binary_args(expr, "tensor") {
-                    return match_pattern_rec(a, &a_expr, captures)
-                        && match_pattern_rec(b, &b_expr, captures);
-                }
-            }
-            false
-        }
+        Pattern::Add(left, right) => match_binary(left, right, expr, "+", captures),
+        Pattern::Mul(left, right) => match_binary(left, right, expr, "*", captures),
+        Pattern::Pow(base, exp) => match_binary(base, exp, expr, "^", captures),
+        Pattern::Commutator(a, b) => match_binary(a, b, expr, "comm", captures),
+        Pattern::Anticommutator(a, b) => match_binary(a, b, expr, "anticomm", captures),
+        Pattern::TensorProduct(a, b) => match_binary(a, b, expr, "tensor", captures),
 
         // These are handled in the main match
         Pattern::Wildcard(_)
@@ -304,36 +202,118 @@ fn match_compound_pattern(pattern: &Pattern, expr: &Expression, captures: &mut C
     }
 }
 
-/// Extract unary argument from expression (simplified)
-const fn extract_unary_arg(_expr: &Expression, _op: &str) -> Option<Expression> {
-    // In a full implementation, this would parse the RecExpr structure
-    // For now, return None as this requires deeper integration
-    None
+/// Match a unary pattern: extract the operand of `op` and recurse on `inner`.
+fn match_unary(inner: &Pattern, expr: &Expression, op: &str, captures: &mut Captures) -> bool {
+    extract_unary_arg(expr, op).is_some_and(|arg| match_pattern_rec(inner, &arg, captures))
 }
 
-/// Extract binary arguments from expression (simplified)
-const fn extract_binary_args(_expr: &Expression, _op: &str) -> Option<(Expression, Expression)> {
-    // In a full implementation, this would parse the RecExpr structure
-    // For now, return None as this requires deeper integration
-    None
+/// Match a binary pattern: extract both operands of `op` and recurse on each.
+fn match_binary(
+    left: &Pattern,
+    right: &Pattern,
+    expr: &Expression,
+    op: &str,
+    captures: &mut Captures,
+) -> bool {
+    extract_binary_args(expr, op).is_some_and(|(l, r)| {
+        match_pattern_rec(left, &l, captures) && match_pattern_rec(right, &r, captures)
+    })
+}
+
+/// Extract the operand of a unary node whose operator is `op`.
+///
+/// Returns `None` when the expression's root node is not that unary operator.
+fn extract_unary_arg(expr: &Expression, op: &str) -> Option<Expression> {
+    expr.unary_arg(op)
+}
+
+/// Extract both operands of a binary node whose operator is `op`.
+///
+/// Returns `None` when the expression's root node is not that binary operator.
+fn extract_binary_args(expr: &Expression, op: &str) -> Option<(Expression, Expression)> {
+    expr.binary_args(op)
 }
 
 // =========================================================================
 // Common Quantum Pattern Recognizers
 // =========================================================================
 
-/// Check if an expression is a rotation gate form: exp(-i * θ * G / 2)
-/// Returns the angle and generator if matched
+/// Check if an expression is a rotation gate form: `exp(-i * θ * G / 2)`.
+///
+/// Returns `Some((angle, generator))` when the expression is structurally a
+/// rotation gate, where `angle` is the rotation angle `θ` (the `1/2` factor and
+/// the imaginary unit are stripped out) and `generator` is the Hermitian
+/// generator `G`. Returns `None` for any expression that is not of this form.
+///
+/// The recognizer operates on the real expression AST: it requires an `exp`
+/// node whose argument, after removing an outer negation, is a product
+/// containing the imaginary unit `I`. The remaining factors are split into the
+/// numeric/symbolic angle (multiplied by 2 to undo the conventional `/2`) and
+/// the generator (the factor that is recognised as a Hermitian operator). A
+/// genuine `None` here means "not a recognizable rotation form", which is a
+/// correct negative rather than a placeholder.
+#[must_use]
 pub fn is_rotation_gate(expr: &Expression) -> Option<(Expression, Expression)> {
-    // Pattern: exp(* (neg (* ?i ?theta)) ?generator)
-    // This is a simplified check
-    let s = expr.to_string();
-    if s.starts_with("(exp ") {
-        // Could be a rotation gate form
-        // For a full implementation, we'd need to check the structure
+    // Must be exp(arg).
+    let arg = expr.unary_arg("exp")?;
+
+    // exp(-i θ G / 2): the conventional sign is negative, but accept either so
+    // that exp(i θ G / 2) (negative rotation) is also recognised.
+    let inner = arg.unary_arg("neg").unwrap_or(arg);
+
+    // Flatten the product into its factors.
+    let factors = flatten_factors(&inner);
+
+    // A rotation generator times an imaginary unit needs at least `I` and `G`.
+    let mut has_imaginary = false;
+    let mut generator: Option<Expression> = None;
+    let mut angle_factors: Vec<Expression> = Vec::with_capacity(factors.len());
+
+    for factor in factors {
+        if factor.as_symbol() == Some("I") {
+            has_imaginary = true;
+        } else if generator.is_none() && is_hermitian_form(&factor) && !factor.is_number() {
+            // The first non-numeric Hermitian factor is taken as the generator.
+            generator = Some(factor);
+        } else {
+            angle_factors.push(factor);
+        }
+    }
+
+    if !has_imaginary {
         return None;
     }
-    None
+    let generator = generator?;
+
+    // Reassemble the angle from the remaining factors and undo the `/2` so the
+    // returned angle is the physical rotation angle θ.
+    let angle = match angle_factors.split_first() {
+        Some((first, rest)) => {
+            let mut acc = first.clone();
+            for f in rest {
+                acc = acc * f.clone();
+            }
+            acc * Expression::int(2)
+        }
+        None => Expression::int(2),
+    };
+
+    Some((angle, generator))
+}
+
+/// Flatten a (possibly nested) product into a flat list of factors.
+///
+/// Division `a / b` contributes `a` and `inv(b)` is not expanded here; only
+/// multiplication nodes are descended into. Non-product expressions yield a
+/// single-element list.
+fn flatten_factors(expr: &Expression) -> Vec<Expression> {
+    if let Some((left, right)) = expr.binary_args("*") {
+        let mut factors = flatten_factors(&left);
+        factors.extend(flatten_factors(&right));
+        factors
+    } else {
+        vec![expr.clone()]
+    }
 }
 
 /// Check if an expression represents a Hermitian operator (A = A†)
@@ -352,10 +332,15 @@ pub fn is_hermitian_form(expr: &Expression) -> bool {
     })
 }
 
-/// Check if an expression is a projector (P² = P)
-pub const fn is_projector_form(expr: &Expression) -> bool {
-    // |ψ⟩⟨ψ| form is a projector
-    // This would require more sophisticated pattern matching
+/// Check if an expression is a projector (P² = P).
+///
+/// The expression language has no outer-product / ket-bra (`|ψ⟩⟨ψ|`) node, so a
+/// projector cannot be represented syntactically in this AST. This therefore
+/// always returns `false`: it is an honest "cannot be a projector in this
+/// representation" rather than a heuristic guess. Projector recognition would
+/// require extending [`crate::expr::ExprLang`] with bra/ket constructs.
+#[must_use]
+pub const fn is_projector_form(_expr: &Expression) -> bool {
     false
 }
 
@@ -536,5 +521,96 @@ mod tests {
 
         let x = Expression::symbol("x");
         assert!(!is_qaoa_parameter(&x));
+    }
+
+    #[test]
+    fn test_unary_compound_pattern_matches_and_captures() {
+        // Regression test: compound (unary) patterns used to ALWAYS fail because
+        // the operand extractor returned `None`. They must now match and capture.
+        let x = Expression::symbol("x");
+        let sin_x = crate::ops::trig::sin(&x);
+
+        let pattern = Pattern::sin(Pattern::wildcard("inner"));
+        let captures = match_pattern(&pattern, &sin_x).expect("sin(x) must match Sin(?inner)");
+        assert_eq!(
+            captures.get("inner").and_then(Expression::as_symbol),
+            Some("x")
+        );
+
+        // A cos pattern must NOT match a sin expression.
+        let cos_pattern = Pattern::cos(Pattern::wildcard("inner"));
+        assert!(match_pattern(&cos_pattern, &sin_x).is_none());
+    }
+
+    #[test]
+    fn test_binary_compound_pattern_matches_operands() {
+        // Regression test: binary patterns used to always fail.
+        let sum = Expression::symbol("x") + Expression::symbol("y");
+
+        // Order-sensitive structural match: x is the left operand, y the right.
+        let pattern = Pattern::add(Pattern::symbol("x"), Pattern::symbol("y"));
+        assert!(match_pattern(&pattern, &sum).is_some());
+
+        // Reversed operands must not match the concrete structure.
+        let reversed = Pattern::add(Pattern::symbol("y"), Pattern::symbol("x"));
+        assert!(match_pattern(&reversed, &sum).is_none());
+
+        // A multiplication pattern must not match an addition.
+        let mul_pattern = Pattern::mul(Pattern::wildcard("a"), Pattern::wildcard("b"));
+        assert!(match_pattern(&mul_pattern, &sum).is_none());
+    }
+
+    #[test]
+    fn test_nested_compound_pattern_with_wildcard_consistency() {
+        // exp(sin(x)) must match Exp(Sin(?a)) and capture a = x.
+        let x = Expression::symbol("x");
+        let nested = crate::ops::trig::exp(&crate::ops::trig::sin(&x));
+
+        let pattern = Pattern::Exp(Box::new(Pattern::sin(Pattern::wildcard("a"))));
+        let captures = match_pattern(&pattern, &nested).expect("must match nested pattern");
+        assert_eq!(captures.get("a").and_then(Expression::as_symbol), Some("x"));
+
+        // Wildcard consistency: Add(?a, ?a) matches x + x but not x + y.
+        let same = Pattern::add(Pattern::wildcard("a"), Pattern::wildcard("a"));
+        assert!(match_pattern(&same, &(x.clone() + x.clone())).is_some());
+        let y = Expression::symbol("y");
+        assert!(match_pattern(&same, &(x + y)).is_none());
+    }
+
+    #[test]
+    fn test_is_rotation_gate_structural() {
+        // exp(-i * theta * X / 2) is a rotation gate with angle theta, generator X.
+        let theta = Expression::symbol("theta");
+        let generator = Expression::symbol("X");
+        let half = Expression::float_unchecked(0.5);
+        let arg = ((Expression::i() * theta) * generator) * half;
+        let rot = crate::ops::trig::exp(&(-arg));
+
+        let (angle, gen) =
+            is_rotation_gate(&rot).expect("exp(-i theta X / 2) must be a rotation gate");
+        assert_eq!(gen.as_symbol(), Some("X"));
+
+        // The recovered angle, evaluated at theta = 1.3, must equal 1.3 (the /2 is
+        // undone). This fails if the recognizer fabricates or drops the angle.
+        let mut values = std::collections::HashMap::new();
+        values.insert("theta".to_string(), 1.3_f64);
+        let angle_val = angle.eval(&values).expect("angle must evaluate");
+        assert!((angle_val - 1.3).abs() < 1e-10, "angle was {angle_val}");
+    }
+
+    #[test]
+    fn test_is_rotation_gate_rejects_non_rotations() {
+        let x = Expression::symbol("x");
+        // exp(x): not a rotation (no imaginary unit / generator).
+        assert!(is_rotation_gate(&crate::ops::trig::exp(&x)).is_none());
+
+        // exp(-theta * X / 2): missing the imaginary unit -> not a rotation.
+        let theta = Expression::symbol("theta");
+        let generator = Expression::symbol("X");
+        let arg = (theta * generator) * Expression::float_unchecked(0.5);
+        assert!(is_rotation_gate(&crate::ops::trig::exp(&(-arg))).is_none());
+
+        // A bare symbol is not an exp(...) at all.
+        assert!(is_rotation_gate(&x).is_none());
     }
 }

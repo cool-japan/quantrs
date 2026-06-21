@@ -736,21 +736,14 @@ impl QuantumTrainer {
 
     /// Execute a circuit on the quantum device (helper function to work around trait object limitations)
     async fn execute_circuit_helper(
-        device: &(dyn QuantumDevice + Send + Sync),
+        _device: &(dyn QuantumDevice + Send + Sync),
         circuit: &ParameterizedQuantumCircuit,
         shots: usize,
     ) -> DeviceResult<CircuitResult> {
-        // For now, return a mock result since we can't execute circuits directly
-        // In a real implementation, this would need proper circuit execution
-        let mut counts = std::collections::HashMap::new();
-        counts.insert("0".repeat(circuit.num_qubits()), shots / 2);
-        counts.insert("1".repeat(circuit.num_qubits()), shots / 2);
-
-        Ok(CircuitResult {
-            counts,
-            shots,
-            metadata: std::collections::HashMap::new(),
-        })
+        // Evaluate the circuit with the in-crate exact state-vector simulator
+        // and sample real measurement counts (previously a fabricated uniform
+        // 50/50 split that silently corrupted every training-loss estimate).
+        crate::quantum_ml::circuit_simulation::simulate_and_sample(circuit, shots)
     }
 }
 

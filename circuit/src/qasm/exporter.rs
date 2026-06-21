@@ -5,7 +5,9 @@ use super::ast::{
     QasmProgram, QasmRegister, QasmStatement, QubitRef,
 };
 use crate::builder::Circuit;
+use quantrs2_core::synthesis::decompose_single_qubit_zyz;
 use quantrs2_core::{gate::GateOp, qubit::QubitId};
+use scirs2_core::ndarray::Array2;
 use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
@@ -26,6 +28,14 @@ pub enum ExportError {
 
     #[error("Gate parameter error: {0}")]
     ParameterError(String),
+
+    /// A custom gate could not be turned into a QASM `gate` definition because
+    /// no decomposition is available for it with the information at hand.
+    ///
+    /// This is an honest failure: returning it prevents the gate from being
+    /// silently dropped from the exported program.
+    #[error("Cannot decompose custom gate '{gate}' for QASM export: {reason}")]
+    UndecomposableGate { gate: String, reason: String },
 }
 
 /// Options for controlling QASM export
@@ -185,17 +195,34 @@ impl QasmExporter {
         let name = self.gate_qasm_name(gate);
 
         if !self.custom_gates.contains_key(&name) {
+            let num_qubits = gate.qubits().len();
+            let matrix = Self::gate_matrix(gate, num_qubits);
+
             let info = GateInfo {
                 name: name.clone(),
-                num_qubits: gate.qubits().len(),
+                num_qubits,
                 num_params: self.count_gate_params(gate),
-                matrix: None, // GateOp doesn't have matrix() method
+                matrix,
             };
 
             self.custom_gates.insert(name, info);
         }
 
         Ok(())
+    }
+
+    /// Retrieve the unitary matrix of a gate as a square `Array2`.
+    ///
+    /// `GateOp::matrix` returns a flat row-major `Vec<Complex64>` of length
+    /// `(2^num_qubits)^2`. Returns `None` when the gate cannot produce a matrix
+    /// or the data does not form a square matrix of the expected dimension.
+    fn gate_matrix(gate: &dyn GateOp, num_qubits: usize) -> Option<Array2<Complex64>> {
+        let flat = gate.matrix().ok()?;
+        let dim = 1usize.checked_shl(num_qubits as u32)?;
+        if flat.len() != dim.checked_mul(dim)? {
+            return None;
+        }
+        Array2::from_shape_vec((dim, dim), flat).ok()
     }
 
     /// Get QASM name for a gate
@@ -309,14 +336,104 @@ impl QasmExporter {
         })
     }
 
-    /// Generate gate definition for custom gate
-    const fn generate_gate_definition(
+    /// Generate a QASM `gate` definition for a custom (non-standard) gate.
+    ///
+    /// Returns `Ok(Some(def))` with a body expressed in standard-library gates
+    /// when the custom gate can be synthesized. Returns `Ok(None)` only when no
+    /// definition is required (there is nothing to emit for this entry).
+    /// Returns `Err(ExportError::UndecomposableGate)` when a definition *is*
+    /// required but cannot be produced from the available information — this is
+    /// an honest error so the gate is never silently dropped from the output.
+    fn generate_gate_definition(
         &self,
         gate_info: &GateInfo,
     ) -> Result<Option<GateDefinition>, ExportError> {
-        // For now, return None - full implementation would decompose gates
-        // This would use gate synthesis algorithms
-        Ok(None)
+        // A parameterized custom gate would need a symbolic body in terms of its
+        // parameters. We only captured a single concrete matrix instance, which
+        // cannot represent the gate for arbitrary parameter values, so emitting a
+        // body from it would be a fabrication. Fail honestly instead.
+        if gate_info.num_params > 0 {
+            return Err(ExportError::UndecomposableGate {
+                gate: gate_info.name.clone(),
+                reason: format!(
+                    "parameterized custom gate with {} parameter(s); symbolic decomposition is not supported",
+                    gate_info.num_params
+                ),
+            });
+        }
+
+        match gate_info.num_qubits {
+            // Defensive: a gate acting on zero qubits has no meaningful body.
+            0 => Err(ExportError::UndecomposableGate {
+                gate: gate_info.name.clone(),
+                reason: "gate acts on zero qubits".to_string(),
+            }),
+            1 => self.single_qubit_gate_definition(gate_info),
+            n => Err(ExportError::UndecomposableGate {
+                gate: gate_info.name.clone(),
+                reason: format!(
+                    "no decomposition available for {n}-qubit custom gate (only single-qubit synthesis is implemented)"
+                ),
+            }),
+        }
+    }
+
+    /// Synthesize a single-qubit custom gate into an `rz · ry · rz` body using a
+    /// ZYZ Euler decomposition of its unitary matrix.
+    fn single_qubit_gate_definition(
+        &self,
+        gate_info: &GateInfo,
+    ) -> Result<Option<GateDefinition>, ExportError> {
+        let matrix = gate_info
+            .matrix
+            .as_ref()
+            .ok_or_else(|| ExportError::UndecomposableGate {
+                gate: gate_info.name.clone(),
+                reason: "matrix representation unavailable".to_string(),
+            })?;
+
+        let decomp = decompose_single_qubit_zyz(&matrix.view()).map_err(|e| {
+            ExportError::UndecomposableGate {
+                gate: gate_info.name.clone(),
+                reason: format!("ZYZ decomposition failed: {e}"),
+            }
+        })?;
+
+        // U = e^{i·global_phase} · Rz(theta2) · Ry(phi) · Rz(theta1)
+        //
+        // QASM statements execute in source order (first statement applied
+        // first, i.e. rightmost in the matrix product), so the matrix product
+        // Rz(θ₂)·Ry(φ)·Rz(θ₁) is emitted as rz(θ₁); ry(φ); rz(θ₂);.
+        //
+        // The scalar global phase is physically unobservable for a stand-alone
+        // gate and is intentionally not emitted (QASM `gate` bodies have no
+        // portable way to express it). The synthesized operator therefore equals
+        // the original up to global phase, which defines an equivalent gate.
+        let qubit_arg = "qb".to_string();
+
+        let make_rotation = |name: &str, angle: f64| -> QasmStatement {
+            QasmStatement::Gate(QasmGate {
+                name: name.to_string(),
+                params: vec![Expression::Literal(Literal::Float(angle))],
+                qubits: vec![QubitRef::Register(qubit_arg.clone())],
+                control: None,
+                inverse: false,
+                power: None,
+            })
+        };
+
+        let body = vec![
+            make_rotation("rz", decomp.theta1),
+            make_rotation("ry", decomp.phi),
+            make_rotation("rz", decomp.theta2),
+        ];
+
+        Ok(Some(GateDefinition {
+            name: gate_info.name.clone(),
+            params: Vec::new(),
+            qubits: vec![qubit_arg],
+            body,
+        }))
     }
 
     /// Convert gate to QASM statement
@@ -445,9 +562,142 @@ pub fn export_qasm3<const N: usize>(circuit: &Circuit<N>) -> Result<String, Expo
 #[cfg(test)]
 mod tests {
     use super::*;
+    use quantrs2_core::error::QuantRS2Result;
     use quantrs2_core::gate::multi::CNOT;
     use quantrs2_core::gate::single::{Hadamard, PauliX};
     use quantrs2_core::qubit::QubitId;
+    use std::any::Any;
+
+    /// A non-standard single-qubit gate whose unitary is the Hadamard matrix.
+    /// Its name is not in the standard library, so the exporter must synthesize
+    /// a real `gate` definition for it rather than dropping it.
+    #[derive(Debug, Clone)]
+    struct CustomHadamard {
+        target: QubitId,
+    }
+
+    impl GateOp for CustomHadamard {
+        fn name(&self) -> &'static str {
+            "myhad"
+        }
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![self.target]
+        }
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            let s = 1.0 / 2.0_f64.sqrt();
+            Ok(vec![
+                Complex64::new(s, 0.0),
+                Complex64::new(s, 0.0),
+                Complex64::new(s, 0.0),
+                Complex64::new(-s, 0.0),
+            ])
+        }
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+        fn clone_gate(&self) -> Box<dyn GateOp> {
+            Box::new(self.clone())
+        }
+    }
+
+    /// A non-standard two-qubit gate (identity on two qubits). Two-qubit custom
+    /// synthesis is out of scope, so the exporter must fail honestly instead of
+    /// silently dropping it.
+    #[derive(Debug, Clone)]
+    struct CustomTwoQubit {
+        a: QubitId,
+        b: QubitId,
+    }
+
+    impl GateOp for CustomTwoQubit {
+        fn name(&self) -> &'static str {
+            "mytwo"
+        }
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![self.a, self.b]
+        }
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            let mut m = vec![Complex64::new(0.0, 0.0); 16];
+            for i in 0..4 {
+                m[i * 4 + i] = Complex64::new(1.0, 0.0);
+            }
+            Ok(m)
+        }
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+        fn clone_gate(&self) -> Box<dyn GateOp> {
+            Box::new(self.clone())
+        }
+    }
+
+    #[test]
+    fn test_export_custom_single_qubit_gate_emits_definition() {
+        let mut circuit = Circuit::<1>::new();
+        circuit
+            .add_gate(CustomHadamard { target: QubitId(0) })
+            .expect("adding custom gate should succeed");
+
+        let qasm = export_qasm3(&circuit)
+            .expect("export should synthesize a definition for a single-qubit custom gate");
+
+        // The custom gate must produce a real, non-empty `gate` definition body
+        // expressed in standard rotations, and the gate must be referenced.
+        assert!(
+            qasm.contains("gate myhad"),
+            "missing custom gate definition: {qasm}"
+        );
+        assert!(qasm.contains("rz("), "definition body missing rz: {qasm}");
+        assert!(qasm.contains("ry("), "definition body missing ry: {qasm}");
+        assert!(
+            qasm.contains("myhad qb") || qasm.contains("myhad q[0]"),
+            "custom gate not applied: {qasm}"
+        );
+    }
+
+    #[test]
+    fn test_export_custom_multi_qubit_gate_errors_honestly() {
+        let mut circuit = Circuit::<2>::new();
+        circuit
+            .add_gate(CustomTwoQubit {
+                a: QubitId(0),
+                b: QubitId(1),
+            })
+            .expect("adding custom two-qubit gate should succeed");
+
+        let result = export_qasm3(&circuit);
+        // Must NOT silently drop the gate: an honest error is required.
+        assert!(
+            matches!(result, Err(ExportError::UndecomposableGate { ref gate, .. }) if gate == "mytwo"),
+            "expected UndecomposableGate error for two-qubit custom gate, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn test_custom_gate_definition_is_skipped_when_disabled() {
+        // With decompose_custom = false, no definition is emitted (and no error
+        // is raised) — the option legitimately suppresses definitions.
+        let mut circuit = Circuit::<2>::new();
+        circuit
+            .add_gate(CustomTwoQubit {
+                a: QubitId(0),
+                b: QubitId(1),
+            })
+            .expect("adding custom two-qubit gate should succeed");
+
+        let options = ExportOptions {
+            decompose_custom: false,
+            ..ExportOptions::default()
+        };
+        let mut exporter = QasmExporter::new(options);
+        let qasm = exporter
+            .export(&circuit)
+            .expect("export without decomposition should not error");
+        assert!(
+            !qasm.contains("gate mytwo"),
+            "unexpected definition: {qasm}"
+        );
+    }
 
     #[test]
     fn test_export_simple_circuit() {

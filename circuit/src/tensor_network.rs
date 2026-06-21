@@ -109,14 +109,71 @@ impl Tensor {
             }
         }
 
-        // Perform contraction (simplified implementation)
+        // Perform the contraction over the single shared index.
+        //
+        // Output index ordering is: all of `self`'s free indices (in their
+        // original order, skipping `self_pos`), followed by all of `other`'s
+        // free indices (skipping `other_pos`). This matches `new_shape` /
+        // `new_indices` built above.
+        //
+        //   out[free_self, free_other] = Σ_k self[.., k, ..] * other[.., k, ..]
+        //
+        // where `k` runs over the shared dimension. Tensor data is row-major,
+        // so we compute row-major strides for both inputs and walk every output
+        // multi-index explicitly. This is the exact general two-tensor,
+        // single-shared-index contraction (not optimized for large tensors, but
+        // numerically exact).
         let new_size: usize = new_shape.iter().product();
         let mut new_data = vec![C64::new(0.0, 0.0); new_size];
-
-        // This is a simplified contraction - in practice, would use optimized tensor libraries
         let contract_dim = self.shape[self_pos];
 
-        // For now, return a placeholder
+        // Row-major strides for the input tensors.
+        let self_strides = Self::row_major_strides(&self.shape);
+        let other_strides = Self::row_major_strides(&other.shape);
+
+        // Free-index metadata: (stride_in_input, extent) preserving order.
+        let self_free: Vec<(usize, usize)> = self
+            .shape
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| *i != self_pos)
+            .map(|(i, &dim)| (self_strides[i], dim))
+            .collect();
+        let other_free: Vec<(usize, usize)> = other
+            .shape
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| *i != other_pos)
+            .map(|(i, &dim)| (other_strides[i], dim))
+            .collect();
+
+        let self_contract_stride = self_strides[self_pos];
+        let other_contract_stride = other_strides[other_pos];
+
+        // Number of free-index combinations on each side.
+        let self_free_count: usize = self_free.iter().map(|(_, dim)| *dim).product();
+        let other_free_count: usize = other_free.iter().map(|(_, dim)| *dim).product();
+
+        // Iterate over every (self_free, other_free) output position. The
+        // output is laid out row-major with `self` free indices as the most
+        // significant block and `other` free indices as the least significant.
+        for self_free_idx in 0..self_free_count {
+            let self_base = Self::flat_offset(self_free_idx, &self_free);
+            for other_free_idx in 0..other_free_count {
+                let other_base = Self::flat_offset(other_free_idx, &other_free);
+
+                let mut acc = C64::new(0.0, 0.0);
+                for k in 0..contract_dim {
+                    let self_flat = self_base + k * self_contract_stride;
+                    let other_flat = other_base + k * other_contract_stride;
+                    acc += self.data[self_flat] * other.data[other_flat];
+                }
+
+                let out_flat = self_free_idx * other_free_count + other_free_idx;
+                new_data[out_flat] = acc;
+            }
+        }
+
         Ok(Self::new(new_data, new_shape, new_indices))
     }
 
@@ -133,6 +190,35 @@ impl Tensor {
 
         self.shape = new_shape;
         Ok(())
+    }
+
+    /// Compute row-major (C-order) strides for a given shape.
+    ///
+    /// The stride of axis `i` is the product of all extents to its right, so
+    /// the flat row-major offset of a multi-index `idx` is
+    /// `Σ_i idx[i] * strides[i]`.
+    fn row_major_strides(shape: &[usize]) -> Vec<usize> {
+        let mut strides = vec![1usize; shape.len()];
+        for i in (0..shape.len().saturating_sub(1)).rev() {
+            strides[i] = strides[i + 1] * shape[i + 1];
+        }
+        strides
+    }
+
+    /// Convert a linear free-index counter into a flat offset into the source
+    /// tensor's data buffer, using the supplied `(stride, extent)` pairs.
+    ///
+    /// `linear` is decoded most-significant-axis-first (matching row-major
+    /// iteration over the free axes), and each decoded coordinate is multiplied
+    /// by the corresponding source stride to accumulate the flat offset.
+    fn flat_offset(mut linear: usize, free_axes: &[(usize, usize)]) -> usize {
+        let mut offset = 0usize;
+        for &(stride, extent) in free_axes.iter().rev() {
+            let coord = linear % extent;
+            linear /= extent;
+            offset += coord * stride;
+        }
+        offset
     }
 }
 
@@ -1061,6 +1147,81 @@ mod tests {
 
         assert_eq!(tensor.rank(), 2);
         assert_eq!(tensor.size(), 4);
+    }
+
+    #[test]
+    fn test_contract_matrix_product() {
+        // A = [[1,2],[3,4]] with indices (i, k), row-major.
+        let a = Tensor::new(
+            vec![
+                C64::new(1.0, 0.0),
+                C64::new(2.0, 0.0),
+                C64::new(3.0, 0.0),
+                C64::new(4.0, 0.0),
+            ],
+            vec![2, 2],
+            vec!["i".to_string(), "k".to_string()],
+        );
+        // B = [[5,6],[7,8]] with indices (k, j), row-major.
+        let b = Tensor::new(
+            vec![
+                C64::new(5.0, 0.0),
+                C64::new(6.0, 0.0),
+                C64::new(7.0, 0.0),
+                C64::new(8.0, 0.0),
+            ],
+            vec![2, 2],
+            vec!["k".to_string(), "j".to_string()],
+        );
+
+        // Contract over shared index k => matrix product A·B = [[19,22],[43,50]].
+        let result = a.contract(&b, "k", "k").expect("contraction must succeed");
+
+        assert_eq!(result.shape, vec![2, 2]);
+        assert_eq!(result.indices, vec!["i".to_string(), "j".to_string()]);
+
+        let expected = [19.0, 22.0, 43.0, 50.0];
+        for (got, want) in result.data.iter().zip(expected.iter()) {
+            assert!(
+                (got.re - want).abs() < 1e-12,
+                "got {}, want {}",
+                got.re,
+                want
+            );
+            assert!(got.im.abs() < 1e-12);
+        }
+    }
+
+    #[test]
+    fn test_contract_rectangular_strides() {
+        // A shape [2,3] indices (i, k): rows [[1,2,3],[4,5,6]].
+        let a = Tensor::new(
+            (1..=6).map(|v| C64::new(f64::from(v), 0.0)).collect(),
+            vec![2, 3],
+            vec!["i".to_string(), "k".to_string()],
+        );
+        // B shape [3,2] indices (k, j): rows [[7,8],[9,10],[11,12]].
+        let b = Tensor::new(
+            (7..=12).map(|v| C64::new(f64::from(v), 0.0)).collect(),
+            vec![3, 2],
+            vec!["k".to_string(), "j".to_string()],
+        );
+
+        let result = a.contract(&b, "k", "k").expect("contraction must succeed");
+        assert_eq!(result.shape, vec![2, 2]);
+
+        // A·B = [[1*7+2*9+3*11, 1*8+2*10+3*12],
+        //        [4*7+5*9+6*11, 4*8+5*10+6*12]]
+        //     = [[58, 64], [139, 154]]
+        let expected = [58.0, 64.0, 139.0, 154.0];
+        for (got, want) in result.data.iter().zip(expected.iter()) {
+            assert!(
+                (got.re - want).abs() < 1e-12,
+                "got {}, want {}",
+                got.re,
+                want
+            );
+        }
     }
 
     #[test]

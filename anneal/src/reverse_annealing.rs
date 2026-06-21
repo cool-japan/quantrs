@@ -155,6 +155,11 @@ impl ReverseAnnealingParams {
 pub struct ReverseAnnealingSimulator {
     params: ReverseAnnealingParams,
     rng: ChaCha8Rng,
+    /// Optional per-qubit update mask for targeted (local-search) reverse
+    /// annealing. When `Some`, only qubits whose entry is `true` are allowed to
+    /// flip during annealing; the rest are frozen at their initial value. This
+    /// emulates hardware anneal-offsets used for targeted reverse annealing.
+    update_mask: Option<Vec<bool>>,
 }
 
 impl ReverseAnnealingSimulator {
@@ -165,7 +170,11 @@ impl ReverseAnnealingSimulator {
             None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
 
-        Ok(Self { params, rng })
+        Ok(Self {
+            params,
+            rng,
+            update_mask: None,
+        })
     }
 
     /// Solve an Ising model using reverse annealing
@@ -238,35 +247,43 @@ impl ReverseAnnealingSimulator {
             }
         }
 
-        // Apply local search mask if specified
+        // Build and store the local-search update mask if a radius is specified.
         if let Some(radius) = self.params.local_search_radius {
-            self.apply_local_search_mask(&mut state, radius);
+            self.update_mask = Some(self.build_local_search_mask(state.len(), radius));
+        } else {
+            self.update_mask = None;
         }
 
         state
     }
 
-    /// Apply local search mask for targeted reverse annealing
-    fn apply_local_search_mask(&mut self, state: &[i8], radius: usize) {
-        // In targeted reverse annealing, only spins within radius are allowed to change
-        // This is typically implemented using anneal_offsets in hardware
-        // For simulation, we'll mark which spins can be updated
+    /// Build the local-search update mask for targeted reverse annealing.
+    ///
+    /// In targeted reverse annealing only spins within `radius` of a set of
+    /// "active" centers are allowed to change (hardware realizes this via
+    /// anneal-offsets). We choose ~10% of the qubits as centers and mark every
+    /// qubit within `radius` index-distance of a center as updatable; all other
+    /// qubits are frozen. The returned mask is consumed by
+    /// [`run_reverse_annealing`], so the restriction genuinely affects the
+    /// Monte-Carlo update selection (it is not discarded).
+    fn build_local_search_mask(&mut self, num_qubits: usize, radius: usize) -> Vec<bool> {
+        if num_qubits == 0 {
+            return Vec::new();
+        }
 
-        // For now, we'll implement a simple version where we select random centers
-        let num_centers = (state.len() as f64 * 0.1).max(1.0) as usize;
-        let mut can_update = vec![false; state.len()];
+        let num_centers = ((num_qubits as f64 * 0.1).round() as usize).max(1);
+        let mut can_update = vec![false; num_qubits];
 
         for _ in 0..num_centers {
-            let center = self.rng.random_range(0..state.len());
-            for i in 0..state.len() {
-                if (i as i32 - center as i32).abs() <= radius as i32 {
-                    can_update[i] = true;
-                }
+            let center = self.rng.random_range(0..num_qubits);
+            let lo = center.saturating_sub(radius);
+            let hi = (center + radius).min(num_qubits - 1);
+            for slot in can_update.iter_mut().take(hi + 1).skip(lo) {
+                *slot = true;
             }
         }
 
-        // Store mask for use during annealing
-        // (In a full implementation, this would affect the update selection)
+        can_update
     }
 
     /// Run the reverse annealing process
@@ -292,6 +309,14 @@ impl ReverseAnnealingSimulator {
             // Perform Monte Carlo updates
             for _ in 0..model.num_qubits {
                 let i = self.rng.random_range(0..model.num_qubits);
+
+                // Respect the targeted local-search mask: frozen qubits never
+                // flip during annealing.
+                if let Some(mask) = &self.update_mask {
+                    if matches!(mask.get(i), Some(false)) {
+                        continue;
+                    }
+                }
 
                 // Calculate local field
                 let mut h_local = 0.0;

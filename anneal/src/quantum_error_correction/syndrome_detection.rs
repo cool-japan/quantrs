@@ -630,18 +630,68 @@ impl SyndromeDetector {
         syndrome_weight / syndrome.len() as f64
     }
 
-    /// Apply Pauli correction to state
+    /// Apply a single-qubit Pauli correction to the state vector in place.
+    ///
+    /// Acts on the amplitude vector (indexed so that qubit `q` is bit `q`, the
+    /// same convention as [`QuantumState::expectation_z`]):
+    ///
+    /// * `X` swaps the amplitudes of basis states that differ in qubit `q`;
+    /// * `Z` negates the amplitude of every basis state with qubit `q` set;
+    /// * `Y = iXZ`: `Y|0⟩ = i|1⟩`, `Y|1⟩ = −i|0⟩`;
+    /// * `I` is a no-op.
+    ///
+    /// Returns [`QuantumErrorCorrectionError::SyndromeError`] if the target
+    /// qubit is out of range for the state.
     fn apply_pauli_correction(
         &self,
-        state: &QuantumState,
+        state: &mut QuantumState,
         correction: &PauliCorrection,
     ) -> QECResult<()> {
-        // This would apply the actual Pauli operation in a real implementation
-        // For now, we'll just log the correction
-        println!(
-            "Applying {:?} correction to qubit {}",
-            correction.operation, correction.qubit
-        );
+        let qubit = correction.qubit;
+        if qubit >= state.num_qubits {
+            return Err(QuantumErrorCorrectionError::SyndromeError(format!(
+                "Correction targets qubit {qubit} but state has {} qubits",
+                state.num_qubits
+            )));
+        }
+
+        let bit = 1usize << qubit;
+        let dim = state.amplitudes.len();
+
+        match correction.operation {
+            PauliType::I => {}
+            PauliType::X => {
+                // Swap |..0..⟩ <-> |..1..⟩ for the target bit.
+                for index in 0..dim {
+                    if index & bit == 0 {
+                        let partner = index | bit;
+                        state.amplitudes.swap(index, partner);
+                    }
+                }
+            }
+            PauliType::Z => {
+                // Phase flip on the |1⟩ component of the target qubit.
+                for (index, amplitude) in state.amplitudes.iter_mut().enumerate() {
+                    if index & bit != 0 {
+                        *amplitude = -*amplitude;
+                    }
+                }
+            }
+            PauliType::Y => {
+                // Y|0> = i|1>, Y|1> = -i|0>.
+                let imag = scirs2_core::Complex64::new(0.0, 1.0);
+                for index in 0..dim {
+                    if index & bit == 0 {
+                        let partner = index | bit;
+                        let a0 = state.amplitudes[index];
+                        let a1 = state.amplitudes[partner];
+                        state.amplitudes[index] = -imag * a1;
+                        state.amplitudes[partner] = imag * a0;
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 

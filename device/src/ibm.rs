@@ -816,32 +816,25 @@ impl IBMQuantumClient {
         ))
     }
 
-    /// Convert a Quantrs circuit to QASM
+    /// Convert a Quantrs circuit to OpenQASM 2.0 compatible with IBM Quantum.
+    ///
+    /// The actual gate-by-gate translation is delegated to the circuit crate's
+    /// validated OpenQASM 2.0 exporter, which emits one line per gate (including
+    /// the `OPENQASM 2.0` header, `qelib1.inc` include, and the quantum register).
+    ///
+    /// The `initial_layout` argument is accepted for API compatibility. The
+    /// underlying exporter emits gates against the circuit's own qubit indices;
+    /// physical-qubit relabeling is performed downstream by the transpiler, so a
+    /// supplied layout does not alter the emitted QASM here.
     pub fn circuit_to_qasm<const N: usize>(
-        _circuit: &Circuit<N>,
+        circuit: &Circuit<N>,
         _initial_layout: Option<std::collections::HashMap<String, usize>>,
     ) -> DeviceResult<String> {
-        // This is a placeholder for the actual conversion logic
-        // In a complete implementation, this would translate our circuit representation
-        // to OpenQASM format compatible with IBM Quantum
-
-        let mut qasm = String::from("OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\n");
-
-        // Define the quantum and classical registers
-        use std::fmt::Write;
-        writeln!(qasm, "qreg q[{N}];")
-            .map_err(|e| DeviceError::CircuitConversion(format!("Failed to write QASM: {e}")))?;
-        writeln!(qasm, "creg c[{N}];")
-            .map_err(|e| DeviceError::CircuitConversion(format!("Failed to write QASM: {e}")))?;
-
-        // Implement conversion of gates to QASM here
-        // For example:
-        // - X gate: x q[i];
-        // - H gate: h q[i];
-        // - CNOT gate: cx q[i], q[j];
-
-        // For now, just return placeholder QASM
-        Ok(qasm)
+        quantrs2_circuit::qasm::circuit_to_qasm(circuit).map_err(|e| {
+            DeviceError::CircuitConversion(format!(
+                "Failed to convert circuit to OpenQASM 2.0: {e}"
+            ))
+        })
     }
 }
 
@@ -914,5 +907,29 @@ impl IBMQuantumClient {
         Err(DeviceError::UnsupportedDevice(
             "IBM Quantum support not enabled".to_string(),
         ))
+    }
+}
+
+#[cfg(all(test, feature = "ibm"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_circuit_to_qasm_emits_real_gates() {
+        // Build a Bell-state circuit: H on q0, CNOT(q0, q1).
+        let mut circuit = Circuit::<2>::new();
+        circuit.h(0).expect("add H");
+        circuit.cnot(0, 1).expect("add CNOT");
+
+        let qasm = IBMQuantumClient::circuit_to_qasm(&circuit, None)
+            .expect("QASM conversion should succeed");
+
+        // Header must be present.
+        assert!(qasm.contains("OPENQASM 2.0"), "missing header: {qasm}");
+        assert!(qasm.contains("qreg q[2]"), "missing register: {qasm}");
+
+        // Critically: the REAL gate lines must be emitted (not just headers).
+        assert!(qasm.contains("h q[0]"), "missing H gate: {qasm}");
+        assert!(qasm.contains("cx q[0], q[1]"), "missing CNOT gate: {qasm}");
     }
 }

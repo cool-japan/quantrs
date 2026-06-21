@@ -42,6 +42,65 @@ pub enum QbmError {
 /// Result type for QBM operations
 pub type QbmResult<T> = Result<T, QbmError>;
 
+/// Accumulated contrastive-divergence gradient statistics for one mini-batch.
+///
+/// For a Restricted Boltzmann Machine the log-likelihood gradient of the
+/// weights is `⟨v_i h_j⟩_data − ⟨v_i h_j⟩_model`, the visible-bias gradient is
+/// `⟨v_i⟩_data − ⟨v_i⟩_model`, and the hidden-bias gradient is
+/// `⟨h_j⟩_data − ⟨h_j⟩_model`. The "data" expectations are taken over the
+/// positive phase (training sample clamped on the visible units) and the
+/// "model" expectations over the negative phase (the reconstruction produced by
+/// `k` steps of (quantum) Gibbs sampling). These accumulators sum the per-sample
+/// contributions; the caller divides by the batch size to obtain the mean
+/// gradient used for the parameter update.
+#[derive(Debug, Clone)]
+struct CdGradients {
+    /// Sum over the batch of `v_i h_j` correlations, positive minus negative.
+    weight_grad: Vec<Vec<f64>>,
+    /// Sum over the batch of `v_i`, positive minus negative.
+    visible_bias_grad: Vec<f64>,
+    /// Sum over the batch of `h_j`, positive minus negative.
+    hidden_bias_grad: Vec<f64>,
+    /// Number of samples accumulated (used to form the mean).
+    count: usize,
+}
+
+impl CdGradients {
+    fn new(num_visible: usize, num_hidden: usize) -> Self {
+        Self {
+            weight_grad: vec![vec![0.0; num_hidden]; num_visible],
+            visible_bias_grad: vec![0.0; num_visible],
+            hidden_bias_grad: vec![0.0; num_hidden],
+            count: 0,
+        }
+    }
+
+    /// Accumulate the positive- minus negative-phase contribution of one sample.
+    ///
+    /// `v_pos`/`h_pos` are the visible data vector and the hidden activation
+    /// probabilities of the positive phase; `v_neg`/`h_neg` are the
+    /// reconstructed visible vector and hidden activation probabilities of the
+    /// negative phase. Using the hidden *probabilities* (rather than sampled
+    /// binary states) for the gradient is the standard low-variance estimator
+    /// (Hinton, "A Practical Guide to Training RBMs", 2010).
+    fn accumulate(&mut self, v_pos: &[f64], h_pos: &[f64], v_neg: &[f64], h_neg: &[f64]) {
+        for (i, weight_row) in self.weight_grad.iter_mut().enumerate() {
+            let vp = v_pos[i];
+            let vn = v_neg[i];
+            for (j, w) in weight_row.iter_mut().enumerate() {
+                *w += vp.mul_add(h_pos[j], -(vn * h_neg[j]));
+            }
+        }
+        for (i, g) in self.visible_bias_grad.iter_mut().enumerate() {
+            *g += v_pos[i] - v_neg[i];
+        }
+        for (j, g) in self.hidden_bias_grad.iter_mut().enumerate() {
+            *g += h_pos[j] - h_neg[j];
+        }
+        self.count += 1;
+    }
+}
+
 /// Type of Boltzmann machine unit
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnitType {
@@ -401,13 +460,15 @@ impl QuantumRestrictedBoltzmannMachine {
                 let batch_samples: Vec<&TrainingSample> =
                     batch_indices.iter().map(|&i| &dataset[i]).collect();
 
-                // Perform contrastive divergence
-                let (batch_error, batch_fe_diff, batch_quantum_stats) =
+                // Perform contrastive divergence: this both estimates the batch
+                // error/free-energy diagnostics AND accumulates the real
+                // positive-minus-negative phase gradient statistics.
+                let (batch_error, batch_fe_diff, batch_gradients, batch_quantum_stats) =
                     self.contrastive_divergence_batch(&batch_samples, &mut persistent_chains)?;
 
-                // Update parameters with momentum
+                // Apply the real CD gradients with momentum and weight decay.
                 self.update_parameters_with_momentum(
-                    &batch_samples,
+                    &batch_gradients,
                     &mut weight_momentum,
                     &mut visible_bias_momentum,
                     &mut hidden_bias_momentum,
@@ -464,20 +525,28 @@ impl QuantumRestrictedBoltzmannMachine {
         Ok(())
     }
 
-    /// Perform contrastive divergence for a batch
+    /// Perform contrastive divergence for a batch.
+    ///
+    /// Runs the positive phase (sample hidden units given the clamped data) and
+    /// the negative phase (`k` steps of Gibbs/quantum sampling) for every sample,
+    /// accumulating the CD log-likelihood gradient
+    /// `⟨v h⟩_data − ⟨v h⟩_model` (and the analogous bias gradients) into a
+    /// [`CdGradients`] that the caller applies. Also returns the mean
+    /// reconstruction error and free-energy difference for diagnostics.
     fn contrastive_divergence_batch(
         &mut self,
         batch: &[&TrainingSample],
         persistent_chains: &mut Option<Vec<Vec<f64>>>,
-    ) -> QbmResult<(f64, f64, QuantumSamplingStats)> {
+    ) -> QbmResult<(f64, f64, CdGradients, QuantumSamplingStats)> {
         let mut total_error = 0.0;
         let mut total_fe_diff = 0.0;
         let mut quantum_stats = QuantumSamplingStats::default();
+        let mut gradients =
+            CdGradients::new(self.visible_config.num_units, self.hidden_config.num_units);
 
         for (i, sample) in batch.iter().enumerate() {
-            // Positive phase
+            // Positive phase: hidden activation probabilities given the data.
             let hidden_probs_pos = self.sample_hidden_given_visible(&sample.data)?;
-            let hidden_states_pos = self.sample_binary_units(&hidden_probs_pos)?;
 
             // Negative phase
             let (visible_recon, hidden_probs_neg, sampling_stats) =
@@ -526,7 +595,17 @@ impl QuantumRestrictedBoltzmannMachine {
                     (v_states, h_probs_neg, sampling_stats)
                 };
 
-            // Compute gradients and update (done in update_parameters_with_momentum)
+            // Accumulate the contrastive-divergence gradient for this sample.
+            // The positive phase uses the clamped data vector and its hidden
+            // probabilities; the negative phase uses the reconstruction and its
+            // hidden probabilities. Using probabilities (not binary samples) is
+            // the standard low-variance gradient estimator.
+            gradients.accumulate(
+                &sample.data,
+                &hidden_probs_pos,
+                &visible_recon,
+                &hidden_probs_neg,
+            );
 
             // Compute reconstruction error
             let error = sample
@@ -550,44 +629,57 @@ impl QuantumRestrictedBoltzmannMachine {
         Ok((
             total_error / batch.len() as f64,
             total_fe_diff / batch.len() as f64,
+            gradients,
             quantum_stats,
         ))
     }
 
-    /// Update parameters using momentum
+    /// Update parameters using the real contrastive-divergence gradient.
+    ///
+    /// Applies, for each parameter `θ`, the momentum update
+    /// `Δθ ← momentum·Δθ + learning_rate·g`, then `θ ← θ + Δθ`, where `g` is the
+    /// mean CD gradient over the batch. Weights additionally receive L2 weight
+    /// decay (`−learning_rate·decay·w`). This is gradient *ascent* on the
+    /// log-likelihood: the CD gradient already has the sign
+    /// `⟨·⟩_data − ⟨·⟩_model`, so we add it.
     fn update_parameters_with_momentum(
         &mut self,
-        _batch: &[&TrainingSample],
-        weight_momentum: &mut Vec<Vec<f64>>,
-        visible_bias_momentum: &mut Vec<f64>,
-        hidden_bias_momentum: &mut Vec<f64>,
+        gradients: &CdGradients,
+        weight_momentum: &mut [Vec<f64>],
+        visible_bias_momentum: &mut [f64],
+        hidden_bias_momentum: &mut [f64],
     ) -> QbmResult<()> {
-        // This is a simplified update - in practice, you'd compute actual gradients
-        // from the positive and negative phases of contrastive divergence
-
         let lr = self.training_config.learning_rate;
         let momentum = self.training_config.momentum;
         let decay = self.training_config.weight_decay;
 
-        // Update weights (simplified - normally computed from CD phases)
+        // Mean over the batch; guard against an empty batch.
+        let inv_count = if gradients.count > 0 {
+            1.0 / gradients.count as f64
+        } else {
+            return Ok(());
+        };
+
+        // Update weights with momentum and L2 weight decay.
         for i in 0..self.visible_config.num_units {
             for j in 0..self.hidden_config.num_units {
-                let gradient = self.rng.random_range(-0.001..0.001); // Placeholder
+                let gradient = gradients.weight_grad[i][j] * inv_count;
                 weight_momentum[i][j] = momentum.mul_add(weight_momentum[i][j], lr * gradient);
-                self.weights[i][j] += decay.mul_add(-self.weights[i][j], weight_momentum[i][j]);
+                // w += momentum_term - lr * decay * w
+                self.weights[i][j] += weight_momentum[i][j] - lr * decay * self.weights[i][j];
             }
         }
 
-        // Update visible biases
+        // Update visible biases (no weight decay on biases, as is conventional).
         for i in 0..self.visible_config.num_units {
-            let gradient = self.rng.random_range(-0.001..0.001); // Placeholder
+            let gradient = gradients.visible_bias_grad[i] * inv_count;
             visible_bias_momentum[i] = momentum.mul_add(visible_bias_momentum[i], lr * gradient);
             self.visible_biases[i] += visible_bias_momentum[i];
         }
 
-        // Update hidden biases
+        // Update hidden biases.
         for j in 0..self.hidden_config.num_units {
-            let gradient = self.rng.random_range(-0.001..0.001); // Placeholder
+            let gradient = gradients.hidden_bias_grad[j] * inv_count;
             hidden_bias_momentum[j] = momentum.mul_add(hidden_bias_momentum[j], lr * gradient);
             self.hidden_biases[j] += hidden_bias_momentum[j];
         }
@@ -831,21 +923,86 @@ impl QuantumRestrictedBoltzmannMachine {
         self.training_stats.as_ref()
     }
 
-    /// Save model parameters
+    /// Serialize the learned parameters (biases, weights and layer dimensions)
+    /// to a JSON file at `path`.
+    ///
+    /// Returns a [`QbmError::DataError`] if serialization or the file write
+    /// fails. The on-disk format round-trips through [`load_model`].
     pub fn save_model(&self, path: &str) -> QbmResult<()> {
-        // Implement model serialization
-        // For now, return success
-        println!("Model would be saved to: {path}");
+        let params = QbmModelParameters {
+            num_visible: self.visible_config.num_units,
+            num_hidden: self.hidden_config.num_units,
+            visible_biases: self.visible_biases.clone(),
+            hidden_biases: self.hidden_biases.clone(),
+            weights: self.weights.clone(),
+        };
+
+        let json = serde_json::to_string_pretty(&params)
+            .map_err(|e| QbmError::DataError(format!("Failed to serialize model: {e}")))?;
+
+        std::fs::write(path, json)
+            .map_err(|e| QbmError::DataError(format!("Failed to write model to {path}: {e}")))?;
+
         Ok(())
     }
 
-    /// Load model parameters
+    /// Load previously-saved parameters from the JSON file at `path`,
+    /// overwriting the current biases and weights.
+    ///
+    /// Returns a [`QbmError::DataError`] on a missing/invalid file or a
+    /// [`QbmError::InvalidModel`] if the stored layer dimensions do not match
+    /// this machine's configuration (loading mismatched shapes would silently
+    /// corrupt the model, so it is rejected).
     pub fn load_model(&mut self, path: &str) -> QbmResult<()> {
-        // Implement model deserialization
-        // For now, return success
-        println!("Model would be loaded from: {path}");
+        let contents = std::fs::read_to_string(path)
+            .map_err(|e| QbmError::DataError(format!("Failed to read model from {path}: {e}")))?;
+
+        let params: QbmModelParameters = serde_json::from_str(&contents)
+            .map_err(|e| QbmError::DataError(format!("Failed to deserialize model: {e}")))?;
+
+        if params.num_visible != self.visible_config.num_units
+            || params.num_hidden != self.hidden_config.num_units
+        {
+            return Err(QbmError::InvalidModel(format!(
+                "Model dimensions ({}x{}) do not match this RBM ({}x{})",
+                params.num_visible,
+                params.num_hidden,
+                self.visible_config.num_units,
+                self.hidden_config.num_units
+            )));
+        }
+
+        if params.visible_biases.len() != self.visible_config.num_units
+            || params.hidden_biases.len() != self.hidden_config.num_units
+            || params.weights.len() != self.visible_config.num_units
+            || params
+                .weights
+                .iter()
+                .any(|row| row.len() != self.hidden_config.num_units)
+        {
+            return Err(QbmError::InvalidModel(
+                "Stored parameter arrays have inconsistent shapes".to_string(),
+            ));
+        }
+
+        self.visible_biases = params.visible_biases;
+        self.hidden_biases = params.hidden_biases;
+        self.weights = params.weights;
+
         Ok(())
     }
+}
+
+/// Serializable snapshot of the learned RBM parameters used by
+/// [`QuantumRestrictedBoltzmannMachine::save_model`] /
+/// [`QuantumRestrictedBoltzmannMachine::load_model`].
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct QbmModelParameters {
+    num_visible: usize,
+    num_hidden: usize,
+    visible_biases: Vec<f64>,
+    hidden_biases: Vec<f64>,
+    weights: Vec<Vec<f64>>,
 }
 
 impl QuantumSamplingStats {

@@ -17,6 +17,160 @@ use rustc_hash::FxHashMap;
 use scirs2_core::ndarray::{s, Array2};
 use scirs2_core::Complex;
 
+/// Complex one-sided Jacobi SVD of a square matrix `m`.
+///
+/// Returns `(U, s, Vᴴ)` with `m = U · diag(s) · Vᴴ`, `U` and `Vᴴ` unitary and `s` the
+/// singular values in non-increasing order. One-sided Jacobi orthogonalises the columns
+/// of `m` by unitary plane rotations; the resulting column norms are the singular values
+/// and the accumulated rotations form `V`. This is used because the SciRS2 LAPACK SVD
+/// currently exposes only a real-valued path, whereas the CSD operates on complex blocks.
+fn complex_svd(
+    m: &Array2<Complex<f64>>,
+) -> QuantRS2Result<(Array2<Complex<f64>>, Vec<f64>, Array2<Complex<f64>>)> {
+    let (rows, cols) = (m.nrows(), m.ncols());
+    if rows != cols {
+        return Err(QuantRS2Error::InvalidInput(
+            "complex_svd helper expects a square matrix".to_string(),
+        ));
+    }
+    let n = rows;
+
+    let mut a = m.clone(); // columns orthogonalised in place -> U·diag(s)
+    let mut v = Array2::<Complex<f64>>::eye(n); // accumulates right rotations
+
+    let eps = 1e-15;
+    let max_sweeps = 60;
+    for _sweep in 0..max_sweeps {
+        let mut off = 0.0f64;
+        for i in 0..n {
+            for j in (i + 1)..n {
+                let mut alpha = 0.0f64;
+                let mut beta = 0.0f64;
+                let mut gamma = Complex::new(0.0, 0.0);
+                for r in 0..n {
+                    let ai = a[[r, i]];
+                    let aj = a[[r, j]];
+                    alpha += ai.norm_sqr();
+                    beta += aj.norm_sqr();
+                    gamma += ai.conj() * aj;
+                }
+                let gamma_abs = gamma.norm();
+                off += gamma_abs;
+                if gamma_abs <= eps * (alpha.sqrt() * beta.sqrt()).max(eps) {
+                    continue;
+                }
+                let phase = gamma / gamma_abs;
+                let zeta = (beta - alpha) / (2.0 * gamma_abs);
+                let t = zeta.signum() / (zeta.abs() + (1.0 + zeta * zeta).sqrt());
+                let cval = 1.0 / (1.0 + t * t).sqrt();
+                let s_ij = phase * Complex::new(cval * t, 0.0);
+                for r in 0..n {
+                    let ai = a[[r, i]];
+                    let aj = a[[r, j]];
+                    a[[r, i]] = Complex::new(cval, 0.0) * ai - s_ij.conj() * aj;
+                    a[[r, j]] = s_ij * ai + Complex::new(cval, 0.0) * aj;
+                }
+                for r in 0..n {
+                    let vi = v[[r, i]];
+                    let vj = v[[r, j]];
+                    v[[r, i]] = Complex::new(cval, 0.0) * vi - s_ij.conj() * vj;
+                    v[[r, j]] = s_ij * vi + Complex::new(cval, 0.0) * vj;
+                }
+            }
+        }
+        if off <= eps {
+            break;
+        }
+    }
+
+    // Column norms are the singular values; sort non-increasing.
+    let mut order: Vec<(f64, usize)> = (0..n)
+        .map(|j| {
+            let norm = (0..n).map(|r| a[[r, j]].norm_sqr()).sum::<f64>().sqrt();
+            (norm, j)
+        })
+        .collect();
+    order.sort_by(|x, y| y.0.total_cmp(&x.0));
+
+    let mut u = Array2::<Complex<f64>>::zeros((n, n));
+    let mut s_vec = vec![0.0f64; n];
+    let mut v_sorted = Array2::<Complex<f64>>::zeros((n, n));
+    let mut zero_cols: Vec<usize> = Vec::new();
+    for (new_idx, &(norm, old_idx)) in order.iter().enumerate() {
+        s_vec[new_idx] = norm;
+        if norm > 1e-300 {
+            for r in 0..n {
+                u[[r, new_idx]] = a[[r, old_idx]] / Complex::new(norm, 0.0);
+            }
+        } else {
+            zero_cols.push(new_idx);
+        }
+        for r in 0..n {
+            v_sorted[[r, new_idx]] = v[[r, old_idx]];
+        }
+    }
+    // Fill any zero singular-value columns of U with an orthonormal completion so U
+    // stays unitary.
+    if !zero_cols.is_empty() {
+        complete_orthonormal_columns(&mut u, &zero_cols, 1e-12);
+    }
+
+    let vh = v_sorted.mapv(|z| z.conj()).t().to_owned();
+    Ok((u, s_vec, vh))
+}
+
+/// Fill the specified columns of `mat` (an `n×n` matrix whose *other* columns are
+/// already orthonormal) with vectors that extend the set to a full orthonormal basis.
+///
+/// Uses modified Gram–Schmidt against the existing columns and the candidates built so
+/// far, seeding from standard basis vectors.
+fn complete_orthonormal_columns(mat: &mut Array2<Complex<f64>>, columns: &[usize], tol: f64) {
+    let n = mat.nrows();
+    let fixed: std::collections::HashSet<usize> = columns.iter().copied().collect();
+
+    // Collect the already-fixed (good) columns as the starting orthonormal set.
+    let mut basis: Vec<Vec<Complex<f64>>> = Vec::new();
+    for j in 0..n {
+        if !fixed.contains(&j) {
+            basis.push((0..n).map(|r| mat[[r, j]]).collect());
+        }
+    }
+
+    let mut seed = 0usize;
+    for &col in columns {
+        // Find a standard basis vector e_seed that is not (numerically) in the span,
+        // orthogonalise it against the current basis, and normalise.
+        let mut placed = false;
+        while seed < n && !placed {
+            let mut v = vec![Complex::new(0.0, 0.0); n];
+            v[seed] = Complex::new(1.0, 0.0);
+            for b in &basis {
+                let proj: Complex<f64> =
+                    b.iter().zip(v.iter()).map(|(bk, vk)| bk.conj() * vk).sum();
+                for r in 0..n {
+                    v[r] -= proj * b[r];
+                }
+            }
+            let norm = v.iter().map(|z| z.norm_sqr()).sum::<f64>().sqrt();
+            if norm > tol {
+                for r in 0..n {
+                    v[r] /= Complex::new(norm, 0.0);
+                }
+                for r in 0..n {
+                    mat[[r, col]] = v[r];
+                }
+                basis.push(v);
+                placed = true;
+            }
+            seed += 1;
+        }
+        if !placed {
+            // Fallback: leave a unit vector (should not happen for a valid completion).
+            mat[[col % n, col]] = Complex::new(1.0, 0.0);
+        }
+    }
+}
+
 /// Result of multi-qubit KAK decomposition
 #[derive(Debug, Clone)]
 pub struct MultiQubitKAK {
@@ -385,7 +539,30 @@ impl MultiQubitKAKDecomposer {
         Ok((tree, gates))
     }
 
-    /// Compute Cosine-Sine Decomposition
+    /// Compute the Cosine-Sine Decomposition (CSD) of the unitary block matrix
+    /// `W = [[A, B], [C, D]]`.
+    ///
+    /// Returns `(U1, V1, Σ, U2, V2)` such that
+    ///
+    /// ```text
+    /// W = diag(U1, U2) · Σ · diag(V1, V2)†
+    /// ```
+    ///
+    /// where `U1, U2, V1, V2` are `n×n` unitaries and `Σ` is the `2n×2n` CS matrix
+    /// `[[C', S'], [-S', C']]` with diagonal cosine/sine blocks `C' = diag(cos θ_k)`,
+    /// `S' = diag(sin θ_k)` (so `Σ` is itself orthogonal).
+    ///
+    /// Algorithm (Stewart-style, driven by an SVD of the `A` block):
+    /// 1. `A = U1 · C' · V1†` via SVD; the singular values are the cosines `cos θ_k`.
+    /// 2. The columns of `C · V1` are mutually orthogonal with norms `sin θ_k`; this
+    ///    fixes `S'` and `U2 = (C V1) S'^{-1}` (with a safe fallback for `sin θ_k ≈ 0`).
+    /// 3. `V2` is recovered from `D = U2 · C' · V2†` (or `B = -U1 · S' · V2†` when a
+    ///    cosine vanishes) so that the full block identity holds.
+    ///
+    /// The result is verified against `W`; if a numerically consistent CSD cannot be
+    /// produced (degenerate edge cases the simple driver does not cover), an honest
+    /// [`QuantRS2Error::UnsupportedOperation`] is returned rather than a fabricated
+    /// identity.
     fn compute_csd(
         &self,
         a: &Array2<Complex<f64>>,
@@ -395,31 +572,132 @@ impl MultiQubitKAKDecomposer {
     ) -> QuantRS2Result<(
         Array2<Complex<f64>>, // U1
         Array2<Complex<f64>>, // V1
-        Array2<Complex<f64>>, // Sigma
+        Array2<Complex<f64>>, // Sigma (2n x 2n)
         Array2<Complex<f64>>, // U2
         Array2<Complex<f64>>, // V2
     )> {
-        // This is a simplified placeholder
-        // Full CSD implementation would use specialized algorithms
+        let n = a.shape()[0];
+        let tol = self.tolerance.max(1e-12);
 
-        let size = a.shape()[0];
-        let identity = Array2::eye(size);
-        let _zero: Array2<Complex<f64>> = Array2::zeros((size, size));
+        // Step 1: SVD of A -> A = U1 · diag(cos) · V1†.
+        let (u1, cos_vals, v1h) = complex_svd(a)?;
+        let v1 = v1h.mapv(|z| z.conj()).t().to_owned(); // V1 (n x n)
 
-        // For now, return identity transformations
-        let u1 = identity.clone();
-        let v1 = identity.clone();
-        let u2 = identity.clone();
-        let v2 = identity;
+        // Cosines, clamped to [0, 1] for numerical safety.
+        let cos: Vec<f64> = cos_vals.iter().map(|&s| s.clamp(0.0, 1.0)).collect();
 
-        // Sigma would contain the CS angles
-        let mut sigma = Array2::zeros((size * 2, size * 2));
-        sigma.slice_mut(s![..size, ..size]).assign(a);
-        sigma.slice_mut(s![..size, size..]).assign(b);
-        sigma.slice_mut(s![size.., ..size]).assign(c);
-        sigma.slice_mut(s![size.., size..]).assign(d);
+        // Step 2: with Σ = [[C', S'], [-S', C']] the block identity gives
+        // C = -U2 · S' · V1†, hence M = C·V1 = -U2·S'. Its columns are orthogonal with
+        // norm sin θ_k, and U2 = -M · S'^{-1}.
+        let m = c.dot(&v1);
+        let mut sin = vec![0.0f64; n];
+        for k in 0..n {
+            let col_norm = (0..n).map(|r| m[[r, k]].norm_sqr()).sum::<f64>().sqrt();
+            // Prefer the value consistent with cos²+sin²=1 when the column norm is
+            // well defined; otherwise derive sin from cos.
+            sin[k] = if col_norm > tol {
+                col_norm
+            } else {
+                (1.0 - cos[k] * cos[k]).max(0.0).sqrt()
+            };
+        }
+
+        // U2 columns: where sin θ_k is non-negligible, U2[:,k] = -M[:,k] / sin θ_k.
+        // Columns with sin θ_k ≈ 0 are filled afterwards by orthonormal completion.
+        let mut u2 = Array2::<Complex<f64>>::zeros((n, n));
+        let mut needs_completion: Vec<usize> = Vec::new();
+        for k in 0..n {
+            if sin[k] > tol {
+                for r in 0..n {
+                    u2[[r, k]] = -m[[r, k]] / Complex::new(sin[k], 0.0);
+                }
+            } else {
+                needs_completion.push(k);
+            }
+        }
+        if !needs_completion.is_empty() {
+            complete_orthonormal_columns(&mut u2, &needs_completion, tol);
+        }
+
+        // Step 3: recover V2. From D = U2 · C' · V2†  ==>  V2† = C'^{-1} U2† D, falling
+        // back to B = U1 · S' · V2†  ==>  V2† = S'^{-1} U1† B for rows where cos θ_k ≈ 0.
+        let u2h = u2.mapv(|z| z.conj()).t().to_owned();
+        let u1h = u1.mapv(|z| z.conj()).t().to_owned();
+        let u2h_d = u2h.dot(d); // (n x n)
+        let u1h_b = u1h.dot(b); // (n x n)
+        let mut v2h = Array2::<Complex<f64>>::zeros((n, n));
+        for k in 0..n {
+            if cos[k] > tol {
+                for col in 0..n {
+                    v2h[[k, col]] = u2h_d[[k, col]] / Complex::new(cos[k], 0.0);
+                }
+            } else if sin[k] > tol {
+                for col in 0..n {
+                    v2h[[k, col]] = u1h_b[[k, col]] / Complex::new(sin[k], 0.0);
+                }
+            } else {
+                // cos = sin = 0 is impossible for a unitary; bail out honestly.
+                return Err(QuantRS2Error::UnsupportedOperation(
+                    "cosine-sine decomposition encountered a degenerate angle (cos=sin=0)"
+                        .to_string(),
+                ));
+            }
+        }
+        let v2 = v2h.mapv(|z| z.conj()).t().to_owned();
+
+        // Assemble Σ = [[C', S'], [-S', C']].
+        let mut sigma = Array2::<Complex<f64>>::zeros((2 * n, 2 * n));
+        for k in 0..n {
+            sigma[[k, k]] = Complex::new(cos[k], 0.0);
+            sigma[[k, n + k]] = Complex::new(sin[k], 0.0);
+            sigma[[n + k, k]] = Complex::new(-sin[k], 0.0);
+            sigma[[n + k, n + k]] = Complex::new(cos[k], 0.0);
+        }
+
+        // Verify: W ?= diag(U1, U2) · Σ · diag(V1, V2)†.
+        let recon = Self::assemble_from_csd(&u1, &u2, &sigma, &v1, &v2);
+        let mut max_err = 0.0f64;
+        for (i, j, expected) in [(0usize, 0usize, a), (0, 1, b), (1, 0, c), (1, 1, d)]
+            .iter()
+            .flat_map(|&(bi, bj, blk)| {
+                (0..n).flat_map(move |r| {
+                    (0..n).map(move |col| (bi * n + r, bj * n + col, blk[[r, col]]))
+                })
+            })
+        {
+            max_err = max_err.max((recon[[i, j]] - expected).norm());
+        }
+
+        if max_err > 1e-7 {
+            return Err(QuantRS2Error::UnsupportedOperation(format!(
+                "cosine-sine decomposition for this matrix is not yet supported \
+                 (reconstruction error {max_err:.3e})"
+            )));
+        }
 
         Ok((u1, v1, sigma, u2, v2))
+    }
+
+    /// Reassemble `diag(U1, U2) · Σ · diag(V1, V2)†` into a `2n×2n` matrix.
+    fn assemble_from_csd(
+        u1: &Array2<Complex<f64>>,
+        u2: &Array2<Complex<f64>>,
+        sigma: &Array2<Complex<f64>>,
+        v1: &Array2<Complex<f64>>,
+        v2: &Array2<Complex<f64>>,
+    ) -> Array2<Complex<f64>> {
+        let n = u1.nrows();
+        let mut left = Array2::<Complex<f64>>::zeros((2 * n, 2 * n));
+        left.slice_mut(s![..n, ..n]).assign(u1);
+        left.slice_mut(s![n.., n..]).assign(u2);
+
+        let mut right_dag = Array2::<Complex<f64>>::zeros((2 * n, 2 * n));
+        let v1h = v1.mapv(|z| z.conj()).t().to_owned();
+        let v2h = v2.mapv(|z| z.conj()).t().to_owned();
+        right_dag.slice_mut(s![..n, ..n]).assign(&v1h);
+        right_dag.slice_mut(s![n.., n..]).assign(&v2h);
+
+        left.dot(sigma).dot(&right_dag)
     }
 
     /// Convert diagonal matrix to controlled rotation gates
@@ -886,6 +1164,155 @@ mod tests {
         assert_eq!(stats.leaf_nodes, 2);
         assert_eq!(stats.max_depth, 1);
         assert_eq!(stats.method_counts.get("csd"), Some(&1));
+    }
+
+    /// Gram–Schmidt orthonormalisation of the columns of a square complex matrix,
+    /// producing a unitary (used to manufacture test unitaries).
+    fn orthonormalize(mut m: Array2<Complex<f64>>) -> Array2<Complex<f64>> {
+        let n = m.nrows();
+        for j in 0..n {
+            for prev in 0..j {
+                let proj: Complex<f64> = (0..n).map(|r| m[[r, prev]].conj() * m[[r, j]]).sum();
+                for r in 0..n {
+                    let sub = proj * m[[r, prev]];
+                    m[[r, j]] -= sub;
+                }
+            }
+            let norm = (0..n).map(|r| m[[r, j]].norm_sqr()).sum::<f64>().sqrt();
+            for r in 0..n {
+                m[[r, j]] /= Complex::new(norm, 0.0);
+            }
+        }
+        m
+    }
+
+    /// Site-3 proof: the CSD returned by `compute_csd` recomposes to the original
+    /// unitary block matrix `W = [[A,B],[C,D]]` within 1e-8, and the factors are the
+    /// promised unitaries / CS structure (no fabricated identities).
+    #[test]
+    fn test_compute_csd_recomposes() {
+        let decomposer = MultiQubitKAKDecomposer::new();
+
+        // Manufacture a 4x4 unitary W (n = 2 blocks) from a fixed complex matrix.
+        let raw = Array2::from_shape_vec(
+            (4, 4),
+            vec![
+                Complex::new(0.5, 0.2),
+                Complex::new(-0.3, 0.4),
+                Complex::new(0.1, -0.2),
+                Complex::new(0.6, 0.0),
+                Complex::new(0.2, -0.1),
+                Complex::new(0.5, 0.3),
+                Complex::new(-0.4, 0.1),
+                Complex::new(0.0, 0.2),
+                Complex::new(-0.3, 0.2),
+                Complex::new(0.1, 0.5),
+                Complex::new(0.6, -0.1),
+                Complex::new(0.2, 0.3),
+                Complex::new(0.4, 0.0),
+                Complex::new(-0.2, 0.3),
+                Complex::new(0.1, 0.4),
+                Complex::new(0.5, -0.2),
+            ],
+        )
+        .expect("raw matrix");
+        let w = orthonormalize(raw);
+
+        // Confirm W is unitary.
+        let wh = w.mapv(|z| z.conj()).t().to_owned();
+        let prod = wh.dot(&w);
+        for i in 0..4 {
+            for j in 0..4 {
+                let exp = if i == j { 1.0 } else { 0.0 };
+                assert!(
+                    (prod[[i, j]] - Complex::new(exp, 0.0)).norm() < 1e-9,
+                    "manufactured W is not unitary"
+                );
+            }
+        }
+
+        let a = w.slice(s![..2, ..2]).to_owned();
+        let b = w.slice(s![..2, 2..]).to_owned();
+        let c = w.slice(s![2.., ..2]).to_owned();
+        let d = w.slice(s![2.., 2..]).to_owned();
+
+        let (u1, v1, sigma, u2, v2) = decomposer
+            .compute_csd(&a, &b, &c, &d)
+            .expect("CSD should succeed for a generic 4x4 unitary");
+
+        // U1, U2, V1, V2 must be unitary (not identity-fabrications unless genuinely so).
+        for (name, mat) in [("U1", &u1), ("U2", &u2), ("V1", &v1), ("V2", &v2)] {
+            let mh = mat.mapv(|z| z.conj()).t().to_owned();
+            let pr = mh.dot(mat);
+            for i in 0..2 {
+                for j in 0..2 {
+                    let exp = if i == j { 1.0 } else { 0.0 };
+                    assert!(
+                        (pr[[i, j]] - Complex::new(exp, 0.0)).norm() < 1e-7,
+                        "{name} is not unitary"
+                    );
+                }
+            }
+        }
+
+        // Sigma must have the CS structure: Σ = [[C', S'], [-S', C']] and be orthogonal.
+        let sh = sigma.mapv(|z| z.conj()).t().to_owned();
+        let sps = sh.dot(&sigma);
+        for i in 0..4 {
+            for j in 0..4 {
+                let exp = if i == j { 1.0 } else { 0.0 };
+                assert!(
+                    (sps[[i, j]] - Complex::new(exp, 0.0)).norm() < 1e-7,
+                    "Sigma (CS matrix) is not orthogonal"
+                );
+            }
+        }
+
+        // Recompose and compare to W.
+        let recon = MultiQubitKAKDecomposer::assemble_from_csd(&u1, &u2, &sigma, &v1, &v2);
+        let mut max_err = 0.0f64;
+        for i in 0..4 {
+            for j in 0..4 {
+                max_err = max_err.max((recon[[i, j]] - w[[i, j]]).norm());
+            }
+        }
+        assert!(
+            max_err < 1e-8,
+            "CSD recomposition error {max_err} exceeds 1e-8"
+        );
+    }
+
+    #[test]
+    fn test_complex_svd_helper_roundtrip() {
+        // Independent check of the complex SVD used by the CSD.
+        let m = Array2::from_shape_vec(
+            (3, 3),
+            vec![
+                Complex::new(1.0, 0.2),
+                Complex::new(0.3, -0.4),
+                Complex::new(-0.1, 0.5),
+                Complex::new(0.2, 0.1),
+                Complex::new(-0.5, 0.3),
+                Complex::new(0.4, 0.0),
+                Complex::new(0.0, -0.3),
+                Complex::new(0.6, 0.1),
+                Complex::new(-0.2, 0.2),
+            ],
+        )
+        .expect("matrix");
+        let (u, s, vh) = complex_svd(&m).expect("svd");
+        let mut s_mat = Array2::<Complex<f64>>::zeros((3, 3));
+        for i in 0..3 {
+            s_mat[[i, i]] = Complex::new(s[i], 0.0);
+        }
+        let recon = u.dot(&s_mat).dot(&vh);
+        let mut err = 0.0f64;
+        for i in 0..3 {
+            for j in 0..3 {
+                err = err.max((recon[[i, j]] - m[[i, j]]).norm());
+            }
+        }
+        assert!(err < 1e-9, "complex_svd roundtrip error {err}");
     }
 
     #[test]

@@ -603,6 +603,10 @@ mod tests {
     }
 }
 
+/// Number of binary variables this molecular wrapper exposes (one per candidate
+/// atom site in the [`MoleculeToBinaryWrapper::binary_to_molecule`] encoding).
+const MOLECULE_BINARY_DIM: usize = 32;
+
 /// Wrapper to convert Molecule-based problems to `Vec<i8>`-based problems
 pub struct MoleculeToBinaryWrapper {
     inner: Box<dyn OptimizationProblem<Solution = Molecule, ObjectiveValue = f64>>,
@@ -613,73 +617,45 @@ impl OptimizationProblem for MoleculeToBinaryWrapper {
     type ObjectiveValue = f64;
 
     fn description(&self) -> String {
-        format!("Binary wrapper for molecular optimization problem")
+        format!("Binary wrapper for: {}", self.inner.description())
     }
 
     fn size_metrics(&self) -> HashMap<String, usize> {
-        let mut metrics = HashMap::new();
-        metrics.insert("binary_dimension".to_string(), 32);
-        metrics.insert("molecule_atoms".to_string(), 10);
+        // Surface the inner problem's metrics, adding the binary dimension this
+        // wrapper exposes.
+        let mut metrics = self.inner.size_metrics();
+        metrics.insert("binary_dimension".to_string(), MOLECULE_BINARY_DIM);
         metrics
     }
 
     fn validate(&self) -> ApplicationResult<()> {
-        Ok(())
+        // Validity is determined entirely by the wrapped molecular problem.
+        self.inner.validate()
     }
 
     fn to_qubo(&self) -> ApplicationResult<(crate::ising::QuboModel, HashMap<String, usize>)> {
-        // Create a simple QUBO model for molecular optimization
-        let n = 32; // binary dimension
-        let mut h = vec![0.0; n];
-        let mut j = std::collections::HashMap::new();
-
-        // Add some basic interactions
-        for i in 0..n {
-            h[i] = -0.1; // Small bias towards 1
-            for j_idx in (i + 1)..n {
-                if j_idx < i + 4 {
-                    // Local interactions
-                    j.insert((i, j_idx), 0.05);
-                }
-            }
-        }
-
-        let mut qubo = crate::ising::QuboModel::new(n);
-
-        // Set linear terms
-        for (i, &value) in h.iter().enumerate() {
-            qubo.set_linear(i, value)?;
-        }
-
-        // Set quadratic terms
-        for ((i, j_idx), &value) in &j {
-            qubo.set_quadratic(*i, *j_idx, value)?;
-        }
-
-        let mut variable_mapping = HashMap::new();
-        for i in 0..n {
-            variable_mapping.insert(format!("bit_{i}"), i);
-        }
-
-        Ok((qubo, variable_mapping))
+        // The molecular QUBO encoding is problem-specific; delegate to the inner
+        // problem rather than fabricating a generic toy Hamiltonian.
+        self.inner.to_qubo()
     }
 
     fn evaluate_solution(
         &self,
         solution: &Self::Solution,
     ) -> ApplicationResult<Self::ObjectiveValue> {
-        // Convert binary solution to a simple molecule representation
+        // Decode the binary vector to a molecule, then evaluate it with the
+        // wrapped problem's real objective function.
         let molecule = self.binary_to_molecule(solution)?;
-        // For now, just return a simple score based on the number of 1s
-        Ok(solution
-            .iter()
-            .map(|&x| if x > 0 { 1.0 } else { 0.0 })
-            .sum())
+        self.inner.evaluate_solution(&molecule)
     }
 
     fn is_feasible(&self, solution: &Self::Solution) -> bool {
-        // Simple feasibility check - solution should have reasonable length
-        solution.len() == 32
+        // Decode and defer to the inner problem's feasibility check; an
+        // undecodable binary vector is infeasible by definition.
+        match self.binary_to_molecule(solution) {
+            Ok(molecule) => self.inner.is_feasible(&molecule),
+            Err(_) => false,
+        }
     }
 }
 

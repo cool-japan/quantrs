@@ -503,6 +503,22 @@ impl EnhancedQuantumProfiler {
         }
     }
 
+    /// Real total memory (bytes) of the primary GPU as reported by the platform
+    /// detector's driver query, or `None` if no GPU is present / its memory is
+    /// unknown. This never fabricates a memory size.
+    fn gpu_total_memory_bytes(platform_caps: &PlatformCapabilities) -> Option<usize> {
+        if !platform_caps.gpu.available {
+            return None;
+        }
+        let devices = &platform_caps.gpu.devices;
+        let primary = platform_caps.gpu.primary_device.unwrap_or(0);
+        devices
+            .get(primary)
+            .or_else(|| devices.first())
+            .map(|device| device.memory_bytes)
+            .filter(|&bytes| bytes > 0)
+    }
+
     /// Build hardware performance model
     fn build_hardware_model(platform_caps: &PlatformCapabilities) -> HardwarePerformanceModel {
         let characteristics = HardwareCharacteristics {
@@ -516,11 +532,10 @@ impl EnhancedQuantumProfiler {
             },
             num_cores: platform_caps.cpu.logical_cores,
             gpu_available: platform_caps.gpu_available(),
-            gpu_memory: if platform_caps.gpu_available() {
-                Some(8 * 1024 * 1024 * 1024)
-            } else {
-                None
-            },
+            // Real per-device memory from the platform detector's driver query
+            // (e.g. OxiCUDA `total_memory_bytes`). `None` when no GPU is present
+            // or its memory could not be measured — never a fabricated constant.
+            gpu_memory: Self::gpu_total_memory_bytes(platform_caps),
             quantum_accelerator: None,
         };
 
@@ -1167,12 +1182,15 @@ impl EnhancedQuantumProfiler {
 
         // GPU prediction
         if self.platform_caps.gpu_available() {
-            let gpu_speedup = (num_qubits as f64).ln() * 2.0; // Logarithmic speedup model
+            // Logarithmic speedup model, clamped to >= 1.0 so small/zero-qubit
+            // circuits (where ln(n) <= 0) never divide by zero or predict a
+            // GPU slower than the measured baseline.
+            let gpu_speedup = ((num_qubits as f64).ln() * 2.0).max(1.0);
             predictions.insert(
                 "gpu".to_string(),
                 PredictedPerformance {
                     hardware_description: "GPU Acceleration".to_string(),
-                    estimated_time: current_time / gpu_speedup as u32,
+                    estimated_time: current_time.div_f64(gpu_speedup),
                     confidence: 0.8,
                     limiting_factors: vec!["Memory transfer overhead".to_string()],
                 },
@@ -1451,6 +1469,37 @@ mod tests {
     fn test_enhanced_profiler_creation() {
         let profiler = EnhancedQuantumProfiler::new();
         assert!(profiler.platform_caps.simd_available());
+    }
+
+    #[test]
+    fn test_gpu_memory_reflects_real_hardware_not_hardcoded() {
+        // gpu_memory must come from the real platform detector (OxiCUDA device
+        // query), never the old hardcoded 8 GiB constant.
+        let caps = PlatformCapabilities::detect();
+        let reported = EnhancedQuantumProfiler::gpu_total_memory_bytes(&caps);
+
+        if caps.gpu.available {
+            // Must equal the detector's real per-device memory, not 8 GiB
+            // (unless the device genuinely has exactly 8 GiB).
+            let primary = caps.gpu.primary_device.unwrap_or(0);
+            let expected = caps
+                .gpu
+                .devices
+                .get(primary)
+                .or_else(|| caps.gpu.devices.first())
+                .map(|d| d.memory_bytes)
+                .filter(|&b| b > 0);
+            assert_eq!(
+                reported, expected,
+                "GPU memory must match the detector's real device query"
+            );
+        } else {
+            // No GPU on this machine -> honest None, never a fabricated size.
+            assert_eq!(
+                reported, None,
+                "with no GPU present, gpu_memory must be None, not a fabricated constant"
+            );
+        }
     }
 
     #[test]

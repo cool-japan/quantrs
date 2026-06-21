@@ -160,18 +160,80 @@ fn detect_cpu_model() -> String {
         .unwrap_or_else(|| "Unknown".to_string())
 }
 
-/// Detect GPU capabilities
-const fn detect_gpu_capabilities() -> GpuCapabilities {
-    // Check for GPU availability
-    let devices = Vec::new();
+/// Detect GPU capabilities.
+///
+/// With the `gpu` feature enabled, this performs a *real* probe via the OxiCUDA
+/// driver (which loads `libcuda.so`/`nvcuda.dll` at runtime): each CUDA device
+/// is enumerated and its genuine name, memory, SM count, max-threads, warp size,
+/// and compute capability are reported. Without the `gpu` feature, or when no
+/// GPU/driver is present, it honestly reports no GPU (`available: false`) — it
+/// never fabricates a device.
+fn detect_gpu_capabilities() -> GpuCapabilities {
+    #[cfg(feature = "gpu")]
+    {
+        if let Some(devices) = detect_cuda_gpu_devices() {
+            if !devices.is_empty() {
+                return GpuCapabilities {
+                    available: true,
+                    devices,
+                    primary_device: Some(0),
+                };
+            }
+        }
+    }
 
-    // Try to detect WebGPU devices (cross-platform)
-    // Note: This is a placeholder - actual implementation would use wgpu
-
+    // Honest fallback: no GPU detected (or GPU support not compiled in).
     GpuCapabilities {
         available: false,
-        devices,
+        devices: Vec::new(),
         primary_device: None,
+    }
+}
+
+/// Enumerate real CUDA devices via OxiCUDA and map them to [`GpuDevice`].
+///
+/// Returns `None` when the driver cannot be initialized (no GPU / no driver) and
+/// `Some(vec)` otherwise. All fields are genuine driver queries; fields the
+/// driver does not expose (e.g. exact CUDA-core count) are left as `None`.
+#[cfg(feature = "gpu")]
+fn detect_cuda_gpu_devices() -> Option<Vec<GpuDevice>> {
+    oxicuda::init().ok()?;
+    let count = oxicuda::Device::count().ok()?;
+    if count <= 0 {
+        return None;
+    }
+
+    let mut devices = Vec::with_capacity(count as usize);
+    for ordinal in 0..count {
+        let Ok(device) = oxicuda::Device::get(ordinal) else {
+            continue;
+        };
+        let Ok(info) = device.info() else {
+            continue;
+        };
+        let (cc_major, cc_minor) = info.compute_capability;
+        devices.push(GpuDevice {
+            name: info.name,
+            vendor: "NVIDIA".to_string(),
+            device_type: if device.is_integrated().unwrap_or(false) {
+                GpuType::Integrated
+            } else {
+                GpuType::Discrete
+            },
+            memory_bytes: info.total_memory_bytes,
+            compute_units: info.multiprocessor_count.max(0) as usize,
+            max_workgroup_size: info.max_threads_per_block.max(0) as usize,
+            // The driver does not directly report a CUDA-core count; leave None
+            // rather than fabricating one from the SM count.
+            cuda_cores: None,
+            compute_capability: Some((cc_major.max(0) as u32, cc_minor.max(0) as u32)),
+        });
+    }
+
+    if devices.is_empty() {
+        None
+    } else {
+        Some(devices)
     }
 }
 
@@ -304,7 +366,9 @@ fn detect_numa_nodes() -> usize {
             }
         }
 
-        1 // Default to 1 NUMA node
+        // Neither /sys nor numactl was readable: honest single-node fallback
+        // (NOT MEASURED). The /sys path above is the real measurement.
+        1
     }
 
     #[cfg(target_os = "macos")]
@@ -316,9 +380,10 @@ fn detect_numa_nodes() -> usize {
 
     #[cfg(target_os = "windows")]
     {
-        // Windows: Could use GetNumaHighestNodeNumber, but requires unsafe FFI
-        // For now, assume single NUMA node unless on server hardware
-        // Most desktop/laptop systems have 1 NUMA node
+        // Windows NUMA topology is not measured here (it would require the
+        // `GetNumaHighestNodeNumber` Win32 call via unsafe FFI). We return the
+        // honest single-node default rather than an invented value; most
+        // desktop/laptop systems do have exactly 1 NUMA node. NOT MEASURED.
         1
     }
 
@@ -449,5 +514,78 @@ const fn detect_architecture() -> Architecture {
     )))]
     {
         Architecture::Unknown
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_numa_detection_is_real_on_linux() {
+        // On Linux the count comes from /sys; it must be at least 1 and match a
+        // direct read of the node directories when available.
+        let n = detect_numa_nodes();
+        assert!(n >= 1, "NUMA node count must be >= 1");
+
+        #[cfg(target_os = "linux")]
+        {
+            if let Ok(entries) = std::fs::read_dir("/sys/devices/system/node") {
+                let direct = entries
+                    .filter_map(Result::ok)
+                    .filter(|e| {
+                        let name = e.file_name();
+                        let name = name.to_string_lossy();
+                        name.starts_with("node")
+                            && name["node".len()..].chars().all(|c| c.is_ascii_digit())
+                            && name.len() > "node".len()
+                    })
+                    .count();
+                if direct > 0 {
+                    assert_eq!(n, direct, "NUMA count must equal the real /sys node count");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_gpu_detection_consistency() {
+        // The detected GPU capabilities must be internally consistent and must
+        // reflect a real probe (no fabricated devices).
+        let caps = detect_gpu_capabilities();
+
+        // `available` implies at least one real device with sane fields.
+        assert_eq!(caps.available, !caps.devices.is_empty());
+        if caps.available {
+            assert!(caps.primary_device.is_some());
+            for dev in &caps.devices {
+                assert!(!dev.name.is_empty(), "real device must have a name");
+                // Real compute capability is never the fabricated (7,5) constant
+                // unless the hardware genuinely is 7.5 — but it must be a real
+                // Some(..) probe, not a hardcoded None-vs-constant guess.
+                if let Some((maj, _min)) = dev.compute_capability {
+                    assert!(maj >= 1, "real CC major must be >= 1");
+                }
+            }
+        }
+
+        #[cfg(not(feature = "gpu"))]
+        {
+            // Without the gpu feature, detection must honestly report no GPU.
+            assert!(!caps.available);
+            assert!(caps.devices.is_empty());
+        }
+    }
+
+    #[cfg(feature = "gpu")]
+    #[test]
+    fn test_gpu_detection_matches_oxicuda_probe() {
+        // detect_gpu_capabilities() must agree with a direct OxiCUDA probe.
+        let caps = detect_gpu_capabilities();
+        let truth = oxicuda::init().is_ok() && oxicuda::Device::count().unwrap_or(0) > 0;
+        assert_eq!(
+            caps.available, truth,
+            "platform GPU detection must match the real OxiCUDA probe"
+        );
     }
 }

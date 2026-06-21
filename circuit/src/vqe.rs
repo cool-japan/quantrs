@@ -649,79 +649,404 @@ impl VQEOptimizer {
         // 3. Update parameters using the chosen optimization algorithm
         // 4. Check for convergence
 
-        let mut current_energy = self.evaluate_energy(circuit, observable)?;
+        let mut best_energy = self.evaluate_energy(circuit, observable)?;
         let mut best_parameters = circuit.parameters.clone();
-        let mut best_energy = current_energy;
 
         for iteration in 0..self.max_iterations {
-            // Simplified gradient descent step
+            // Gradient at the current parameter point (analytic parameter-shift).
             let gradients = self.compute_gradients(circuit, observable)?;
-
-            // Update parameters
-            for (i, gradient) in gradients.iter().enumerate() {
-                circuit.parameters[i] -= self.learning_rate * gradient;
-            }
-
-            // Evaluate new energy
-            current_energy = self.evaluate_energy(circuit, observable)?;
-
-            if current_energy < best_energy {
-                best_energy = current_energy;
-                best_parameters.clone_from(&circuit.parameters);
-            }
-
-            // Check convergence
             let gradient_norm = gradients.iter().map(|g| g * g).sum::<f64>().sqrt();
+
+            // Converged: the gradient is (numerically) zero, so we are at a
+            // stationary point.  Check this *before* taking another step.
             if gradient_norm < self.tolerance {
-                circuit.parameters = best_parameters;
+                // Make sure the circuit holds the best parameters found.
+                circuit.set_parameters(&best_parameters)?;
                 return Ok(VQEResult {
-                    optimal_parameters: circuit.parameters.clone(),
+                    optimal_parameters: best_parameters.clone(),
                     ground_state_energy: best_energy,
                     iterations: iteration + 1,
                     converged: true,
                     gradient_norm,
                 });
             }
+
+            // Gradient-descent update.  Crucially we rebuild the underlying
+            // circuit via `set_parameters` so that the next energy/gradient
+            // evaluation simulates the *updated* state (a previous version
+            // mutated `parameters` directly, leaving the circuit gates stale).
+            let mut next_parameters = circuit.parameters.clone();
+            for (param, gradient) in next_parameters.iter_mut().zip(gradients.iter()) {
+                *param -= self.learning_rate * gradient;
+            }
+            circuit.set_parameters(&next_parameters)?;
+
+            // Evaluate new energy and track the best point seen.
+            let current_energy = self.evaluate_energy(circuit, observable)?;
+            if current_energy < best_energy {
+                best_energy = current_energy;
+                best_parameters.clone_from(&circuit.parameters);
+            }
         }
 
-        circuit.parameters = best_parameters;
+        // Restore the best parameters and report the gradient norm there.
+        circuit.set_parameters(&best_parameters)?;
+        let final_gradient = self.compute_gradients(circuit, observable)?;
+        let final_gradient_norm = final_gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
         Ok(VQEResult {
-            optimal_parameters: circuit.parameters.clone(),
+            optimal_parameters: best_parameters.clone(),
             ground_state_energy: best_energy,
             iterations: self.max_iterations,
             converged: false,
-            gradient_norm: 0.0, // Would compute actual gradient norm
+            gradient_norm: final_gradient_norm,
         })
     }
 
-    /// Evaluate the energy expectation value (simplified)
-    const fn evaluate_energy<const N: usize>(
+    /// Evaluate the energy expectation value `⟨ψ(θ)|H|ψ(θ)⟩`.
+    ///
+    /// The ansatz state `|ψ(θ)⟩` is obtained by simulating the parameterized
+    /// circuit on a dense state vector starting from `|0…0⟩` (see
+    /// [`statevector::simulate`]).  The observable energy is the sum of each
+    /// Pauli-string term's coefficient times its expectation value
+    /// `⟨ψ|P|ψ⟩`, computed exactly via [`statevector::pauli_string_expectation`].
+    fn evaluate_energy<const N: usize>(
         &self,
-        _circuit: &VQECircuit<N>,
-        _observable: &VQEObservable,
+        circuit: &VQECircuit<N>,
+        observable: &VQEObservable,
     ) -> QuantRS2Result<f64> {
-        // This is a placeholder - real implementation would:
-        // 1. Execute the circuit on a quantum simulator/device
-        // 2. Measure expectation values of Pauli strings
-        // 3. Combine measurements according to observable coefficients
+        let state = statevector::simulate(&circuit.circuit)?;
 
-        // For now, return a dummy energy value
-        Ok(-1.0)
+        let mut energy = 0.0;
+        for (coefficient, pauli_string) in &observable.terms {
+            let expectation = statevector::pauli_string_expectation(&state, N, pauli_string)?;
+            // For a physical Hamiltonian every Pauli expectation is real; we take
+            // the real part and surface any spurious imaginary component as an
+            // error rather than silently discarding it.
+            if expectation.im.abs() > 1e-9 {
+                return Err(QuantRS2Error::ComputationError(format!(
+                    "Pauli-string expectation has non-negligible imaginary part ({:.3e}); \
+                     observable is not Hermitian",
+                    expectation.im
+                )));
+            }
+            energy += coefficient * expectation.re;
+        }
+
+        Ok(energy)
     }
 
-    /// Compute parameter gradients (simplified)
+    /// Compute parameter gradients using the analytic parameter-shift rule.
+    ///
+    /// For a gate generated by a Pauli operator `P` (so that `U(θ) =
+    /// exp(-i θ P / 2)`, which holds for the `RX`/`RY`/`RZ` rotations used by all
+    /// the VQE ansätze), the energy gradient with respect to that parameter is
+    /// `∂E/∂θ = ½[E(θ + π/2) − E(θ − π/2)]`.  This is exact (not a finite-
+    /// difference approximation) for such gates.
     fn compute_gradients<const N: usize>(
         &self,
         circuit: &VQECircuit<N>,
-        _observable: &VQEObservable,
+        observable: &VQEObservable,
     ) -> QuantRS2Result<Vec<f64>> {
-        // This is a placeholder - real implementation would use:
-        // 1. Parameter shift rule for analytic gradients
-        // 2. Finite differences for numerical gradients
-        // 3. Or other gradient estimation methods
+        let num_params = circuit.parameters.len();
+        let mut gradients = Vec::with_capacity(num_params);
 
-        // For now, return dummy gradients
-        Ok(vec![0.001; circuit.parameters.len()])
+        // Work on a clone so the caller's circuit/parameters are untouched.
+        let mut shifted = circuit.clone();
+        let base_parameters = circuit.parameters.clone();
+        let shift = std::f64::consts::FRAC_PI_2;
+
+        for i in 0..num_params {
+            let mut plus = base_parameters.clone();
+            plus[i] += shift;
+            shifted.set_parameters(&plus)?;
+            let energy_plus = self.evaluate_energy(&shifted, observable)?;
+
+            let mut minus = base_parameters.clone();
+            minus[i] -= shift;
+            shifted.set_parameters(&minus)?;
+            let energy_minus = self.evaluate_energy(&shifted, observable)?;
+
+            gradients.push(0.5 * (energy_plus - energy_minus));
+        }
+
+        // Restore the original parameters on the working copy (defensive; the
+        // clone is dropped anyway, but keeps the helper side-effect-free).
+        shifted.set_parameters(&base_parameters)?;
+
+        Ok(gradients)
+    }
+}
+
+/// Dense state-vector simulation utilities used by the VQE energy evaluator.
+///
+/// `quantrs2-circuit` is a dependency of `quantrs2-sim`, so it cannot depend on
+/// the simulator crate (that would be a dependency cycle).  These helpers
+/// therefore provide a small, self-contained exact state-vector engine driven
+/// purely by the generic [`GateOp::matrix`] / [`GateOp::qubits`] interface, so
+/// they correctly handle *every* gate type a VQE ansatz can contain, not just a
+/// hard-coded subset.
+mod statevector {
+    use super::{Circuit, GateOp};
+    use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
+    use scirs2_core::Complex64;
+
+    use super::PauliOperator;
+
+    /// Simulate `circuit` on `2^N` amplitudes starting from `|0…0⟩`.
+    pub fn simulate<const N: usize>(circuit: &Circuit<N>) -> QuantRS2Result<Vec<Complex64>> {
+        let dim = 1usize << N;
+        let mut state = vec![Complex64::new(0.0, 0.0); dim];
+        state[0] = Complex64::new(1.0, 0.0);
+
+        for gate in circuit.gates() {
+            apply_gate(&mut state, N, gate.as_ref())?;
+        }
+
+        Ok(state)
+    }
+
+    /// Apply a single (possibly multi-qubit) gate to the state vector in place.
+    ///
+    /// The gate's `2^k × 2^k` unitary (row-major, `k = gate.num_qubits()`) is
+    /// applied to the subspace spanned by the gate's qubits.  Qubit `q` is the
+    /// bit at position `q` of the basis index (little-endian), matching the rest
+    /// of the framework's `QubitId` convention.
+    pub fn apply_gate(
+        state: &mut [Complex64],
+        num_qubits: usize,
+        gate: &dyn GateOp,
+    ) -> QuantRS2Result<()> {
+        let targets: Vec<usize> = gate.qubits().iter().map(|q| q.id() as usize).collect();
+        let k = targets.len();
+        if k == 0 {
+            // Gates with no qubits (e.g. a global barrier) act as the identity.
+            return Ok(());
+        }
+        for &t in &targets {
+            if t >= num_qubits {
+                return Err(QuantRS2Error::InvalidInput(format!(
+                    "Gate '{}' acts on qubit {} but circuit only has {} qubits",
+                    gate.name(),
+                    t,
+                    num_qubits
+                )));
+            }
+        }
+
+        let matrix = gate.matrix()?;
+        let side = 1usize << k;
+        if matrix.len() != side * side {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Gate '{}' returned a {}-element matrix but {} qubits require {}",
+                gate.name(),
+                matrix.len(),
+                k,
+                side * side
+            )));
+        }
+
+        // Map each *local* bit position of the gate-block index to a state
+        // qubit.  The framework's gate matrices are row-major in the basis where
+        // the FIRST qubit of `qubits()` is the most-significant bit of the block
+        // index (e.g. CNOT with `qubits()=[control,target]` swaps block indices
+        // 2↔3 = |10⟩↔|11⟩, flipping the target when the control is set).  So
+        // local bit `p` (p=0 is the LSB of the block index) corresponds to
+        // `targets[k - 1 - p]`.
+        let bit_masks: Vec<usize> = (0..k).map(|p| 1usize << targets[k - 1 - p]).collect();
+        // Mask of all qubit bits touched by the gate; we iterate over every
+        // assignment of the remaining bits and apply the dense block to the 2^k
+        // amplitudes selected by the target bits.
+        let mut fixed_mask = 0usize;
+        for &m in &bit_masks {
+            fixed_mask |= m;
+        }
+        let dim = state.len();
+
+        let mut visited = vec![false; dim];
+        let mut amplitudes = vec![Complex64::new(0.0, 0.0); side];
+        let mut indices = vec![0usize; side];
+
+        for base in 0..dim {
+            if visited[base] || (base & fixed_mask) != 0 {
+                // Only start from indices whose target bits are all zero; that
+                // base seeds exactly one 2^k block.
+                continue;
+            }
+
+            // Gather the amplitudes of the block.
+            for (local, slot) in indices.iter_mut().enumerate() {
+                let mut idx = base;
+                for (bit, &mask) in bit_masks.iter().enumerate() {
+                    if (local >> bit) & 1 == 1 {
+                        idx |= mask;
+                    }
+                }
+                *slot = idx;
+                amplitudes[local] = state[idx];
+                visited[idx] = true;
+            }
+
+            // Apply the dense unitary block: out[r] = Σ_c M[r,c] · in[c].
+            for r in 0..side {
+                let mut acc = Complex64::new(0.0, 0.0);
+                let row = r * side;
+                for (c, amp) in amplitudes.iter().enumerate() {
+                    acc += matrix[row + c] * amp;
+                }
+                state[indices[r]] = acc;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Compute `⟨ψ|P|ψ⟩` for a Pauli string `P = ⊗_q P_q`.
+    ///
+    /// Qubits absent from `pauli_string` carry an implicit identity.  The Pauli
+    /// operators are applied directly to a working copy of the state (no dense
+    /// matrix is formed), then the overlap with the original state is returned.
+    pub fn pauli_string_expectation(
+        state: &[Complex64],
+        num_qubits: usize,
+        pauli_string: &[(usize, PauliOperator)],
+    ) -> QuantRS2Result<Complex64> {
+        let mut transformed = state.to_vec();
+
+        for &(qubit, op) in pauli_string {
+            if qubit >= num_qubits {
+                return Err(QuantRS2Error::InvalidInput(format!(
+                    "Pauli term targets qubit {qubit} but state has {num_qubits} qubits"
+                )));
+            }
+            apply_pauli(&mut transformed, qubit, op);
+        }
+
+        // ⟨ψ|P|ψ⟩ = Σ_i conj(ψ_i) · (Pψ)_i
+        let mut acc = Complex64::new(0.0, 0.0);
+        for (psi, pphi) in state.iter().zip(transformed.iter()) {
+            acc += psi.conj() * pphi;
+        }
+        Ok(acc)
+    }
+
+    /// Apply a single-qubit Pauli operator to `state` in place.
+    fn apply_pauli(state: &mut [Complex64], qubit: usize, op: PauliOperator) {
+        let mask = 1usize << qubit;
+        match op {
+            PauliOperator::I => {}
+            PauliOperator::X => {
+                for idx in 0..state.len() {
+                    if idx & mask == 0 {
+                        state.swap(idx, idx | mask);
+                    }
+                }
+            }
+            PauliOperator::Y => {
+                // Y|0⟩ = i|1⟩, Y|1⟩ = -i|0⟩.
+                let i = Complex64::new(0.0, 1.0);
+                for idx in 0..state.len() {
+                    if idx & mask == 0 {
+                        let partner = idx | mask;
+                        let a = state[idx];
+                        let b = state[partner];
+                        state[idx] = -i * b;
+                        state[partner] = i * a;
+                    }
+                }
+            }
+            PauliOperator::Z => {
+                for (idx, amp) in state.iter_mut().enumerate() {
+                    if idx & mask != 0 {
+                        *amp = -*amp;
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::super::{Circuit, QubitId};
+        use super::{apply_gate, simulate};
+        use quantrs2_core::gate::multi::CNOT;
+        use quantrs2_core::gate::single::{Hadamard, PauliX};
+        use scirs2_core::Complex64;
+
+        /// CNOT must map |10⟩ → |11⟩ (control = qubit 0, the MSB of the gate
+        /// block).  This pins down the multi-qubit endianness: a wrong mapping
+        /// would instead flip qubit 0 when qubit 1 is set.
+        #[test]
+        fn test_cnot_endianness() {
+            // 2-qubit state |10⟩: qubit 0 = 1.  Little-endian basis index = 1<<0 = 1.
+            let mut state = vec![Complex64::new(0.0, 0.0); 4];
+            state[1] = Complex64::new(1.0, 0.0); // |q1 q0⟩ index: q0=1 → idx 1 = |10⟩
+            let cnot = CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            };
+            apply_gate(&mut state, 2, &cnot).expect("apply cnot");
+            // Expect |11⟩: q0=1, q1=1 → idx = 0b11 = 3.
+            assert!((state[3] - Complex64::new(1.0, 0.0)).norm() < 1e-12);
+            for (i, amp) in state.iter().enumerate() {
+                if i != 3 {
+                    assert!(amp.norm() < 1e-12, "unexpected amplitude at {i}: {amp}");
+                }
+            }
+        }
+
+        /// CNOT must leave |01⟩ unchanged (control qubit 0 = 0).
+        #[test]
+        fn test_cnot_control_zero_is_identity() {
+            let mut state = vec![Complex64::new(0.0, 0.0); 4];
+            state[2] = Complex64::new(1.0, 0.0); // q1=1, q0=0 → idx 0b10 = 2 = |01⟩
+            let cnot = CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            };
+            apply_gate(&mut state, 2, &cnot).expect("apply cnot");
+            assert!((state[2] - Complex64::new(1.0, 0.0)).norm() < 1e-12);
+        }
+
+        /// A Bell circuit H(0); CNOT(0,1) produces (|00⟩ + |11⟩)/√2.
+        #[test]
+        fn test_bell_state() {
+            let mut circuit = Circuit::<2>::new();
+            circuit
+                .add_gate(Hadamard { target: QubitId(0) })
+                .expect("h");
+            circuit
+                .add_gate(CNOT {
+                    control: QubitId(0),
+                    target: QubitId(1),
+                })
+                .expect("cnot");
+
+            let state = simulate(&circuit).expect("simulate");
+            let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
+            assert!(
+                (state[0].re - inv_sqrt2).abs() < 1e-12,
+                "|00>: {}",
+                state[0]
+            );
+            assert!(state[1].norm() < 1e-12, "|10>: {}", state[1]);
+            assert!(state[2].norm() < 1e-12, "|01>: {}", state[2]);
+            assert!(
+                (state[3].re - inv_sqrt2).abs() < 1e-12,
+                "|11>: {}",
+                state[3]
+            );
+        }
+
+        /// Applying X to qubit 1 of |00⟩ sets exactly qubit 1 (the high bit).
+        #[test]
+        fn test_single_qubit_targets_correct_bit() {
+            let mut state = vec![Complex64::new(0.0, 0.0); 4];
+            state[0] = Complex64::new(1.0, 0.0);
+            let x = PauliX { target: QubitId(1) };
+            apply_gate(&mut state, 2, &x).expect("apply x");
+            // qubit 1 set → idx 0b10 = 2.
+            assert!((state[2] - Complex64::new(1.0, 0.0)).norm() < 1e-12);
+        }
     }
 }
 
@@ -824,5 +1149,153 @@ mod tests {
         // Providing wrong number of parameters should return an error
         let result = vqe.set_parameters(&[0.1, 0.2]);
         assert!(result.is_err());
+    }
+
+    /// `⟨0|RY(θ)† Z RY(θ)|0⟩ = cos θ` is a textbook identity.  This pins the
+    /// real expectation-value engine to an analytic value and would fail for the
+    /// former hard-coded `-1.0`.
+    #[test]
+    fn test_evaluate_energy_matches_analytic_cos() {
+        use std::f64::consts::PI;
+
+        let optimizer = VQEOptimizer::default();
+        let mut z_observable = VQEObservable::new();
+        z_observable.add_pauli_term(1.0, vec![(0, PauliOperator::Z)]);
+
+        for &theta in &[0.0, PI / 6.0, PI / 3.0, PI / 2.0, 2.0 * PI / 3.0, PI] {
+            let mut vqe = VQECircuit::<1>::new(VQEAnsatz::Custom).expect("custom VQE");
+            vqe.add_parameterized_ry(QubitId(0), "theta").expect("RY");
+            vqe.set_parameters(&[theta]).expect("set theta");
+
+            let energy = optimizer
+                .evaluate_energy(&vqe, &z_observable)
+                .expect("evaluate energy");
+            assert!(
+                (energy - theta.cos()).abs() < 1e-9,
+                "⟨Z⟩ for RY({theta}) was {energy}, expected {}",
+                theta.cos()
+            );
+        }
+    }
+
+    /// The energy must depend on the parameters: a constant-`-1.0` fabrication
+    /// would make every value identical.
+    #[test]
+    fn test_evaluate_energy_is_not_constant() {
+        use std::f64::consts::PI;
+
+        let optimizer = VQEOptimizer::default();
+        let mut obs = VQEObservable::new();
+        obs.add_pauli_term(1.0, vec![(0, PauliOperator::Z)]);
+
+        let mut vqe = VQECircuit::<1>::new(VQEAnsatz::Custom).expect("custom VQE");
+        vqe.add_parameterized_ry(QubitId(0), "theta").expect("RY");
+
+        vqe.set_parameters(&[0.0]).expect("set");
+        let e0 = optimizer.evaluate_energy(&vqe, &obs).expect("e0");
+        vqe.set_parameters(&[PI]).expect("set");
+        let e_pi = optimizer.evaluate_energy(&vqe, &obs).expect("e_pi");
+
+        assert!((e0 - 1.0).abs() < 1e-9, "⟨Z⟩ at θ=0 should be +1, got {e0}");
+        assert!(
+            (e_pi + 1.0).abs() < 1e-9,
+            "⟨Z⟩ at θ=π should be -1, got {e_pi}"
+        );
+        assert!((e0 - e_pi).abs() > 1.0, "energy must vary with parameters");
+    }
+
+    /// X expectation of `RY(θ)|0⟩` is `sin θ` — exercises a non-diagonal Pauli.
+    #[test]
+    fn test_evaluate_energy_pauli_x() {
+        use std::f64::consts::PI;
+
+        let optimizer = VQEOptimizer::default();
+        let mut obs = VQEObservable::new();
+        obs.add_pauli_term(1.0, vec![(0, PauliOperator::X)]);
+
+        let mut vqe = VQECircuit::<1>::new(VQEAnsatz::Custom).expect("custom VQE");
+        vqe.add_parameterized_ry(QubitId(0), "theta").expect("RY");
+        vqe.set_parameters(&[PI / 2.0]).expect("set");
+
+        let energy = optimizer.evaluate_energy(&vqe, &obs).expect("energy");
+        assert!(
+            (energy - 1.0).abs() < 1e-9,
+            "⟨X⟩ for RY(π/2)|0⟩ should be 1, got {energy}"
+        );
+    }
+
+    /// The analytic parameter-shift gradient must agree with a central finite
+    /// difference of the (real) energy.
+    #[test]
+    fn test_parameter_shift_gradient_matches_finite_difference() {
+        use std::f64::consts::PI;
+
+        let optimizer = VQEOptimizer::default();
+        // A non-trivial 2-qubit Hamiltonian with several Pauli terms.
+        let mut obs = VQEObservable::new();
+        obs.add_pauli_term(0.7, vec![(0, PauliOperator::Z)]);
+        obs.add_pauli_term(-0.4, vec![(1, PauliOperator::X)]);
+        obs.add_pauli_term(0.55, vec![(0, PauliOperator::Z), (1, PauliOperator::Z)]);
+
+        let mut vqe = VQECircuit::<2>::new(VQEAnsatz::HardwareEfficient { layers: 1 })
+            .expect("hardware-efficient VQE");
+        let n = vqe.num_parameters();
+
+        // Use a generic, non-symmetric parameter point.
+        let base: Vec<f64> = (0..n)
+            .map(|i| 0.13 + 0.21 * (i as f64) - PI / 5.0)
+            .collect();
+        vqe.set_parameters(&base).expect("set base params");
+
+        let analytic = optimizer
+            .compute_gradients(&vqe, &obs)
+            .expect("analytic gradient");
+
+        let eps = 1e-6;
+        for i in 0..n {
+            let mut plus = base.clone();
+            plus[i] += eps;
+            vqe.set_parameters(&plus).expect("set+");
+            let ep = optimizer.evaluate_energy(&vqe, &obs).expect("e+");
+
+            let mut minus = base.clone();
+            minus[i] -= eps;
+            vqe.set_parameters(&minus).expect("set-");
+            let em = optimizer.evaluate_energy(&vqe, &obs).expect("e-");
+
+            let numeric = (ep - em) / (2.0 * eps);
+            assert!(
+                (analytic[i] - numeric).abs() < 1e-5,
+                "param {i}: analytic {} vs finite-difference {}",
+                analytic[i],
+                numeric
+            );
+        }
+    }
+
+    /// End-to-end: optimizing the single-qubit Hamiltonian `H = Z` with an RY
+    /// ansatz must drive the energy toward the true ground-state energy `-1`.
+    #[test]
+    fn test_optimize_reaches_z_ground_state() {
+        let optimizer = VQEOptimizer {
+            learning_rate: 0.3,
+            max_iterations: 500,
+            ..VQEOptimizer::default()
+        };
+
+        let mut obs = VQEObservable::new();
+        obs.add_pauli_term(1.0, vec![(0, PauliOperator::Z)]);
+
+        let mut vqe = VQECircuit::<1>::new(VQEAnsatz::Custom).expect("custom VQE");
+        vqe.add_parameterized_ry(QubitId(0), "theta").expect("RY");
+        // Start away from both the minimum (θ=π) and the maximum (θ=0).
+        vqe.set_parameters(&[0.6]).expect("init");
+
+        let result = optimizer.optimize(&mut vqe, &obs).expect("optimize");
+        assert!(
+            (result.ground_state_energy + 1.0).abs() < 1e-3,
+            "optimized energy {} should approach -1",
+            result.ground_state_energy
+        );
     }
 }

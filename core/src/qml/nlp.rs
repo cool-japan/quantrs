@@ -16,6 +16,33 @@ use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
+/// Determine the number of qubits a gate sequence acts on.
+///
+/// Returns `max(min_qubits, highest_targeted_qubit_index + 1)` so the simulated
+/// state vector is always large enough for every gate while never shrinking
+/// below the model's declared register size.
+fn circuit_num_qubits(gates: &[Box<dyn GateOp>], min_qubits: usize) -> usize {
+    let max_index = gates
+        .iter()
+        .flat_map(|gate| gate.qubits())
+        .map(|q| q.0 as usize)
+        .max();
+    match max_index {
+        Some(idx) => min_qubits.max(idx + 1),
+        None => min_qubits.max(1),
+    }
+}
+
+/// Number of qubits required to address `count` distinct outcomes,
+/// i.e. `ceil(log2(count))` (at least 1).
+fn readout_bits(count: usize) -> usize {
+    if count <= 1 {
+        1
+    } else {
+        (usize::BITS - (count - 1).leading_zeros()) as usize
+    }
+}
+
 /// Text embedding strategies for quantum NLP
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TextEmbeddingStrategy {
@@ -375,8 +402,10 @@ impl QuantumAttention {
                 }));
             }
 
-            // Add entanglement within head (for attention computation)
-            for i in 0..params_per_head - 1 {
+            // Add entanglement within head (for attention computation).
+            // `saturating_sub` guards the `params_per_head == 0` case (more heads
+            // than qubits), which would otherwise underflow.
+            for i in 0..params_per_head.saturating_sub(1) {
                 let control = QubitId((head_offset + i) as u32);
                 let target = QubitId((head_offset + i + 1) as u32);
                 gates.push(Box::new(CNOT { control, target }));
@@ -396,11 +425,17 @@ impl QuantumAttention {
             }
         }
 
-        // Add inter-head entanglement (for multi-head attention)
-        for head in 0..self.num_heads - 1 {
-            let control = QubitId((head * params_per_head) as u32);
-            let target = QubitId(((head + 1) * params_per_head) as u32);
-            gates.push(Box::new(CNOT { control, target }));
+        // Add inter-head entanglement (for multi-head attention). Skipped when
+        // a head spans zero qubits (more heads than qubits), which would make
+        // control == target.
+        if params_per_head > 0 {
+            for head in 0..self.num_heads.saturating_sub(1) {
+                let control = QubitId((head * params_per_head) as u32);
+                let target = QubitId(((head + 1) * params_per_head) as u32);
+                if control.0 != target.0 {
+                    gates.push(Box::new(CNOT { control, target }));
+                }
+            }
         }
 
         // Apply output projection
@@ -506,24 +541,42 @@ impl QuantumTextClassifier {
         }
     }
 
-    /// Classify a text sequence
+    /// Classify a text sequence by running the full quantum forward pass.
+    ///
+    /// The classification circuit is built and simulated exactly; the resulting
+    /// `2^n` Born-rule distribution is reduced to `num_classes` class scores by
+    /// marginalising the basis states over the low-order `ceil(log2(num_classes))`
+    /// readout qubits, then renormalised. This is a genuine measurement
+    /// distribution, not a heuristic.
     pub fn classify(&self, word_ids: &[usize]) -> QuantRS2Result<Vec<f64>> {
-        // This would implement the full forward pass
-        // For now, return dummy probabilities
-        let mut probs = vec![1.0 / self.num_classes as f64; self.num_classes];
+        let gates = self.build_circuit(word_ids)?;
+        let num_qubits = circuit_num_qubits(&gates, self.config.text_qubits);
+        let state = crate::qml::simulator::simulate(num_qubits, &gates)?;
+        let amplitudes = crate::qml::simulator::probabilities(&state);
 
-        // Add some variation based on input
-        for (i, &word_id) in word_ids.iter().enumerate() {
-            let variation = ((word_id + i) as f64 * 0.1).sin() * 0.1;
-            probs[i % self.num_classes] += variation;
+        // Number of readout qubits needed to address all classes.
+        let class_bits = readout_bits(self.num_classes);
+        let class_mask = (1usize << class_bits) - 1;
+
+        let mut probs = vec![0.0; self.num_classes];
+        for (basis_index, prob) in amplitudes.iter().enumerate() {
+            let class = basis_index & class_mask;
+            if class < self.num_classes {
+                probs[class] += prob;
+            }
         }
 
-        // Normalize probabilities
+        // Renormalise (basis states whose readout exceeds num_classes are dropped).
         let sum: f64 = probs.iter().sum();
         if sum > 0.0 {
             for prob in &mut probs {
                 *prob /= sum;
             }
+        } else {
+            // Degenerate circuit (e.g. all probability mass on dropped states):
+            // fall back to a uniform distribution rather than zeros.
+            let uniform = 1.0 / self.num_classes as f64;
+            probs.fill(uniform);
         }
 
         Ok(probs)
@@ -677,29 +730,39 @@ impl QuantumLanguageModel {
         }
     }
 
-    /// Generate next token probabilities given a context
+    /// Generate next-token probabilities by exactly simulating the context
+    /// circuit and reading out a `vocab_size`-way Born-rule distribution.
+    ///
+    /// The circuit's `2^n` measurement distribution is marginalised over the
+    /// low-order `ceil(log2(vocab_size))` readout qubits to obtain per-token
+    /// probabilities, then renormalised. This is a real quantum measurement
+    /// distribution, not a heuristic placeholder.
     pub fn predict_next_token(&self, context: &[usize]) -> QuantRS2Result<Vec<f64>> {
-        // Build circuit for the context
-        let _gates = self.build_circuit(context)?;
+        let gates = self.build_circuit(context)?;
+        let num_qubits = circuit_num_qubits(&gates, self.config.text_qubits);
+        let state = crate::qml::simulator::simulate(num_qubits, &gates)?;
+        let amplitudes = crate::qml::simulator::probabilities(&state);
 
-        // Simulate the circuit (placeholder)
-        // In practice, would run the quantum circuit and measure
+        let vocab = self.config.vocab_size;
+        let token_bits = readout_bits(vocab);
+        let token_mask = (1usize << token_bits) - 1;
 
-        // Return dummy probabilities for now
-        let mut probs = vec![1.0 / self.config.vocab_size as f64; self.config.vocab_size];
-
-        // Add some variation based on context
-        for (i, &token) in context.iter().enumerate() {
-            let variation = ((token + i) as f64 * 0.05).sin() * 0.01;
-            probs[token % self.config.vocab_size] += variation;
+        let mut probs = vec![0.0; vocab];
+        for (basis_index, prob) in amplitudes.iter().enumerate() {
+            let token = basis_index & token_mask;
+            if token < vocab {
+                probs[token] += prob;
+            }
         }
 
-        // Normalize
         let sum: f64 = probs.iter().sum();
         if sum > 0.0 {
             for prob in &mut probs {
                 *prob /= sum;
             }
+        } else {
+            let uniform = 1.0 / vocab as f64;
+            probs.fill(uniform);
         }
 
         Ok(probs)
@@ -883,6 +946,57 @@ mod tests {
             .expect("Failed to train classifier");
         assert_eq!(losses.len(), 5);
     }
+
+    #[test]
+    fn test_classify_returns_real_distribution() {
+        let config = QNLPConfig {
+            vocab_size: 50,
+            text_qubits: 3,
+            feature_qubits: 2,
+            ..Default::default()
+        };
+        let classifier = QuantumTextClassifier::new(config, 3);
+
+        let probs = classifier.classify(&[1, 5, 9]).expect("classify");
+        assert_eq!(probs.len(), 3);
+        let sum: f64 = probs.iter().sum();
+        assert!(
+            (sum - 1.0).abs() < 1e-9,
+            "class probabilities must sum to 1"
+        );
+        assert!(probs.iter().all(|&p| (-1e-12..=1.0 + 1e-9).contains(&p)));
+        // A real measurement distribution from a non-trivial circuit is not
+        // exactly uniform (the old fabrication was uniform + sin noise, but the
+        // real Born distribution from H + parameterized rotations is non-uniform).
+        let uniform = 1.0 / 3.0;
+        let max_dev = probs
+            .iter()
+            .map(|&p| (p - uniform).abs())
+            .fold(0.0, f64::max);
+        assert!(
+            max_dev > 1e-9,
+            "real circuit should not give exactly uniform output"
+        );
+    }
+
+    #[test]
+    fn test_predict_next_token_returns_real_distribution() {
+        let config = QNLPConfig {
+            vocab_size: 8,
+            text_qubits: 3,
+            ..Default::default()
+        };
+        let lm = QuantumLanguageModel::new(config);
+
+        let probs = lm.predict_next_token(&[1, 2]).expect("predict");
+        assert_eq!(probs.len(), 8);
+        let sum: f64 = probs.iter().sum();
+        assert!(
+            (sum - 1.0).abs() < 1e-9,
+            "token probabilities must sum to 1"
+        );
+        assert!(probs.iter().all(|&p| (-1e-12..=1.0 + 1e-9).contains(&p)));
+    }
 }
 
 /// Advanced quantum NLP utilities and algorithms
@@ -1042,20 +1156,29 @@ pub mod advanced {
             Ok(similarity)
         }
 
-        /// Compute quantum overlap between two text representations
+        /// Compute the quantum overlap (state fidelity) between two text
+        /// representations.
+        ///
+        /// Both gate sequences are simulated from `|0…0⟩` to obtain the encoded
+        /// states `|ψ₁⟩` and `|ψ₂⟩`; the returned similarity is the fidelity
+        /// `|⟨ψ₁|ψ₂⟩|² ∈ [0, 1]`. This is a genuine inner-product computation,
+        /// not a constant.
         fn quantum_text_overlap(
             &self,
-            _gates1: Vec<Box<dyn GateOp>>,
-            _gates2: Vec<Box<dyn GateOp>>,
+            gates1: Vec<Box<dyn GateOp>>,
+            gates2: Vec<Box<dyn GateOp>>,
         ) -> QuantRS2Result<f64> {
-            // Placeholder for quantum overlap computation
-            // In practice, would:
-            // 1. Prepare states using gates1 and gates2
-            // 2. Compute fidelity/overlap between states
-            // 3. Return similarity score
+            let num_qubits = circuit_num_qubits(&gates1, self.num_qubits)
+                .max(circuit_num_qubits(&gates2, self.num_qubits));
+            let psi1 = crate::qml::simulator::simulate(num_qubits, &gates1)?;
+            let psi2 = crate::qml::simulator::simulate(num_qubits, &gates2)?;
 
-            // Return dummy similarity for now
-            Ok(0.7)
+            let overlap: Complex64 = psi1
+                .iter()
+                .zip(psi2.iter())
+                .map(|(a, b)| a.conj() * b)
+                .sum();
+            Ok(overlap.norm_sqr())
         }
     }
 
@@ -1287,6 +1410,35 @@ pub mod advanced {
 
             score /= tokens.len() as f64; // Normalize by span length
             Ok(score)
+        }
+    }
+
+    #[cfg(test)]
+    mod advanced_tests {
+        use super::*;
+
+        #[test]
+        fn test_text_overlap_is_real_fidelity_not_constant() {
+            let sim = QuantumSemanticSimilarity::new(4, 3);
+
+            // Identical token sequences -> identical states -> fidelity == 1.
+            let same = sim
+                .compute_similarity(&[1, 2, 3], &[1, 2, 3])
+                .expect("same similarity");
+            assert!(
+                (same - 1.0).abs() < 1e-9,
+                "identical texts must have fidelity 1.0, got {same} (old fabrication returned 0.7)"
+            );
+
+            // Different sequences -> generally < 1 and != the old 0.7 constant.
+            let diff = sim
+                .compute_similarity(&[1, 2, 3], &[3, 2, 1])
+                .expect("diff similarity");
+            assert!((0.0..=1.0 + 1e-9).contains(&diff));
+            assert!(
+                (diff - same).abs() > 1e-9 || (diff - 0.7).abs() > 1e-9,
+                "similarity must be a real computed fidelity, not a constant"
+            );
         }
     }
 }

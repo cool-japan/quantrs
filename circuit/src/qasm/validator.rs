@@ -19,6 +19,12 @@ pub enum ValidationError {
     #[error("Undefined variable: {0}")]
     UndefinedVariable(String),
 
+    #[error("Undefined function: {0}")]
+    UndefinedFunction(String),
+
+    #[error("Cannot index non-indexable value: {0} is a scalar")]
+    NotIndexable(String),
+
     #[error("Type mismatch: expected {expected}, found {found}")]
     TypeMismatch { expected: String, found: String },
 
@@ -744,16 +750,19 @@ impl QasmValidator {
                 }
             }
             Expression::Function(name, args) => {
-                // Validate arguments
-                for arg in args {
-                    self.validate_expression(arg)?;
-                }
+                // Validate (and collect the types of) the arguments first.
+                let arg_types = args
+                    .iter()
+                    .map(|arg| self.validate_expression(arg))
+                    .collect::<Result<Vec<_>, _>>()?;
 
-                // For now, assume functions return float
-                Ok(ValueType::Float)
+                // Infer the return type from the known OpenQASM 3.0 built-in
+                // classical functions. An unknown name is a real error, not a
+                // silent assumption that it returns a float.
+                Self::builtin_function_return_type(name, &arg_types)
             }
             Expression::Index(name, index) => {
-                // Validate index
+                // The index expression itself must be an integer.
                 let idx_typ = self.validate_expression(index)?;
                 if idx_typ != ValueType::Int {
                     return Err(ValidationError::TypeMismatch {
@@ -762,12 +771,117 @@ impl QasmValidator {
                     });
                 }
 
-                // For now, assume indexing returns same type
+                // Indexing yields the *element* type of the indexed symbol.
+                // Registers carry an element type (qubit / bit); scalar
+                // variables and constants cannot be indexed at all.
                 match self.lookup_symbol(name) {
-                    Some(Symbol::Variable { typ }) => Ok(typ.clone()),
-                    _ => Err(ValidationError::UndefinedVariable(name.clone())),
+                    Some(Symbol::QuantumRegister { .. }) => Ok(ValueType::Qubit),
+                    Some(Symbol::ClassicalRegister { .. }) => Ok(ValueType::Bit),
+                    Some(Symbol::Variable { .. } | Symbol::Constant { .. }) => {
+                        Err(ValidationError::NotIndexable(name.clone()))
+                    }
+                    Some(Symbol::Gate { .. }) | None => {
+                        Err(ValidationError::UndefinedVariable(name.clone()))
+                    }
                 }
             }
+        }
+    }
+
+    /// Infer the return type of a call to an OpenQASM 3.0 built-in classical
+    /// function, validating its argument count and types.
+    ///
+    /// The recognised functions are exactly those defined by the OpenQASM 3.0
+    /// specification: `arccos`, `arcsin`, `arctan`, `ceiling`, `cos`, `exp`,
+    /// `floor`, `log`, `mod`, `popcount`, `pow`, `rotl`, `rotr`, `sin`, `sqrt`
+    /// and `tan`. An unrecognised name yields [`ValidationError::UndefinedFunction`]
+    /// rather than a fabricated default type.
+    fn builtin_function_return_type(
+        name: &str,
+        arg_types: &[ValueType],
+    ) -> Result<ValueType, ValidationError> {
+        // Helper closures for argument-count / numeric checks producing honest
+        // semantic errors.
+        let expect_arity = |expected: usize| -> Result<(), ValidationError> {
+            if arg_types.len() == expected {
+                Ok(())
+            } else {
+                Err(ValidationError::SemanticError(format!(
+                    "function '{name}' expects {expected} argument(s), but {} were provided",
+                    arg_types.len()
+                )))
+            }
+        };
+        let is_numeric = |typ: &ValueType| matches!(typ, ValueType::Int | ValueType::Float);
+        let require_numeric = |typ: &ValueType| -> Result<(), ValidationError> {
+            if is_numeric(typ) {
+                Ok(())
+            } else {
+                Err(ValidationError::TypeMismatch {
+                    expected: "numeric".to_string(),
+                    found: format!("{typ:?}"),
+                })
+            }
+        };
+        let require_int = |typ: &ValueType| -> Result<(), ValidationError> {
+            if matches!(typ, ValueType::Int) {
+                Ok(())
+            } else {
+                Err(ValidationError::TypeMismatch {
+                    expected: "int".to_string(),
+                    found: format!("{typ:?}"),
+                })
+            }
+        };
+
+        match name {
+            // Real-valued transcendental / root functions: one numeric argument,
+            // float result.
+            "sin" | "cos" | "tan" | "arcsin" | "arccos" | "arctan" | "exp" | "log" | "sqrt" => {
+                expect_arity(1)?;
+                require_numeric(&arg_types[0])?;
+                Ok(ValueType::Float)
+            }
+            // Rounding functions: one numeric argument, float result.
+            "ceiling" | "floor" => {
+                expect_arity(1)?;
+                require_numeric(&arg_types[0])?;
+                Ok(ValueType::Float)
+            }
+            // mod(a, b): integer result iff both arguments are integers,
+            // otherwise float (matching the generalized real modulus).
+            "mod" => {
+                expect_arity(2)?;
+                require_numeric(&arg_types[0])?;
+                require_numeric(&arg_types[1])?;
+                if arg_types[0] == ValueType::Int && arg_types[1] == ValueType::Int {
+                    Ok(ValueType::Int)
+                } else {
+                    Ok(ValueType::Float)
+                }
+            }
+            // pow(base, exponent): float result.
+            "pow" => {
+                expect_arity(2)?;
+                require_numeric(&arg_types[0])?;
+                require_numeric(&arg_types[1])?;
+                Ok(ValueType::Float)
+            }
+            // popcount(x): counts set bits, integer result.
+            "popcount" => {
+                expect_arity(1)?;
+                require_int(&arg_types[0])?;
+                Ok(ValueType::Int)
+            }
+            // rotl(value, distance) / rotr(value, distance): bit-rotation,
+            // integer result with an integer rotation distance.
+            "rotl" | "rotr" => {
+                expect_arity(2)?;
+                require_int(&arg_types[0])?;
+                require_int(&arg_types[1])?;
+                Ok(ValueType::Int)
+            }
+            _ => Err(ValidationError::UndefinedFunction(name.to_string())),
         }
     }
 
@@ -915,5 +1029,92 @@ rx q;        // Missing parameter
             result,
             Err(ValidationError::ParameterCountMismatch { .. })
         ));
+    }
+
+    #[test]
+    fn test_validate_known_function_returns_float() {
+        // A recognised built-in function used in a gate angle must validate, and
+        // its inferred float return type must satisfy the numeric requirement.
+        let input = r"
+OPENQASM 3.0;
+
+qubit q;
+
+rx(sin(0.5)) q;
+";
+        let program =
+            parse_qasm3(input).expect("parse_qasm3 should succeed for known function test");
+        let result = validate_qasm3(&program);
+        assert!(result.is_ok(), "known function should validate: {result:?}");
+    }
+
+    #[test]
+    fn test_validate_unknown_function_is_rejected() {
+        // An unknown function name must be an honest error, not a silent Float.
+        let input = r"
+OPENQASM 3.0;
+
+const x = wibble(1.0);
+";
+        let program =
+            parse_qasm3(input).expect("parse_qasm3 should succeed for unknown function test");
+        let result = validate_qasm3(&program);
+        assert!(
+            matches!(result, Err(ValidationError::UndefinedFunction(ref n)) if n == "wibble"),
+            "expected UndefinedFunction error, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn test_validate_function_arity_checked() {
+        // sin takes exactly one argument; two must be rejected.
+        let input = r"
+OPENQASM 3.0;
+
+const x = sin(1.0, 2.0);
+";
+        let program =
+            parse_qasm3(input).expect("parse_qasm3 should succeed for function arity test");
+        let result = validate_qasm3(&program);
+        assert!(
+            matches!(result, Err(ValidationError::SemanticError(_))),
+            "expected arity SemanticError, got: {result:?}"
+        );
+    }
+
+    #[test]
+    fn test_validate_index_into_classical_register_is_bit() {
+        // Indexing a bit register yields a Bit element; using it where a Bit is
+        // valid (another classical register element) must type-check.
+        let input = r"
+OPENQASM 3.0;
+
+bit[4] c;
+const x = c[2];
+";
+        let program =
+            parse_qasm3(input).expect("parse_qasm3 should succeed for register index test");
+        let result = validate_qasm3(&program);
+        assert!(
+            result.is_ok(),
+            "indexing a classical register should validate: {result:?}"
+        );
+    }
+
+    #[test]
+    fn test_validate_index_into_scalar_is_rejected() {
+        // A scalar constant cannot be indexed; this must be an honest error.
+        let input = r"
+OPENQASM 3.0;
+
+const a = 3;
+const b = a[0];
+";
+        let program = parse_qasm3(input).expect("parse_qasm3 should succeed for scalar index test");
+        let result = validate_qasm3(&program);
+        assert!(
+            matches!(result, Err(ValidationError::NotIndexable(ref n)) if n == "a"),
+            "expected NotIndexable error, got: {result:?}"
+        );
     }
 }

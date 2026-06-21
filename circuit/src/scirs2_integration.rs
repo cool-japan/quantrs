@@ -703,9 +703,15 @@ impl SciRS2CircuitAnalyzer {
         }
     }
 
-    /// Find critical paths in the circuit
+    /// Find critical paths in the circuit.
+    ///
+    /// A critical path is an actual connected chain of dependent gates whose
+    /// length equals the circuit depth. For each maximum-depth sink node we walk
+    /// predecessor edges backwards, at each step choosing a predecessor whose
+    /// depth is exactly one less than the current node's depth (a true
+    /// critical-path predecessor), until we reach a source. Each returned inner
+    /// vector is a genuine path ordered from source to sink.
     fn find_critical_paths(&self, graph: &SciRS2CircuitGraph) -> QuantRS2Result<Vec<Vec<usize>>> {
-        // For now, return paths with maximum depth
         let max_depth = graph
             .nodes
             .values()
@@ -713,14 +719,58 @@ impl SciRS2CircuitAnalyzer {
             .max()
             .unwrap_or(0);
 
-        let critical_nodes: Vec<_> = graph
+        // Sinks of the critical path are the deepest nodes.
+        let mut sinks: Vec<usize> = graph
             .nodes
             .values()
             .filter(|node| node.depth == max_depth)
             .map(|node| node.id)
             .collect();
+        sinks.sort_unstable();
 
-        Ok(vec![critical_nodes])
+        let mut paths = Vec::with_capacity(sinks.len());
+
+        for sink in sinks {
+            let mut path = vec![sink];
+            let mut current = sink;
+
+            // Walk back along the longest-chain predecessors. Each chosen
+            // predecessor must sit exactly one depth level below `current`,
+            // guaranteeing the traced chain has length `max_depth`.
+            while let Some(current_depth) = graph
+                .nodes
+                .get(&current)
+                .map(|n| n.depth)
+                .filter(|&d| d > 0)
+            {
+                // Predecessors are edge sources whose target is `current`.
+                let predecessor = graph
+                    .edges
+                    .keys()
+                    .filter(|&&(_, target)| target == current)
+                    .map(|&(source, _)| source)
+                    .filter(|src| {
+                        graph
+                            .nodes
+                            .get(src)
+                            .is_some_and(|n| n.depth + 1 == current_depth)
+                    })
+                    .min();
+
+                match predecessor {
+                    Some(prev) => {
+                        path.push(prev);
+                        current = prev;
+                    }
+                    None => break,
+                }
+            }
+
+            path.reverse();
+            paths.push(path);
+        }
+
+        Ok(paths)
     }
 
     /// Detect communities using simple clustering
@@ -962,6 +1012,47 @@ mod tests {
 
         assert!(result.metrics.num_nodes > 0);
         assert!(!result.critical_paths.is_empty());
+    }
+
+    #[test]
+    fn test_critical_path_is_connected_chain() {
+        let analyzer = SciRS2CircuitAnalyzer::new();
+
+        // Three sequential gates on the same qubit form a single dependency
+        // chain of length 3 (depths 0, 1, 2).
+        let mut circuit = Circuit::<1>::new();
+        for _ in 0..3 {
+            circuit
+                .add_gate(Hadamard { target: QubitId(0) })
+                .expect("Failed to add Hadamard gate");
+        }
+
+        let graph = analyzer
+            .circuit_to_scirs2_graph(&circuit)
+            .expect("Failed to convert circuit to SciRS2 graph");
+        let paths = analyzer
+            .find_critical_paths(&graph)
+            .expect("Failed to find critical paths");
+
+        assert!(!paths.is_empty());
+        let longest = paths
+            .iter()
+            .max_by_key(|p| p.len())
+            .expect("at least one path");
+
+        // The traced path must be an actual connected chain: every consecutive
+        // pair is joined by a directed edge, and depths increase by one.
+        assert_eq!(longest.len(), 3, "critical chain should span all 3 gates");
+        for window in longest.windows(2) {
+            let (from, to) = (window[0], window[1]);
+            assert!(
+                graph.edges.contains_key(&(from, to)),
+                "path step {from}->{to} must be a real edge"
+            );
+            let from_depth = graph.nodes[&from].depth;
+            let to_depth = graph.nodes[&to].depth;
+            assert_eq!(from_depth + 1, to_depth);
+        }
     }
 
     #[test]

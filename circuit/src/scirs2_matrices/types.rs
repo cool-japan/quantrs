@@ -281,6 +281,11 @@ impl<T: Clone> SciRSSparseMatrix<T> {
     pub fn nnz(&self) -> usize {
         self.data.len()
     }
+    /// Read-only view of the stored `(row, col, value)` triplets (COO format).
+    #[must_use]
+    pub fn triplets(&self) -> &[(usize, usize, T)] {
+        &self.data
+    }
 }
 impl SciRSSparseMatrix<Complex64> {
     /// Sparse matrix multiplication using COO-format accumulation.
@@ -761,6 +766,14 @@ impl SparseMatrix {
     #[must_use]
     pub fn nnz(&self) -> usize {
         self.inner.nnz()
+    }
+    /// Read-only view of the stored `(row, col, value)` triplets (COO format).
+    ///
+    /// Used by expectation-value evaluators to compute `⟨ψ|H|ψ⟩` directly from
+    /// the sparse entries without materializing a dense matrix.
+    #[must_use]
+    pub fn triplets(&self) -> &[(usize, usize, Complex64)] {
+        self.inner.triplets()
     }
     /// Convert to different sparse format with `SciRS2` optimization
     #[must_use]

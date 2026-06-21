@@ -3,7 +3,13 @@
 //! This module demonstrates how to leverage scirs2-core beta.3 caching capabilities
 //! to optimize quantum gate matrix computations.
 
-use crate::error::QuantRS2Result;
+use crate::error::{QuantRS2Error, QuantRS2Result};
+use crate::gate::functions::multi::{CNOT, CZ};
+use crate::gate::functions::single::{
+    Hadamard, PauliX, PauliY, PauliZ, Phase, RotationX, RotationY, RotationZ,
+};
+use crate::gate::GateOp;
+use crate::qubit::QubitId;
 use scirs2_core::cache::{CacheConfig, TTLSizedCache};
 use scirs2_core::memory::{global_buffer_pool, BufferPool};
 use scirs2_core::profiling::{Profiler, Timer};
@@ -158,7 +164,7 @@ impl QuantumGateCache {
 
     /// Pre-warm cache with common gate matrices
     pub fn prewarm_common_gates(&self) -> QuantRS2Result<()> {
-        use std::f64::consts::{FRAC_1_SQRT_2, PI};
+        use std::f64::consts::PI;
 
         let common_gates = vec![
             ("pauli_x", vec![], 1),
@@ -181,17 +187,11 @@ impl QuantumGateCache {
             } {
                 let key = GateKey::new(gate_name, &param_set, qubits);
 
-                // Compute and cache the matrix
-                let _ = self.get_or_compute_matrix(key, || {
-                    // This would call actual gate matrix computation
-                    // For now, return identity matrix
-                    let size = 1 << qubits;
-                    let mut matrix = vec![Complex64::new(0.0, 0.0); size * size];
-                    for i in 0..size {
-                        matrix[i * size + i] = Complex64::new(1.0, 0.0);
-                    }
-                    Ok(matrix)
-                })?;
+                // Compute and cache the real gate matrix by constructing the
+                // corresponding gate from `crate::gate::functions` and calling
+                // its `matrix()` implementation.
+                let _ =
+                    self.get_or_compute_matrix(key, || compute_gate_matrix(gate_name, &param_set))?;
             }
         }
 
@@ -212,6 +212,60 @@ impl QuantumGateCache {
         if let Ok(mut time) = self.total_computation_time.lock() {
             *time = 0;
         }
+    }
+}
+
+/// Compute the real matrix for a named gate using `crate::gate::functions`.
+///
+/// `gate_name` follows the convention used by [`QuantumGateCache::prewarm_common_gates`]
+/// (e.g. `"pauli_x"`, `"hadamard"`, `"rx"`). Parameterized gates read their angle from
+/// `params[0]`. Qubit identities (`QubitId(0)` / `QubitId(1)`) do not affect the returned
+/// matrix, so fixed placeholders are used. Unknown gate names produce an honest error
+/// rather than a fabricated identity matrix.
+fn compute_gate_matrix(gate_name: &str, params: &[f64]) -> QuantRS2Result<Vec<Complex64>> {
+    let q0 = QubitId(0);
+    let q1 = QubitId(1);
+
+    let angle = |gate: &str| -> QuantRS2Result<f64> {
+        params.first().copied().ok_or_else(|| {
+            QuantRS2Error::InvalidInput(format!("gate '{gate}' requires a rotation parameter"))
+        })
+    };
+
+    match gate_name {
+        "pauli_x" => PauliX { target: q0 }.matrix(),
+        "pauli_y" => PauliY { target: q0 }.matrix(),
+        "pauli_z" => PauliZ { target: q0 }.matrix(),
+        "hadamard" => Hadamard { target: q0 }.matrix(),
+        "phase" => Phase { target: q0 }.matrix(),
+        "rx" => RotationX {
+            target: q0,
+            theta: angle("rx")?,
+        }
+        .matrix(),
+        "ry" => RotationY {
+            target: q0,
+            theta: angle("ry")?,
+        }
+        .matrix(),
+        "rz" => RotationZ {
+            target: q0,
+            theta: angle("rz")?,
+        }
+        .matrix(),
+        "cnot" => CNOT {
+            control: q0,
+            target: q1,
+        }
+        .matrix(),
+        "cz" => CZ {
+            control: q0,
+            target: q1,
+        }
+        .matrix(),
+        other => Err(QuantRS2Error::UnsupportedOperation(format!(
+            "unknown gate name '{other}' for matrix prewarming"
+        ))),
     }
 }
 
@@ -314,5 +368,43 @@ mod tests {
 
         let final_stats = cache.get_performance_stats();
         assert!(final_stats.cache_hits > 0);
+    }
+
+    #[test]
+    fn test_prewarmed_hadamard_is_real_not_identity() {
+        use std::f64::consts::FRAC_1_SQRT_2;
+
+        let cache = QuantumGateCache::new();
+        cache
+            .prewarm_common_gates()
+            .expect("prewarming common gates should succeed");
+
+        // Fetch the cached Hadamard matrix; this must be a cache hit so the
+        // closure must NOT execute.
+        let key = GateKey::new("hadamard", &[], 1);
+        let matrix = cache
+            .get_or_compute_matrix(key, || panic!("Hadamard should already be cached"))
+            .expect("cache hit for hadamard gate should succeed");
+
+        // Real Hadamard: 1/sqrt(2) * [[1, 1], [1, -1]] (NOT the identity that the
+        // old fabricated implementation produced).
+        assert_eq!(matrix.len(), 4);
+        let tol = 1e-12;
+        assert!((matrix[0].re - FRAC_1_SQRT_2).abs() < tol);
+        assert!((matrix[1].re - FRAC_1_SQRT_2).abs() < tol);
+        assert!((matrix[2].re - FRAC_1_SQRT_2).abs() < tol);
+        assert!((matrix[3].re + FRAC_1_SQRT_2).abs() < tol);
+        // Guard against the old identity-matrix fabrication: off-diagonals were 0.
+        assert!(matrix[1].norm() > 0.5, "off-diagonal must be non-zero");
+        assert!(matrix[2].norm() > 0.5, "off-diagonal must be non-zero");
+
+        // Also verify a parameterized gate (RX(pi)) was cached with its real matrix.
+        let rx_key = GateKey::new("rx", &[std::f64::consts::PI], 1);
+        let rx = cache
+            .get_or_compute_matrix(rx_key, || panic!("RX(pi) should already be cached"))
+            .expect("cache hit for RX gate should succeed");
+        // RX(pi) = [[0, -i], [-i, 0]]
+        assert!(rx[0].norm() < tol);
+        assert!((rx[1].im + 1.0).abs() < tol);
     }
 }

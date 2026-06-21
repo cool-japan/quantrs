@@ -113,11 +113,7 @@ impl ChainBreakResolver {
         }
 
         // Sort by energy
-        resolved.sort_by(|a, b| {
-            a.energy
-                .partial_cmp(&b.energy)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        resolved.sort_by(|a, b| a.energy.total_cmp(&b.energy));
 
         Ok(resolved)
     }
@@ -479,7 +475,7 @@ impl ChainStrengthOptimizer {
         }
 
         // Sort coefficients
-        all_coeffs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        all_coeffs.sort_by(|a, b| a.total_cmp(b));
 
         // Use median as base strength
         let median = if all_coeffs.len() % 2 == 0 {
@@ -524,47 +520,80 @@ impl ChainStrengthOptimizer {
         best_strength
     }
 
-    /// Evaluate a chain strength
+    /// Evaluate a chain strength against a set of representative solutions.
+    ///
+    /// A chain holds together only if its inter-qubit coupling (the chain
+    /// `strength`) is large enough to resist the local field that tries to flip
+    /// part of the chain. For each test solution and each logical variable we
+    /// compute that local field magnitude
+    /// `|h_i + Σ_j J_ij·s_j|` (the energy gradient acting on variable `i`); the
+    /// strength must dominate the largest such field to keep every chain intact.
+    /// The returned score (lower is better, so it composes with
+    /// [`Self::optimize_strength`]'s minimization) penalizes:
+    ///
+    /// * **under-strength** — `strength` below the required field, scaled by a
+    ///   large factor because a broken chain corrupts the embedded solution; and
+    /// * **over-strength** — `strength` far above what is needed, which flattens
+    ///   the logical problem and degrades solution quality.
+    ///
+    /// When no test solutions are supplied the worst-case field is estimated
+    /// from the problem coefficients alone (every neighbor aligned adversarially).
     fn evaluate_strength(
         &self,
         strength: f64,
         logical_problem: &LogicalProblem,
         test_solutions: &[Vec<i8>],
     ) -> f64 {
-        // Simple evaluation: prefer strengths that maintain solution quality
-        // In practice, this would run actual annealing with different strengths
+        let num_vars = logical_problem.linear.len();
 
-        // For now, return a score based on the ratio to problem coefficients
-        let avg_coeff = self.calculate_average_coefficient(logical_problem);
+        // Largest local field observed across variables and test solutions.
+        let mut required_strength = 0.0_f64;
 
-        // Penalty for being too different from problem scale
-        (strength / avg_coeff - 1.5).abs()
-    }
-
-    /// Calculate average coefficient magnitude
-    fn calculate_average_coefficient(&self, logical_problem: &LogicalProblem) -> f64 {
-        let mut sum = 0.0;
-        let mut count = 0;
-
-        for &h in &logical_problem.linear {
-            if h.abs() > 1e-10 {
-                sum += h.abs();
-                count += 1;
+        if test_solutions.is_empty() {
+            // Worst case: every coupling pulls in the breaking direction.
+            for i in 0..num_vars {
+                let mut field = logical_problem.linear[i].abs();
+                for (&(a, b), &j) in &logical_problem.quadratic {
+                    if a == i || b == i {
+                        field += j.abs();
+                    }
+                }
+                required_strength = required_strength.max(field);
             }
-        }
-
-        for &J in logical_problem.quadratic.values() {
-            if J.abs() > 1e-10 {
-                sum += J.abs();
-                count += 1;
-            }
-        }
-
-        if count > 0 {
-            sum / f64::from(count)
         } else {
-            1.0
+            for solution in test_solutions {
+                for i in 0..num_vars.min(solution.len()) {
+                    let mut field = logical_problem.linear[i];
+                    for (&(a, b), &j) in &logical_problem.quadratic {
+                        if a == i {
+                            if let Some(&s) = solution.get(b) {
+                                field += j * f64::from(s);
+                            }
+                        } else if b == i {
+                            if let Some(&s) = solution.get(a) {
+                                field += j * f64::from(s);
+                            }
+                        }
+                    }
+                    required_strength = required_strength.max(field.abs());
+                }
+            }
         }
+
+        if required_strength <= 0.0 {
+            // No field to resist: any positive strength is fine; prefer the
+            // smallest to avoid distorting the (trivial) problem.
+            return strength;
+        }
+
+        // Penalty for being too weak (chains break) — heavily weighted.
+        const BREAK_PENALTY: f64 = 10.0;
+        let under = (required_strength - strength).max(0.0) / required_strength;
+
+        // Penalty for being unnecessarily strong (problem distortion).
+        let over = (strength - required_strength).max(0.0) / required_strength;
+
+        BREAK_PENALTY.mul_add(under, over)
     }
 }
 
@@ -707,6 +736,43 @@ mod tests {
 
         // Should be around the median of coefficients
         assert!(strength > 0.5 && strength < 5.0);
+    }
+
+    #[test]
+    fn test_evaluate_strength_uses_required_field() {
+        // Single coupling J=2 between var 0 and 1; with the test solution both
+        // aligned (+1,+1) the local field on each variable is |J·s| = 2, so the
+        // required chain strength is 2.0.
+        let mut problem = LogicalProblem::new(2);
+        problem.linear = vec![0.0, 0.0];
+        problem.quadratic.insert((0, 1), 2.0);
+
+        let optimizer = ChainStrengthOptimizer::default();
+        let test_solutions = vec![vec![1_i8, 1]];
+
+        // A strength below the required field is penalized far more heavily than
+        // a strength exactly at the required field.
+        let score_weak = optimizer.evaluate_strength(0.5, &problem, &test_solutions);
+        let score_matched = optimizer.evaluate_strength(2.0, &problem, &test_solutions);
+        let score_strong = optimizer.evaluate_strength(6.0, &problem, &test_solutions);
+
+        // The matched strength is the best (lowest score).
+        assert!(score_matched < score_weak);
+        assert!(score_matched < score_strong);
+        // At the required strength both penalties vanish.
+        assert!(score_matched.abs() < 1e-12);
+        // Under-strength is penalized by the heavy BREAK_PENALTY factor relative
+        // to an equal over-strength deviation.
+        let score_under = optimizer.evaluate_strength(1.0, &problem, &test_solutions); // 1 below
+        let score_over = optimizer.evaluate_strength(3.0, &problem, &test_solutions); // 1 above
+        assert!(score_under > score_over);
+
+        // optimize_strength must pick a strength resisting the field (>= ~2).
+        let best = optimizer.optimize_strength(&problem, &test_solutions);
+        assert!(
+            best >= 1.5,
+            "expected strength resisting the field, got {best}"
+        );
     }
 
     #[test]

@@ -546,14 +546,60 @@ impl AzureQuantumClient {
         }
     }
 
-    // IonQ specific circuit format conversion
-    fn circuit_to_ionq_format<const N: usize>(_circuit: &Circuit<N>) -> DeviceResult<String> {
-        // IonQ uses a JSON circuit format
+    // IonQ specific circuit format conversion.
+    //
+    // IonQ accepts a JSON circuit description where each gate is an object such
+    // as `{"gate": "h", "target": 0}` or `{"gate": "rx", "target": 0,
+    // "rotation": 1.57}` and two-qubit gates carry `control`/`target` (or two
+    // `targets`). This iterates the circuit gates and emits one JSON object per
+    // gate, returning an honest error for any gate IonQ cannot express directly.
+    fn circuit_to_ionq_format<const N: usize>(circuit: &Circuit<N>) -> DeviceResult<String> {
+        use quantrs2_core::gate::{multi::*, single::*, GateOp};
         use serde_json::json;
 
-        // This is a placeholder for the actual conversion logic
-        #[allow(unused_variables)]
-        let gates: Vec<serde_json::Value> = vec![]; // Convert gates to IonQ format
+        let mut gates: Vec<serde_json::Value> = Vec::new();
+
+        for gate in circuit.gates() {
+            let any = gate.as_any();
+            let qubits = gate.qubits();
+            let q = |i: usize| qubits[i].id() as usize;
+
+            // Parameterized single-qubit rotations (IonQ uses `rotation`).
+            if let Some(g) = any.downcast_ref::<RotationX>() {
+                gates.push(json!({ "gate": "rx", "target": q(0), "rotation": g.theta }));
+                continue;
+            }
+            if let Some(g) = any.downcast_ref::<RotationY>() {
+                gates.push(json!({ "gate": "ry", "target": q(0), "rotation": g.theta }));
+                continue;
+            }
+            if let Some(g) = any.downcast_ref::<RotationZ>() {
+                gates.push(json!({ "gate": "rz", "target": q(0), "rotation": g.theta }));
+                continue;
+            }
+
+            let value = match gate.name() {
+                "H" => json!({ "gate": "h", "target": q(0) }),
+                "X" => json!({ "gate": "x", "target": q(0) }),
+                "Y" => json!({ "gate": "y", "target": q(0) }),
+                "Z" => json!({ "gate": "z", "target": q(0) }),
+                "S" => json!({ "gate": "s", "target": q(0) }),
+                "S†" => json!({ "gate": "si", "target": q(0) }),
+                "T" => json!({ "gate": "t", "target": q(0) }),
+                "T†" => json!({ "gate": "ti", "target": q(0) }),
+                "√X" => json!({ "gate": "v", "target": q(0) }),
+                "√X†" => json!({ "gate": "vi", "target": q(0) }),
+                "CNOT" => json!({ "gate": "cnot", "control": q(0), "target": q(1) }),
+                "SWAP" => json!({ "gate": "swap", "targets": [q(0), q(1)] }),
+                other => {
+                    return Err(DeviceError::CircuitConversion(format!(
+                        "Gate '{other}' has no direct IonQ JSON representation; \
+                         transpile to IonQ's native gate set first"
+                    )));
+                }
+            };
+            gates.push(value);
+        }
 
         let ionq_circuit = json!({
             "qubits": N,
@@ -573,17 +619,17 @@ impl AzureQuantumClient {
     }
 
     // QASM format conversion for Quantinuum
-    fn circuit_to_qasm_format<const N: usize>(_circuit: &Circuit<N>) -> DeviceResult<String> {
-        // Similar to IBM's QASM format
-        let mut qasm = String::from("OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\n");
-
-        // Define the quantum and classical registers
-        qasm.push_str(&format!("qreg q[{}];\n", N));
-        qasm.push_str(&format!("creg c[{}];\n\n", N));
-
-        // Implement conversion of gates to QASM here
-        // For now, just return placeholder QASM
-        Ok(qasm)
+    //
+    // Quantinuum targets accept OpenQASM 2.0. The gate-by-gate translation is
+    // delegated to the circuit crate's validated OpenQASM 2.0 exporter, which
+    // emits the `OPENQASM 2.0` header, the `qelib1.inc` include, the quantum
+    // register, and one line per gate in the circuit.
+    fn circuit_to_qasm_format<const N: usize>(circuit: &Circuit<N>) -> DeviceResult<String> {
+        quantrs2_circuit::qasm::circuit_to_qasm(circuit).map_err(|e| {
+            DeviceError::CircuitConversion(format!(
+                "Failed to convert circuit to OpenQASM 2.0 for Quantinuum: {e}"
+            ))
+        })
     }
 }
 
@@ -670,5 +716,62 @@ impl AzureQuantumClient {
         Err(DeviceError::UnsupportedDevice(
             "Azure Quantum support not enabled".to_string(),
         ))
+    }
+}
+
+#[cfg(all(test, feature = "azure"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_quantinuum_qasm_emits_real_gates() {
+        // Bell-state circuit.
+        let mut circuit = Circuit::<2>::new();
+        circuit.h(0).expect("add H");
+        circuit.cnot(0, 1).expect("add CNOT");
+
+        let qasm = AzureQuantumClient::circuit_to_provider_format(&circuit, "quantinuum")
+            .expect("Quantinuum QASM conversion should succeed");
+
+        assert!(qasm.contains("OPENQASM 2.0"), "missing header: {qasm}");
+        // REAL gates must be present (not just register declarations).
+        assert!(qasm.contains("h q[0]"), "missing H gate: {qasm}");
+        assert!(qasm.contains("cx q[0], q[1]"), "missing CNOT gate: {qasm}");
+    }
+
+    #[test]
+    fn test_ionq_format_emits_real_gates() {
+        let mut circuit = Circuit::<2>::new();
+        circuit.h(0).expect("add H");
+        circuit.cnot(0, 1).expect("add CNOT");
+
+        let json = AzureQuantumClient::circuit_to_provider_format(&circuit, "ionq")
+            .expect("IonQ JSON conversion should succeed");
+
+        // The emitted JSON must contain the actual gates, not an empty circuit.
+        assert!(json.contains("\"qubits\":2"), "missing qubit count: {json}");
+        assert!(json.contains("\"gate\":\"h\""), "missing H gate: {json}");
+        assert!(
+            json.contains("\"gate\":\"cnot\""),
+            "missing CNOT gate: {json}"
+        );
+        assert!(
+            json.contains("\"control\":0"),
+            "missing CNOT control: {json}"
+        );
+        assert!(json.contains("\"target\":1"), "missing CNOT target: {json}");
+    }
+
+    #[test]
+    fn test_ionq_unsupported_gate_is_honest_error() {
+        // A gate with no direct IonQ JSON form must error, never silently drop.
+        let mut circuit = Circuit::<3>::new();
+        circuit.toffoli(0, 1, 2).expect("add Toffoli");
+
+        let result = AzureQuantumClient::circuit_to_provider_format(&circuit, "ionq");
+        assert!(
+            matches!(result, Err(DeviceError::CircuitConversion(_))),
+            "expected honest CircuitConversion error, got {result:?}"
+        );
     }
 }

@@ -716,20 +716,27 @@ impl ResourceEstimator {
         })
     }
 
-    /// Calculate circuit depth using topological analysis
+    /// Calculate the exact circuit depth via ASAP (as-soon-as-possible)
+    /// scheduling for the circuit's gate order.
+    ///
+    /// Each gate is placed one level after the maximum depth of the qubits it
+    /// touches, and every touched qubit is advanced to that level. The returned
+    /// value is the critical-path length (longest chain of data-dependent gates)
+    /// for the given gate sequence, which is the standard definition of circuit
+    /// depth. This is exact for the gate order as written; it does not attempt
+    /// commutation-based reordering to shorten the schedule further.
     fn calculate_circuit_depth<const N: usize>(
         &self,
         circuit: &Circuit<N>,
     ) -> QuantRS2Result<usize> {
-        // Simplified depth calculation - would use proper DAG analysis in practice
         let gates = circuit.gates();
         if gates.is_empty() {
             return Ok(0);
         }
 
-        // For now, return a rough estimate based on gate dependencies
-        // In a full implementation, this would use proper topological sorting
-        let mut depth_per_qubit = vec![0; N];
+        // Per-qubit "next free level". A gate on qubits Q starts at
+        // max(depth_per_qubit[q] for q in Q) and advances each q to that + 1.
+        let mut depth_per_qubit = vec![0usize; N];
 
         for gate in gates {
             let qubits = gate.qubits();

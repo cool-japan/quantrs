@@ -825,18 +825,29 @@ impl QuantumCellularAutomaton2D {
         }
     }
 
-    /// Get state vector for neighborhood sites
+    /// Get state vector for neighborhood sites.
+    ///
+    /// Builds the full `2^N` tensor product of the per-site single-qubit states
+    /// over `sites`. The amplitude of basis index `b` is the product over each
+    /// site `k` of `self.state[[x_k, y_k, bit_k(b)]]`, where `bit_k(b)` is the
+    /// bit of `b` for site `k`. The convention matches the sibling
+    /// [`Self::get_pair_state_vector_2d`]: site 0 is the most-significant bit, so
+    /// for `N` sites `bit_k(b) = (b >> (N - 1 - k)) & 1`.
     fn get_neighborhood_state_vector(
         &self,
         sites: &[(usize, usize)],
     ) -> QuantRS2Result<Vec<Complex64>> {
         let num_sites = sites.len();
-        let state_size = 1 << num_sites;
-        let mut state_vector = vec![Complex64::new(0.0, 0.0); state_size];
+        let state_size = 1usize << num_sites;
+        let mut state_vector = vec![Complex64::new(1.0, 0.0); state_size];
 
-        // This is a simplified implementation - full tensor product would be expensive
-        // For now, return a simplified state
-        state_vector[0] = Complex64::new(1.0, 0.0);
+        for (basis_index, amplitude) in state_vector.iter_mut().enumerate() {
+            for (site_index, &(x, y)) in sites.iter().enumerate() {
+                let bit = (basis_index >> (num_sites - 1 - site_index)) & 1;
+                *amplitude *= self.state[[x, y, bit]];
+            }
+        }
+
         Ok(state_vector)
     }
 
@@ -1092,5 +1103,66 @@ mod tests {
         // Should flip to |111⟩
         assert!((output[6] - Complex64::new(0.0, 0.0)).norm() < 1e-10);
         assert!((output[7] - Complex64::new(1.0, 0.0)).norm() < 1e-10);
+    }
+
+    #[test]
+    fn test_get_neighborhood_state_vector_tensor_product() {
+        let rule = Box::new(UnitaryRule::cnot());
+        let mut qca = QuantumCellularAutomaton2D::new(
+            3,
+            3,
+            rule,
+            BoundaryCondition::Periodic,
+            QCAType::Margolus,
+        );
+
+        // Site A at (0,0): |+> = (|0> + |1>)/sqrt(2)
+        let inv_sqrt2 = 1.0 / std::f64::consts::SQRT_2;
+        qca.set_site_state(
+            0,
+            0,
+            [
+                Complex64::new(inv_sqrt2, 0.0),
+                Complex64::new(inv_sqrt2, 0.0),
+            ],
+        )
+        .expect("set site A");
+        // Site B at (1,0): a|0> + b|1> with distinct amplitudes.
+        let a = Complex64::new(0.6, 0.0);
+        let b = Complex64::new(0.8, 0.0);
+        qca.set_site_state(1, 0, [a, b]).expect("set site B");
+
+        let sites = [(0usize, 0usize), (1usize, 0usize)];
+        let sv = qca
+            .get_neighborhood_state_vector(&sites)
+            .expect("neighborhood state vector");
+
+        // Expected tensor product (site 0 = most-significant bit, matching the
+        // sibling get_pair_state_vector_2d convention):
+        //   |00> = A0*B0, |01> = A0*B1, |10> = A1*B0, |11> = A1*B1
+        let a0 = Complex64::new(inv_sqrt2, 0.0);
+        let a1 = Complex64::new(inv_sqrt2, 0.0);
+        let expected = [a0 * a, a0 * b, a1 * a, a1 * b];
+
+        assert_eq!(sv.len(), 4);
+        for (got, exp) in sv.iter().zip(expected.iter()) {
+            assert!((got - exp).norm() < 1e-12, "got {got:?}, expected {exp:?}");
+        }
+
+        // It must genuinely depend on the lattice, i.e. NOT be |0...0>.
+        let zero_state = (sv[0] - Complex64::new(1.0, 0.0)).norm() < 1e-12
+            && sv[1..].iter().all(|c| c.norm() < 1e-12);
+        assert!(
+            !zero_state,
+            "neighborhood state must not be the fabricated |0...0> placeholder"
+        );
+
+        // Cross-check against the dedicated pair helper for the same two sites.
+        let pair = qca
+            .get_pair_state_vector_2d(0, 0, 1, 0)
+            .expect("pair state vector");
+        for (got, exp) in sv.iter().zip(pair.iter()) {
+            assert!((got - exp).norm() < 1e-12);
+        }
     }
 }

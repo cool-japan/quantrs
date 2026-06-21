@@ -128,80 +128,53 @@ pub struct MetalQuantumState {
 }
 
 impl MetalQuantumState {
-    /// Create a new Metal-accelerated quantum state
+    /// Create a new Metal-accelerated quantum state.
+    ///
+    /// Real Metal device initialization (via `oxicuda-metal`) is DEFERRED. This
+    /// returns an honest error rather than fabricating a placeholder device and
+    /// buffers that cannot actually run kernels. When real Metal support is
+    /// wired, construct the device/queue/state buffer here.
     #[cfg(feature = "metal")]
     pub fn new(num_qubits: usize) -> QuantRS2Result<Self> {
-        // This is a placeholder implementation
-        // In the future, this would use SciRS2's Metal device initialization
-
-        // For now, we simulate Metal availability check
-        if !is_metal_available() {
-            return Err(QuantRS2Error::BackendExecutionFailed(
-                "Metal support not available".to_string(),
-            ));
-        }
-
-        // Create placeholder device
-        let device = Arc::new(MetalDevice {
-            device: MetalDeviceHandle {
-                name: "Apple M1 GPU (Placeholder)".to_string(),
-            },
-            command_queue: MetalCommandQueue,
-        });
-
-        // Allocate state vector buffer (placeholder)
-        let state_size = 1 << num_qubits;
-
-        let state_buffer = MetalBuffer {
-            buffer: MetalBufferHandle,
-            length: state_size,
-            _phantom: std::marker::PhantomData,
-        };
-
-        Ok(Self {
-            device,
-            state_buffer,
-            num_qubits,
-        })
+        let _ = num_qubits;
+        Err(QuantRS2Error::UnsupportedOperation(
+            "Metal quantum-state backend is not implemented (DEFERRED): real Metal device \
+             initialization is not wired, refusing to fabricate a placeholder device"
+                .to_string(),
+        ))
     }
 
-    /// Apply a single-qubit gate using Metal
+    /// Apply a single-qubit gate using Metal.
+    ///
+    /// The Metal compute kernel for gate application is DEFERRED (no real
+    /// `oxicuda-metal` dispatch is wired yet). Inputs are validated, then this
+    /// returns an honest error instead of silently returning success without
+    /// transforming the state — a caller must never mistake a no-op for a real
+    /// Metal gate application.
     #[cfg(feature = "metal")]
-    #[allow(clippy::missing_const_for_fn)] // Runtime GPU operations cannot be const
     pub fn apply_single_qubit_gate(
         &mut self,
-        gate_matrix: &[Complex64; 4],
+        _gate_matrix: &[Complex64; 4],
         target: QubitId,
     ) -> QuantRS2Result<()> {
-        // This is a placeholder implementation
-        // In the future, this would dispatch actual Metal compute kernels via SciRS2
-
-        // Validate inputs
         if target.0 >= self.num_qubits as u32 {
             return Err(QuantRS2Error::InvalidQubitId(target.0));
         }
 
-        // Log the operation (placeholder behavior)
-        let _ = gate_matrix; // Suppress unused warning
-
-        // In a real implementation, this would:
-        // 1. Get or compile the Metal kernel via SciRS2
-        // 2. Create command buffer and encoder
-        // 3. Set the state buffer and gate matrix
-        // 4. Dispatch the compute kernel
-        // 5. Wait for completion
-
-        // For now, we just return success
-        Ok(())
+        Err(QuantRS2Error::UnsupportedOperation(
+            "Metal single-qubit gate kernel is not implemented (DEFERRED): no real Metal compute \
+             dispatch is wired, refusing to fabricate a no-op success"
+                .to_string(),
+        ))
     }
 
-    /// Get or compile a Metal kernel
+    /// Get or compile a Metal kernel.
+    ///
+    /// Real Metal kernel compilation is DEFERRED. Rather than return a
+    /// placeholder pipeline that pretends a kernel was compiled, this validates
+    /// the requested function name and then returns an honest error.
     #[cfg(feature = "metal")]
     pub fn get_or_compile_kernel(&self, function_name: &str) -> QuantRS2Result<MetalKernel> {
-        // This is a placeholder implementation
-        // In the future, this would use SciRS2's kernel registry
-
-        // Validate that the requested kernel exists in our shader library
         let valid_kernels = ["apply_single_qubit_gate", "compute_probabilities"];
         if !valid_kernels.contains(&function_name) {
             return Err(QuantRS2Error::BackendExecutionFailed(format!(
@@ -209,11 +182,10 @@ impl MetalQuantumState {
             )));
         }
 
-        // Return a placeholder kernel
-        Ok(MetalKernel {
-            pipeline: MetalComputePipeline,
-            function_name: function_name.to_string(),
-        })
+        Err(QuantRS2Error::UnsupportedOperation(format!(
+            "Metal kernel `{function_name}` cannot be compiled: real Metal shader compilation is \
+             DEFERRED (no placeholder pipeline is returned)"
+        )))
     }
 
     #[cfg(not(feature = "metal"))]
@@ -224,40 +196,24 @@ impl MetalQuantumState {
     }
 }
 
-/// Check if Metal is available on this system
+/// Check whether a real Metal compute backend is available.
+///
+/// This build does not yet wire a real Metal backend (`oxicuda-metal` is not
+/// linked and no device dispatch exists), so this honestly returns `false` on
+/// every platform — it does NOT assume Metal is present just because the `metal`
+/// feature is enabled on macOS. DEFERRED: when real Metal init is wired, probe
+/// the actual device here.
 pub const fn is_metal_available() -> bool {
-    #[cfg(all(target_os = "macos", feature = "metal"))]
-    {
-        // This is a placeholder check
-        // In the future, this would use SciRS2's GPU device detection
-        // For now, we assume Metal is available on macOS
-        true
-    }
-
-    #[cfg(not(all(target_os = "macos", feature = "metal")))]
-    {
-        false
-    }
+    false
 }
 
-/// Get Metal device info
-pub fn get_metal_device_info() -> Option<String> {
-    #[cfg(all(target_os = "macos", feature = "metal"))]
-    {
-        // This is placeholder information
-        // In the future, this would query actual device capabilities via SciRS2
-        Some(
-            "Metal Device: Apple GPU (Placeholder)\n\
-             Max threads per threadgroup: 1024\n\
-             Max buffer length: 256 GB\n\
-             Note: This is placeholder information. Actual device info will be available via SciRS2.".to_string()
-        )
-    }
-
-    #[cfg(not(all(target_os = "macos", feature = "metal")))]
-    {
-        None
-    }
+/// Get real Metal device info.
+///
+/// Returns `None` because no real Metal device is initialized in this build.
+/// Previously this returned fabricated placeholder specs; that fabrication has
+/// been removed. DEFERRED until a real Metal backend is wired.
+pub const fn get_metal_device_info() -> Option<String> {
+    None
 }
 
 #[cfg(test)]

@@ -310,15 +310,70 @@ pub fn trace(matrix: &ArrayView2<f64>) -> Result<f64, String> {
     Ok(trace_val)
 }
 
+/// Real matrix inverse via Gauss-Jordan elimination with partial pivoting
+/// (pure Rust fallback for when the `scirs2` feature is disabled). Returns an
+/// honest error on non-square or singular matrices.
 pub fn inv(matrix: &ArrayView2<f64>) -> Result<Array2<f64>, String> {
     let (rows, cols) = matrix.dim();
     if rows != cols {
         return Err("Matrix must be square for inversion".to_string());
     }
+    let n = rows;
+    if n == 0 {
+        return Ok(Array2::zeros((0, 0)));
+    }
 
-    // Simplified: return identity matrix as fallback
-    // In practice, this would implement proper matrix inversion
-    Ok(Array2::eye(rows))
+    // Working copy of A and the identity that becomes A^-1.
+    let mut a = matrix.to_owned();
+    let mut inverse = Array2::<f64>::eye(n);
+
+    for col in 0..n {
+        // Partial pivot: pick the row with the largest magnitude in this column.
+        let mut pivot_row = col;
+        let mut pivot_val = a[(col, col)].abs();
+        for r in (col + 1)..n {
+            let v = a[(r, col)].abs();
+            if v > pivot_val {
+                pivot_val = v;
+                pivot_row = r;
+            }
+        }
+        if pivot_val <= f64::MIN_POSITIVE {
+            return Err("singular matrix".to_string());
+        }
+        if pivot_row != col {
+            for c in 0..n {
+                a.swap((col, c), (pivot_row, c));
+                inverse.swap((col, c), (pivot_row, c));
+            }
+        }
+
+        // Scale the pivot row so the pivot becomes 1.
+        let pivot = a[(col, col)];
+        for c in 0..n {
+            a[(col, c)] /= pivot;
+            inverse[(col, c)] /= pivot;
+        }
+
+        // Eliminate the pivot column from every other row.
+        for r in 0..n {
+            if r == col {
+                continue;
+            }
+            let factor = a[(r, col)];
+            if factor == 0.0 {
+                continue;
+            }
+            for c in 0..n {
+                let a_val = a[(col, c)];
+                let inv_val = inverse[(col, c)];
+                a[(r, c)] -= factor * a_val;
+                inverse[(r, c)] -= factor * inv_val;
+            }
+        }
+    }
+
+    Ok(inverse)
 }
 
 // Helper function for normal CDF approximation
@@ -387,5 +442,53 @@ mod tests {
         // Should find minimum near x = 2.0
         assert!((result.x[0] - 2.0).abs() < 0.5);
         assert!(result.success);
+    }
+
+    #[test]
+    fn test_inv_identity_property() {
+        use scirs2_core::ndarray::array;
+        let a = array![[4.0, 7.0], [2.0, 6.0]];
+        let a_inv = inv(&a.view()).expect("inverse should succeed");
+        for r in 0..2 {
+            for c in 0..2 {
+                let mut acc = 0.0;
+                for k in 0..2 {
+                    acc += a[(r, k)] * a_inv[(k, c)];
+                }
+                let expected = if r == c { 1.0 } else { 0.0 };
+                assert!((acc - expected).abs() < 1e-6, "[{r},{c}]={acc}");
+            }
+        }
+    }
+
+    #[test]
+    fn test_inv_3x3_identity_property() {
+        use scirs2_core::ndarray::array;
+        let a = array![[2.0, 1.0, 1.0], [1.0, 3.0, 2.0], [1.0, 0.0, 0.0]];
+        let a_inv = inv(&a.view()).expect("inverse should succeed");
+        for r in 0..3 {
+            for c in 0..3 {
+                let mut acc = 0.0;
+                for k in 0..3 {
+                    acc += a[(r, k)] * a_inv[(k, c)];
+                }
+                let expected = if r == c { 1.0 } else { 0.0 };
+                assert!((acc - expected).abs() < 1e-6, "[{r},{c}]={acc}");
+            }
+        }
+    }
+
+    #[test]
+    fn test_inv_singular_errors() {
+        use scirs2_core::ndarray::array;
+        let a = array![[1.0, 2.0], [2.0, 4.0]];
+        assert!(inv(&a.view()).is_err());
+    }
+
+    #[test]
+    fn test_inv_non_square_errors() {
+        use scirs2_core::ndarray::array;
+        let a = array![[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]];
+        assert!(inv(&a.view()).is_err());
     }
 }

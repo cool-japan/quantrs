@@ -36,39 +36,194 @@ impl Default for OptimizationConfig {
     }
 }
 
-// Simple gradient-free optimization fallback
+/// Gradient-free coordinate-descent minimiser.
+///
+/// Performs real optimisation: at each iteration it tries a positive and a
+/// negative step along every coordinate, accepting any move that lowers the
+/// objective, and shrinks the step size when a full sweep makes no progress.
+/// It terminates on `max_iterations`, when the step size underflows `tolerance`,
+/// or when an entire sweep yields no improvement. This genuinely reduces the
+/// cost rather than echoing the initial parameters.
 pub fn minimize<F>(
     objective: F,
     initial_params: &Array1<f64>,
-    _config: &OptimizationConfig,
+    config: &OptimizationConfig,
 ) -> Result<OptimizationResult, String>
 where
     F: Fn(&Array1<f64>) -> Result<f64, String>,
 {
-    // Simple fallback optimization
-    let cost = objective(initial_params)?;
+    let mut params = initial_params.clone();
+    let mut best_cost = objective(&params)?;
+    let n = params.len();
+
+    // Initial step size; falls back to a sensible default for empty/degenerate
+    // problems.
+    let mut step = 0.1_f64.max(config.tolerance * 10.0);
+    let mut iterations = 0usize;
+
+    while iterations < config.max_iterations {
+        iterations += 1;
+        let mut improved = false;
+
+        for i in 0..n {
+            // Try +step then -step along coordinate i.
+            for &direction in &[step, -step] {
+                let original = params[i];
+                params[i] = original + direction;
+                match objective(&params) {
+                    Ok(trial_cost) if trial_cost < best_cost => {
+                        best_cost = trial_cost;
+                        improved = true;
+                    }
+                    _ => {
+                        // Revert if no improvement (or evaluation failed).
+                        params[i] = original;
+                    }
+                }
+            }
+        }
+
+        if !improved {
+            // No coordinate move helped: refine the search by halving the step.
+            step *= 0.5;
+            if step < config.tolerance {
+                break;
+            }
+        }
+    }
+
     Ok(OptimizationResult {
-        parameters: initial_params.clone(),
-        cost,
-        iterations: 1,
+        parameters: params,
+        cost: best_cost,
+        iterations,
     })
 }
 // use std::collections::HashMap;
 use std::f64::consts::PI;
 
-/// Simple SVD decomposition function using eigenvalue decomposition fallback
+/// Compute the singular value decomposition `M = U Σ Vᴴ` of a complex matrix.
+///
+/// Returns `(U, S, Vt)` where `U` (`nrows × min_dim`) holds the left singular
+/// vectors as columns, `S` (`min_dim`) holds the singular values in descending
+/// order, and `Vt` (`min_dim × ncols`) holds the conjugate-transposed right
+/// singular vectors (i.e. `Vᴴ`).
+///
+/// The decomposition is obtained from the Hermitian eigendecomposition of the
+/// Gram matrix `G = Mᴴ M`: its eigenvectors are the right singular vectors `V`,
+/// its eigenvalues are `σ²`, and the left singular vectors follow from
+/// `u_k = M v_k / σ_k`. This is a genuine, exact SVD for complex inputs and uses
+/// the in-tree [`crate::eigensolve::eigen_decompose_unitary`] (which handles
+/// general — including Hermitian — matrices) rather than fabricating identities.
 fn decompose_svd(
     matrix: &Array2<Complex64>,
 ) -> Result<(Array2<Complex64>, Array1<f64>, Array2<Complex64>), QuantRS2Error> {
     let (nrows, ncols) = matrix.dim();
     let min_dim = nrows.min(ncols);
 
-    // For a simplified implementation, return identity matrices of appropriate dimensions
-    let u = Array2::eye(nrows);
-    let s = Array1::ones(min_dim);
-    let vt = Array2::eye(ncols);
+    if nrows == 0 || ncols == 0 {
+        return Ok((
+            Array2::zeros((nrows, min_dim)),
+            Array1::zeros(min_dim),
+            Array2::zeros((min_dim, ncols)),
+        ));
+    }
 
-    Ok((u, s, vt))
+    // Gram matrix G = Mᴴ M  (ncols × ncols, Hermitian positive semidefinite).
+    let m_dag = matrix.t().mapv(|z| z.conj());
+    let gram = m_dag.dot(matrix);
+
+    // Eigendecomposition of the Hermitian Gram matrix. Eigenvalues are σ² (real,
+    // non-negative up to numerical error); eigenvectors are the right singular
+    // vectors V (as columns).
+    let eig = crate::eigensolve::eigen_decompose_unitary(&gram, 1e-12)?;
+
+    // Collect (eigenvalue, column-index) and sort by singular value descending.
+    let mut order: Vec<usize> = (0..eig.eigenvalues.len()).collect();
+    order.sort_by(|&i, &j| {
+        let si = eig.eigenvalues[j].re.max(0.0).sqrt();
+        let sj = eig.eigenvalues[i].re.max(0.0).sqrt();
+        si.total_cmp(&sj)
+    });
+
+    let mut singular_values = Array1::<f64>::zeros(min_dim);
+    let mut v_right = Array2::<Complex64>::zeros((ncols, min_dim));
+    let mut u_left = Array2::<Complex64>::zeros((nrows, min_dim));
+
+    for (out_idx, &col) in order.iter().take(min_dim).enumerate() {
+        let sigma = eig.eigenvalues[col].re.max(0.0).sqrt();
+        singular_values[out_idx] = sigma;
+
+        // Right singular vector v_k = eigenvector column `col`.
+        let v_k = eig.eigenvectors.column(col).to_owned();
+        for r in 0..ncols {
+            v_right[[r, out_idx]] = v_k[r];
+        }
+
+        // Left singular vector u_k = M v_k / σ_k (only well-defined for σ_k > 0).
+        if sigma > 1e-12 {
+            let mv = matrix.dot(&v_k);
+            for r in 0..nrows {
+                u_left[[r, out_idx]] = mv[r] / Complex64::new(sigma, 0.0);
+            }
+        }
+    }
+
+    // Fill any null-space columns of U with an orthonormal completion so that the
+    // returned U has orthonormal columns even when M is rank-deficient.
+    complete_orthonormal_columns(&mut u_left, &singular_values);
+
+    // Vt = Vᴴ  (min_dim × ncols).
+    let vt = v_right.t().mapv(|z| z.conj());
+
+    Ok((u_left, singular_values, vt))
+}
+
+/// Fill columns of `u` that correspond to zero singular values with vectors that
+/// are orthonormal to the already-populated columns (a Gram–Schmidt completion).
+fn complete_orthonormal_columns(u: &mut Array2<Complex64>, singular_values: &Array1<f64>) {
+    let nrows = u.nrows();
+    let ncols = u.ncols();
+    let mut next_basis = 0usize;
+
+    for col in 0..ncols {
+        if singular_values[col] > 1e-12 {
+            continue;
+        }
+        // Find a standard basis vector not yet in the span and orthonormalise it.
+        while next_basis < nrows {
+            let mut candidate = Array1::<Complex64>::zeros(nrows);
+            candidate[next_basis] = Complex64::new(1.0, 0.0);
+            next_basis += 1;
+
+            // Gram–Schmidt against existing columns.
+            for prev in 0..ncols {
+                if prev == col {
+                    continue;
+                }
+                let prev_col = u.column(prev).to_owned();
+                let norm_sq: f64 = prev_col.iter().map(|z| z.norm_sqr()).sum();
+                if norm_sq < 1e-24 {
+                    continue;
+                }
+                let proj: Complex64 = prev_col
+                    .iter()
+                    .zip(candidate.iter())
+                    .map(|(p, c)| p.conj() * c)
+                    .sum();
+                for r in 0..nrows {
+                    candidate[r] -= proj * prev_col[r];
+                }
+            }
+
+            let norm: f64 = candidate.iter().map(|z| z.norm_sqr()).sum::<f64>().sqrt();
+            if norm > 1e-10 {
+                for r in 0..nrows {
+                    u[[r, col]] = candidate[r] / Complex64::new(norm, 0.0);
+                }
+                break;
+            }
+        }
+    }
 }
 
 /// Quantum natural gradient implementations
@@ -1046,6 +1201,112 @@ mod tests {
 
         let expectation = layer.expectation_value(&observable, &state);
         assert!(expectation.is_ok());
+    }
+
+    #[test]
+    fn test_decompose_svd_reconstructs_matrix() {
+        // A known 2x2 real matrix [[3,0],[4,5]] embedded in Complex64.
+        // Its singular values are sqrt of eigenvalues of MᵀM = [[25,20],[20,25]],
+        // i.e. eigenvalues 45 and 5 -> singular values sqrt(45) and sqrt(5).
+        let m = array![
+            [Complex64::new(3.0, 0.0), Complex64::new(0.0, 0.0)],
+            [Complex64::new(4.0, 0.0), Complex64::new(5.0, 0.0)]
+        ];
+
+        let (u, s, vt) = decompose_svd(&m).expect("SVD should succeed");
+
+        // Singular values in descending order: sqrt(45), sqrt(5).
+        assert_eq!(s.len(), 2);
+        assert!(
+            (s[0] - 45.0_f64.sqrt()).abs() < 1e-9,
+            "largest singular value: got {}",
+            s[0]
+        );
+        assert!(
+            (s[1] - 5.0_f64.sqrt()).abs() < 1e-9,
+            "smallest singular value: got {}",
+            s[1]
+        );
+        assert!(s[0] >= s[1], "singular values must be descending");
+
+        // Reconstruct M = U diag(S) Vt and compare element-wise.
+        let mut sigma = Array2::<Complex64>::zeros((s.len(), s.len()));
+        for (i, &sv) in s.iter().enumerate() {
+            sigma[[i, i]] = Complex64::new(sv, 0.0);
+        }
+        let reconstructed = u.dot(&sigma).dot(&vt);
+        for ((r, c), expected) in m.indexed_iter() {
+            let got = reconstructed[[r, c]];
+            assert!(
+                (got - expected).norm() < 1e-9,
+                "reconstruction[{r},{c}] = {got:?}, expected {expected:?}"
+            );
+        }
+
+        // U must NOT be the identity for this non-diagonal matrix (guards against
+        // the previous fabrication that returned eye()).
+        let identity = Array2::<Complex64>::eye(2);
+        let diff_from_identity: f64 = u
+            .iter()
+            .zip(identity.iter())
+            .map(|(a, b)| (a - b).norm_sqr())
+            .sum();
+        assert!(
+            diff_from_identity > 1e-6,
+            "U must not be the identity for a non-diagonal input"
+        );
+
+        // U should have orthonormal columns: UᴴU = I.
+        let u_dag = u.t().mapv(|z| z.conj());
+        let utu = u_dag.dot(&u);
+        for i in 0..2 {
+            for j in 0..2 {
+                let expected = if i == j { 1.0 } else { 0.0 };
+                assert!(
+                    (utu[[i, j]].re - expected).abs() < 1e-9 && utu[[i, j]].im.abs() < 1e-9,
+                    "UᴴU not identity at [{i},{j}]: {:?}",
+                    utu[[i, j]]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_minimize_actually_reduces_cost() {
+        // A real optimiser must lower a quadratic bowl, not echo the input.
+        let objective =
+            |p: &Array1<f64>| -> Result<f64, String> { Ok(p.iter().map(|x| x * x).sum::<f64>()) };
+        let initial = array![1.5, -2.0, 0.75];
+        let initial_cost = objective(&initial).expect("eval");
+        let config = OptimizationConfig::default();
+
+        let result = minimize(objective, &initial, &config).expect("minimize");
+
+        assert!(
+            result.cost < initial_cost,
+            "optimiser must reduce cost: {} !< {}",
+            result.cost,
+            initial_cost
+        );
+        // It should approach the true minimum (origin) reasonably well.
+        assert!(
+            result.cost < 1e-2,
+            "optimiser should converge near the minimum, got cost {}",
+            result.cost
+        );
+        // It must have done more than a single no-op iteration.
+        assert!(result.iterations > 1, "optimiser must actually iterate");
+        // The returned parameters must differ from the initial ones.
+        let moved: f64 = result
+            .parameters
+            .iter()
+            .zip(initial.iter())
+            .map(|(a, b)| (a - b).abs())
+            .sum();
+        assert!(
+            moved > 1e-6,
+            "parameters must move away from the initial guess"
+        );
     }
 
     #[test]
