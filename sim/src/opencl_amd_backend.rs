@@ -609,8 +609,9 @@ mod tests {
         let config = OpenCLConfig::default();
         let result = AMDOpenCLSimulator::new(config);
         assert!(result.is_err());
-        match result {
-            Err(SimulatorError::UnsupportedOperation(msg)) => {
+        // Match on `.err()` so the `Ok` simulator value need not be `Debug`.
+        match result.err() {
+            Some(SimulatorError::UnsupportedOperation(msg)) => {
                 assert!(msg.contains("OpenCL"));
             }
             other => panic!("expected UnsupportedOperation, got {other:?}"),

@@ -393,9 +393,13 @@ impl<S: Sampler> GpuBenchmark<S> {
     fn get_device_info(&self) -> String {
         #[cfg(feature = "scirs")]
         {
-            if let Ok(ctx) = GpuContext::new(0) {
-                // TODO: Implement get_device_info in GPU stub
-                return format!("GPU: {} MB, {} compute units @ {} MHz", 8192, 64, 1500);
+            // The `scirs` stub backend exposes a GpuContext but no physical device,
+            // so honestly report that detailed specs are unavailable rather than
+            // fabricating them (the previous code returned hardcoded 8192 MB / 64
+            // CU / 1500 MHz). A real backend would query genuine device specs here.
+            if GpuContext::new(0).is_ok() {
+                return "GPU device info unavailable (scirs stub backend has no physical device)"
+                    .to_string();
             }
         }
 

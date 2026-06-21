@@ -5,12 +5,16 @@ use std::env;
 
 /// Detect comprehensive platform capabilities
 pub fn detect_platform_capabilities() -> PlatformCapabilities {
-    // Try to use SciRS2's platform detection if available
-    // TODO: Use SciRS2's platform detection when available
+    // Consult SciRS2's platform detector. It exposes the acceleration-backend
+    // view (GPU/CUDA/OpenCL/Metal flags) reflecting how the SciRS2 stack was
+    // built, plus a compile-time SIMD summary (AVX2/AVX512/NEON). We fold those
+    // SIMD signals into our own *runtime* probing below as a build-time fallback —
+    // runtime `is_x86_feature_detected!` is strictly more precise, so it wins when
+    // both are available.
+    let scirs2_caps = scirs2_core::simd_ops::PlatformCapabilities::detect();
 
-    // Fallback to our own detection
     PlatformCapabilities {
-        cpu: detect_cpu_capabilities(),
+        cpu: detect_cpu_capabilities(&scirs2_caps),
         gpu: detect_gpu_capabilities(),
         memory: detect_memory_capabilities(),
         platform_type: detect_platform_type(),
@@ -20,14 +24,16 @@ pub fn detect_platform_capabilities() -> PlatformCapabilities {
 }
 
 /// Detect CPU capabilities
-fn detect_cpu_capabilities() -> CpuCapabilities {
+fn detect_cpu_capabilities(
+    scirs2_caps: &scirs2_core::simd_ops::PlatformCapabilities,
+) -> CpuCapabilities {
     let logical_cores = num_cpus::get();
     let physical_cores = num_cpus::get_physical();
 
     CpuCapabilities {
         physical_cores,
         logical_cores,
-        simd: detect_simd_capabilities(),
+        simd: detect_simd_capabilities(scirs2_caps),
         cache: detect_cache_info(),
         base_clock_mhz: detect_cpu_frequency(),
         vendor: detect_cpu_vendor(),
@@ -46,11 +52,16 @@ fn detect_cpu_frequency() -> Option<f32> {
     sys.cpus().first().map(|cpu| cpu.frequency() as f32)
 }
 
-/// Detect SIMD capabilities
-fn detect_simd_capabilities() -> SimdCapabilities {
-    // Try to use SciRS2's SIMD detection if available
-    // TODO: Use SciRS2's SIMD capability detection when available
-
+/// Detect SIMD capabilities.
+///
+/// CPU feature flags are probed at *runtime* via `is_x86_feature_detected!`
+/// (x86_64) / target-feature cfgs (aarch64), which reflects the actual host the
+/// binary is executing on. SciRS2's compile-time SIMD summary (`scirs2_caps`) is
+/// OR-ed in as a fallback so features baked in at build time are never lost on
+/// targets where runtime probing is unavailable.
+fn detect_simd_capabilities(
+    scirs2_caps: &scirs2_core::simd_ops::PlatformCapabilities,
+) -> SimdCapabilities {
     #[cfg(target_arch = "x86_64")]
     {
         SimdCapabilities {
@@ -61,8 +72,10 @@ fn detect_simd_capabilities() -> SimdCapabilities {
             sse4_1: is_x86_feature_detected!("sse4.1"),
             sse4_2: is_x86_feature_detected!("sse4.2"),
             avx: is_x86_feature_detected!("avx"),
-            avx2: is_x86_feature_detected!("avx2"),
-            avx512: cfg!(target_feature = "avx512f"),
+            avx2: is_x86_feature_detected!("avx2") || scirs2_caps.avx2_available,
+            // Runtime AVX-512 probing (more precise than the previous compile-time
+            // `cfg!(target_feature)`), reconciled with SciRS2's build-time view.
+            avx512: is_x86_feature_detected!("avx512f") || scirs2_caps.avx512_available,
             fma: is_x86_feature_detected!("fma"),
             neon: false,
             sve: false,
@@ -82,13 +95,15 @@ fn detect_simd_capabilities() -> SimdCapabilities {
             avx2: false,
             avx512: false,
             fma: false,
-            neon: cfg!(target_feature = "neon"),
+            neon: cfg!(target_feature = "neon") || scirs2_caps.neon_available,
             sve: cfg!(target_feature = "sve"),
         }
     }
 
     #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
     {
+        // Unknown architecture: no runtime probing available, so fall back
+        // entirely to SciRS2's compile-time SIMD summary.
         SimdCapabilities {
             sse: false,
             sse2: false,
@@ -97,10 +112,10 @@ fn detect_simd_capabilities() -> SimdCapabilities {
             sse4_1: false,
             sse4_2: false,
             avx: false,
-            avx2: false,
-            avx512: false,
+            avx2: scirs2_caps.avx2_available,
+            avx512: scirs2_caps.avx512_available,
             fma: false,
-            neon: false,
+            neon: scirs2_caps.neon_available,
             sve: false,
         }
     }

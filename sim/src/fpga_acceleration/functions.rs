@@ -117,6 +117,7 @@ pub fn benchmark_fpga_acceleration() -> Result<HashMap<String, f64>> {
 }
 #[cfg(test)]
 mod tests {
+    use super::super::types::FPGAStats;
     use super::*;
     use approx::assert_abs_diff_eq;
 

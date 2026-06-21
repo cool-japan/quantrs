@@ -352,38 +352,114 @@ impl BatchGateOp for PauliX {
     }
 }
 
-/// Apply multiple gates to a batch using SciRS2 batch operations
+/// Returns `true` for single-qubit gates whose matrix is *constant*
+/// (non-parameterized). For these, [`GateOp::name`] uniquely determines the
+/// matrix, so it is safe to compile the matrix once and reuse it across every
+/// occurrence in a batch sequence.
+fn is_fixed_single_qubit_gate(name: &str) -> bool {
+    matches!(
+        name,
+        "H" | "X" | "Y" | "Z" | "S" | "T" | "S†" | "T†" | "I" | "√X" | "√X†"
+    )
+}
+
+/// Returns `true` for two-qubit gates whose matrix is constant
+/// (non-parameterized) — CNOT chains, CZ/SWAP layers, etc.
+fn is_fixed_two_qubit_gate(name: &str) -> bool {
+    matches!(
+        name,
+        "CNOT" | "CZ" | "CY" | "CH" | "CS" | "CSX" | "SWAP" | "iSWAP" | "DCX" | "ECR"
+    )
+}
+
+/// Compile a single-qubit gate's 2×2 matrix into a flat `[Complex64; 4]`.
+fn compile_single_qubit_matrix(gate: &dyn GateOp) -> QuantRS2Result<[Complex64; 4]> {
+    let matrix = gate.matrix()?;
+    if matrix.len() < 4 {
+        return Err(QuantRS2Error::InvalidInput(format!(
+            "gate '{}' produced a {}-element matrix; expected >= 4 for a single-qubit gate",
+            gate.name(),
+            matrix.len()
+        )));
+    }
+    let mut gate_array = [Complex64::new(0.0, 0.0); 4];
+    gate_array.copy_from_slice(&matrix[..4]);
+    Ok(gate_array)
+}
+
+/// Compile a two-qubit gate's 4×4 matrix into a flat `[Complex64; 16]`.
+fn compile_two_qubit_matrix(gate: &dyn GateOp) -> QuantRS2Result<[Complex64; 16]> {
+    let matrix = gate.matrix()?;
+    if matrix.len() < 16 {
+        return Err(QuantRS2Error::InvalidInput(format!(
+            "gate '{}' produced a {}-element matrix; expected >= 16 for a two-qubit gate",
+            gate.name(),
+            matrix.len()
+        )));
+    }
+    let mut gate_array = [Complex64::new(0.0, 0.0); 16];
+    gate_array.copy_from_slice(&matrix[..16]);
+    Ok(gate_array)
+}
+
+/// Apply multiple gates to a batch using SciRS2 batch operations.
+///
+/// Common fixed (non-parameterized) gates — Hadamard, Paulis, S/T, CNOT, CZ,
+/// SWAP, … — are *detected by name* (see [`is_fixed_single_qubit_gate`] /
+/// [`is_fixed_two_qubit_gate`]) and their compiled matrices are cached for the
+/// duration of the sequence. Repeated-gate patterns such as CNOT chains or
+/// Hadamard layers therefore compile their matrix exactly once instead of on
+/// every occurrence. Parameterized gates (RX/RY/RZ/U/…) are recompiled per call,
+/// because two instances sharing a name may carry different angles.
 pub fn apply_gate_sequence_batch(
     batch: &mut BatchStateVector,
     gates: &[(Box<dyn GateOp>, Vec<QubitId>)],
 ) -> QuantRS2Result<()> {
-    // For gates that support batch operations, use them
-    // Otherwise fall back to standard application
+    use std::collections::HashMap;
+
+    // Per-sequence caches of compiled matrices, keyed by the (constant) gate name.
+    let mut single_cache: HashMap<&'static str, [Complex64; 4]> = HashMap::new();
+    let mut two_cache: HashMap<&'static str, [Complex64; 16]> = HashMap::new();
 
     for (gate, qubits) in gates {
-        // For now, always use standard application
-        // TODO: Add batch-optimized gate detection
-        {
-            // Fall back to standard application
-            let matrix = gate.matrix()?;
-
-            match qubits.len() {
-                1 => {
-                    let mut gate_array = [Complex64::new(0.0, 0.0); 4];
-                    gate_array.copy_from_slice(&matrix[..4]);
-                    apply_single_qubit_gate_batch(batch, &gate_array, qubits[0])?;
-                }
-                2 => {
-                    let mut gate_array = [Complex64::new(0.0, 0.0); 16];
-                    gate_array.copy_from_slice(&matrix[..16]);
-                    apply_two_qubit_gate_batch(batch, &gate_array, qubits[0], qubits[1])?;
-                }
-                _ => {
-                    return Err(QuantRS2Error::InvalidInput(
-                        "Batch operations for gates with more than 2 qubits not yet supported"
-                            .to_string(),
-                    ));
-                }
+        match qubits.len() {
+            1 => {
+                let name = gate.name();
+                let gate_array = if is_fixed_single_qubit_gate(name) {
+                    match single_cache.get(name) {
+                        Some(arr) => *arr,
+                        None => {
+                            let arr = compile_single_qubit_matrix(gate.as_ref())?;
+                            single_cache.insert(name, arr);
+                            arr
+                        }
+                    }
+                } else {
+                    compile_single_qubit_matrix(gate.as_ref())?
+                };
+                apply_single_qubit_gate_batch(batch, &gate_array, qubits[0])?;
+            }
+            2 => {
+                let name = gate.name();
+                let gate_array = if is_fixed_two_qubit_gate(name) {
+                    match two_cache.get(name) {
+                        Some(arr) => *arr,
+                        None => {
+                            let arr = compile_two_qubit_matrix(gate.as_ref())?;
+                            two_cache.insert(name, arr);
+                            arr
+                        }
+                    }
+                } else {
+                    compile_two_qubit_matrix(gate.as_ref())?
+                };
+                apply_two_qubit_gate_batch(batch, &gate_array, qubits[0], qubits[1])?;
+            }
+            _ => {
+                return Err(QuantRS2Error::InvalidInput(
+                    "Batch operations for gates with more than 2 qubits not yet supported"
+                        .to_string(),
+                ));
             }
         }
     }
@@ -548,6 +624,83 @@ mod tests {
         // All states are |0>, so expectation of Z should be 1
         for exp in expectations {
             assert!((exp - 1.0).abs() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn test_apply_gate_sequence_batch_matches_manual() {
+        use crate::gate::multi::CNOT;
+
+        let make_batch = || {
+            BatchStateVector::new(4, 3, Default::default())
+                .expect("Failed to create batch state vector for sequence test")
+        };
+        let mut seq_batch = make_batch();
+        let mut ref_batch = make_batch();
+
+        // Exercises every dispatch path: a fixed single-qubit gate repeated
+        // (H — cache hit), a fixed two-qubit gate repeated (CNOT chain — cache
+        // hit on "CNOT"), and a parameterized gate (RotationZ — recompiled).
+        let gates: Vec<(Box<dyn GateOp>, Vec<QubitId>)> = vec![
+            (Box::new(Hadamard { target: QubitId(0) }), vec![QubitId(0)]),
+            (
+                Box::new(CNOT {
+                    control: QubitId(0),
+                    target: QubitId(1),
+                }),
+                vec![QubitId(0), QubitId(1)],
+            ),
+            (
+                Box::new(CNOT {
+                    control: QubitId(1),
+                    target: QubitId(2),
+                }),
+                vec![QubitId(1), QubitId(2)],
+            ),
+            (
+                Box::new(RotationZ {
+                    target: QubitId(2),
+                    theta: 0.7,
+                }),
+                vec![QubitId(2)],
+            ),
+            (Box::new(Hadamard { target: QubitId(0) }), vec![QubitId(0)]),
+        ];
+
+        // Path 1: optimized sequence application (name-detection + caching).
+        apply_gate_sequence_batch(&mut seq_batch, &gates)
+            .expect("optimized sequence application failed");
+
+        // Path 2: naive per-gate application via the low-level kernels.
+        for (gate, qubits) in &gates {
+            match qubits.len() {
+                1 => {
+                    let arr = compile_single_qubit_matrix(gate.as_ref())
+                        .expect("single-qubit matrix compile failed");
+                    apply_single_qubit_gate_batch(&mut ref_batch, &arr, qubits[0])
+                        .expect("single-qubit apply failed");
+                }
+                2 => {
+                    let arr = compile_two_qubit_matrix(gate.as_ref())
+                        .expect("two-qubit matrix compile failed");
+                    apply_two_qubit_gate_batch(&mut ref_batch, &arr, qubits[0], qubits[1])
+                        .expect("two-qubit apply failed");
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        // The two paths must agree exactly.
+        for i in 0..seq_batch.batch_size() {
+            let a = seq_batch.get_state(i).expect("seq batch state");
+            let b = ref_batch.get_state(i).expect("ref batch state");
+            assert_eq!(a.len(), b.len());
+            for (x, y) in a.iter().zip(b.iter()) {
+                assert!(
+                    (x - y).norm() < 1e-12,
+                    "optimized dispatch diverged from manual application at state {i}"
+                );
+            }
         }
     }
 }

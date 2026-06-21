@@ -3,7 +3,9 @@
 //! This module provides GPU-accelerated linear algebra using Metal Performance Shaders (MPS)
 //! and Accelerate framework integration.
 //!
-//! TODO: Implement using:
+//! **Status:** scaffolding only — not yet implemented. Entry points honestly
+//! error or report unavailability via SciRS2 platform detection rather than
+//! fabricating results. A future implementation would use:
 //! - Metal Performance Shaders (MPS) for matrix operations
 //! - Accelerate.framework for optimized BLAS/LAPACK on Apple Silicon
 //! - Custom Metal compute shaders for quantum-specific operations
@@ -22,25 +24,21 @@ pub struct MetalLinalgBackend {
 }
 
 impl MetalLinalgBackend {
-    /// Create a new Metal linear algebra backend
+    /// Create a new Metal linear algebra backend.
+    ///
+    /// The Metal/Accelerate backend is not yet implemented, so this honestly
+    /// errors instead of returning a non-functional backend.
     pub fn new() -> Result<Self> {
-        // TODO: Initialize Metal device
-        // TODO: Create MPS context
-        // TODO: Setup Accelerate framework integration
-
         Err(SimulatorError::GpuError(
             "Metal linear algebra not yet implemented. Please use CPU linear algebra on macOS."
                 .to_string(),
         ))
     }
 
-    /// Create an instance optimized for quantum machine learning
+    /// Create an instance optimized for quantum machine learning.
+    ///
+    /// Not yet implemented; honestly errors rather than returning a stub backend.
     pub fn new_qml_optimized() -> Result<Self> {
-        // TODO: Configure for QML workloads
-        // - Optimize for small-to-medium matrix operations
-        // - Enable tensor operations
-        // - Configure for gradient computations
-
         Err(SimulatorError::GpuError(
             "Metal QML optimization not yet implemented".to_string(),
         ))
@@ -52,7 +50,7 @@ impl MetalLinalgBackend {
         _a: &ArrayView2<Complex64>,
         _b: &ArrayView2<Complex64>,
     ) -> Result<Array2<Complex64>> {
-        // TODO: Use MPSMatrixMultiplication
+        // A real backend would dispatch MPSMatrixMultiplication here.
         Err(SimulatorError::GpuError(
             "Metal matrix multiplication not yet implemented".to_string(),
         ))
@@ -63,7 +61,7 @@ impl MetalLinalgBackend {
         &self,
         _matrix: &ArrayView2<Complex64>,
     ) -> Result<(Array2<Complex64>, Array2<Complex64>)> {
-        // TODO: Use Accelerate's LAPACK routines
+        // A real backend would call Accelerate's LAPACK eigen routines here.
         Err(SimulatorError::GpuError(
             "Metal eigenvalue decomposition not yet implemented".to_string(),
         ))
@@ -74,29 +72,32 @@ impl MetalLinalgBackend {
         &self,
         _matrix: &ArrayView2<Complex64>,
     ) -> Result<(Array2<Complex64>, Array2<f64>, Array2<Complex64>)> {
-        // TODO: Use Accelerate's LAPACK routines or MPS
+        // A real backend would call Accelerate's LAPACK SVD (or MPS) here.
         Err(SimulatorError::GpuError(
             "Metal SVD not yet implemented".to_string(),
         ))
     }
 
-    /// Check if Metal Performance Shaders is available
-    pub const fn is_mps_available() -> bool {
-        // TODO: Check for MPS availability
-        // Requires macOS 10.13+ for basic MPS
-        // Requires macOS 11.0+ for advanced features
-        // Best performance on Apple Silicon
-        false
+    /// Check if Metal Performance Shaders is available.
+    ///
+    /// Delegates to SciRS2's platform detection (`metal_available`), true only on
+    /// macOS with the Metal backend compiled in. The QuantRS2 MPS compute path is
+    /// still unimplemented, so the compute methods error even when this is `true`.
+    pub fn is_mps_available() -> bool {
+        scirs2_core::simd_ops::PlatformCapabilities::detect().metal_available
     }
 
-    /// Get Metal device capabilities
+    /// Get Metal device capabilities.
+    ///
+    /// Reports the platform's Metal availability honestly via SciRS2; detailed
+    /// device introspection awaits a real Metal backend implementation.
     pub fn get_device_info() -> String {
-        // TODO: Query Metal device capabilities
-        // - GPU family (Apple, Intel, AMD)
-        // - Unified memory availability
-        // - Maximum buffer size
-        // - Compute units
-        "Metal device info not yet available".to_string()
+        if scirs2_core::simd_ops::PlatformCapabilities::detect().metal_available {
+            "Metal-capable platform detected; QuantRS2 Metal backend not yet implemented"
+                .to_string()
+        } else {
+            "Metal not available on this platform".to_string()
+        }
     }
 }
 

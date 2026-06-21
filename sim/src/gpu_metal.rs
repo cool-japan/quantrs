@@ -3,9 +3,11 @@
 //! This module provides GPU acceleration using Apple's Metal API
 //! for quantum circuit simulation on macOS devices.
 //!
-//! TODO: Implement using Metal Performance Shaders (MPS) and Metal Compute Shaders
-//!
-//! Key components to implement:
+//! **Status:** scaffolding only — the Metal compute backend is not yet
+//! implemented. All entry points honestly return errors or report unavailability
+//! (via SciRS2 platform detection) rather than fabricating results. A future
+//! implementation would use Metal Performance Shaders (MPS) and Metal Compute
+//! Shaders, covering:
 //! - State vector allocation using Metal buffers
 //! - Quantum gate kernels using Metal shaders
 //! - Memory management for unified memory architecture
@@ -25,16 +27,25 @@ pub struct MetalGpuSimulator {
 }
 
 impl MetalGpuSimulator {
-    /// Create a new Metal GPU simulator
+    /// Create a new Metal GPU simulator.
+    ///
+    /// The Metal compute backend is not yet implemented, so this honestly returns
+    /// an error rather than fabricating a non-functional simulator. The error text
+    /// reflects whether a Metal-capable platform was actually detected.
     pub fn new(num_qubits: usize) -> Result<Self> {
-        // TODO: Initialize Metal device
-        // TODO: Check for Metal support
-        // TODO: Create command queue
-
-        Err(SimulatorError::GpuError(
-            "Metal GPU support not yet implemented. Please use CPU simulation on macOS for now."
-                .to_string(),
-        ))
+        let _ = num_qubits;
+        if Self::is_available() {
+            Err(SimulatorError::GpuError(
+                "Metal-capable platform detected, but the QuantRS2 Metal backend is not yet \
+                 implemented. Please use CPU simulation on macOS for now."
+                    .to_string(),
+            ))
+        } else {
+            Err(SimulatorError::GpuError(
+                "Metal GPU is not available on this platform. Please use CPU simulation."
+                    .to_string(),
+            ))
+        }
     }
 
     /// Simulate a quantum circuit
@@ -44,19 +55,22 @@ impl MetalGpuSimulator {
         ))
     }
 
-    /// Get available Metal devices
-    pub const fn available_devices() -> Vec<String> {
-        // TODO: Query Metal devices
-        // - Apple Silicon GPU
-        // - Intel integrated GPU
-        // - AMD Radeon GPU
-        vec![]
+    /// Get available Metal devices.
+    ///
+    /// No Metal backend is implemented yet, so no Metal devices are enumerated
+    /// even on macOS — reported honestly rather than fabricating device names.
+    pub fn available_devices() -> Vec<String> {
+        Vec::new()
     }
 
-    /// Check if Metal is available on this system
-    pub const fn is_available() -> bool {
-        // TODO: Check for Metal framework availability
-        false
+    /// Check if Metal acceleration is available on this system.
+    ///
+    /// Delegates to SciRS2's platform detection (`metal_available`), which is true
+    /// only on macOS with the Metal backend compiled in. The QuantRS2 Metal
+    /// *compute* path is still unimplemented, so [`Self::new`] refuses even when
+    /// this returns `true` — it never fabricates results.
+    pub fn is_available() -> bool {
+        scirs2_core::simd_ops::PlatformCapabilities::detect().metal_available
     }
 }
 

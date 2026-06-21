@@ -1255,8 +1255,9 @@ mod tests {
         let config = TPUConfig::default(); // default is TPUv4 (a real device)
         let result = TPUQuantumSimulator::new(config);
         assert!(result.is_err());
-        match result {
-            Err(SimulatorError::UnsupportedOperation(msg)) => assert!(msg.contains("TPU")),
+        // Match on `.err()` so the `Ok` simulator value need not be `Debug`.
+        match result.err() {
+            Some(SimulatorError::UnsupportedOperation(msg)) => assert!(msg.contains("TPU")),
             other => panic!("expected UnsupportedOperation, got {other:?}"),
         }
     }

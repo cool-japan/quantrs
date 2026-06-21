@@ -527,24 +527,22 @@ impl KernelManager {
         source: &str,
         context: &GpuContext,
     ) -> Result<(), String> {
-        // Compile kernel with SciRS2
-        // TODO: Implement compile_kernel in GPU stub
-        // let compiled = context
-        //     .compile_kernel(source)
-        //     .map_err(|e| format!("Kernel compilation failed: {}", e))?;
+        // The stub backend has no on-device compiler. A real SciRS2 GPU backend
+        // would compile `source` against `context` and introspect its resource
+        // needs here; the stub registers the kernel by name with heuristic launch
+        // parameters instead.
+        let _ = (source, context);
 
-        // Determine optimal launch parameters
-        // let optimal_block_size = self.determine_optimal_block_size(&compiled)?;
-        // let shared_mem_size = self.calculate_shared_memory(&compiled)?;
-        let optimal_block_size = 256; // Placeholder value
-        let shared_mem_size = 0; // Placeholder value
+        // 256 threads/block is the standard heuristic default (matches
+        // `determine_optimal_block_size`); the stub cannot introspect shared
+        // memory, so it requests none.
+        let optimal_block_size = 256;
+        let shared_mem_size = 0;
 
-        // Create kernel wrapper
-        let mut kernel = CompiledKernel {
-            function: Box::new(move |args| {
-                // Launch kernel with args
-                Ok(())
-            }),
+        // The launch closure is a no-op for the stub backend; a real backend would
+        // dispatch the compiled device kernel with the provided arguments.
+        let kernel = CompiledKernel {
+            function: Box::new(move |_args| Ok(())),
             optimal_block_size,
             shared_mem_size,
         };
