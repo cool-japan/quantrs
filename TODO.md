@@ -125,3 +125,28 @@ Remaining (2 of 10) — genuinely blocked on external GPU APIs; current code is 
 
 - [ ] `quantrs-ml`: `gpu_backend_impl.rs:147` — Re-implement parameter application when GPU API is updated. **Blocked:** the entire GPU simulation path is intentionally disabled in beta.1 (`execute_circuit_typed` returns `MLError::NotSupported` before reaching the parameter code). Honest today; re-enable once the scirs2-core GPU sim/write-back API stabilizes — the parameter-application TODO is downstream of that.
 - [ ] `quantrs-core`: `gpu/scirs2_adapter.rs:293` — Use SciRS2 kernel compilation when its API is available. **Blocked:** `compile_kernel` honestly caches kernel source and returns `Ok`; `register_compiled_kernel` (line 737) is already a real in-process registry. No SciRS2 GPU-kernel *compiler* API exists yet to delegate to. Honest today; no action until SciRS2 exposes one.
+
+---
+
+## Stubs to implement (added 2026-06-22 by /cooljapan-stub-check)
+
+- [ ] **quantrs** `quantrs-py`: `py/src/circuit_core.rs:652` — `TODO`: `Implement GPU-based noise simulation`
+  - **Priority:** P2  **Scope:** medium  **Cross-project:** none
+  - **Approach:** In `simulate_with_noise`, when `use_gpu` and a GPU is present, route the advanced noise model through the existing GPU statevector backend (apply noise channels as Kraus-op statevector updates on-device) instead of the current `println!` + CPU fallback.
+  - **Risk:** GPU statevector path is intentionally disabled in beta.1 elsewhere (see `ml/gpu_backend_impl.rs`); this is only fully realizable once the on-device statevector write-back API stabilizes, so it may stay CPU-fallback until then.
+- [ ] **quantrs** `quantrs-tytan`: `tytan/tests/compile_tests.rs:165` — `TODO`: `This test needs to be rewritten to use expressions instead of raw matrix`
+  - **Priority:** P2  **Scope:** small  **Cross-project:** none
+  - **Approach:** Re-enable the commented-out `test_compile_matrix_input` by constructing the 3x3 QUBO via the expression/`SymbolBuilder` API rather than a raw `Array2`, then assert the compiled model matches the expected linear/quadratic terms.
+  - **Risk:** Gated behind `#[cfg(feature = "dwave")]`; verify the expression API exposes equivalent symmetric quadratic-term construction.
+- [ ] **quantrs** `quantrs-core`: `core/src/quantum_counting.rs:7` — `TODO`: `current implementations are simplified versions; full implementations` (module-level)
+  - **Priority:** P2  **Scope:** large  **Cross-project:** OxiFFT
+  - **Approach:** Replace the simplified quantum-counting/amplitude-estimation routines with full QPE-backed implementations (proper inverse-QFT phase register, eigenphase extraction) so counts derive from estimated amplitudes rather than the approximation.
+  - **Risk:** Large algorithmic surface; needs careful QPE/iQFT correctness and may lean on OxiFFT for the transform. Low confidence this is a single-pass change — likely multi-step.
+
+### Known external-blocked placeholders (not actionable)
+
+- `ml/src/gpu_backend_impl.rs:147` — re-implement parameter application when GPU API updated. The whole GPU sim path returns `MLError::NotSupported` (disabled in beta.1) before reaching this code; blocked on scirs2-core GPU sim/write-back API. (Already tracked in the 2026-06-21 cycle.)
+- `core/src/gpu/scirs2_adapter.rs:293` — `compile_kernel` honestly caches source; no SciRS2 GPU-kernel compiler API to delegate to yet.
+- `core/src/gpu/scirs2_adapter.rs:722` — `register_quantum_kernel` already keeps a real in-process `OnceLock` registry; the TODO only concerns delegating to a not-yet-existing SciRS2 kernel-registry API.
+- `core/src/optimization/compression.rs:266` — Tucker decomposition splits real/imag because `scirs2-linalg` Tucker is Float-only; blocked on an upstream `scirs2-linalg` Complex-Tucker request (cross-project, upstream).
+- `device/src/crosstalk.rs:25` — `scirs2_signal` not yet available; honest pending-dependency note.
