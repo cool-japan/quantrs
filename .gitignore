@@ -106,3 +106,5 @@ sim/clippy_output.txt
 **/CLAUDE.md
 
 target
+# Local Python test virtualenv (regenerable; pyvenv.cfg leaks absolute dev path)
+py/test_env/
