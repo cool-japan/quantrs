@@ -48,6 +48,11 @@ fn query_webgpu_limits() -> QuantRS2Result<WebGpuLimits> {
         power_preference: wgpu::PowerPreference::HighPerformance,
         force_fallback_adapter: false,
         compatible_surface: None,
+        // wgpu 30: `apply_limit_buckets` is a new anti-fingerprinting knob (relevant to
+        // untrusted/browser contexts); native driver-limits queries want the real limits,
+        // so leave it at its `Default` (`false`). `..Default::default()` also keeps this
+        // call forward-compatible with any future fields wgpu adds to this struct.
+        ..Default::default()
     }))
     .map_err(|e| {
         QuantRS2Error::BackendExecutionFailed(format!("no WebGPU adapter available: {e}"))
