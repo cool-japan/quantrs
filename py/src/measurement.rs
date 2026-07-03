@@ -251,7 +251,7 @@ impl PyStateTomography {
         // Collect all measurement data
         let mut measurement_data = Vec::new();
         for item in measurements {
-            let dict = item.downcast::<PyDict>()?;
+            let dict = item.cast::<PyDict>()?;
             let basis: String = dict
                 .get_item("basis")?
                 .ok_or_else(|| {
