@@ -742,11 +742,12 @@ impl GateOp for ParametricRotationZ {
             |theta| {
                 let phase = Complex64::new(0.0, -theta / 2.0).exp();
                 let phase_conj = Complex64::new(0.0, theta / 2.0).exp();
+                // IBM/Qiskit/OpenQASM-3 convention: Rz(θ) = diag(e^{-iθ/2}, e^{+iθ/2})
                 Ok(vec![
-                    phase_conj,
-                    Complex64::new(0.0, 0.0),
-                    Complex64::new(0.0, 0.0),
                     phase,
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    phase_conj,
                 ])
             },
         )
@@ -1359,5 +1360,44 @@ pub mod utils {
             (Some(v1), Some(v2)) => (v1 - v2).abs() < epsilon,
             _ => false,
         }
+    }
+}
+
+#[cfg(test)]
+mod issue_32_parametric_rz_tests {
+    use super::ParametricRotationZ;
+    use crate::gate::single::RotationZ;
+    use crate::gate::GateOp;
+    use crate::qubit::QubitId;
+    use std::f64::consts::PI;
+
+    /// Regression test for GitHub issue #32.
+    ///
+    /// A `ParametricRotationZ` bound to θ = π/2 must produce exactly the same
+    /// matrix as the non-parametric `RotationZ(π/2)` — both in the
+    /// IBM/Qiskit/OpenQASM-3 convention `diag(e^{-iθ/2}, e^{+iθ/2})`.
+    #[test]
+    fn test_issue_32_parametric_rz_matches_rotation_z() {
+        let theta = PI / 2.0;
+        let parametric = ParametricRotationZ::new(QubitId::new(0), theta)
+            .matrix()
+            .expect("ParametricRotationZ matrix");
+        let reference = RotationZ {
+            target: QubitId::new(0),
+            theta,
+        }
+        .matrix()
+        .expect("RotationZ matrix");
+
+        assert_eq!(parametric.len(), reference.len());
+        for (i, (p, r)) in parametric.iter().zip(reference.iter()).enumerate() {
+            assert!(
+                (p - r).norm() < 1e-12,
+                "mismatch at index {i}: {p:?} vs {r:?}"
+            );
+        }
+        // Guard the sign convention explicitly.
+        assert!(parametric[0].im < 0.0, "index 0 must be e^(-iθ/2)");
+        assert!(parametric[3].im > 0.0, "index 3 must be e^(+iθ/2)");
     }
 }

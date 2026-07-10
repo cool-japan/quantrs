@@ -240,11 +240,12 @@ pub mod single {
         fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             let phase = Complex64::new(0.0, -self.theta / 2.0).exp();
             let phase_conj = Complex64::new(0.0, self.theta / 2.0).exp();
+            // IBM/Qiskit/OpenQASM-3 convention: Rz(θ) = diag(e^{-iθ/2}, e^{+iθ/2})
             Ok(vec![
-                phase_conj,
-                Complex64::new(0.0, 0.0),
-                Complex64::new(0.0, 0.0),
                 phase,
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                phase_conj,
             ])
         }
         fn as_any(&self) -> &dyn Any {
@@ -937,6 +938,8 @@ pub mod multi {
         fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
             let phase = Complex64::new(0.0, -self.theta / 2.0).exp();
             let phase_conj = Complex64::new(0.0, self.theta / 2.0).exp();
+            // Controlled Rz in the IBM/Qiskit/OpenQASM-3 convention: the target
+            // block is Rz(θ) = diag(e^{-iθ/2}, e^{+iθ/2}) when the control is |1⟩.
             Ok(vec![
                 Complex64::new(1.0, 0.0),
                 Complex64::new(0.0, 0.0),
@@ -948,12 +951,12 @@ pub mod multi {
                 Complex64::new(0.0, 0.0),
                 Complex64::new(0.0, 0.0),
                 Complex64::new(0.0, 0.0),
-                phase_conj,
-                Complex64::new(0.0, 0.0),
-                Complex64::new(0.0, 0.0),
-                Complex64::new(0.0, 0.0),
-                Complex64::new(0.0, 0.0),
                 phase,
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                phase_conj,
             ])
         }
         fn as_any(&self) -> &dyn Any {
@@ -1516,5 +1519,73 @@ pub mod global {
             self
         }
         impl_clone_gate!();
+    }
+}
+
+#[cfg(test)]
+mod issue_32_rz_convention_tests {
+    use super::multi::CRZ;
+    use super::single::RotationZ;
+    use super::GateOp;
+    use crate::qubit::QubitId;
+    use scirs2_core::Complex64;
+    use std::f64::consts::PI;
+
+    /// Regression test for GitHub issue #32.
+    ///
+    /// `RotationZ` must follow the IBM/Qiskit/OpenQASM-3 convention
+    /// `Rz(θ) = diag(e^{-iθ/2}, e^{+iθ/2})`: for θ = π/2 the top-left diagonal
+    /// entry carries a negative imaginary part and the bottom-right a positive one.
+    #[test]
+    fn test_issue_32_rotation_z_matrix_convention() {
+        let theta = PI / 2.0;
+        let m = RotationZ {
+            target: QubitId::new(0),
+            theta,
+        }
+        .matrix()
+        .expect("RotationZ matrix");
+
+        // Hand-computed: e^{-iπ/4} = cos(π/4) - i·sin(π/4)
+        let expected_00 = Complex64::new((PI / 4.0).cos(), -(PI / 4.0).sin());
+        // e^{+iπ/4} = cos(π/4) + i·sin(π/4)
+        let expected_11 = Complex64::new((PI / 4.0).cos(), (PI / 4.0).sin());
+
+        assert!((m[0] - expected_00).norm() < 1e-12, "m[0] = {:?}", m[0]);
+        assert!(m[0].im < 0.0, "m[0] must have a negative imaginary part");
+        assert_eq!(m[1], Complex64::new(0.0, 0.0));
+        assert_eq!(m[2], Complex64::new(0.0, 0.0));
+        assert!((m[3] - expected_11).norm() < 1e-12, "m[3] = {:?}", m[3]);
+        assert!(m[3].im > 0.0, "m[3] must have a positive imaginary part");
+    }
+
+    /// Regression test for GitHub issue #32.
+    ///
+    /// `CRZ` must apply `Rz(θ) = diag(e^{-iθ/2}, e^{+iθ/2})` on the target when the
+    /// control is |1⟩ (flat indices 10 and 15), with an identity top-left 2×2 block.
+    #[test]
+    fn test_issue_32_crz_matrix_convention() {
+        let theta = PI / 2.0;
+        let m = CRZ {
+            control: QubitId::new(0),
+            target: QubitId::new(1),
+            theta,
+        }
+        .matrix()
+        .expect("CRZ matrix");
+
+        let expected_10 = Complex64::new((PI / 4.0).cos(), -(PI / 4.0).sin());
+        let expected_15 = Complex64::new((PI / 4.0).cos(), (PI / 4.0).sin());
+
+        // Top-left 2x2 block is the identity (control |0⟩ leaves the target unchanged).
+        assert_eq!(m[0], Complex64::new(1.0, 0.0));
+        assert_eq!(m[1], Complex64::new(0.0, 0.0));
+        assert_eq!(m[4], Complex64::new(0.0, 0.0));
+        assert_eq!(m[5], Complex64::new(1.0, 0.0));
+
+        assert!((m[10] - expected_10).norm() < 1e-12, "m[10] = {:?}", m[10]);
+        assert!(m[10].im < 0.0, "m[10] must have a negative imaginary part");
+        assert!((m[15] - expected_15).norm() < 1e-12, "m[15] = {:?}", m[15]);
+        assert!(m[15].im > 0.0, "m[15] must have a positive imaginary part");
     }
 }

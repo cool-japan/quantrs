@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Rz / CRZ / ParametricRotationZ sign convention (behaviour change)**: `RotationZ`, `CRZ`, and `ParametricRotationZ` previously used the reversed diagonal `diag(e^{+iλ/2}, e^{-iλ/2})`. They now follow the IBM/Qiskit/OpenQASM-3 standard `Rz(λ) = diag(e^{-iλ/2}, e^{+iλ/2})` (`core/src/gate/functions.rs`, `core/src/parametric.rs`). **This is a behaviour change**: simulation results for any circuit containing these gates will differ from 0.2.0 (they are now correct). The reversed convention was additionally corrupting `decompose_u_gate` / single-qubit ZYZ reconstruction and causing internal-simulator vs OpenQASM-export disagreement; both are fixed as a consequence. Regression coverage added in `core/src/gate/functions.rs`, `core/src/parametric.rs`, `core/src/decomposition.rs`, and `sim/tests/issue_32_rz_convention.rs`. Reported (#32) by @cleitonaugusto via the CleitonForge symbolic-verification framework (https://github.com/cleitonaugusto/CleitonForge, DOI 10.5281/zenodo.21210972).
+
 ## [0.2.0] - 2026-06-06
 
 ### Added
