@@ -740,13 +740,13 @@ impl GateOp for ParametricRotationZ {
                 ))
             },
             |theta| {
-                let phase = Complex64::new(0.0, -theta / 2.0).exp();
-                let phase_conj = Complex64::new(0.0, theta / 2.0).exp();
+                let phase_neg = Complex64::new(0.0, -theta / 2.0).exp();
+                let phase_pos = Complex64::new(0.0, theta / 2.0).exp();
                 Ok(vec![
-                    phase_conj,
+                    phase_neg,
                     Complex64::new(0.0, 0.0),
                     Complex64::new(0.0, 0.0),
-                    phase,
+                    phase_pos,
                 ])
             },
         )
