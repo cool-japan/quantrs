@@ -220,6 +220,10 @@ pub mod single {
         impl_clone_gate!();
     }
     /// Rotation around Z-axis
+    ///
+    /// Rz(θ) = exp(-i * θ/2 * Z) = diag(e^{-iθ/2}, e^{+iθ/2}),
+    /// following the OpenQASM 3 / `stdgates.inc` convention (same sign as
+    /// RotationX, RotationY, RZZ, and RZX in this module).
     #[derive(Debug, Clone, Copy)]
     pub struct RotationZ {
         /// Target qubit
@@ -238,13 +242,13 @@ pub mod single {
             true
         }
         fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
-            let phase = Complex64::new(0.0, -self.theta / 2.0).exp();
-            let phase_conj = Complex64::new(0.0, self.theta / 2.0).exp();
+            let phase_neg = Complex64::new(0.0, -self.theta / 2.0).exp();
+            let phase_pos = Complex64::new(0.0, self.theta / 2.0).exp();
             Ok(vec![
-                phase_conj,
+                phase_neg,
                 Complex64::new(0.0, 0.0),
                 Complex64::new(0.0, 0.0),
-                phase,
+                phase_pos,
             ])
         }
         fn as_any(&self) -> &dyn Any {
@@ -935,8 +939,8 @@ pub mod multi {
             true
         }
         fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
-            let phase = Complex64::new(0.0, -self.theta / 2.0).exp();
-            let phase_conj = Complex64::new(0.0, self.theta / 2.0).exp();
+            let phase_neg = Complex64::new(0.0, -self.theta / 2.0).exp();
+            let phase_pos = Complex64::new(0.0, self.theta / 2.0).exp();
             Ok(vec![
                 Complex64::new(1.0, 0.0),
                 Complex64::new(0.0, 0.0),
@@ -948,12 +952,12 @@ pub mod multi {
                 Complex64::new(0.0, 0.0),
                 Complex64::new(0.0, 0.0),
                 Complex64::new(0.0, 0.0),
-                phase_conj,
+                phase_neg,
                 Complex64::new(0.0, 0.0),
                 Complex64::new(0.0, 0.0),
                 Complex64::new(0.0, 0.0),
                 Complex64::new(0.0, 0.0),
-                phase,
+                phase_pos,
             ])
         }
         fn as_any(&self) -> &dyn Any {
