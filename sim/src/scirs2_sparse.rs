@@ -756,14 +756,105 @@ impl SciRS2SparseSolver {
         Ok(x)
     }
 
-    /// Arnoldi eigenvalue solver
+    /// Diagonalize a small dense projection matrix (the Krylov Hessenberg or
+    /// tridiagonal matrix), returning the eigenvalues (real parts) together with
+    /// the eigenvector columns of the projection.
+    ///
+    /// `hermitian` selects the Hermitian path (real-symmetric Jacobi solver,
+    /// guaranteed-real spectrum with orthonormal eigenvectors — the Lanczos
+    /// tridiagonal is real symmetric) versus the general path (shifted QR with
+    /// inverse-iteration eigenvectors). These are in-crate implementations
+    /// because the `scirs2-linalg` 0.6.1 complex eigensolvers are numerically
+    /// unreliable for non-diagonal inputs.
+    fn diagonalize_projection(
+        matrix: &Array2<Complex64>,
+        hermitian: bool,
+    ) -> Result<(Vec<f64>, Array2<Complex64>)> {
+        let n = matrix.nrows();
+        if hermitian {
+            // The Hermitian projection produced here (Lanczos tridiagonal) is
+            // real symmetric; take the symmetric real part and diagonalize with
+            // the Jacobi eigenvalue algorithm.
+            let mut sym = Array2::<f64>::zeros((n, n));
+            for i in 0..n {
+                for j in 0..n {
+                    sym[[i, j]] = 0.5 * (matrix[[i, j]].re + matrix[[j, i]].re);
+                }
+            }
+            let (values, real_vectors) = jacobi_symmetric_eig(&sym);
+            let vectors = real_vectors.mapv(|x| Complex64::new(x, 0.0));
+            Ok((values, vectors))
+        } else {
+            let (complex_values, vectors) = general_complex_eig(matrix)?;
+            let values: Vec<f64> = complex_values.iter().map(|v| v.re).collect();
+            Ok((values, vectors))
+        }
+    }
+
+    /// Back-transform the projected eigenvectors into the full space
+    /// (`X = V_m · Y`) and select the requested `num_eigenvalues` Ritz pairs
+    /// according to `which` ("smallest" or "largest"). The returned eigenvalues
+    /// are always sorted in ascending order (matching [`SparseEigenResult`]),
+    /// and the eigenvector columns line up with them.
+    fn select_ritz_pairs(
+        krylov_basis: &Array2<Complex64>,
+        ritz_values: &[f64],
+        ritz_vectors: &Array2<Complex64>,
+        num_eigenvalues: usize,
+        which: &str,
+    ) -> (Vec<f64>, Array2<Complex64>) {
+        let m = ritz_values.len();
+        let n = krylov_basis.nrows();
+
+        // V_m : the first m Krylov basis vectors. Ritz vectors live in this span.
+        let v_m = krylov_basis.slice(scirs2_core::ndarray::s![.., ..m]);
+        let full_vectors = v_m.dot(ritz_vectors);
+
+        // Order all Ritz values ascending, then take the requested end of the
+        // spectrum. Either slice is itself already in ascending order.
+        let mut order: Vec<usize> = (0..m).collect();
+        order.sort_by(|&a, &b| {
+            ritz_values[a]
+                .partial_cmp(&ritz_values[b])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        let count = num_eigenvalues.min(m);
+        let want_largest = matches!(which, "largest" | "LM" | "LA" | "LR");
+        let selected: Vec<usize> = if want_largest {
+            order[m - count..].to_vec()
+        } else {
+            order[..count].to_vec()
+        };
+
+        let mut selected_values = Vec::with_capacity(count);
+        let mut selected_vectors = Array2::<Complex64>::zeros((n, count));
+        for (out_col, &idx) in selected.iter().enumerate() {
+            selected_values.push(ritz_values[idx]);
+            let column = full_vectors.column(idx);
+            let norm = column.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
+            let scale = if norm > 1e-15 { 1.0 / norm } else { 1.0 };
+            for row in 0..n {
+                selected_vectors[[row, out_col]] = column[row] * scale;
+            }
+        }
+        (selected_values, selected_vectors)
+    }
+
+    /// Arnoldi eigenvalue solver for general (non-Hermitian) sparse matrices.
+    ///
+    /// Builds an `m`-dimensional Krylov subspace, then diagonalizes the small
+    /// `m × m` upper-Hessenberg projection to obtain Ritz values and Ritz
+    /// vectors; the vectors are back-transformed into the full space. For a
+    /// non-Hermitian operator the exact eigenvalues may be complex — the real
+    /// parts of the Ritz values are reported (the [`SparseEigenResult`] carries
+    /// real eigenvalues).
     fn solve_arnoldi(
         &mut self,
         matrix: &SparseMatrix,
         num_eigenvalues: usize,
-        _which: &str,
+        which: &str,
     ) -> Result<(Vec<f64>, Array2<Complex64>, usize)> {
-        // Simplified Arnoldi implementation
         let n = matrix.shape.0;
         let m = (num_eigenvalues * 2).min(n);
 
@@ -819,30 +910,42 @@ impl SciRS2SparseSolver {
             }
         }
 
-        // Extract eigenvalues from Hessenberg matrix (simplified)
-        let mut eigenvalues = Vec::new();
-        for i in 0..m.min(num_eigenvalues) {
-            eigenvalues.push(h[[i, i]].re);
+        // Diagonalize the m×m upper-Hessenberg projection H_m to obtain the
+        // Ritz values/vectors, then back-transform the vectors into the full
+        // space. This replaces the previous placeholder that read the raw
+        // Hessenberg diagonal and returned zero eigenvectors.
+        let mut h_block = Array2::<Complex64>::zeros((m, m));
+        for i in 0..m {
+            for j in 0..m {
+                h_block[[i, j]] = h[[i, j]];
+            }
         }
-        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-        let eigenvectors = Array2::zeros((n, num_eigenvalues));
+        let (ritz_values, ritz_vectors) = Self::diagonalize_projection(&h_block, false)?;
+        let (eigenvalues, eigenvectors) =
+            Self::select_ritz_pairs(&v, &ritz_values, &ritz_vectors, num_eigenvalues, which);
+        let converged = eigenvalues.len();
 
         self.stats.method_used = "Arnoldi".to_string();
 
-        Ok((eigenvalues, eigenvectors, num_eigenvalues.min(m)))
+        Ok((eigenvalues, eigenvectors, converged))
     }
 
-    /// Lanczos eigenvalue solver (for Hermitian matrices)
+    /// Lanczos eigenvalue solver for Hermitian sparse matrices.
+    ///
+    /// Builds a Krylov subspace via the three-term Lanczos recurrence, forming a
+    /// real symmetric tridiagonal projection `T` (diagonal `alpha`, off-diagonal
+    /// `beta`). `T` is diagonalized to real Ritz values with orthonormal Ritz
+    /// vectors, which are back-transformed into the full space. Non-Hermitian
+    /// inputs are delegated to the Arnoldi solver.
     fn solve_lanczos(
         &mut self,
         matrix: &SparseMatrix,
         num_eigenvalues: usize,
-        _which: &str,
+        which: &str,
     ) -> Result<(Vec<f64>, Array2<Complex64>, usize)> {
-        // Simplified Lanczos implementation
         if !matrix.is_hermitian {
-            return self.solve_arnoldi(matrix, num_eigenvalues, _which);
+            return self.solve_arnoldi(matrix, num_eigenvalues, which);
         }
 
         let n = matrix.shape.0;
@@ -896,27 +999,45 @@ impl SciRS2SparseSolver {
             }
         }
 
-        // Solve tridiagonal eigenvalue problem (simplified)
-        let mut eigenvalues = alpha[..m.min(num_eigenvalues)].to_vec();
-        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        // Assemble the real symmetric tridiagonal projection T (m×m) and
+        // diagonalize it to real Ritz values with orthonormal Ritz vectors, then
+        // back-transform the vectors into the full space. This replaces the
+        // previous placeholder that returned the raw alpha diagonal as
+        // "eigenvalues" and zero eigenvectors.
+        let mut tri = Array2::<Complex64>::zeros((m, m));
+        for i in 0..m {
+            tri[[i, i]] = Complex64::new(alpha[i], 0.0);
+            if i + 1 < m {
+                let off = Complex64::new(beta[i], 0.0);
+                tri[[i, i + 1]] = off;
+                tri[[i + 1, i]] = off;
+            }
+        }
 
-        let eigenvectors = Array2::zeros((n, num_eigenvalues));
+        let (ritz_values, ritz_vectors) = Self::diagonalize_projection(&tri, true)?;
+        let (eigenvalues, eigenvectors) =
+            Self::select_ritz_pairs(&v, &ritz_values, &ritz_vectors, num_eigenvalues, which);
+        let converged = eigenvalues.len();
 
         self.stats.method_used = "Lanczos".to_string();
 
-        Ok((eigenvalues, eigenvectors, num_eigenvalues.min(m)))
+        Ok((eigenvalues, eigenvectors, converged))
     }
 
-    /// LOBPCG eigenvalue solver
+    /// LOBPCG eigenvalue solver entry point.
+    ///
+    /// A dedicated block LOBPCG iteration is not implemented; requests are served
+    /// by the Lanczos solver above, which targets the same Hermitian eigenproblem
+    /// and returns genuine (approximate) Ritz values and Ritz vectors — never
+    /// fabricated data. The reported `method_used` reflects the solver that
+    /// actually ran (Lanczos), so the statistics stay honest.
     fn solve_lobpcg(
         &mut self,
         matrix: &SparseMatrix,
         num_eigenvalues: usize,
-        _which: &str,
+        which: &str,
     ) -> Result<(Vec<f64>, Array2<Complex64>, usize)> {
-        // Simplified LOBPCG placeholder
-        // Full implementation would be much more complex
-        self.solve_lanczos(matrix, num_eigenvalues, _which)
+        self.solve_lanczos(matrix, num_eigenvalues, which)
     }
 
     /// `SciRS2` automatic eigenvalue solver
@@ -958,6 +1079,292 @@ impl SciRS2SparseSolver {
     pub const fn set_config(&mut self, config: SparseSolverConfig) {
         self.config = config;
     }
+}
+
+/// Cyclic Jacobi eigenvalue algorithm for a real symmetric matrix.
+///
+/// Returns `(eigenvalues, eigenvectors)` where eigenvector column `i` corresponds
+/// to `eigenvalues[i]` (unsorted). The Jacobi method is unconditionally
+/// convergent and accurate, which makes it the right choice for the small dense
+/// symmetric matrices diagonalized here. It is used instead of `scirs2-linalg`
+/// 0.6.1's `complex_eigh`, whose QR iteration returns incorrect results for
+/// non-diagonal inputs.
+pub(crate) fn jacobi_symmetric_eig(input: &Array2<f64>) -> (Vec<f64>, Array2<f64>) {
+    let n = input.nrows();
+    let mut a = input.clone();
+    let mut v = Array2::<f64>::eye(n);
+    if n <= 1 {
+        let values: Vec<f64> = (0..n).map(|i| a[[i, i]]).collect();
+        return (values, v);
+    }
+
+    for _ in 0..100 {
+        // Sum of squared off-diagonal elements.
+        let mut off = 0.0;
+        for p in 0..n {
+            for q in (p + 1)..n {
+                off += a[[p, q]] * a[[p, q]];
+            }
+        }
+        if off <= 1e-30 {
+            break;
+        }
+
+        for p in 0..n {
+            for q in (p + 1)..n {
+                let apq = a[[p, q]];
+                if apq.abs() < 1e-300 {
+                    continue;
+                }
+                let theta = (a[[q, q]] - a[[p, p]]) / (2.0 * apq);
+                // t = sign(theta) / (|theta| + sqrt(theta^2 + 1)); for theta == 0
+                // this yields the 45-degree rotation (t = 1).
+                let t = theta.signum() / (theta.abs() + (theta * theta + 1.0).sqrt());
+                let cc = 1.0 / (t * t + 1.0).sqrt();
+                let ss = t * cc;
+
+                // A <- Jᵀ A J with J acting on planes p, q.
+                for k in 0..n {
+                    let akp = a[[k, p]];
+                    let akq = a[[k, q]];
+                    a[[k, p]] = cc * akp - ss * akq;
+                    a[[k, q]] = ss * akp + cc * akq;
+                }
+                for k in 0..n {
+                    let apk = a[[p, k]];
+                    let aqk = a[[q, k]];
+                    a[[p, k]] = cc * apk - ss * aqk;
+                    a[[q, k]] = ss * apk + cc * aqk;
+                }
+                // Accumulate eigenvectors: V <- V J.
+                for k in 0..n {
+                    let vkp = v[[k, p]];
+                    let vkq = v[[k, q]];
+                    v[[k, p]] = cc * vkp - ss * vkq;
+                    v[[k, q]] = ss * vkp + cc * vkq;
+                }
+            }
+        }
+    }
+
+    let eigenvalues: Vec<f64> = (0..n).map(|i| a[[i, i]]).collect();
+    (eigenvalues, v)
+}
+
+/// QR decomposition of a small dense complex matrix via modified Gram-Schmidt.
+/// Returns `(Q, R)` with `Q` having orthonormal columns and `R` upper-triangular.
+fn qr_decompose_complex(a: &Array2<Complex64>) -> (Array2<Complex64>, Array2<Complex64>) {
+    let n = a.nrows();
+    let m = a.ncols();
+    let mut q = Array2::<Complex64>::zeros((n, m));
+    let mut r = Array2::<Complex64>::zeros((m, m));
+
+    for j in 0..m {
+        let mut vj: Array1<Complex64> = a.column(j).to_owned();
+        for i in 0..j {
+            let rij: Complex64 = (0..n).map(|k| q[[k, i]].conj() * vj[k]).sum();
+            r[[i, j]] = rij;
+            for k in 0..n {
+                vj[k] -= rij * q[[k, i]];
+            }
+        }
+        let norm = vj.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
+        r[[j, j]] = Complex64::new(norm, 0.0);
+        if norm > 1e-300 {
+            for k in 0..n {
+                q[[k, j]] = vj[k] / norm;
+            }
+        }
+    }
+
+    (q, r)
+}
+
+/// Solve a small dense complex linear system `A x = b` by Gaussian elimination
+/// with partial pivoting.
+fn solve_linear_dense(
+    matrix: &Array2<Complex64>,
+    rhs: &Array1<Complex64>,
+) -> Result<Array1<Complex64>> {
+    let n = matrix.nrows();
+    let mut a = matrix.clone();
+    let mut b = rhs.clone();
+
+    for k in 0..n {
+        // Partial pivot on the largest-magnitude entry in column k.
+        let mut pivot = k;
+        let mut pivot_mag = a[[k, k]].norm();
+        for i in (k + 1)..n {
+            let mag = a[[i, k]].norm();
+            if mag > pivot_mag {
+                pivot_mag = mag;
+                pivot = i;
+            }
+        }
+        if pivot_mag < 1e-300 {
+            return Err(SimulatorError::NumericalError(
+                "singular matrix in dense solve".to_string(),
+            ));
+        }
+        if pivot != k {
+            for j in 0..n {
+                let tmp = a[[k, j]];
+                a[[k, j]] = a[[pivot, j]];
+                a[[pivot, j]] = tmp;
+            }
+            b.swap(k, pivot);
+        }
+        for i in (k + 1)..n {
+            let factor = a[[i, k]] / a[[k, k]];
+            for j in k..n {
+                let akj = a[[k, j]];
+                a[[i, j]] -= factor * akj;
+            }
+            let bk = b[k];
+            b[i] -= factor * bk;
+        }
+    }
+
+    let mut x = Array1::zeros(n);
+    for i in (0..n).rev() {
+        let mut sum = Complex64::new(0.0, 0.0);
+        for j in (i + 1)..n {
+            sum += a[[i, j]] * x[j];
+        }
+        x[i] = (b[i] - sum) / a[[i, i]];
+    }
+    Ok(x)
+}
+
+/// Recover an eigenvector of `a` for the (approximate) eigenvalue `lambda` via
+/// inverse iteration on the slightly-perturbed shifted matrix `A - (λ+ε)I`.
+fn inverse_iteration_complex(
+    a: &Array2<Complex64>,
+    lambda: Complex64,
+) -> Result<Array1<Complex64>> {
+    let n = a.nrows();
+    let mut shifted = a.clone();
+    let perturb = Complex64::new(1e-8, 0.0);
+    for i in 0..n {
+        shifted[[i, i]] -= lambda + perturb;
+    }
+
+    let mut x = Array1::from_elem(n, Complex64::new(1.0, 0.0));
+    let mut norm = x.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
+    if norm > 0.0 {
+        x.mapv_inplace(|c| c / norm);
+    }
+
+    for _ in 0..8 {
+        let y = match solve_linear_dense(&shifted, &x) {
+            Ok(y) => y,
+            Err(_) => break,
+        };
+        norm = y.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
+        if norm < 1e-300 {
+            break;
+        }
+        for i in 0..n {
+            x[i] = y[i] / norm;
+        }
+    }
+
+    Ok(x)
+}
+
+/// Eigenvalues and eigenvectors of a small dense general complex matrix.
+///
+/// Eigenvalues are computed with the single-shift QR algorithm (Wilkinson shift
+/// from the trailing 2×2 block) with deflation; eigenvectors are then recovered
+/// by inverse iteration on the original matrix. Used for the non-Hermitian
+/// Arnoldi projection, since `scirs2-linalg` 0.6.1's `complex_eig` is
+/// numerically unreliable.
+fn general_complex_eig(input: &Array2<Complex64>) -> Result<(Vec<Complex64>, Array2<Complex64>)> {
+    let n = input.nrows();
+    if n == 0 {
+        return Ok((Vec::new(), Array2::zeros((0, 0))));
+    }
+    if n == 1 {
+        let mut vectors = Array2::<Complex64>::zeros((1, 1));
+        vectors[[0, 0]] = Complex64::new(1.0, 0.0);
+        return Ok((vec![input[[0, 0]]], vectors));
+    }
+
+    let mut a = input.clone();
+    let mut eigenvalues: Vec<Complex64> = Vec::with_capacity(n);
+    let mut p = n;
+    let max_total_iter = 300 * n;
+    let mut total_iter = 0;
+    let two = Complex64::new(2.0, 0.0);
+    let four = Complex64::new(4.0, 0.0);
+
+    while p > 1 {
+        // Deflate once the trailing subdiagonal entry is negligible.
+        let sub = a[[p - 1, p - 2]].norm();
+        let scale = (a[[p - 2, p - 2]].norm() + a[[p - 1, p - 1]].norm()).max(1e-300);
+        if sub <= 1e-14 * scale {
+            eigenvalues.push(a[[p - 1, p - 1]]);
+            p -= 1;
+            continue;
+        }
+        if total_iter >= max_total_iter {
+            break;
+        }
+        total_iter += 1;
+
+        // Wilkinson shift: eigenvalue of the trailing 2×2 closest to a[p-1,p-1].
+        let a11 = a[[p - 2, p - 2]];
+        let a12 = a[[p - 2, p - 1]];
+        let a21 = a[[p - 1, p - 2]];
+        let a22 = a[[p - 1, p - 1]];
+        let trace = a11 + a22;
+        let det = a11 * a22 - a12 * a21;
+        let disc = (trace * trace - four * det).sqrt();
+        let mu1 = (trace + disc) / two;
+        let mu2 = (trace - disc) / two;
+        let shift = if (mu1 - a22).norm() <= (mu2 - a22).norm() {
+            mu1
+        } else {
+            mu2
+        };
+
+        // One shifted QR sweep on the active p×p block: A_active <- R·Q + shift·I.
+        let mut block = Array2::<Complex64>::zeros((p, p));
+        for i in 0..p {
+            for j in 0..p {
+                block[[i, j]] = a[[i, j]];
+            }
+        }
+        for i in 0..p {
+            block[[i, i]] -= shift;
+        }
+        let (q, r) = qr_decompose_complex(&block);
+        let rq = r.dot(&q);
+        for i in 0..p {
+            for j in 0..p {
+                a[[i, j]] = rq[[i, j]];
+            }
+        }
+        for i in 0..p {
+            a[[i, i]] += shift;
+        }
+    }
+
+    // Remaining active diagonal entries (converged 1×1, or an unconverged block).
+    for i in 0..p {
+        eigenvalues.push(a[[i, i]]);
+    }
+
+    // Recover eigenvectors from the original matrix via inverse iteration.
+    let mut vectors = Array2::<Complex64>::zeros((n, n));
+    for (col, &lambda) in eigenvalues.iter().enumerate() {
+        let vec = inverse_iteration_complex(input, lambda)?;
+        for i in 0..n {
+            vectors[[i, col]] = vec[i];
+        }
+    }
+
+    Ok((eigenvalues, vectors))
 }
 
 /// Utilities for creating sparse matrices from quantum problems

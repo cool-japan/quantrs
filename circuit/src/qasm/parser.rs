@@ -503,6 +503,23 @@ fn eval_const_unary(op: UnaryOp, v: f64) -> f64 {
     }
 }
 
+/// `true` if `expr` calls a function or indexes a value anywhere in its tree.
+///
+/// Used to decide whether a `const` declaration that failed to fold to a
+/// numeric value at parse time is deferrable to the validator's semantic
+/// checks (function arity / existence, non-array indexing) rather than a
+/// hard parse error.
+fn expr_contains_function_or_index(expr: &Expression) -> bool {
+    match expr {
+        Expression::Literal(_) | Expression::Variable(_) => false,
+        Expression::Binary(_, lhs, rhs) => {
+            expr_contains_function_or_index(lhs) || expr_contains_function_or_index(rhs)
+        }
+        Expression::Unary(_, inner) => expr_contains_function_or_index(inner),
+        Expression::Function(_, _) | Expression::Index(_, _) => true,
+    }
+}
+
 /// Evaluate a math function call in a constant expression.
 fn eval_const_function(name: &str, args: &[f64]) -> Result<f64, ParseError> {
     let arity_err = |expected: usize| {
@@ -915,11 +932,34 @@ impl<'a> QasmParser<'a> {
         // Evaluate the constant now so later references (e.g. register sizes)
         // can resolve it. Constants must be expressible from previously-defined
         // constants and literals only.
-        let value = self.eval_const_expr(&expr)?;
-
-        // Add to symbol table
-        self.symbols
-            .insert(name.clone(), SymbolType::Constant(value));
+        //
+        // Division of labor with the validator: the parser's job is to accept
+        // every *syntactically* valid program and build an AST; deeper
+        // semantic checks that require a full symbol/type table -- function
+        // arity, unknown function names, indexing a non-array value -- belong
+        // to `QasmValidator` (see `validate_expression` /
+        // `builtin_function_return_type` in validator.rs), which already
+        // implements them faithfully. So when evaluation fails specifically
+        // because the expression calls a function or indexes something, we
+        // don't hard-fail the parse: we record the constant as non-numeric
+        // (deferring the semantic error to `validate_qasm3`) instead of
+        // duplicating (and risking disagreeing with) the validator's checks.
+        // A constant that is malformed in a way the validator does *not*
+        // re-check (e.g. referencing a genuinely undefined identifier) is
+        // still a hard parse error.
+        match self.eval_const_expr(&expr) {
+            Ok(value) => {
+                self.symbols
+                    .insert(name.clone(), SymbolType::Constant(value));
+            }
+            Err(err) => {
+                if expr_contains_function_or_index(&expr) {
+                    self.symbols.insert(name.clone(), SymbolType::Variable);
+                } else {
+                    return Err(err);
+                }
+            }
+        }
 
         Ok(Declaration::Constant(name, expr))
     }

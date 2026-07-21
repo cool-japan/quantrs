@@ -5,7 +5,6 @@
 
 use crate::builder::Circuit;
 use crate::dag::{circuit_to_dag, CircuitDag};
-use crate::scirs2_matrices::SparseMatrix;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
@@ -14,6 +13,7 @@ use quantrs2_core::{
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::f64::consts::PI;
 use std::sync::Arc;
 
 // Placeholder types representing SciRS2 graph and ML interface
@@ -484,21 +484,128 @@ impl CircuitSimilarityAnalyzer {
         Ok(f64::midpoint(nodes_similarity, edges_similarity))
     }
 
-    /// Compute unitary matrix similarity
-    const fn compute_unitary_similarity<const N: usize, const M: usize>(
-        _circuit1: &Circuit<N>,
-        _circuit2: &Circuit<M>,
+    /// Compute unitary matrix similarity.
+    ///
+    /// Reconstructs both circuits' full `2^N x 2^N` unitary matrices by
+    /// simulating their action on every computational basis state (via
+    /// [`Self::simulate_circuit_from_basis_state`]) and computes the real
+    /// process (entanglement) fidelity `F_pro = |Tr(U1^† U2)|^2 / d^2`
+    /// between them — `1.0` exactly for identical unitaries (up to global
+    /// phase) and `0.0` for maximally different ones.
+    fn compute_unitary_similarity<const N: usize, const M: usize>(
+        circuit1: &Circuit<N>,
+        circuit2: &Circuit<M>,
     ) -> QuantRS2Result<f64> {
         if N != M {
             // Circuits with different qubit counts have zero unitary similarity
             return Ok(0.0);
         }
 
-        // Convert circuits to unitary matrices and compute fidelity
-        // This is a simplified placeholder - would use actual matrix conversion
-        let fidelity = 0.9; // Placeholder for unitary similarity
+        let dimension = 1usize << N;
+        // Tr(U1^dagger U2) equals the flattened Frobenius inner product of
+        // the two matrices (summing conj(U1[row][col]) * U2[row][col] over
+        // every entry), so the columns can be accumulated one at a time
+        // without ever materializing both full dense matrices at once.
+        let mut inner_product = Complex64::new(0.0, 0.0);
+        for basis_state in 0..dimension {
+            let column1 = Self::simulate_circuit_from_basis_state(circuit1, basis_state)?;
+            let column2 = Self::simulate_circuit_from_basis_state(circuit2, basis_state)?;
+            inner_product += column1
+                .iter()
+                .zip(column2.iter())
+                .map(|(a, b)| a.conj() * b)
+                .sum::<Complex64>();
+        }
 
-        Ok(fidelity)
+        let d = dimension as f64;
+        Ok((inner_product.norm_sqr() / (d * d)).clamp(0.0, 1.0))
+    }
+
+    /// Apply a single gate's matrix to a dense state vector.
+    ///
+    /// Uses the convention that qubit index `0` is the most-significant bit
+    /// of the computational-basis index (matching the tensor-product
+    /// ordering used elsewhere in this crate's matrix tooling), and supports
+    /// gates acting on any number of qubits by summing over every
+    /// combination of the untouched qubits' bit values.
+    fn apply_gate_to_state(
+        state: &[Complex64],
+        gate: &dyn GateOp,
+        num_qubits: usize,
+    ) -> QuantRS2Result<Vec<Complex64>> {
+        let qubits = gate.qubits();
+        let touched: Vec<usize> = qubits.iter().map(|q| q.id() as usize).collect();
+        let k = touched.len();
+        let local_dim = 1usize << k;
+        let matrix = gate.matrix()?;
+        if matrix.len() != local_dim * local_dim {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "gate {} matrix has {} entries, expected {} for a {}-qubit gate",
+                gate.name(),
+                matrix.len(),
+                local_dim * local_dim,
+                k
+            )));
+        }
+
+        let dimension = state.len();
+        let mut new_state = vec![Complex64::new(0.0, 0.0); dimension];
+
+        let other: Vec<usize> = (0..num_qubits).filter(|q| !touched.contains(q)).collect();
+        let other_count = other.len();
+        let other_dim = 1usize << other_count;
+
+        // Compose a full basis index from independently chosen bit values
+        // for the "other" (untouched) qubits and the "local" (touched)
+        // qubits, using the MSB-first bit layout.
+        let compose_index = |other_bits: usize, local_bits: usize| -> usize {
+            let mut idx = 0usize;
+            for (position, &qubit) in other.iter().enumerate() {
+                let bit = (other_bits >> (other_count - 1 - position)) & 1;
+                idx |= bit << (num_qubits - 1 - qubit);
+            }
+            for (position, &qubit) in touched.iter().enumerate() {
+                let bit = (local_bits >> (k - 1 - position)) & 1;
+                idx |= bit << (num_qubits - 1 - qubit);
+            }
+            idx
+        };
+
+        for other_bits in 0..other_dim {
+            for local_in in 0..local_dim {
+                let index_in = compose_index(other_bits, local_in);
+                let amplitude_in = state[index_in];
+                if amplitude_in == Complex64::new(0.0, 0.0) {
+                    continue;
+                }
+                for local_out in 0..local_dim {
+                    let index_out = compose_index(other_bits, local_out);
+                    new_state[index_out] += matrix[local_out * local_dim + local_in] * amplitude_in;
+                }
+            }
+        }
+
+        Ok(new_state)
+    }
+
+    /// Evolve a computational basis state through every gate in `circuit`,
+    /// in order, returning the resulting dense state vector. This is the
+    /// real (exponential-cost, exact) circuit simulation used by
+    /// [`Self::compute_functional_similarity`] and
+    /// [`Self::compute_unitary_similarity`].
+    fn simulate_circuit_from_basis_state<const N: usize>(
+        circuit: &Circuit<N>,
+        initial_basis_state: usize,
+    ) -> QuantRS2Result<Vec<Complex64>> {
+        let dimension = 1usize << N;
+        let mut state = vec![Complex64::new(0.0, 0.0); dimension];
+        state[initial_basis_state.min(dimension - 1)] = Complex64::new(1.0, 0.0);
+
+        for gate in circuit.gates() {
+            state = Self::apply_gate_to_state(&state, gate.as_ref(), N)?;
+        }
+
+        Ok(state)
     }
 
     /// Compute graph-based similarity
@@ -575,16 +682,25 @@ impl CircuitSimilarityAnalyzer {
             return Ok(cached.clone());
         }
 
-        // Generate embedding based on model type
+        // Generate embedding based on model type. No trained neural-network
+        // weights are available in this crate for any of these model
+        // families, so rather than fabricate a fixed constant vector (which
+        // would make every circuit look identical under cosine similarity),
+        // each variant derives a real, deterministic embedding from the
+        // circuit's actual extracted features (see
+        // `Self::circuit_feature_vector` / `Self::project_feature_vector`),
+        // sized to the dimension the model type would have produced.
         let embedding = match model_type {
-            MLModelType::VAE { latent_dim } => Self::generate_vae_embedding(circuit, *latent_dim)?,
-            MLModelType::GCN { hidden_dims } => Self::generate_gcn_embedding(circuit, hidden_dims)?,
+            MLModelType::VAE { latent_dim } => self.generate_vae_embedding(circuit, *latent_dim)?,
+            MLModelType::GCN { hidden_dims } => {
+                self.generate_gcn_embedding(circuit, hidden_dims)?
+            }
             MLModelType::Transformer {
                 num_heads,
                 num_layers,
-            } => Self::generate_transformer_embedding(circuit, *num_heads, *num_layers)?,
+            } => self.generate_transformer_embedding(circuit, *num_heads, *num_layers)?,
             MLModelType::PreTrained { model_name } => {
-                Self::generate_pretrained_embedding(circuit, model_name)?
+                self.generate_pretrained_embedding(circuit, model_name)?
             }
         };
 
@@ -592,48 +708,118 @@ impl CircuitSimilarityAnalyzer {
         Ok(embedding)
     }
 
-    /// Generate VAE embedding (placeholder)
+    /// Real feature vector summarizing a circuit's structure: depth,
+    /// two-qubit gate count, entanglement width/layer count, parallelism
+    /// statistics, connectivity size, and a canonical gate-type histogram.
+    fn circuit_feature_vector(features: &CircuitFeatures) -> Vec<f64> {
+        const CANONICAL_GATES: [&str; 12] = [
+            "H", "X", "Y", "Z", "S", "T", "RX", "RY", "RZ", "CNOT", "CZ", "SWAP",
+        ];
+
+        let mut raw = vec![
+            features.depth as f64,
+            features.two_qubit_gates as f64,
+            features.entanglement_structure.max_entanglement_width as f64,
+            features.entanglement_structure.entangling_layers.len() as f64,
+            features.parallelism_profile.iter().sum::<usize>() as f64,
+            features
+                .parallelism_profile
+                .iter()
+                .copied()
+                .max()
+                .unwrap_or(0) as f64,
+            features.connectivity_pattern.len() as f64,
+        ];
+        for gate_name in CANONICAL_GATES {
+            raw.push(*features.gate_histogram.get(gate_name).unwrap_or(&0) as f64);
+        }
+        raw
+    }
+
+    /// Deterministically project a (small, fixed-length) raw feature vector
+    /// into an `output_dim`-dimensional embedding using a fixed cosine
+    /// (Fourier-feature-style) basis expansion, then L2-normalize. This is
+    /// not a trained model — it is a real, reproducible, circuit-dependent
+    /// encoding used as an honest stand-in until an actual trained
+    /// embedding model is wired into this crate.
+    fn project_feature_vector(raw_features: &[f64], output_dim: usize) -> Vec<f64> {
+        if output_dim == 0 {
+            return Vec::new();
+        }
+        let normalization = raw_features.len().max(1) as f64;
+        let basis_size = output_dim as f64 + 1.0;
+
+        let mut embedding = vec![0.0_f64; output_dim];
+        for (k, slot) in embedding.iter_mut().enumerate() {
+            let mut accumulator = 0.0_f64;
+            for (i, &value) in raw_features.iter().enumerate() {
+                let phase = 2.0 * PI * ((i + 1) as f64) * ((k + 1) as f64) / basis_size;
+                accumulator += value * phase.cos();
+            }
+            *slot = accumulator / normalization;
+        }
+
+        let norm: f64 = embedding.iter().map(|v| v * v).sum::<f64>().sqrt();
+        if norm > 0.0 {
+            for value in &mut embedding {
+                *value /= norm;
+            }
+        }
+        embedding
+    }
+
+    /// Generate a real, feature-derived "VAE-style" embedding (see
+    /// [`Self::project_feature_vector`] for why this is a deterministic
+    /// stand-in rather than an actual trained variational autoencoder).
     fn generate_vae_embedding<const N: usize>(
-        _circuit: &Circuit<N>,
+        &mut self,
+        circuit: &Circuit<N>,
         latent_dim: usize,
     ) -> QuantRS2Result<Vec<f64>> {
-        // Placeholder for VAE-based circuit embedding
-        Ok(vec![0.5; latent_dim])
+        let features = self.extract_circuit_features(circuit)?;
+        let raw = Self::circuit_feature_vector(&features);
+        Ok(Self::project_feature_vector(&raw, latent_dim))
     }
 
-    /// Generate GCN embedding (placeholder)
+    /// Generate a real, feature-derived "GCN-style" embedding.
     fn generate_gcn_embedding<const N: usize>(
-        _circuit: &Circuit<N>,
+        &mut self,
+        circuit: &Circuit<N>,
         hidden_dims: &[usize],
     ) -> QuantRS2Result<Vec<f64>> {
-        // Placeholder for GCN-based circuit embedding
-        let output_dim = hidden_dims.last().unwrap_or(&64);
-        Ok(vec![0.5; *output_dim])
+        let output_dim = *hidden_dims.last().unwrap_or(&64);
+        let features = self.extract_circuit_features(circuit)?;
+        let raw = Self::circuit_feature_vector(&features);
+        Ok(Self::project_feature_vector(&raw, output_dim))
     }
 
-    /// Generate Transformer embedding (placeholder)
+    /// Generate a real, feature-derived "Transformer-style" embedding.
     fn generate_transformer_embedding<const N: usize>(
-        _circuit: &Circuit<N>,
+        &mut self,
+        circuit: &Circuit<N>,
         num_heads: usize,
         _num_layers: usize,
     ) -> QuantRS2Result<Vec<f64>> {
-        // Placeholder for Transformer-based circuit embedding
         let embedding_dim = num_heads * 64; // Typical dimension
-        Ok(vec![0.5; embedding_dim])
+        let features = self.extract_circuit_features(circuit)?;
+        let raw = Self::circuit_feature_vector(&features);
+        Ok(Self::project_feature_vector(&raw, embedding_dim))
     }
 
-    /// Generate pre-trained model embedding (placeholder)
+    /// Generate a real, feature-derived "pre-trained-model-style" embedding.
     fn generate_pretrained_embedding<const N: usize>(
-        _circuit: &Circuit<N>,
+        &mut self,
+        circuit: &Circuit<N>,
         model_name: &str,
     ) -> QuantRS2Result<Vec<f64>> {
-        // Placeholder for pre-trained model embedding
         let embedding_dim = match model_name {
             "circuit_bert" => 768,
             "quantum_gpt" => 512,
             _ => 256,
         };
-        Ok(vec![0.5; embedding_dim])
+        let features = self.extract_circuit_features(circuit)?;
+        let raw = Self::circuit_feature_vector(&features);
+        Ok(Self::project_feature_vector(&raw, embedding_dim))
     }
 
     /// Compute structural similarity
@@ -659,18 +845,31 @@ impl CircuitSimilarityAnalyzer {
         Ok(f64::midpoint(connectivity_similarity, depth_similarity))
     }
 
-    /// Compute functional similarity
-    const fn compute_functional_similarity<const N: usize, const M: usize>(
-        _circuit1: &Circuit<N>,
-        _circuit2: &Circuit<M>,
+    /// Compute functional similarity: how similarly the two circuits *act*
+    /// on the canonical `|0...0>` reference state, as opposed to
+    /// [`Self::compute_unitary_similarity`]'s full-operator process
+    /// fidelity. Both circuits are simulated (via
+    /// [`Self::simulate_circuit_from_basis_state`]) from the `|0...0>`
+    /// input, and the resulting output states are compared via the real
+    /// quantum state fidelity `|<psi1|psi2>|^2`.
+    fn compute_functional_similarity<const N: usize, const M: usize>(
+        circuit1: &Circuit<N>,
+        circuit2: &Circuit<M>,
     ) -> QuantRS2Result<f64> {
         if N != M {
             return Ok(0.0);
         }
 
-        // Compare functional behavior (simplified)
-        // In practice, this would compute unitary similarity or process fidelity
-        Ok(0.8) // Placeholder
+        let state1 = Self::simulate_circuit_from_basis_state(circuit1, 0)?;
+        let state2 = Self::simulate_circuit_from_basis_state(circuit2, 0)?;
+
+        let overlap: Complex64 = state1
+            .iter()
+            .zip(state2.iter())
+            .map(|(a, b)| a.conj() * b)
+            .sum();
+
+        Ok(overlap.norm_sqr().clamp(0.0, 1.0))
     }
 
     /// Compute sequence similarity
@@ -1226,5 +1425,169 @@ mod tests {
         assert_eq!(similarity_matrix[0][0], 1.0); // Self-similarity
         assert_eq!(similarity_matrix[1][1], 1.0); // Self-similarity
         assert_eq!(similarity_matrix[0][1], similarity_matrix[1][0]); // Symmetry
+    }
+
+    // -----------------------------------------------------------------------
+    // compute_functional_similarity / compute_unitary_similarity: these must
+    // now depend on real circuit simulation rather than the old hardcoded
+    // 0.8 / 0.9 constants.
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_functional_similarity_identical_circuit_is_one() {
+        let mut circuit = Circuit::<2>::new();
+        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            })
+            .unwrap();
+
+        let similarity =
+            CircuitSimilarityAnalyzer::compute_functional_similarity(&circuit, &circuit)
+                .expect("compute_functional_similarity should succeed");
+        assert!(
+            (similarity - 1.0).abs() < 1e-9,
+            "identical circuits must have functional similarity 1.0, got {similarity}"
+        );
+    }
+
+    #[test]
+    fn test_functional_similarity_orthogonal_outputs_near_zero() {
+        // Identity (no gates) leaves |00>; an X on qubit 0 produces |10>,
+        // which is orthogonal to |00>.
+        let identity_circuit = Circuit::<2>::new();
+        let mut x_circuit = Circuit::<2>::new();
+        x_circuit
+            .add_gate(quantrs2_core::gate::single::PauliX { target: QubitId(0) })
+            .unwrap();
+
+        let similarity =
+            CircuitSimilarityAnalyzer::compute_functional_similarity(&identity_circuit, &x_circuit)
+                .expect("compute_functional_similarity should succeed");
+        assert!(
+            similarity < 1e-9,
+            "orthogonal output states must have ~0 functional similarity, got {similarity}"
+        );
+    }
+
+    #[test]
+    fn test_unitary_similarity_identical_circuit_is_one() {
+        let mut circuit = Circuit::<2>::new();
+        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            })
+            .unwrap();
+
+        let similarity = CircuitSimilarityAnalyzer::compute_unitary_similarity(&circuit, &circuit)
+            .expect("compute_unitary_similarity should succeed");
+        assert!(
+            (similarity - 1.0).abs() < 1e-9,
+            "identical circuits must have unitary (process fidelity) similarity 1.0, got {similarity}"
+        );
+    }
+
+    #[test]
+    fn test_unitary_similarity_different_circuits_less_than_one() {
+        let mut circuit1 = Circuit::<1>::new();
+        circuit1.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+
+        let mut circuit2 = Circuit::<1>::new();
+        circuit2
+            .add_gate(quantrs2_core::gate::single::PauliX { target: QubitId(0) })
+            .unwrap();
+
+        let similarity =
+            CircuitSimilarityAnalyzer::compute_unitary_similarity(&circuit1, &circuit2)
+                .expect("compute_unitary_similarity should succeed");
+        assert!(
+            similarity < 1.0 - 1e-9,
+            "H and X are different single-qubit unitaries; similarity must be < 1.0, got {similarity}"
+        );
+        assert!((0.0..=1.0).contains(&similarity));
+    }
+
+    #[test]
+    fn test_unitary_similarity_mismatched_qubit_counts_is_zero() {
+        let circuit1 = Circuit::<1>::new();
+        let circuit2 = Circuit::<2>::new();
+        let similarity =
+            CircuitSimilarityAnalyzer::compute_unitary_similarity(&circuit1, &circuit2)
+                .expect("compute_unitary_similarity should succeed");
+        assert_eq!(similarity, 0.0);
+    }
+
+    // -----------------------------------------------------------------------
+    // ML embeddings must now be derived from real circuit features, not a
+    // fixed all-0.5 vector for every circuit.
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_ml_embeddings_depend_on_circuit_content() {
+        let mut analyzer = CircuitSimilarityAnalyzer::with_default_config();
+
+        let mut circuit1 = Circuit::<2>::new();
+        circuit1.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+
+        let mut circuit2 = Circuit::<2>::new();
+        circuit2
+            .add_gate(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            })
+            .unwrap();
+        circuit2
+            .add_gate(CNOT {
+                control: QubitId(1),
+                target: QubitId(0),
+            })
+            .unwrap();
+
+        let model_type = MLModelType::VAE { latent_dim: 8 };
+        let embedding1 = analyzer
+            .generate_circuit_embedding(&circuit1, &model_type)
+            .expect("embedding generation should succeed");
+        let embedding2 = analyzer
+            .generate_circuit_embedding(&circuit2, &model_type)
+            .expect("embedding generation should succeed");
+
+        assert_eq!(embedding1.len(), 8);
+        assert_eq!(embedding2.len(), 8);
+        assert_ne!(
+            embedding1, embedding2,
+            "embeddings for structurally different circuits must differ, not be a constant vector"
+        );
+
+        // Neither embedding should be the old hardcoded all-0.5 vector.
+        assert!(embedding1.iter().any(|&v| (v - 0.5).abs() > 1e-6));
+    }
+
+    #[test]
+    fn test_ml_similarity_identical_circuits_is_one() {
+        let mut analyzer = CircuitSimilarityAnalyzer::with_default_config();
+
+        let mut circuit = Circuit::<2>::new();
+        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            })
+            .unwrap();
+
+        let model_type = MLModelType::GCN {
+            hidden_dims: vec![32, 16],
+        };
+        let similarity = analyzer
+            .compute_ml_similarity(&circuit, &circuit, &model_type)
+            .expect("compute_ml_similarity should succeed");
+        assert!(
+            (similarity - 1.0).abs() < 1e-9,
+            "an embedding compared with itself must have cosine similarity 1.0, got {similarity}"
+        );
     }
 }

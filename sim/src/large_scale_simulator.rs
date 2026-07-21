@@ -140,15 +140,18 @@ impl SimpleSparseMatrix {
     pub fn to_dense(&self) -> Vec<Complex64> {
         let mut dense = vec![Complex64::new(0.0, 0.0); self.rows];
 
-        for (row, &val) in self.values.iter().enumerate() {
-            if row < self.row_ptr.len() - 1 {
+        // Reconstruct each basis-state amplitude from the CSR row pointers.
+        // The value for basis state `row` lives at `values[row_ptr[row]]` when
+        // that row has a stored (non-zero) entry. Iterating `values` directly
+        // and using the enumeration counter as the row index is WRONG, because
+        // `values` is compacted to non-zero entries only, so it would place the
+        // k-th non-zero amplitude at basis state k instead of its real index.
+        for row in 0..self.rows {
+            if row + 1 < self.row_ptr.len() {
                 let start = self.row_ptr[row];
                 let end = self.row_ptr[row + 1];
-                if start < end && start < self.col_indices.len() {
-                    let col = self.col_indices[start];
-                    if col < dense.len() {
-                        dense[row] = val;
-                    }
+                if start < end && start < self.values.len() {
+                    dense[row] = self.values[start];
                 }
             }
         }
@@ -571,25 +574,72 @@ impl SparseQuantumState {
         Ok(())
     }
 
-    /// Apply dense gate operation
+    /// Apply dense gate operation for an arbitrary-arity gate.
+    ///
+    /// The state is materialised densely, the `2^k x 2^k` (row-major) gate
+    /// `matrix` acting on `k = qubits.len()` qubits is applied over every group
+    /// of basis states that differ only in the target qubit bits, and the
+    /// result is re-sparsified. The gate-matrix index convention matches the
+    /// rest of the module: `qubits[0]` is the most-significant index of the
+    /// gate matrix.
     fn apply_dense_gate(&mut self, matrix: &[Complex64], qubits: &[QubitId]) -> QuantRS2Result<()> {
         // Convert to dense, apply gate, convert back if still sparse enough
         let mut dense = self.to_dense()?;
 
-        // Apply gate operation (simplified single-qubit case)
-        if qubits.len() == 1 {
-            let target = qubits[0].id() as usize;
-            let target_mask = 1usize << target;
+        let k = qubits.len();
+        if k == 0 {
+            return Err(QuantRS2Error::InvalidInput(
+                "Gate must act on at least one qubit".to_string(),
+            ));
+        }
+        let gate_dim = 1usize << k;
+        if matrix.len() != gate_dim * gate_dim {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Gate matrix has {} elements, expected {} for {} qubit(s)",
+                matrix.len(),
+                gate_dim * gate_dim,
+                k
+            )));
+        }
 
-            for i in 0..self.dimension {
-                if (i & target_mask) == 0 {
-                    let paired_idx = i | target_mask;
-                    let old_0 = dense[i];
-                    let old_1 = dense[paired_idx];
+        let mut qubit_indices = Vec::with_capacity(k);
+        let mut combined_mask = 0usize;
+        for q in qubits {
+            let idx = q.id() as usize;
+            if idx >= self.num_qubits {
+                return Err(QuantRS2Error::InvalidInput(format!(
+                    "Target qubit {} out of range (num_qubits={})",
+                    idx, self.num_qubits
+                )));
+            }
+            qubit_indices.push(idx);
+            combined_mask |= 1usize << idx;
+        }
 
-                    dense[i] = matrix[0] * old_0 + matrix[1] * old_1;
-                    dense[paired_idx] = matrix[2] * old_0 + matrix[3] * old_1;
+        let mut indices = vec![0usize; gate_dim];
+        let mut inputs = vec![Complex64::new(0.0, 0.0); gate_dim];
+        for base in 0..self.dimension {
+            // Visit each group of amplitudes (those agreeing on all
+            // non-target bits) exactly once.
+            if base & combined_mask != 0 {
+                continue;
+            }
+            for (g, (idx_slot, in_slot)) in indices.iter_mut().zip(inputs.iter_mut()).enumerate() {
+                let mut idx = base;
+                for (b, &q) in qubit_indices.iter().enumerate() {
+                    if (g >> (k - 1 - b)) & 1 == 1 {
+                        idx |= 1usize << q;
+                    }
                 }
+                *idx_slot = idx;
+                *in_slot = dense[idx];
+            }
+            for row in 0..gate_dim {
+                let mut acc = Complex64::new(0.0, 0.0);
+                for (col, &inp) in inputs.iter().enumerate() {
+                    acc += matrix[row * gate_dim + col] * inp;
+                }
+                dense[indices[row]] = acc;
             }
         }
 
@@ -1084,18 +1134,20 @@ impl MemoryMappedQuantumState {
                     let target_mask = 1usize << target_idx;
                     let inv_sqrt2 = Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0);
 
-                    // Create temporary buffer to avoid borrowing issues
-                    let mut temp_buffer = vec![Complex64::new(0.0, 0.0); end - start];
-                    for (i, &val) in amplitudes[start..end].iter().enumerate() {
-                        temp_buffer[i] = val;
-                    }
-
+                    // `amplitudes` is the *full* state array, so the paired
+                    // amplitude can be read directly even when it lives in a
+                    // different chunk. Because `paired_idx = i | target_mask`
+                    // is always >= i, and we only initiate the update from the
+                    // index whose target bit is 0, every pair is processed
+                    // exactly once regardless of the chunk boundary. This is
+                    // what fixes the previous cross-chunk no-op for high qubit
+                    // indices (target stride >= chunk_size).
                     for i in start..end {
                         if (i & target_mask) == 0 {
                             let paired_idx = i | target_mask;
-                            if paired_idx < dimension && paired_idx >= start && paired_idx < end {
-                                let old_0 = temp_buffer[i - start];
-                                let old_1 = temp_buffer[paired_idx - start];
+                            if paired_idx < dimension {
+                                let old_0 = amplitudes[i];
+                                let old_1 = amplitudes[paired_idx];
 
                                 amplitudes[i] = inv_sqrt2 * (old_0 + old_1);
                                 amplitudes[paired_idx] = inv_sqrt2 * (old_0 - old_1);
@@ -1604,5 +1656,77 @@ mod tests {
 
         assert!(stats.current_usage > 0);
         assert_eq!(stats.peak_usage, stats.current_usage);
+    }
+
+    /// Regression: `apply_dense_gate` previously did nothing for 3+ qubit
+    /// gates, leaving the state unchanged while reporting success. A Toffoli
+    /// must genuinely permute the amplitudes.
+    #[test]
+    fn test_apply_dense_gate_three_qubit_toffoli() {
+        // Start in |011> (bit0=1, bit1=1, bit2=0) -> index 3, i.e. both
+        // controls (qubit0, qubit1) set and target (qubit2) unset.
+        let mut dense = vec![Complex64::new(0.0, 0.0); 8];
+        dense[3] = Complex64::new(1.0, 0.0);
+        let mut sparse = SparseQuantumState::from_dense(&dense, 1e-15)
+            .expect("sparse state construction should succeed");
+
+        // Standard Toffoli 8x8 matrix (MSB-first ordering: qubits[0] is the
+        // most significant), which swaps basis states 6 (110) and 7 (111).
+        let mut matrix = vec![Complex64::new(0.0, 0.0); 64];
+        for i in 0..8 {
+            matrix[i * 8 + i] = Complex64::new(1.0, 0.0);
+        }
+        matrix[6 * 8 + 6] = Complex64::new(0.0, 0.0);
+        matrix[7 * 8 + 7] = Complex64::new(0.0, 0.0);
+        matrix[6 * 8 + 7] = Complex64::new(1.0, 0.0);
+        matrix[7 * 8 + 6] = Complex64::new(1.0, 0.0);
+
+        let qubits = [QubitId(0), QubitId(1), QubitId(2)];
+        sparse
+            .apply_dense_gate(&matrix, &qubits)
+            .expect("dense gate application should succeed");
+
+        let result = sparse.to_dense().expect("dense conversion should succeed");
+        // Target qubit flipped: |111> -> index 7.
+        assert!(
+            (result[7] - Complex64::new(1.0, 0.0)).norm() < 1e-10,
+            "Toffoli must move amplitude from index 3 to index 7, got {result:?}"
+        );
+        assert!(
+            result[3].norm() < 1e-10,
+            "index 3 must be empty after Toffoli"
+        );
+    }
+
+    /// Regression: the memory-mapped Hadamard silently skipped amplitude pairs
+    /// that crossed a chunk boundary, making H a no-op for qubits whose stride
+    /// (`1 << target`) is >= `chunk_size`. Here qubit 4 has stride 16 while the
+    /// chunk size is 4, so every pair is cross-chunk.
+    #[test]
+    fn test_memory_mapped_hadamard_crosses_chunk_boundary() {
+        let dir = std::env::temp_dir();
+        let mut mmap = MemoryMappedQuantumState::new(5, 4, &dir)
+            .expect("memory-mapped state creation should succeed");
+
+        let h_gate = Hadamard { target: QubitId(4) };
+        mmap.apply_gate_chunked(&h_gate)
+            .expect("chunked Hadamard should succeed");
+
+        let amps = mmap.get_amplitudes();
+        let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
+        // H on qubit 4 of |00000> -> (|00000> + |10000>)/sqrt2, i.e. indices
+        // 0 and 16 each carry 1/sqrt2.
+        assert!(
+            (amps[0].re - inv_sqrt2).abs() < 1e-10,
+            "amplitude at index 0 should be 1/sqrt2, got {}",
+            amps[0].re
+        );
+        assert!(
+            (amps[16].re - inv_sqrt2).abs() < 1e-10,
+            "cross-chunk amplitude at index 16 should be 1/sqrt2, got {} (was silently skipped before the fix)",
+            amps[16].re
+        );
+        let norm: f64 = amps.iter().map(|a| a.norm_sqr()).sum();
+        assert!((norm - 1.0).abs() < 1e-9, "state must remain normalised");
     }
 }

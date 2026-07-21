@@ -598,33 +598,53 @@ impl FaultTolerantSynthesizer {
         Ok(stabilizers)
     }
 
-    /// Get neighboring qubits for X-stabilizer
-    fn get_x_stabilizer_neighbors(&self, i: usize, j: usize, distance: usize) -> Vec<usize> {
-        let mut neighbors = Vec::new();
-
-        // In a real implementation, this would calculate the actual neighboring data qubits
-        // For simplicity, we'll use a placeholder calculation
-        let base_index = i * distance + j;
-        for offset in 0..4 {
-            let neighbor = (base_index + offset) % (distance * distance);
-            neighbors.push(neighbor);
+    /// Data-qubit flat index for grid position `(row, col)` on the
+    /// `distance × distance` data lattice, or `None` if the position falls off
+    /// the grid (used for boundary truncation).
+    fn data_qubit_on_grid(row: isize, col: isize, distance: usize) -> Option<usize> {
+        if row < 0 || col < 0 {
+            return None;
         }
-
-        neighbors
+        let (r, c) = (row as usize, col as usize);
+        if r >= distance || c >= distance {
+            return None;
+        }
+        Some(r * distance + c)
     }
 
-    /// Get neighboring qubits for Z-stabilizer
+    /// Data qubits acted on by the X-type stabilizer at lattice site `(i, j)`.
+    ///
+    /// X stabilizers are modelled as **star (vertex) operators**: the operator
+    /// centred on data-lattice vertex `(i, j)` acts on the four orthogonally
+    /// adjacent data qubits — the up/down/left/right cross `{(i-1,j), (i+1,j),
+    /// (i,j-1), (i,j+1)}` — the classic surface-code "plus" pattern. Neighbours
+    /// that fall outside the `distance × distance` grid are truncated, giving
+    /// weight-4 operators in the bulk and reduced-weight operators on the
+    /// boundary. This is genuine lattice geometry (adjacent data qubits on the
+    /// grid), replacing the former modular-arithmetic placeholder that wrapped
+    /// around `distance²` with no geometric meaning.
+    fn get_x_stabilizer_neighbors(&self, i: usize, j: usize, distance: usize) -> Vec<usize> {
+        let (i, j) = (i as isize, j as isize);
+        [(i - 1, j), (i + 1, j), (i, j - 1), (i, j + 1)]
+            .into_iter()
+            .filter_map(|(r, c)| Self::data_qubit_on_grid(r, c, distance))
+            .collect()
+    }
+
+    /// Data qubits acted on by the Z-type stabilizer at lattice site `(i, j)`.
+    ///
+    /// Z stabilizers are modelled as **plaquette (face) operators**: the
+    /// operator on the face whose top-left corner is data qubit `(i, j)` acts
+    /// on the four corners of that unit cell — `{(i,j), (i,j+1), (i+1,j),
+    /// (i+1,j+1)}` — the dual of the X star. Corners outside the grid are
+    /// truncated for boundary faces, again replacing the meaningless modular
+    /// placeholder with real grid adjacency.
     fn get_z_stabilizer_neighbors(&self, i: usize, j: usize, distance: usize) -> Vec<usize> {
-        let mut neighbors = Vec::new();
-
-        // Similar placeholder calculation
-        let base_index = i * distance + j;
-        for offset in 0..4 {
-            let neighbor = (base_index + offset) % (distance * distance);
-            neighbors.push(neighbor);
-        }
-
-        neighbors
+        let (i, j) = (i as isize, j as isize);
+        [(i, j), (i, j + 1), (i + 1, j), (i + 1, j + 1)]
+            .into_iter()
+            .filter_map(|(r, c)| Self::data_qubit_on_grid(r, c, distance))
+            .collect()
     }
 
     /// Create logical operators
@@ -1525,5 +1545,59 @@ mod tests {
         assert!(distance.is_ok());
         let distance_value = distance.expect("Failed to calculate optimal distance");
         assert!(distance_value >= 3);
+    }
+
+    /// Regression: the stabilizer neighbour lists used a modular-arithmetic
+    /// placeholder `(i*d + j + offset) % (d*d)` with no relation to lattice
+    /// geometry. They now return genuine star / plaquette adjacency on the
+    /// data-qubit grid, with boundary truncation.
+    #[test]
+    fn test_surface_code_stabilizer_neighbors_are_geometric() {
+        let synthesizer = FaultTolerantSynthesizer::new(FaultTolerantConfig::default())
+            .expect("Failed to create synthesizer");
+        let distance = 3usize;
+
+        // Bulk X-star at vertex (1,1): the plus of orthogonal neighbours.
+        let mut x_bulk = synthesizer.get_x_stabilizer_neighbors(1, 1, distance);
+        x_bulk.sort_unstable();
+        assert_eq!(x_bulk, vec![1, 3, 5, 7]); // (0,1),(1,0),(1,2),(2,1)
+
+        // Corner X-star (0,0) truncates to two in-grid neighbours (no wrap).
+        let mut x_corner = synthesizer.get_x_stabilizer_neighbors(0, 0, distance);
+        x_corner.sort_unstable();
+        assert_eq!(x_corner, vec![1, 3]); // (0,1),(1,0)
+
+        // Bulk Z-plaquette at face (0,0): its four cell corners.
+        let mut z_bulk = synthesizer.get_z_stabilizer_neighbors(0, 0, distance);
+        z_bulk.sort_unstable();
+        assert_eq!(z_bulk, vec![0, 1, 3, 4]); // (0,0),(0,1),(1,0),(1,1)
+
+        // Boundary Z-plaquette at the bottom edge truncates to weight 2.
+        let mut z_edge = synthesizer.get_z_stabilizer_neighbors(2, 0, distance);
+        z_edge.sort_unstable();
+        assert_eq!(z_edge, vec![6, 7]); // (2,0),(2,1); (3,*) off-grid
+
+        // The old modular placeholder produced neighbours like {4,5,6,7} for
+        // X-stab (1,1); assert we no longer see that meaningless wraparound.
+        assert_ne!(x_bulk, vec![4, 5, 6, 7]);
+
+        // Every neighbour is a valid data-qubit index and geometrically
+        // adjacent to the stabilizer cell (Chebyshev distance <= 1), and the
+        // lists contain no duplicates.
+        let total = distance * distance;
+        for i in 0..distance - 1 {
+            for j in 0..distance {
+                let n = synthesizer.get_x_stabilizer_neighbors(i, j, distance);
+                let mut seen = std::collections::HashSet::new();
+                for &q in &n {
+                    assert!(q < total, "neighbour {q} out of range");
+                    let (r, c) = (q / distance, q % distance);
+                    let dr = (r as isize - i as isize).unsigned_abs();
+                    let dc = (c as isize - j as isize).unsigned_abs();
+                    assert!(dr <= 1 && dc <= 1, "neighbour not adjacent");
+                    assert!(seen.insert(q), "duplicate neighbour {q}");
+                }
+            }
+        }
     }
 }

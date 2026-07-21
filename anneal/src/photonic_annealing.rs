@@ -668,12 +668,13 @@ impl PhotonicAnnealer {
         // Record initial state
         self.record_state(0.0);
 
-        // Time evolution (simplified)
+        // Time evolution driven by the pump schedule and encoded Hamiltonian.
         for step in 0..self.config.time_steps {
             let t = step as f64 * dt;
 
-            // Apply simple evolution (placeholder)
-            self.evolve_step(dt)?;
+            // Evolve one step of the problem-coupled optical dynamics.
+            let pump = self.pump_power_at(t);
+            self.evolve_step(dt, pump)?;
 
             // Record state periodically
             if step % 10 == 0 {
@@ -716,15 +717,98 @@ impl PhotonicAnnealer {
         })
     }
 
-    /// Simple evolution step (placeholder implementation)
-    fn evolve_step(&mut self, dt: f64) -> PhotonicResult<()> {
-        // Apply loss
-        let decay_factor = (-self.config.loss_rate * dt).exp();
+    /// Evaluate the pump power at time `t` according to the configured schedule.
+    fn pump_power_at(&self, t: f64) -> f64 {
+        let total = self.config.evolution_time.max(1e-12);
+        match &self.config.pump_schedule {
+            PumpPowerSchedule::Constant { power } => *power,
+            PumpPowerSchedule::Linear {
+                initial_power,
+                final_power,
+            } => {
+                let frac = (t / total).clamp(0.0, 1.0);
+                (final_power - initial_power).mul_add(frac, *initial_power)
+            }
+            PumpPowerSchedule::Exponential {
+                initial_power,
+                time_constant,
+            } => initial_power * (t / time_constant.max(1e-12)).exp(),
+            PumpPowerSchedule::Custom { schedule } => {
+                if schedule.is_empty() {
+                    0.0
+                } else {
+                    let frac = (t / total).clamp(0.0, 1.0);
+                    let last = schedule.len() - 1;
+                    let idx = ((frac * last as f64).round() as usize).min(last);
+                    schedule[idx]
+                }
+            }
+        }
+    }
 
-        for i in 0..self.state.displacement.len() {
-            self.state.displacement[i] *= decay_factor.sqrt();
-            self.state.covariance_diag[i] =
-                self.state.covariance_diag[i].mul_add(decay_factor, 1.0 - decay_factor);
+    /// One step of problem-coupled photonic dynamics.
+    ///
+    /// The in-phase (signal) quadrature of every mode follows degenerate
+    /// optical-parametric-oscillator (DOPO) mean-field dynamics that are coupled to
+    /// the encoded Ising Hamiltonian, exactly the mechanism a coherent Ising machine
+    /// uses to relax toward a low-energy spin configuration:
+    ///
+    /// ```text
+    /// dq_i/dt = (pump - 1 - q_i^2) q_i  -  λ ( h_i  +  Σ_{j≠i} J_ij q_j )
+    /// ```
+    ///
+    /// The `(pump - 1)` term is the net parametric gain minus normalized loss, the
+    /// cubic `-q_i^2 q_i` term is the saturating nonlinearity, and the final term is
+    /// the (negative) gradient of the Ising energy `H = Σ h_i s_i + Σ J_ij s_i s_j`,
+    /// which biases each mode toward the sign that lowers the total energy. The
+    /// orthogonal quadrature and the covariance relax toward the loss floor, so the
+    /// search is now genuinely driven by the problem instead of a uniform decay.
+    fn evolve_step(&mut self, dt: f64, pump: f64) -> PhotonicResult<()> {
+        let num_modes = self.hamiltonian.num_modes;
+
+        // Strength of the Hamiltonian-gradient drive relative to the optical gain.
+        const DRIVE_SCALE: f64 = 1.0;
+
+        // Compute the mean-field derivative of every signal quadrature first (using
+        // the current state), then integrate — an explicit Euler step over the
+        // coupled system, matching the coherent-Ising-machine integrator.
+        let mut new_signal = vec![0.0; num_modes];
+        for i in 0..num_modes {
+            let q_i = self.state.displacement[2 * i];
+
+            // DOPO parametric gain with saturating nonlinearity.
+            let mut dq = (pump - 1.0 - q_i * q_i) * q_i;
+
+            // Negative Ising-energy gradient: local field (bias) contribution.
+            dq -= DRIVE_SCALE * self.hamiltonian.single_mode[i];
+
+            // Negative Ising-energy gradient: pairwise coupling contribution.
+            let mut coupling_drive = 0.0;
+            for j in 0..num_modes {
+                if j != i {
+                    coupling_drive +=
+                        self.hamiltonian.coupling[i][j] * self.state.displacement[2 * j];
+                }
+            }
+            dq -= DRIVE_SCALE * coupling_drive;
+
+            new_signal[i] = dt.mul_add(dq, q_i);
+        }
+
+        for i in 0..num_modes {
+            self.state.displacement[2 * i] = new_signal[i];
+        }
+
+        // Photon loss damps the orthogonal (phase) quadrature and relaxes the
+        // covariance diagonal toward the vacuum/thermal floor.
+        let decay_factor = (-self.config.loss_rate * dt).exp();
+        let sqrt_decay = decay_factor.sqrt();
+        for i in 0..num_modes {
+            let phase_idx = 2 * i + 1;
+            self.state.displacement[phase_idx] *= sqrt_decay;
+        }
+        for value in &mut self.state.covariance_diag {
+            *value = value.mul_add(decay_factor, 1.0 - decay_factor);
         }
 
         Ok(())
@@ -1098,5 +1182,90 @@ mod tests {
         let config = create_low_noise_config();
         assert_eq!(config.loss_rate, 0.001);
         assert!(!config.quantum_noise);
+    }
+
+    #[test]
+    fn test_evolve_step_driven_by_bias() {
+        // A single-mode bias must push the signal quadrature away from zero in the
+        // energy-lowering direction — the old decay-only step left zero at zero.
+        let config = PhotonicAnnealingConfig {
+            architecture: PhotonicArchitecture::SpatialMultiplexing {
+                num_modes: 2,
+                connectivity: ConnectivityType::FullyConnected,
+            },
+            initial_state: InitialStateType::Vacuum,
+            seed: Some(7),
+            ..PhotonicAnnealingConfig::default()
+        };
+        let mut annealer = PhotonicAnnealer::new(config).expect("annealer creation should succeed");
+
+        let mut ising = IsingModel::new(2);
+        ising.set_bias(0, 1.0).expect("set bias"); // favors s0 = -1
+        annealer
+            .encode_ising_model(&ising)
+            .expect("encoding should succeed");
+
+        // Start from an all-zero displacement.
+        for value in annealer.state.displacement.iter_mut() {
+            *value = 0.0;
+        }
+
+        // One evolution step above threshold.
+        annealer
+            .evolve_step(0.05, 1.5)
+            .expect("evolution step should succeed");
+
+        let q0 = annealer.state.displacement[0];
+        assert!(
+            q0.abs() > 1e-9,
+            "encoded bias must drive the quadrature off zero, got {q0}"
+        );
+        assert!(
+            q0 < 0.0,
+            "positive bias should drive the quadrature negative (lowering h*s), got {q0}"
+        );
+    }
+
+    #[test]
+    fn test_evolve_step_depends_on_coupling() {
+        // With identical initial state and pump, two different couplings must yield
+        // different dynamics, proving the Hamiltonian actually drives evolution.
+        let make = || {
+            let config = PhotonicAnnealingConfig {
+                architecture: PhotonicArchitecture::SpatialMultiplexing {
+                    num_modes: 2,
+                    connectivity: ConnectivityType::FullyConnected,
+                },
+                initial_state: InitialStateType::Vacuum,
+                seed: Some(11),
+                ..PhotonicAnnealingConfig::default()
+            };
+            PhotonicAnnealer::new(config).expect("annealer creation should succeed")
+        };
+
+        let mut ferro = make();
+        let mut anti = make();
+
+        let mut ising_ferro = IsingModel::new(2);
+        ising_ferro.set_coupling(0, 1, -1.0).expect("set coupling");
+        let mut ising_anti = IsingModel::new(2);
+        ising_anti.set_coupling(0, 1, 1.0).expect("set coupling");
+
+        ferro.encode_ising_model(&ising_ferro).expect("encode");
+        anti.encode_ising_model(&ising_anti).expect("encode");
+
+        // Identical non-trivial initial signal quadratures.
+        for annealer in [&mut ferro, &mut anti] {
+            annealer.state.displacement[0] = 0.4;
+            annealer.state.displacement[2] = -0.4;
+        }
+
+        ferro.evolve_step(0.05, 1.2).expect("evolve");
+        anti.evolve_step(0.05, 1.2).expect("evolve");
+
+        assert!(
+            (ferro.state.displacement[0] - anti.state.displacement[0]).abs() > 1e-9,
+            "opposite couplings must produce different evolution"
+        );
     }
 }

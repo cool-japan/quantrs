@@ -4,7 +4,9 @@
 //! tensor networks efficiently.
 
 use super::tensor::Tensor;
-use quantrs2_core::error::QuantRS2Result;
+use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
+use scirs2_core::ndarray::{ArrayD, Dimension, IxDyn};
+use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet};
 
 /// Trait for a network of tensors that can be contracted
@@ -653,20 +655,248 @@ fn find_central_tensor(tensor_connections: &HashMap<usize, HashSet<usize>>) -> u
     central
 }
 
-/// Contract a tensor network according to a given contraction path
+/// Extract the shared axis pairs between two tensors from a connection list.
+///
+/// Each returned `(axis_in_id1, axis_in_id2)` corresponds to a bond linking the
+/// two tensors, oriented so the first element indexes `id1` and the second
+/// `id2`.
+pub(crate) fn shared_axis_pairs(
+    connections: &[(super::tensor::TensorIndex, super::tensor::TensorIndex)],
+    id1: usize,
+    id2: usize,
+) -> Vec<(usize, usize)> {
+    let mut pairs = Vec::new();
+    for (a, b) in connections {
+        if a.tensor_id == id1 && b.tensor_id == id2 {
+            pairs.push((a.index, b.index));
+        } else if a.tensor_id == id2 && b.tensor_id == id1 {
+            pairs.push((b.index, a.index));
+        }
+    }
+    pairs
+}
+
+/// Contract two tensors over a set of shared index pairs, summing over all of
+/// them simultaneously (a multi-index Einstein summation).
+///
+/// `shared[i] = (axis_in_a, axis_in_b)` lists the axis pairs to contract; the
+/// two axes in each pair must have equal dimension. The result's axes are `a`'s
+/// non-contracted axes (in order) followed by `b`'s non-contracted axes (in
+/// order). With an empty `shared` slice this is the outer (tensor) product.
+///
+/// This is the genuine contraction primitive used to execute contraction paths;
+/// it performs real arithmetic over the tensor data rather than returning an
+/// existing tensor.
+pub(crate) fn contract_pair_multi(
+    a: &Tensor,
+    b: &Tensor,
+    shared: &[(usize, usize)],
+) -> QuantRS2Result<Tensor> {
+    for &(ax_a, ax_b) in shared {
+        if ax_a >= a.rank || ax_b >= b.rank {
+            return Err(QuantRS2Error::CircuitValidationFailed(format!(
+                "contract_pair_multi: axis out of range ({ax_a}, {ax_b})"
+            )));
+        }
+        if a.dimensions[ax_a] != b.dimensions[ax_b] {
+            return Err(QuantRS2Error::CircuitValidationFailed(format!(
+                "contract_pair_multi: dimension mismatch {} vs {}",
+                a.dimensions[ax_a], b.dimensions[ax_b]
+            )));
+        }
+    }
+
+    let a_contracted: HashSet<usize> = shared.iter().map(|&(ax, _)| ax).collect();
+    let b_contracted: HashSet<usize> = shared.iter().map(|&(_, ax)| ax).collect();
+
+    let a_free: Vec<usize> = (0..a.rank)
+        .filter(|ax| !a_contracted.contains(ax))
+        .collect();
+    let b_free: Vec<usize> = (0..b.rank)
+        .filter(|ax| !b_contracted.contains(ax))
+        .collect();
+
+    let mut result_dims: Vec<usize> = a_free.iter().map(|&ax| a.dimensions[ax]).collect();
+    result_dims.extend(b_free.iter().map(|&ax| b.dimensions[ax]));
+
+    let result_is_scalar = result_dims.is_empty();
+    let result_shape = if result_is_scalar {
+        IxDyn(&[1usize])
+    } else {
+        IxDyn(result_dims.as_slice())
+    };
+    let mut result_data = ArrayD::<Complex64>::zeros(result_shape);
+
+    for (a_idx, a_val) in a.data.indexed_iter() {
+        let a_raw = a_idx.slice();
+        for (b_idx, b_val) in b.data.indexed_iter() {
+            let b_raw = b_idx.slice();
+
+            // Keep only element pairs whose shared indices agree.
+            if shared
+                .iter()
+                .any(|&(ax_a, ax_b)| a_raw[ax_a] != b_raw[ax_b])
+            {
+                continue;
+            }
+
+            let mut res_idx: Vec<usize> = a_free.iter().map(|&ax| a_raw[ax]).collect();
+            res_idx.extend(b_free.iter().map(|&ax| b_raw[ax]));
+
+            let target = if result_is_scalar {
+                &mut result_data[IxDyn(&[0usize])]
+            } else {
+                &mut result_data[IxDyn(res_idx.as_slice())]
+            };
+            *target += *a_val * *b_val;
+        }
+    }
+
+    let final_data = if result_is_scalar {
+        let scalar = result_data[IxDyn(&[0usize])];
+        ArrayD::from_elem(IxDyn(&[]), scalar)
+    } else {
+        result_data
+    };
+
+    Ok(Tensor::new(final_data))
+}
+
+/// A tensor together with a global label for each of its axes. Two axes that
+/// carry the same label are bonded and get summed over when their tensors meet.
+struct LabeledTensor {
+    tensor: Tensor,
+    labels: Vec<usize>,
+}
+
+/// Contract a tensor network to a single tensor by executing the given
+/// contraction `path`.
+///
+/// The `connections` list defines the bonds of the network; each bond is turned
+/// into a shared axis label. The `path` gives the order of pairwise
+/// contractions — for each step `(id1, id2)` the two tensors are contracted over
+/// all axes they share (matching labels), and the merged tensor takes the place
+/// of `id1` (the same "merge into the first ID" convention produced by
+/// [`calculate_greedy_contraction_path`]). Any tensors left uncontracted by the
+/// path are folded together via outer products.
+///
+/// This performs the real contraction arithmetic via [`contract_pair_multi`];
+/// it no longer returns an arbitrary existing tensor.
 pub fn contract_network_along_path(
     tensors: &mut HashMap<usize, Tensor>,
     connections: &mut Vec<(super::tensor::TensorIndex, super::tensor::TensorIndex)>,
     path: &ContractionPath,
     next_id: &mut usize,
 ) -> QuantRS2Result<Tensor> {
-    // For simplicity in this implementation, we'll just return a placeholder
-    // In a full implementation, we'd perform the actual contractions
+    let _ = next_id; // IDs follow the path's merge-into-first convention.
 
-    // Placeholder: just return the first tensor or an empty one
-    if let Some(tensor) = tensors.values().next() {
-        Ok(tensor.clone())
-    } else {
-        Ok(Tensor::qubit_zero())
+    if tensors.is_empty() {
+        return Err(QuantRS2Error::CircuitValidationFailed(
+            "contract_network_along_path: empty tensor network".to_string(),
+        ));
     }
+
+    // Assign a fresh unique label to every axis of every tensor.
+    let mut next_label = 0usize;
+    let mut working: HashMap<usize, LabeledTensor> = HashMap::new();
+    for (&id, tensor) in tensors.iter() {
+        let labels: Vec<usize> = (0..tensor.rank)
+            .map(|_| {
+                let label = next_label;
+                next_label += 1;
+                label
+            })
+            .collect();
+        working.insert(
+            id,
+            LabeledTensor {
+                tensor: tensor.clone(),
+                labels,
+            },
+        );
+    }
+
+    // Bond the endpoints of each connection by giving them a shared label.
+    for (a, b) in connections.iter() {
+        let bond_label = next_label;
+        next_label += 1;
+        if let Some(lt) = working.get_mut(&a.tensor_id) {
+            if a.index < lt.labels.len() {
+                lt.labels[a.index] = bond_label;
+            }
+        }
+        if let Some(lt) = working.get_mut(&b.tensor_id) {
+            if b.index < lt.labels.len() {
+                lt.labels[b.index] = bond_label;
+            }
+        }
+    }
+
+    // Execute the path, contracting each pair over their shared (matching-label)
+    // axes and storing the merged tensor under the first ID.
+    for &(id1, id2) in path.steps() {
+        if id1 == id2 {
+            continue;
+        }
+        let lt1 = working.remove(&id1).ok_or_else(|| {
+            QuantRS2Error::CircuitValidationFailed(format!(
+                "contract_network_along_path: tensor {id1} missing from path step"
+            ))
+        })?;
+        let lt2 = working.remove(&id2).ok_or_else(|| {
+            QuantRS2Error::CircuitValidationFailed(format!(
+                "contract_network_along_path: tensor {id2} missing from path step"
+            ))
+        })?;
+
+        let merged = contract_labeled(&lt1, &lt2)?;
+        working.insert(id1, merged);
+    }
+
+    // Fold any remaining tensors (a well-formed path leaves exactly one).
+    let mut remaining: Vec<LabeledTensor> = working.into_values().collect();
+    let mut acc = remaining.remove(0);
+    for lt in remaining {
+        acc = contract_labeled(&acc, &lt)?;
+    }
+
+    Ok(acc.tensor)
+}
+
+/// Contract two labeled tensors over every axis pair whose labels match,
+/// returning the merged tensor with its surviving axis labels.
+fn contract_labeled(a: &LabeledTensor, b: &LabeledTensor) -> QuantRS2Result<LabeledTensor> {
+    let mut shared_pairs = Vec::new();
+    for (ai, &la) in a.labels.iter().enumerate() {
+        for (bi, &lb) in b.labels.iter().enumerate() {
+            if la == lb {
+                shared_pairs.push((ai, bi));
+            }
+        }
+    }
+
+    let merged = contract_pair_multi(&a.tensor, &b.tensor, &shared_pairs)?;
+
+    let a_contracted: HashSet<usize> = shared_pairs.iter().map(|&(ai, _)| ai).collect();
+    let b_contracted: HashSet<usize> = shared_pairs.iter().map(|&(_, bi)| bi).collect();
+
+    let mut labels: Vec<usize> = a
+        .labels
+        .iter()
+        .enumerate()
+        .filter(|&(i, _)| !a_contracted.contains(&i))
+        .map(|(_, &l)| l)
+        .collect();
+    labels.extend(
+        b.labels
+            .iter()
+            .enumerate()
+            .filter(|&(i, _)| !b_contracted.contains(&i))
+            .map(|(_, &l)| l),
+    );
+
+    Ok(LabeledTensor {
+        tensor: merged,
+        labels,
+    })
 }

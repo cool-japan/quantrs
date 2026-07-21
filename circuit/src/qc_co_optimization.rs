@@ -10,8 +10,9 @@ use quantrs2_core::{
     gate::GateOp,
     qubit::QubitId,
 };
+use scirs2_core::parallel_ops::{IntoParallelRefIterator, ParallelIterator};
 use scirs2_core::Complex64;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// A hybrid quantum-classical optimization problem
 ///
@@ -518,15 +519,71 @@ impl<const N: usize> HybridOptimizationProblem<N> {
         Ok(())
     }
 
-    /// Check for circular dependencies in the data flow graph
+    /// Check for circular dependencies in the data flow graph.
+    ///
+    /// Performs a standard three-colour (white/gray/black) depth-first search
+    /// over `data_flow.nodes`/`data_flow.edges`: a node is *gray* while it is
+    /// on the current DFS recursion stack and *black* once fully explored.
+    /// Encountering an edge into a gray node means the recursion stack itself
+    /// forms a cycle (e.g. `A -> B -> C -> A`), not merely a direct self-loop.
     fn has_circular_dependencies(&self) -> QuantRS2Result<bool> {
-        // Simplified cycle detection - a full implementation would use DFS
-        // For now, just check if any node has a self-loop
+        #[derive(Clone, Copy, PartialEq, Eq)]
+        enum Colour {
+            White,
+            Gray,
+            Black,
+        }
+
+        // Adjacency list keyed by node name, built once up front.
+        let mut adjacency: HashMap<&str, Vec<&str>> = HashMap::new();
+        for node in &self.data_flow.nodes {
+            adjacency.entry(node.as_str()).or_default();
+        }
         for (source, target, _) in &self.data_flow.edges {
-            if source == target {
-                return Ok(true);
+            adjacency
+                .entry(source.as_str())
+                .or_default()
+                .push(target.as_str());
+        }
+
+        let mut colour: HashMap<&str, Colour> = self
+            .data_flow
+            .nodes
+            .iter()
+            .map(|n| (n.as_str(), Colour::White))
+            .collect();
+
+        // Iterative DFS (explicit stack) to avoid unbounded recursion depth on
+        // large graphs; each stack frame tracks its outgoing-edge cursor.
+        for start in &self.data_flow.nodes {
+            if colour.get(start.as_str()).copied() != Some(Colour::White) {
+                continue;
+            }
+
+            let mut stack: Vec<(&str, usize)> = vec![(start.as_str(), 0)];
+            colour.insert(start.as_str(), Colour::Gray);
+
+            while let Some((node, cursor)) = stack.pop() {
+                let neighbours = adjacency.get(node).map(Vec::as_slice).unwrap_or(&[]);
+                if cursor < neighbours.len() {
+                    let next = neighbours[cursor];
+                    // Resume this frame at the following neighbour once we
+                    // return to it.
+                    stack.push((node, cursor + 1));
+                    match colour.get(next).copied() {
+                        Some(Colour::Gray) => return Ok(true), // back-edge => cycle
+                        Some(Colour::White) => {
+                            colour.insert(next, Colour::Gray);
+                            stack.push((next, 0));
+                        }
+                        Some(Colour::Black) | None => {}
+                    }
+                } else {
+                    colour.insert(node, Colour::Black);
+                }
             }
         }
+
         Ok(false)
     }
 }
@@ -559,13 +616,36 @@ impl HybridOptimizer {
         }
     }
 
-    /// Optimize a hybrid quantum-classical problem
+    /// Optimize a hybrid quantum-classical problem.
+    ///
+    /// The concrete update rule performed each iteration depends on
+    /// [`Self::algorithm`] — see [`Self::active_parameter_mask`] for exactly
+    /// how each [`HybridOptimizationAlgorithm`] variant differs from plain
+    /// full-batch gradient descent. [`HybridOptimizationAlgorithm::Custom`]
+    /// names an algorithm this optimizer does not implement and is rejected
+    /// with an honest [`QuantRS2Error::UnsupportedOperation`] rather than
+    /// silently running as if it were [`HybridOptimizationAlgorithm::SimultaneousOptimization`].
     pub fn optimize<const N: usize>(
         &self,
         problem: &mut HybridOptimizationProblem<N>,
     ) -> QuantRS2Result<HybridOptimizationResult> {
         // Validate the problem first
         problem.validate()?;
+
+        if let HybridOptimizationAlgorithm::Custom(name) = &self.algorithm {
+            return Err(QuantRS2Error::UnsupportedOperation(format!(
+                "custom hybrid optimization algorithm '{name}' is not implemented; use \
+                 CoordinateDescent, SimultaneousOptimization, HierarchicalOptimization, or \
+                 AdaptiveOptimization, each of which runs a genuinely distinct update rule"
+            )));
+        }
+
+        // Global-parameter indices that drive at least one quantum gate
+        // (via some component's `parameter_indices`) versus the remainder,
+        // which only ever appear in classical regularization terms. This
+        // partition is what `CoordinateDescent` and `AdaptiveOptimization`
+        // alternate between.
+        let quantum_indices = quantum_parameter_indices(problem);
 
         // Initialize optimization history
         let mut history = OptimizationHistory {
@@ -579,6 +659,7 @@ impl HybridOptimizer {
         let mut current_parameters = problem.global_parameters.clone();
         let mut best_parameters = current_parameters.clone();
         let mut best_value = f64::INFINITY;
+        let num_params = current_parameters.len();
 
         // Main optimization loop
         for iteration in 0..self.max_iterations {
@@ -621,13 +702,28 @@ impl HybridOptimizer {
                 });
             }
 
-            // Update parameters
-            let learning_rate = self.get_learning_rate(iteration);
+            // Which parameters this iteration actually updates, per
+            // `self.algorithm`.
+            let active = self.active_parameter_mask(
+                &quantum_indices,
+                iteration,
+                num_params,
+                &history.objective_values,
+            );
+
+            // Update parameters (only the active block), and track the real
+            // step actually taken -- not the full unmasked gradient -- so
+            // `history.step_sizes` honestly reflects block algorithms too.
+            let learning_rate = self.get_learning_rate(iteration, &history.gradient_norms);
+            let mut applied_grad_norm_sq = 0.0;
             for (i, gradient) in gradients.iter().enumerate() {
-                current_parameters[i] -= learning_rate * gradient;
+                if active[i] {
+                    current_parameters[i] -= learning_rate * gradient;
+                    applied_grad_norm_sq += gradient * gradient;
+                }
             }
 
-            let step_size = learning_rate * gradient_norm;
+            let step_size = learning_rate * applied_grad_norm_sq.sqrt();
             history.step_sizes.push(step_size);
 
             let execution_time = start_time.elapsed().as_secs_f64();
@@ -676,27 +772,68 @@ impl HybridOptimizer {
         problem: &HybridOptimizationProblem<N>,
         parameters: &[f64],
     ) -> QuantRS2Result<f64> {
-        let mut value = 0.0;
-
-        for (component_index, component) in problem.quantum_circuits.iter().enumerate() {
+        let eval_component = |component_index: usize| -> QuantRS2Result<f64> {
+            let component = &problem.quantum_circuits[component_index];
             let bound = bind_parameters(component, parameters)?;
             let state = statevector::simulate(&bound)?;
             let contribution =
                 Self::objective_from_state(&state, N, &problem.objective.function_type)?;
-
             let weight = problem
                 .objective
                 .weights
                 .get(component_index)
                 .copied()
                 .unwrap_or(1.0);
-            value += weight * contribution;
+            Ok(weight * contribution)
+        };
+
+        // Each component's state-vector simulation is fully independent, so
+        // `parallelization.quantum_parallelism` (the configured number of
+        // parallel quantum circuit evaluations) genuinely drives whether this
+        // runs across the SciRS2 parallel executor or sequentially in-order.
+        let component_indices: Vec<usize> = (0..problem.quantum_circuits.len()).collect();
+        let component_values: Vec<QuantRS2Result<f64>> =
+            if self.parallelization.quantum_parallelism > 1 && component_indices.len() > 1 {
+                component_indices
+                    .par_iter()
+                    .map(|&idx| eval_component(idx))
+                    .collect()
+            } else {
+                component_indices
+                    .iter()
+                    .map(|&idx| eval_component(idx))
+                    .collect()
+            };
+
+        let mut value = 0.0;
+        for contribution in component_values {
+            value += contribution?;
         }
 
         // Classical regularization terms operate directly on the parameter
-        // vector and are genuine (parameter-dependent) contributions.
-        for term in &problem.objective.regularization {
-            value += Self::regularization_value(term, parameters)?;
+        // vector and are genuine (parameter-dependent) contributions; they are
+        // the "classical processing" this optimizer performs, so
+        // `parallelization.classical_parallelism` drives their evaluation.
+        let regularization_values: Vec<QuantRS2Result<f64>> =
+            if self.parallelization.classical_parallelism > 1
+                && problem.objective.regularization.len() > 1
+            {
+                problem
+                    .objective
+                    .regularization
+                    .par_iter()
+                    .map(|term| Self::regularization_value(term, parameters))
+                    .collect()
+            } else {
+                problem
+                    .objective
+                    .regularization
+                    .iter()
+                    .map(|term| Self::regularization_value(term, parameters))
+                    .collect()
+            };
+        for contribution in regularization_values {
+            value += contribution?;
         }
 
         Ok(value)
@@ -821,11 +958,15 @@ impl HybridOptimizer {
         parameters: &[f64],
     ) -> QuantRS2Result<Vec<f64>> {
         let num_params = parameters.len();
-        let mut gradients = vec![0.0; num_params];
         let shift = std::f64::consts::FRAC_PI_2;
 
-        // Only parameters that actually drive a gate have a quantum
-        // contribution and admit the parameter-shift rule.
+        // Flatten every (component, parameterized-gate) parameter-shift
+        // evaluation into an independent job `(component_index, global_index,
+        // weight)`. Each job requires two full state-vector simulations and
+        // is otherwise completely independent of every other job, which is
+        // exactly what `parallelization.quantum_parallelism` ("number of
+        // parallel quantum circuit evaluations") promises to parallelize.
+        let mut jobs: Vec<(usize, usize, f64)> = Vec::new();
         for (component_index, component) in problem.quantum_circuits.iter().enumerate() {
             let num_param_gates = count_parameterized_gates(&component.circuit);
             let weight = problem
@@ -843,54 +984,192 @@ impl HybridOptimizer {
                         component.id, global_index, num_params
                     )));
                 }
-
-                let mut plus = parameters.to_vec();
-                plus[global_index] += shift;
-                let bound_plus = bind_parameters(component, &plus)?;
-                let state_plus = statevector::simulate(&bound_plus)?;
-                let energy_plus =
-                    Self::objective_from_state(&state_plus, N, &problem.objective.function_type)?;
-
-                let mut minus = parameters.to_vec();
-                minus[global_index] -= shift;
-                let bound_minus = bind_parameters(component, &minus)?;
-                let state_minus = statevector::simulate(&bound_minus)?;
-                let energy_minus =
-                    Self::objective_from_state(&state_minus, N, &problem.objective.function_type)?;
-
-                gradients[global_index] += weight * 0.5 * (energy_plus - energy_minus);
+                jobs.push((component_index, global_index, weight));
             }
         }
 
-        // Add the exact analytic derivative of every regularization term.
-        for term in &problem.objective.regularization {
-            Self::regularization_gradient(term, parameters, &mut gradients)?;
+        let eval_job = |&(component_index, global_index, weight): &(usize, usize, f64)| -> QuantRS2Result<(usize, f64)> {
+            let component = &problem.quantum_circuits[component_index];
+
+            let mut plus = parameters.to_vec();
+            plus[global_index] += shift;
+            let bound_plus = bind_parameters(component, &plus)?;
+            let state_plus = statevector::simulate(&bound_plus)?;
+            let energy_plus =
+                Self::objective_from_state(&state_plus, N, &problem.objective.function_type)?;
+
+            let mut minus = parameters.to_vec();
+            minus[global_index] -= shift;
+            let bound_minus = bind_parameters(component, &minus)?;
+            let state_minus = statevector::simulate(&bound_minus)?;
+            let energy_minus =
+                Self::objective_from_state(&state_minus, N, &problem.objective.function_type)?;
+
+            Ok((global_index, weight * 0.5 * (energy_plus - energy_minus)))
+        };
+
+        let contributions: Vec<QuantRS2Result<(usize, f64)>> =
+            if self.parallelization.quantum_parallelism > 1 && jobs.len() > 1 {
+                jobs.par_iter().map(eval_job).collect()
+            } else {
+                jobs.iter().map(eval_job).collect()
+            };
+
+        let mut gradients = vec![0.0; num_params];
+        for contribution in contributions {
+            let (global_index, value) = contribution?;
+            gradients[global_index] += value;
+        }
+
+        // Every regularization term's analytic gradient is independent of
+        // every other term, so `parallelization.classical_parallelism` (the
+        // "classical processing" parallel worker count) drives whether these
+        // run concurrently, each accumulating into its own gradient buffer
+        // that is then summed sequentially.
+        if self.parallelization.classical_parallelism > 1
+            && problem.objective.regularization.len() > 1
+        {
+            let partials: Vec<QuantRS2Result<Vec<f64>>> = problem
+                .objective
+                .regularization
+                .par_iter()
+                .map(|term| {
+                    let mut partial = vec![0.0; num_params];
+                    Self::regularization_gradient(term, parameters, &mut partial)?;
+                    Ok(partial)
+                })
+                .collect();
+            for partial in partials {
+                let partial = partial?;
+                for (g, p) in gradients.iter_mut().zip(partial) {
+                    *g += p;
+                }
+            }
+        } else {
+            for term in &problem.objective.regularization {
+                Self::regularization_gradient(term, parameters, &mut gradients)?;
+            }
         }
 
         Ok(gradients)
     }
 
-    /// Get learning rate for current iteration
-    fn get_learning_rate(&self, iteration: usize) -> f64 {
+    /// Get the learning rate for the current iteration under
+    /// `self.learning_rate_schedule.schedule_type`.
+    ///
+    /// `gradient_norm_history` is `history.gradient_norms` as built up so far
+    /// (including the value just recorded for `iteration`); it drives
+    /// [`ScheduleType::Adaptive`], the only schedule whose rate depends on the
+    /// optimization trajectory rather than purely on `iteration`.
+    fn get_learning_rate(&self, iteration: usize, gradient_norm_history: &[f64]) -> f64 {
+        let initial_rate = self.learning_rate_schedule.initial_rate;
+        let params = &self.learning_rate_schedule.parameters;
+
         match self.learning_rate_schedule.schedule_type {
-            ScheduleType::Constant => self.learning_rate_schedule.initial_rate,
+            ScheduleType::Constant => initial_rate,
             ScheduleType::LinearDecay => {
-                let decay_rate = self
-                    .learning_rate_schedule
-                    .parameters
-                    .get("decay_rate")
-                    .unwrap_or(&0.001);
-                self.learning_rate_schedule.initial_rate / (1.0 + decay_rate * iteration as f64)
+                let decay_rate = params.get("decay_rate").copied().unwrap_or(0.001);
+                initial_rate / (1.0 + decay_rate * iteration as f64)
             }
             ScheduleType::ExponentialDecay => {
-                let decay_rate = self
-                    .learning_rate_schedule
-                    .parameters
-                    .get("decay_rate")
-                    .unwrap_or(&0.95);
-                self.learning_rate_schedule.initial_rate * decay_rate.powi(iteration as i32)
+                let decay_rate = params.get("decay_rate").copied().unwrap_or(0.95);
+                initial_rate * decay_rate.powi(iteration as i32)
             }
-            _ => self.learning_rate_schedule.initial_rate, // Simplified
+            ScheduleType::StepDecay => {
+                // Piecewise-constant: multiply by `decay_factor` every
+                // `step_size` iterations, e.g. rate, rate*f, rate*f^2, ...
+                let step_size = params.get("step_size").copied().unwrap_or(100.0).max(1.0);
+                let decay_factor = params.get("decay_factor").copied().unwrap_or(0.5);
+                let num_steps = (iteration as f64 / step_size).floor();
+                initial_rate * decay_factor.powf(num_steps)
+            }
+            ScheduleType::CosineAnnealing => {
+                // Standard cosine annealing from `initial_rate` down to
+                // `min_rate` over `max_iterations`.
+                let min_rate = params.get("min_rate").copied().unwrap_or(0.0);
+                let total = (self.max_iterations.max(1) - 1) as f64;
+                let progress = if total > 0.0 {
+                    (iteration as f64 / total).min(1.0)
+                } else {
+                    0.0
+                };
+                min_rate
+                    + 0.5
+                        * (initial_rate - min_rate)
+                        * (1.0 + (std::f64::consts::PI * progress).cos())
+            }
+            ScheduleType::Adaptive => {
+                // Scale the rate by the ratio of the previous to the current
+                // gradient norm: a shrinking gradient (converging nicely)
+                // grows the rate (up to `max_scale`); a growing gradient
+                // (overshooting / diverging) shrinks it (down to
+                // `min_scale`), a simple, bounded Rprop-style adaptation.
+                let min_scale = params.get("min_scale").copied().unwrap_or(0.5);
+                let max_scale = params.get("max_scale").copied().unwrap_or(2.0);
+                let scale = match gradient_norm_history {
+                    [.., previous, current] => {
+                        let ratio = previous / current.max(1e-15);
+                        ratio.clamp(min_scale, max_scale)
+                    }
+                    _ => 1.0,
+                };
+                initial_rate * scale
+            }
+        }
+    }
+
+    /// Which global-parameter indices are updated this iteration, per
+    /// `self.algorithm`.
+    ///
+    /// * [`HybridOptimizationAlgorithm::SimultaneousOptimization`] updates
+    ///   every parameter every iteration (plain full-batch gradient descent).
+    /// * [`HybridOptimizationAlgorithm::CoordinateDescent`] alternates whole
+    ///   blocks: on even iterations only `quantum_indices` (parameters that
+    ///   drive at least one gate) update; on odd iterations only the
+    ///   remaining classical/regularization-only parameters update. If either
+    ///   block is empty the alternation is degenerate, so every parameter is
+    ///   simply updated every iteration.
+    /// * [`HybridOptimizationAlgorithm::HierarchicalOptimization`] anneals
+    ///   from coarse to fine resolution: early iterations only update
+    ///   parameters at indices that are multiples of a shrinking
+    ///   power-of-two stride, converging to "every parameter" (stride `1`) by
+    ///   the end of the run -- a coarse-to-fine parameter grouping.
+    /// * [`HybridOptimizationAlgorithm::AdaptiveOptimization`] behaves like
+    ///   `SimultaneousOptimization` while the objective keeps improving, and
+    ///   falls back to the `CoordinateDescent` block schedule as soon as it
+    ///   fails to improve on the previous iteration (an adaptive escape from
+    ///   a stalled full-batch step).
+    ///
+    /// [`HybridOptimizationAlgorithm::Custom`] never reaches this method:
+    /// `optimize` rejects it up front with an honest
+    /// [`QuantRS2Error::UnsupportedOperation`].
+    fn active_parameter_mask(
+        &self,
+        quantum_indices: &HashSet<usize>,
+        iteration: usize,
+        num_params: usize,
+        recent_objectives: &[f64],
+    ) -> Vec<bool> {
+        match &self.algorithm {
+            HybridOptimizationAlgorithm::SimultaneousOptimization => vec![true; num_params],
+            HybridOptimizationAlgorithm::CoordinateDescent => {
+                coordinate_descent_mask(quantum_indices, iteration, num_params)
+            }
+            HybridOptimizationAlgorithm::HierarchicalOptimization => {
+                hierarchical_mask(iteration, self.max_iterations, num_params)
+            }
+            HybridOptimizationAlgorithm::AdaptiveOptimization => {
+                let improving = match recent_objectives {
+                    [.., previous, current] => *current < previous - 1e-12,
+                    _ => true,
+                };
+                if improving {
+                    vec![true; num_params]
+                } else {
+                    coordinate_descent_mask(quantum_indices, iteration, num_params)
+                }
+            }
+            HybridOptimizationAlgorithm::Custom(_) => vec![true; num_params],
         }
     }
 
@@ -965,6 +1244,69 @@ impl HybridOptimizer {
             entanglement_info,
         })
     }
+}
+
+/// Collect the global-parameter indices that drive at least one parameterized
+/// gate (RX/RY/RZ) of some quantum component, i.e. the indices that admit the
+/// parameter-shift rule in [`HybridOptimizer::compute_gradients`].
+///
+/// Every other index only ever appears in classical regularization terms.
+/// This partition is what [`HybridOptimizationAlgorithm::CoordinateDescent`]
+/// and [`HybridOptimizationAlgorithm::AdaptiveOptimization`] alternate
+/// between.
+fn quantum_parameter_indices<const N: usize>(
+    problem: &HybridOptimizationProblem<N>,
+) -> HashSet<usize> {
+    let mut indices = HashSet::new();
+    for component in &problem.quantum_circuits {
+        let num_param_gates = count_parameterized_gates(&component.circuit);
+        for &idx in component.parameter_indices.iter().take(num_param_gates) {
+            indices.insert(idx);
+        }
+    }
+    indices
+}
+
+/// Block-coordinate-descent mask: alternates between the `quantum_indices`
+/// block (even iterations) and the complementary classical block (odd
+/// iterations). Degenerates to "update everything" when one of the two
+/// blocks is empty, since there is then nothing to alternate with.
+fn coordinate_descent_mask(
+    quantum_indices: &HashSet<usize>,
+    iteration: usize,
+    num_params: usize,
+) -> Vec<bool> {
+    let classical_count = num_params.saturating_sub(quantum_indices.len());
+    if quantum_indices.is_empty() || classical_count == 0 {
+        return vec![true; num_params];
+    }
+
+    let update_quantum_this_round = iteration % 2 == 0;
+    (0..num_params)
+        .map(|i| quantum_indices.contains(&i) == update_quantum_this_round)
+        .collect()
+}
+
+/// Coarse-to-fine hierarchical mask: at the coarsest level (`iteration ==
+/// 0`) only every `2^max_level`-th parameter updates; the level shrinks by
+/// one every `max_iterations / (max_level + 1)` iterations until it reaches
+/// `0` (stride `1`, i.e. every parameter updates), refining the resolution
+/// as optimization proceeds.
+fn hierarchical_mask(iteration: usize, max_iterations: usize, num_params: usize) -> Vec<bool> {
+    if num_params == 0 {
+        return Vec::new();
+    }
+
+    let max_level = (num_params as f64).log2().floor() as u32;
+    let num_phases = max_level + 1;
+    let phase_len = ((max_iterations.max(1) as f64) / (num_phases as f64))
+        .ceil()
+        .max(1.0) as usize;
+    let phase = (iteration / phase_len).min(max_level as usize) as u32;
+    let level = max_level - phase;
+    let stride = 1usize << level;
+
+    (0..num_params).map(|i| i % stride == 0).collect()
 }
 
 /// Count the parameterized rotation gates (RX/RY/RZ) in a circuit, in gate order.
@@ -1557,5 +1899,313 @@ mod tests {
             "product state entropy should be 0, got {}",
             prod_ent.von_neumann_entropy
         );
+    }
+
+    /// `has_circular_dependencies` must catch a cycle that spans more than one
+    /// edge (`A -> B -> C -> A`), not just a direct self-loop.
+    #[test]
+    fn test_multi_node_cycle_is_detected() {
+        let mut problem = HybridOptimizationProblem::<1>::new();
+        problem.data_flow.nodes = vec!["A".to_string(), "B".to_string(), "C".to_string()];
+        problem.data_flow.edges = vec![
+            (
+                "A".to_string(),
+                "B".to_string(),
+                DataType::Probabilities(vec![]),
+            ),
+            (
+                "B".to_string(),
+                "C".to_string(),
+                DataType::Probabilities(vec![]),
+            ),
+            (
+                "C".to_string(),
+                "A".to_string(),
+                DataType::Probabilities(vec![]),
+            ),
+        ];
+
+        let result = problem.validate();
+        assert!(
+            result.is_err(),
+            "A->B->C->A must be flagged as a circular dependency"
+        );
+    }
+
+    /// A genuine DAG (no cycle at all, not even a self-loop) must validate.
+    #[test]
+    fn test_acyclic_data_flow_validates() {
+        let mut problem = HybridOptimizationProblem::<1>::new();
+        problem.data_flow.nodes = vec!["A".to_string(), "B".to_string(), "C".to_string()];
+        problem.data_flow.edges = vec![
+            (
+                "A".to_string(),
+                "B".to_string(),
+                DataType::Probabilities(vec![]),
+            ),
+            (
+                "A".to_string(),
+                "C".to_string(),
+                DataType::Probabilities(vec![]),
+            ),
+            (
+                "B".to_string(),
+                "C".to_string(),
+                DataType::Probabilities(vec![]),
+            ),
+        ];
+
+        assert!(
+            problem.validate().is_ok(),
+            "acyclic data flow must not be rejected as circular"
+        );
+    }
+
+    /// `ScheduleType::StepDecay` must be piecewise-constant, dropping by
+    /// `decay_factor` every `step_size` iterations, not silently aliasing the
+    /// constant initial rate.
+    #[test]
+    fn test_step_decay_learning_rate() {
+        let mut optimizer =
+            HybridOptimizer::new(HybridOptimizationAlgorithm::SimultaneousOptimization);
+        optimizer.learning_rate_schedule.schedule_type = ScheduleType::StepDecay;
+        optimizer.learning_rate_schedule.initial_rate = 0.1;
+        optimizer
+            .learning_rate_schedule
+            .parameters
+            .insert("step_size".to_string(), 10.0);
+        optimizer
+            .learning_rate_schedule
+            .parameters
+            .insert("decay_factor".to_string(), 0.5);
+
+        let empty_history: Vec<f64> = Vec::new();
+        assert!((optimizer.get_learning_rate(0, &empty_history) - 0.1).abs() < 1e-12);
+        assert!((optimizer.get_learning_rate(9, &empty_history) - 0.1).abs() < 1e-12);
+        assert!((optimizer.get_learning_rate(10, &empty_history) - 0.05).abs() < 1e-12);
+        assert!((optimizer.get_learning_rate(20, &empty_history) - 0.025).abs() < 1e-12);
+    }
+
+    /// `ScheduleType::CosineAnnealing` must trace a cosine curve from
+    /// `initial_rate` at iteration 0 down to `min_rate` at the final
+    /// iteration, not silently alias the constant initial rate.
+    #[test]
+    fn test_cosine_annealing_learning_rate() {
+        let mut optimizer =
+            HybridOptimizer::new(HybridOptimizationAlgorithm::SimultaneousOptimization);
+        optimizer.learning_rate_schedule.schedule_type = ScheduleType::CosineAnnealing;
+        optimizer.learning_rate_schedule.initial_rate = 1.0;
+        optimizer.max_iterations = 101; // iterations 0..=100
+        optimizer
+            .learning_rate_schedule
+            .parameters
+            .insert("min_rate".to_string(), 0.0);
+
+        let empty_history: Vec<f64> = Vec::new();
+        let start = optimizer.get_learning_rate(0, &empty_history);
+        let mid = optimizer.get_learning_rate(50, &empty_history);
+        let end = optimizer.get_learning_rate(100, &empty_history);
+
+        assert!(
+            (start - 1.0).abs() < 1e-9,
+            "rate at iter 0 should be ~1.0, got {start}"
+        );
+        assert!(
+            mid < start && mid > end,
+            "rate should monotonically decay across the run"
+        );
+        assert!(
+            end.abs() < 1e-9,
+            "rate at final iter should be ~0.0, got {end}"
+        );
+    }
+
+    /// `ScheduleType::Adaptive` must scale the rate by the gradient-norm
+    /// trend: a shrinking gradient grows the rate, a growing gradient shrinks
+    /// it, rather than silently aliasing the constant initial rate.
+    #[test]
+    fn test_adaptive_learning_rate_tracks_gradient_trend() {
+        let mut optimizer =
+            HybridOptimizer::new(HybridOptimizationAlgorithm::SimultaneousOptimization);
+        optimizer.learning_rate_schedule.schedule_type = ScheduleType::Adaptive;
+        optimizer.learning_rate_schedule.initial_rate = 0.1;
+
+        // No history yet: falls back to the initial rate.
+        let none: Vec<f64> = Vec::new();
+        assert!((optimizer.get_learning_rate(0, &none) - 0.1).abs() < 1e-12);
+
+        // Shrinking gradient norm (converging) => rate should grow.
+        let shrinking = vec![1.0, 0.5];
+        let grown = optimizer.get_learning_rate(1, &shrinking);
+        assert!(
+            grown > 0.1,
+            "shrinking gradient norm should grow the rate, got {grown}"
+        );
+
+        // Growing gradient norm (diverging) => rate should shrink.
+        let growing = vec![0.5, 1.0];
+        let shrunk = optimizer.get_learning_rate(1, &growing);
+        assert!(
+            shrunk < 0.1,
+            "growing gradient norm should shrink the rate, got {shrunk}"
+        );
+    }
+
+    /// `quantum_parameter_indices` must contain exactly the global indices
+    /// referenced by a component's parameterized gates, not indices that only
+    /// feed classical regularization.
+    #[test]
+    fn test_quantum_parameter_indices_partition() {
+        // 2 global parameters: index 0 drives the RY gate, index 1 is
+        // regularization-only.
+        let mut problem = single_ry_problem(0.3);
+        problem.set_global_parameters(vec![0.3, 99.0]);
+        problem
+            .add_regularization(RegularizationType::L2, 1.0, vec![1])
+            .expect("add reg");
+
+        let indices = quantum_parameter_indices(&problem);
+        assert!(indices.contains(&0), "index 0 drives the RY gate");
+        assert!(
+            !indices.contains(&1),
+            "index 1 only feeds regularization, must not be 'quantum'"
+        );
+    }
+
+    /// `CoordinateDescent` must alternate: quantum-only indices update on
+    /// even iterations, classical-only indices update on odd iterations.
+    #[test]
+    fn test_coordinate_descent_mask_alternates() {
+        let mut quantum = HashSet::new();
+        quantum.insert(0);
+        // num_params = 2: index 0 quantum, index 1 classical.
+        let even = coordinate_descent_mask(&quantum, 0, 2);
+        let odd = coordinate_descent_mask(&quantum, 1, 2);
+        assert_eq!(
+            even,
+            vec![true, false],
+            "even iteration updates the quantum block"
+        );
+        assert_eq!(
+            odd,
+            vec![false, true],
+            "odd iteration updates the classical block"
+        );
+    }
+
+    /// With no classical parameters at all, `CoordinateDescent` must degrade
+    /// to updating every parameter every iteration rather than stalling.
+    #[test]
+    fn test_coordinate_descent_mask_degenerates_without_classical_block() {
+        let mut quantum = HashSet::new();
+        quantum.insert(0);
+        quantum.insert(1);
+        let mask = coordinate_descent_mask(&quantum, 1, 2);
+        assert_eq!(mask, vec![true, true]);
+    }
+
+    /// `HierarchicalOptimization` must start coarse (few active parameters)
+    /// and refine to "every parameter active" by the final iteration.
+    #[test]
+    fn test_hierarchical_mask_coarse_to_fine() {
+        let num_params = 8;
+        let max_iterations = 80;
+
+        let coarse = hierarchical_mask(0, max_iterations, num_params);
+        let coarse_active = coarse.iter().filter(|&&b| b).count();
+        assert!(
+            coarse_active < num_params,
+            "iteration 0 should not yet update every parameter, got {coarse_active}/{num_params}"
+        );
+        assert!(coarse[0], "index 0 is always active at every level");
+
+        let fine = hierarchical_mask(max_iterations - 1, max_iterations, num_params);
+        assert!(
+            fine.iter().all(|&b| b),
+            "the final iteration must update every parameter"
+        );
+    }
+
+    /// `HybridOptimizationAlgorithm::Custom` must be an honest error, not a
+    /// silent alias for `SimultaneousOptimization`.
+    #[test]
+    fn test_custom_algorithm_is_honest_error() {
+        let optimizer =
+            HybridOptimizer::new(HybridOptimizationAlgorithm::Custom("my-algo".to_string()));
+        let mut problem = single_ry_problem(0.3);
+        let result = optimizer.optimize(&mut problem);
+        assert!(
+            matches!(result, Err(QuantRS2Error::UnsupportedOperation(_))),
+            "Custom algorithm must error honestly, got {result:?}"
+        );
+    }
+
+    /// End-to-end: `CoordinateDescent` on a problem with both a quantum and a
+    /// classical parameter must still converge (alternating updates instead
+    /// of a single full-batch step per iteration).
+    #[test]
+    fn test_coordinate_descent_end_to_end_converges() {
+        let mut optimizer = HybridOptimizer::new(HybridOptimizationAlgorithm::CoordinateDescent);
+        optimizer.learning_rate_schedule.initial_rate = 0.3;
+        optimizer.max_iterations = 2000;
+
+        // Index 0 drives the RY gate (quantum); index 1 only feeds an L2
+        // regularization term (classical), so the two blocks alternate.
+        let mut problem = single_ry_problem(0.6);
+        problem.set_global_parameters(vec![0.6, 5.0]);
+        problem
+            .add_regularization(RegularizationType::L2, 0.5, vec![1])
+            .expect("add reg");
+
+        let result = optimizer.optimize(&mut problem).expect("optimize");
+        assert!(
+            (result.optimal_value + 1.0).abs() < 1e-2,
+            "quantum part of the objective {} should approach -1",
+            result.optimal_value
+        );
+        assert!(
+            result.optimal_parameters[1].abs() < 1e-1,
+            "classical parameter should be driven toward 0 by L2 regularization, got {}",
+            result.optimal_parameters[1]
+        );
+    }
+
+    /// Parallel evaluation (quantum/classical parallelism > 1) must produce
+    /// the same objective and gradients as the sequential path -- the
+    /// parallelism setting changes *how* the work is scheduled, not the
+    /// answer.
+    #[test]
+    fn test_parallelization_matches_sequential_result() {
+        let mut problem = single_ry_problem(0.4);
+        problem.set_global_parameters(vec![0.4, 2.0]);
+        problem
+            .add_regularization(RegularizationType::L2, 1.0, vec![1])
+            .expect("add reg");
+
+        let sequential =
+            HybridOptimizer::new(HybridOptimizationAlgorithm::SimultaneousOptimization);
+        let mut parallel =
+            HybridOptimizer::new(HybridOptimizationAlgorithm::SimultaneousOptimization);
+        parallel.parallelization.quantum_parallelism = 8;
+        parallel.parallelization.classical_parallelism = 8;
+
+        let seq_value = sequential
+            .evaluate_objective(&problem, &problem.global_parameters.clone())
+            .expect("sequential objective");
+        let par_value = parallel
+            .evaluate_objective(&problem, &problem.global_parameters.clone())
+            .expect("parallel objective");
+        assert!((seq_value - par_value).abs() < 1e-12);
+
+        let seq_grad = sequential
+            .compute_gradients(&problem, &problem.global_parameters.clone())
+            .expect("sequential gradients");
+        let par_grad = parallel
+            .compute_gradients(&problem, &problem.global_parameters.clone())
+            .expect("parallel gradients");
+        assert_eq!(seq_grad.len(), par_grad.len());
+        for (s, p) in seq_grad.iter().zip(par_grad.iter()) {
+            assert!((s - p).abs() < 1e-9, "sequential {s} vs parallel {p}");
+        }
     }
 }

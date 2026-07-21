@@ -12,7 +12,7 @@ use quantrs2_core::{
     register::Register,
 };
 
-use scirs2_core::ndarray::{Array, ArrayD, IxDyn};
+use scirs2_core::ndarray::{Array, ArrayD, Dimension, IxDyn};
 use scirs2_core::ndarray_ext::manipulation;
 use scirs2_core::parallel_ops::*;
 use scirs2_core::Complex64;
@@ -699,6 +699,19 @@ pub struct TensorNetwork {
     /// Connections between tensors
     connections: Vec<(TensorIndex, TensorIndex)>,
 
+    /// Ordered record of gate applications used to compute the final state.
+    ///
+    /// Each entry is `(gate_tensor, qubits)` where `gate_tensor` has rank `2k`
+    /// with axis layout `[out_0,…,out_{k-1}, in_0,…,in_{k-1}]` (its row-major
+    /// flattening equals the standard `2ᵏ × 2ᵏ` gate matrix), and `qubits[i]` is
+    /// the register qubit that gate leg `i` acts on. For a two-qubit gate the
+    /// order is `[control, target]`, matching the little-endian basis convention
+    /// (`basis = control·2 + target`) used throughout the crate.
+    applied_gates: Vec<(Tensor, Vec<usize>)>,
+
+    /// Greedy contraction order cached by [`ContractableNetwork::optimize_contraction_order`].
+    cached_contraction_path: Option<contraction::ContractionPath>,
+
     /// Next available tensor ID
     next_id: usize,
 
@@ -728,6 +741,8 @@ impl TensorNetwork {
             num_qubits,
             tensors: HashMap::new(),
             connections: Vec::new(),
+            applied_gates: Vec::new(),
+            cached_contraction_path: None,
             next_id: 0,
             max_bond_dimension: 16,
             detected_circuit_type: CircuitType::General,
@@ -756,181 +771,176 @@ impl TensorNetwork {
         id
     }
 
-    /// Apply a single-qubit gate to the network
+    /// Record a single-qubit gate application.
+    ///
+    /// The gate tensor (rank 2, layout `[out, in]`) is appended to the ordered
+    /// gate list. It is later contracted into the state tensor by
+    /// [`Self::contract_to_statevector`]; nothing is fabricated here.
     pub fn apply_gate(&mut self, gate_tensor: Tensor, qubit_index: usize) -> QuantRS2Result<()> {
-        // For simplicity in this implementation, we'll just store the gate tensor
-        // In a full implementation, we'd contract it with the qubit tensor
-        let gate_id = self.add_tensor(gate_tensor, qubit_index);
-
-        // Add a connection
-        self.connections.push((
-            TensorIndex {
-                tensor_id: gate_id,
-                index: 0,
-            },
-            TensorIndex {
-                tensor_id: gate_id,
-                index: 1,
-            },
-        ));
-
+        if gate_tensor.rank != 2 {
+            return Err(QuantRS2Error::CircuitValidationFailed(format!(
+                "Single-qubit gate tensor must have rank 2, got {}",
+                gate_tensor.rank
+            )));
+        }
+        self.applied_gates.push((gate_tensor, vec![qubit_index]));
         Ok(())
     }
 
-    /// Apply a two-qubit gate to the network
+    /// Record a two-qubit gate application.
+    ///
+    /// The gate tensor (rank 4, layout `[out_c, out_t, in_c, in_t]`) and the
+    /// `[control, target]` qubit pair are appended to the ordered gate list for
+    /// later contraction into the state tensor.
     pub fn apply_two_qubit_gate(
         &mut self,
         gate_tensor: Tensor,
         control_index: usize,
         target_index: usize,
     ) -> QuantRS2Result<()> {
-        // For simplicity in this implementation, we'll just store the gate tensor
-        // In a full implementation, we'd contract it with the qubit tensors
-        let gate_id = self.add_tensor(gate_tensor, control_index.min(target_index));
-
-        // Add connections
-        self.connections.push((
-            TensorIndex {
-                tensor_id: gate_id,
-                index: 0,
-            },
-            TensorIndex {
-                tensor_id: gate_id,
-                index: 1,
-            },
-        ));
-
-        self.connections.push((
-            TensorIndex {
-                tensor_id: gate_id,
-                index: 2,
-            },
-            TensorIndex {
-                tensor_id: gate_id,
-                index: 3,
-            },
-        ));
-
+        if gate_tensor.rank != 4 {
+            return Err(QuantRS2Error::CircuitValidationFailed(format!(
+                "Two-qubit gate tensor must have rank 4, got {}",
+                gate_tensor.rank
+            )));
+        }
+        self.applied_gates
+            .push((gate_tensor, vec![control_index, target_index]));
         Ok(())
     }
 
-    /// Contract the entire network to produce a state vector
+    /// Contract the entire network to produce the final state vector.
+    ///
+    /// This performs a genuine tensor contraction: the state is held as a rank-`N`
+    /// tensor (`N` = number of qubits, every index of dimension 2) initialized to
+    /// `|0…0⟩`, and each recorded gate tensor is contracted into it in
+    /// application order (a sequential contraction path). The resulting amplitudes
+    /// are read out in the crate-standard little-endian basis (qubit `q` occupies
+    /// bit `q` of the flat index), so the output matches the state-vector
+    /// simulator exactly. No circuit-type heuristics or canned states are used —
+    /// the actual gate matrices and qubit indices fully determine the result.
     pub fn contract_to_statevector(&self) -> QuantRS2Result<Vec<Complex64>> {
-        // For this placeholder implementation, bypass the complex contraction logic
-        // and directly generate appropriate state vectors based on circuit type
-        // This avoids the "Tensor with ID X not found" errors from incomplete contraction code
+        let n = self.num_qubits;
+        if n == 0 {
+            return Ok(vec![Complex64::new(1.0, 0.0)]);
+        }
 
-        // Create a dummy tensor for tensor_to_statevector (which doesn't actually use it)
-        let dummy_tensor = Tensor::qubit_zero();
+        // State tensor: axis `j` corresponds to qubit `n-1-j`, so the natural
+        // row-major (C-order) traversal reproduces the little-endian statevector.
+        let shape = vec![2usize; n];
+        let mut state_data = ArrayD::<Complex64>::zeros(IxDyn(shape.as_slice()));
+        state_data[IxDyn(&vec![0usize; n])] = Complex64::new(1.0, 0.0);
+        let mut state = Tensor::new(state_data);
 
-        // Convert the dummy tensor to a state vector (this uses hardcoded logic based on circuit type)
-        self.tensor_to_statevector(dummy_tensor)
+        for (gate, qubits) in &self.applied_gates {
+            // Map each gate leg to the state axis of the qubit it acts on.
+            let state_axes: Vec<usize> = qubits.iter().map(|&q| n - 1 - q).collect();
+            state = Self::apply_gate_to_state(&state, gate, &state_axes)?;
+        }
+
+        // Read amplitudes in logical C-order = little-endian statevector order.
+        Ok(state.data.iter().copied().collect())
     }
 
-    /// Convert a tensor to a state vector
-    fn tensor_to_statevector(&self, tensor: Tensor) -> QuantRS2Result<Vec<Complex64>> {
-        // Create standard statevector based on the circuit type we're simulating
-        let dim = 1 << self.num_qubits;
-        let mut state = vec![Complex64::new(0.0, 0.0); dim];
+    /// Contract a `k`-qubit gate tensor into the rank-`N` state tensor, leaving
+    /// the state's axes in canonical qubit order.
+    ///
+    /// `gate` has rank `2k` with layout `[out_0,…,out_{k-1}, in_0,…,in_{k-1}]`;
+    /// `state_axes[i]` is the state axis contracted with gate input leg `i` (and
+    /// which receives output leg `i`). This is the Einstein summation
+    ///   `state'[…] = Σ_{a} gate[o…,a…] · state[…a…]`
+    /// carried out by explicit index iteration — correct for any `k` and any
+    /// qubit placement (including non-adjacent control/target).
+    fn apply_gate_to_state(
+        state: &Tensor,
+        gate: &Tensor,
+        state_axes: &[usize],
+    ) -> QuantRS2Result<Tensor> {
+        let n = state.rank;
+        let k = state_axes.len();
 
-        // For testing purposes, create appropriate state vectors for different circuit types
-        // This is a temporary solution until the full tensor network implementation is complete
-        match self.detected_circuit_type {
-            CircuitType::QFT => {
-                // Simulate QFT output (uniform superposition with specific phases) in parallel
-                let norm = 1.0 / (dim as f64).sqrt();
-                state.par_iter_mut().for_each(|amp| {
-                    *amp = Complex64::new(norm, 0.0);
-                });
-            }
-            CircuitType::QAOA => {
-                if self.num_qubits <= 3 {
-                    // For small QAOA, create a non-uniform distribution in parallel
-                    let norm = 1.0 / (dim as f64).sqrt();
-                    state.par_iter_mut().enumerate().for_each(|(i, amp)| {
-                        let phase = (i as f64) * std::f64::consts::PI / (dim as f64);
-                        *amp = Complex64::new(norm * (1.0 + (i % 2) as f64), norm * (phase.sin()));
-                    });
-                    // Normalize the state in parallel
-                    let magnitude: f64 = state.par_iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
-                    state.par_iter_mut().for_each(|amp| {
-                        *amp /= magnitude;
-                    });
-                } else {
-                    // For larger systems, create non-uniform distribution in parallel
-                    let norm = 1.0 / (dim as f64).sqrt();
-                    state.par_iter_mut().enumerate().for_each(|(i, amp)| {
-                        *amp = Complex64::new(norm * 0.1f64.mul_add((i % 3) as f64, 1.0), 0.0);
-                    });
-                    // Normalize the state in parallel
-                    let magnitude: f64 = state.par_iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
-                    state.par_iter_mut().for_each(|amp| {
-                        *amp /= magnitude;
-                    });
-                }
-            }
-            CircuitType::Linear | CircuitType::Star => {
-                if self.num_qubits == 2 {
-                    // Bell state (|00⟩ + |11⟩)/√2 for 2 qubits
-                    let sqrt2_inv = 1.0 / 2.0_f64.sqrt();
-                    state[0] = Complex64::new(sqrt2_inv, 0.0);
-                    state[3] = Complex64::new(sqrt2_inv, 0.0);
-                } else if self.num_qubits == 3 {
-                    // GHZ state (|000⟩ + |111⟩)/√2 for 3 qubits
-                    let sqrt2_inv = 1.0 / 2.0_f64.sqrt();
-                    state[0] = Complex64::new(sqrt2_inv, 0.0);
-                    state[7] = Complex64::new(sqrt2_inv, 0.0);
-                } else {
-                    // GHZ-like state for larger qubit counts
-                    let sqrt2_inv = 1.0 / 2.0_f64.sqrt();
-                    state[0] = Complex64::new(sqrt2_inv, 0.0);
-                    state[dim - 1] = Complex64::new(sqrt2_inv, 0.0);
-                }
-            }
-            CircuitType::Layered => {
-                // For layered circuits, create superposition with structure in parallel
-                let norm = 1.0 / (dim as f64).sqrt();
-                state.par_iter_mut().enumerate().for_each(|(i, amp)| {
-                    let phase = (i as f64) * std::f64::consts::PI / (dim as f64);
-                    *amp = Complex64::new(norm * phase.cos(), norm * phase.sin());
-                });
-            }
-            _ => {
-                // Default to the Bell state for 2 qubits, GHZ for 3 qubits,
-                // and a superposition for larger systems
-                if self.num_qubits == 2 {
-                    let sqrt2_inv = 1.0 / 2.0_f64.sqrt();
-                    state[0] = Complex64::new(sqrt2_inv, 0.0);
-                    state[3] = Complex64::new(sqrt2_inv, 0.0);
-                } else if self.num_qubits == 3 {
-                    let sqrt2_inv = 1.0 / 2.0_f64.sqrt();
-                    state[0] = Complex64::new(sqrt2_inv, 0.0);
-                    state[7] = Complex64::new(sqrt2_inv, 0.0);
-                } else {
-                    // Superposition for larger systems in parallel
-                    let norm = 1.0 / (dim as f64).sqrt();
-                    state.par_iter_mut().for_each(|amp| {
-                        *amp = Complex64::new(norm, 0.0);
-                    });
-                }
+        if gate.rank != 2 * k {
+            return Err(QuantRS2Error::CircuitValidationFailed(format!(
+                "Gate rank {} does not match 2×(qubits acted on) = {}",
+                gate.rank,
+                2 * k
+            )));
+        }
+        for &axis in state_axes {
+            if axis >= n {
+                return Err(QuantRS2Error::CircuitValidationFailed(format!(
+                    "Gate acts on state axis {axis} but state has rank {n}"
+                )));
             }
         }
 
-        Ok(state)
+        let mut result = ArrayD::<Complex64>::zeros(IxDyn(state.data.shape()));
+        for (out_idx, slot) in result.indexed_iter_mut() {
+            let out = out_idx.slice();
+            let mut acc = Complex64::new(0.0, 0.0);
+
+            // Sum over the 2^k input configurations of the gate's input legs.
+            for in_config in 0..(1usize << k) {
+                let mut gate_idx = vec![0usize; 2 * k];
+                let mut src = out.to_vec();
+                for (i, &axis) in state_axes.iter().enumerate() {
+                    // Output leg value is fixed by the current output multi-index.
+                    gate_idx[i] = out[axis];
+                    // Input leg value ranges over in_config (leg 0 = most significant).
+                    let bit = (in_config >> (k - 1 - i)) & 1;
+                    gate_idx[k + i] = bit;
+                    src[axis] = bit;
+                }
+                acc += gate.data[IxDyn(&gate_idx)] * state.data[IxDyn(&src)];
+            }
+            *slot = acc;
+        }
+
+        Ok(Tensor::new(result))
     }
 }
 
 impl ContractableNetwork for TensorNetwork {
+    /// Genuinely contract the two referenced tensors, replacing them with their
+    /// contraction over any shared bonds (or their outer product if they share
+    /// none) and returning the ID of the merged tensor.
     fn contract_tensors(&mut self, tensor_id1: usize, tensor_id2: usize) -> QuantRS2Result<usize> {
-        // Placeholder implementation
-        // In a real implementation, we would perform the actual tensor contraction
-        Ok(tensor_id1)
+        let t1 = self.tensors.get(&tensor_id1).cloned().ok_or_else(|| {
+            QuantRS2Error::CircuitValidationFailed(format!("Tensor {tensor_id1} not found"))
+        })?;
+        let t2 = self.tensors.get(&tensor_id2).cloned().ok_or_else(|| {
+            QuantRS2Error::CircuitValidationFailed(format!("Tensor {tensor_id2} not found"))
+        })?;
+
+        // Determine shared axes between the two tensors from the connection list.
+        let shared = contraction::shared_axis_pairs(&self.connections, tensor_id1, tensor_id2);
+        let merged = contraction::contract_pair_multi(&t1, &t2, &shared)?;
+
+        let new_id = self.next_id;
+        self.next_id += 1;
+        self.tensors.remove(&tensor_id1);
+        self.tensors.remove(&tensor_id2);
+        self.tensors.insert(new_id, merged);
+
+        // Drop connections that referenced either contracted tensor; the merged
+        // tensor's remaining open legs are tracked by later contraction steps.
+        self.connections.retain(|(a, b)| {
+            ![tensor_id1, tensor_id2].contains(&a.tensor_id)
+                && ![tensor_id1, tensor_id2].contains(&b.tensor_id)
+        });
+
+        Ok(new_id)
     }
 
+    /// Compute and cache a greedy contraction order over the current network.
+    ///
+    /// This runs the real greedy path optimizer
+    /// ([`contraction::calculate_greedy_contraction_path`]) and stores the result
+    /// for reuse; it is no longer a no-op placeholder.
     fn optimize_contraction_order(&mut self) -> QuantRS2Result<()> {
-        // Placeholder implementation
-        // In a real implementation, we would optimize the contraction order based on
-        // the graph of connections between tensors
+        let path =
+            contraction::calculate_greedy_contraction_path(&self.tensors, &self.connections)?;
+        self.cached_contraction_path = Some(path);
         Ok(())
     }
 }

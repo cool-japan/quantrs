@@ -252,28 +252,117 @@ impl QuantumGenerator {
     }
 }
 
+impl QuantumGenerator {
+    /// Generate data samples from an explicit batch of latent vectors by
+    /// evaluating the generator's quantum neural network.
+    ///
+    /// Each latent vector is encoded into the QNN circuit, simulated, and its
+    /// per-feature Pauli expectation values (in `[-1, 1]`) are affinely mapped
+    /// to the `[0, 1]` data range.
+    fn generate_from_latent(&self, latent_vectors: &Array2<f64>) -> Result<Array2<f64>> {
+        let num_samples = latent_vectors.nrows();
+        let mut samples = Array2::zeros((num_samples, self.data_dim));
+        for i in 0..num_samples {
+            let latent = latent_vectors.row(i).to_owned();
+            let output = self.qnn.forward(&latent)?;
+            for j in 0..self.data_dim {
+                let expectation = if j < output.len() { output[j] } else { 0.0 };
+                samples[[i, j]] = (expectation + 1.0) * 0.5;
+            }
+        }
+        Ok(samples)
+    }
+
+    /// Least-squares GAN adversarial loss `mean_i (D(G(z_i)) - 1)²` of the
+    /// generator against `discriminator` on the latent batch `latent_vectors`.
+    fn adversarial_loss(
+        &self,
+        latent_vectors: &Array2<f64>,
+        discriminator: &QuantumDiscriminator,
+    ) -> Result<f64> {
+        let samples = self.generate_from_latent(latent_vectors)?;
+        let outputs = discriminator.discriminate(&samples)?;
+        let n = outputs.len();
+        if n == 0 {
+            return Ok(0.0);
+        }
+        let loss = outputs.iter().map(|&d| (d - 1.0) * (d - 1.0)).sum::<f64>();
+        Ok(loss / n as f64)
+    }
+
+    /// Real adversarial update of the generator against a discriminator.
+    ///
+    /// Minimises the least-squares generator loss `mean_i (D(G(z_i)) - 1)²`
+    /// with a central finite-difference gradient (the loss is a non-linear
+    /// composition of two quantum circuits, so parameter-shift does not apply
+    /// directly), updating the generator's parameters in place.  Returns the
+    /// adversarial loss measured *before* the update.
+    pub fn adversarial_update(
+        &mut self,
+        latent_vectors: &Array2<f64>,
+        discriminator: &QuantumDiscriminator,
+        learning_rate: f64,
+    ) -> Result<f64> {
+        if latent_vectors.nrows() == 0 {
+            return Err(MLError::DataError(
+                "adversarial update received an empty latent batch".to_string(),
+            ));
+        }
+        let num_params = self.qnn.parameters.len();
+        let epsilon = 1e-3;
+        let base_loss = self.adversarial_loss(latent_vectors, discriminator)?;
+        let original = self.qnn.parameters.clone();
+
+        let mut gradient = Array1::<f64>::zeros(num_params);
+        for j in 0..num_params {
+            self.qnn.parameters[j] = original[j] + epsilon;
+            let loss_plus = self.adversarial_loss(latent_vectors, discriminator)?;
+            self.qnn.parameters[j] = original[j] - epsilon;
+            let loss_minus = self.adversarial_loss(latent_vectors, discriminator)?;
+            self.qnn.parameters[j] = original[j];
+            gradient[j] = (loss_plus - loss_minus) / (2.0 * epsilon);
+        }
+
+        for j in 0..num_params {
+            self.qnn.parameters[j] = original[j] - learning_rate * gradient[j];
+        }
+        Ok(base_loss)
+    }
+
+    /// Feature-matching loss `mean_i || G(z_i) - prototype ||²` used by the
+    /// trait-level [`Generator::update`].
+    fn feature_matching_loss(
+        &self,
+        latent_vectors: &Array2<f64>,
+        prototype: &Array1<f64>,
+    ) -> Result<f64> {
+        let samples = self.generate_from_latent(latent_vectors)?;
+        let n = samples.nrows();
+        if n == 0 {
+            return Ok(0.0);
+        }
+        let mut total = 0.0;
+        for i in 0..n {
+            for j in 0..self.data_dim {
+                let diff = samples[[i, j]] - prototype[j];
+                total += diff * diff;
+            }
+        }
+        Ok(total / n as f64)
+    }
+}
+
 impl Generator for QuantumGenerator {
     fn generate(&self, num_samples: usize) -> Result<Array2<f64>> {
-        // Generate random latent vectors
+        // Sample random latent vectors and push them through the quantum
+        // generator network.
         let mut latent_vectors = Array2::zeros((num_samples, self.latent_dim));
         for i in 0..num_samples {
             for j in 0..self.latent_dim {
                 latent_vectors[[i, j]] = thread_rng().random::<f64>() * 2.0 - 1.0;
             }
         }
-
-        // Generate samples from latent vectors
-        // In a real implementation, this would use the QNN to generate samples
-        let mut samples = Array2::zeros((num_samples, self.data_dim));
-        for i in 0..num_samples {
-            for j in 0..self.data_dim {
-                // Simple dummy implementation
-                let latent_sum = latent_vectors.row(i).sum();
-                samples[[i, j]] = (latent_sum + (j as f64) * 0.1).sin() * 0.5 + 0.5;
-            }
-        }
-
-        Ok(samples)
+        self.generate_from_latent(&latent_vectors)
     }
 
     fn generate_conditional(
@@ -298,12 +387,65 @@ impl Generator for QuantumGenerator {
 
     fn update(
         &mut self,
-        _latent_vectors: &Array2<f64>,
-        _discriminator_outputs: &Array1<f64>,
-        _learning_rate: f64,
+        latent_vectors: &Array2<f64>,
+        discriminator_outputs: &Array1<f64>,
+        learning_rate: f64,
     ) -> Result<f64> {
-        // Dummy implementation
-        Ok(0.5)
+        // Feature-matching generator update.
+        //
+        // The trait signature does not expose the discriminator model, so a
+        // full adversarial gradient is not available here (use
+        // [`QuantumGenerator::adversarial_update`] / [`QuantumGAN::train`] for
+        // that).  Instead we form a realism-weighted prototype from the current
+        // batch — samples the discriminator rated as more real receive more
+        // weight — and take a real finite-difference gradient step that pulls
+        // the generator's output toward that prototype.  Returns the
+        // feature-matching loss measured before the update.
+        let n = latent_vectors.nrows();
+        if n == 0 {
+            return Err(MLError::DataError(
+                "generator update received an empty latent batch".to_string(),
+            ));
+        }
+
+        let samples = self.generate_from_latent(latent_vectors)?;
+        let weight_sum: f64 = discriminator_outputs.iter().map(|&d| d.max(0.0)).sum();
+
+        let mut prototype = Array1::zeros(self.data_dim);
+        if weight_sum > 1e-12 {
+            for i in 0..n.min(discriminator_outputs.len()) {
+                let weight = discriminator_outputs[i].max(0.0) / weight_sum;
+                for j in 0..self.data_dim {
+                    prototype[j] += weight * samples[[i, j]];
+                }
+            }
+        } else {
+            for i in 0..n {
+                for j in 0..self.data_dim {
+                    prototype[j] += samples[[i, j]] / n as f64;
+                }
+            }
+        }
+
+        let num_params = self.qnn.parameters.len();
+        let epsilon = 1e-3;
+        let base_loss = self.feature_matching_loss(latent_vectors, &prototype)?;
+        let original = self.qnn.parameters.clone();
+
+        let mut gradient = Array1::<f64>::zeros(num_params);
+        for j in 0..num_params {
+            self.qnn.parameters[j] = original[j] + epsilon;
+            let loss_plus = self.feature_matching_loss(latent_vectors, &prototype)?;
+            self.qnn.parameters[j] = original[j] - epsilon;
+            let loss_minus = self.feature_matching_loss(latent_vectors, &prototype)?;
+            self.qnn.parameters[j] = original[j];
+            gradient[j] = (loss_plus - loss_minus) / (2.0 * epsilon);
+        }
+
+        for j in 0..num_params {
+            self.qnn.parameters[j] = original[j] - learning_rate * gradient[j];
+        }
+        Ok(base_loss)
     }
 }
 
@@ -362,31 +504,108 @@ impl QuantumDiscriminator {
     }
 }
 
-impl Discriminator for QuantumDiscriminator {
-    fn discriminate(&self, samples: &Array2<f64>) -> Result<Array1<f64>> {
-        // This is a dummy implementation
-        // In a real system, this would use the QNN to discriminate
+impl QuantumDiscriminator {
+    /// Discriminate a single sample, returning the probability (in `[0, 1]`)
+    /// that it is real.
+    ///
+    /// The sample is encoded into the discriminator's quantum neural network;
+    /// its single Pauli-Z expectation output (in `[-1, 1]`) is affinely mapped
+    /// to a probability.
+    fn discriminate_one(&self, sample: &Array1<f64>) -> Result<f64> {
+        let output = self.qnn.forward(sample)?;
+        if output.is_empty() {
+            return Err(MLError::MLOperationError(
+                "discriminator QNN produced an empty output".to_string(),
+            ));
+        }
+        Ok((output[0] + 1.0) * 0.5)
+    }
 
-        let num_samples = samples.nrows();
-        let mut outputs = Array1::zeros(num_samples);
+    /// Least-squares discrimination loss
+    /// `mean_real (D(x) - 1)² + mean_fake (D(x) - 0)²`.
+    fn discrimination_loss(
+        &self,
+        real_samples: &Array2<f64>,
+        generated_samples: &Array2<f64>,
+    ) -> Result<f64> {
+        let n_real = real_samples.nrows();
+        let n_fake = generated_samples.nrows();
 
-        for i in 0..num_samples {
-            // Simple dummy calculation
-            let sum = samples.row(i).sum();
-            outputs[i] = (sum * 0.1).sin() * 0.5 + 0.5;
+        let mut real_loss = 0.0;
+        for i in 0..n_real {
+            let d = self.discriminate_one(&real_samples.row(i).to_owned())?;
+            real_loss += (d - 1.0) * (d - 1.0);
+        }
+        let mut fake_loss = 0.0;
+        for i in 0..n_fake {
+            let d = self.discriminate_one(&generated_samples.row(i).to_owned())?;
+            fake_loss += d * d;
         }
 
+        let mut loss = 0.0;
+        if n_real > 0 {
+            loss += real_loss / n_real as f64;
+        }
+        if n_fake > 0 {
+            loss += fake_loss / n_fake as f64;
+        }
+        Ok(loss)
+    }
+}
+
+impl Discriminator for QuantumDiscriminator {
+    fn discriminate(&self, samples: &Array2<f64>) -> Result<Array1<f64>> {
+        let num_samples = samples.nrows();
+        let mut outputs = Array1::zeros(num_samples);
+        for i in 0..num_samples {
+            outputs[i] = self.discriminate_one(&samples.row(i).to_owned())?;
+        }
         Ok(outputs)
     }
 
     fn update(
         &mut self,
-        _real_samples: &Array2<f64>,
-        _generated_samples: &Array2<f64>,
-        _learning_rate: f64,
+        real_samples: &Array2<f64>,
+        generated_samples: &Array2<f64>,
+        learning_rate: f64,
     ) -> Result<f64> {
-        // Dummy implementation
-        Ok(0.5)
+        // Least-squares GAN discriminator update via parameter-shift gradients.
+        //
+        // D(x) = (⟨Z⟩(x) + 1) / 2, so ∂D/∂θ = ½ · ∂⟨Z⟩/∂θ where ∂⟨Z⟩/∂θ is the
+        // exact parameter-shift gradient.  The least-squares loss gradient for a
+        // real sample (target 1) is (D - 1)·∂⟨Z⟩/∂θ and for a fake sample
+        // (target 0) is D·∂⟨Z⟩/∂θ, averaged within each class.
+        let n_real = real_samples.nrows();
+        let n_fake = generated_samples.nrows();
+        let num_params = self.qnn.parameters.len();
+        let mut gradient = Array1::<f64>::zeros(num_params);
+
+        for i in 0..n_real {
+            let x = real_samples.row(i).to_owned();
+            let d = self.discriminate_one(&x)?;
+            let d_expectation = self.qnn.output_component_gradient(&x, 0)?;
+            let coeff = (d - 1.0) / n_real as f64;
+            for j in 0..num_params {
+                gradient[j] += coeff * d_expectation[j];
+            }
+        }
+        for i in 0..n_fake {
+            let x = generated_samples.row(i).to_owned();
+            let d = self.discriminate_one(&x)?;
+            let d_expectation = self.qnn.output_component_gradient(&x, 0)?;
+            let coeff = d / n_fake as f64;
+            for j in 0..num_params {
+                gradient[j] += coeff * d_expectation[j];
+            }
+        }
+
+        for j in 0..num_params {
+            self.qnn.parameters[j] -= learning_rate * gradient[j];
+        }
+
+        // Report the loss after the update so the training history reflects the
+        // discriminator's real progress.
+        self.discrimination_loss(real_samples, generated_samples)
     }
 }
 
@@ -462,12 +681,20 @@ impl QuantumGAN {
             }
             let avg_disc_loss = disc_loss_sum / disc_steps as f64;
 
-            // Train generator
-            let latent_vectors = Array2::zeros((batch_size, self.generator.latent_dim));
-            let fake_outputs = Array1::zeros(batch_size);
-            let gen_loss =
-                self.generator
-                    .update(&latent_vectors, &fake_outputs, gen_learning_rate)?;
+            // Train generator against the current discriminator with real
+            // random latent vectors and a genuine adversarial gradient.
+            let latent_dim = self.generator.latent_dim;
+            let mut latent_vectors = Array2::zeros((batch_size, latent_dim));
+            for i in 0..batch_size {
+                for j in 0..latent_dim {
+                    latent_vectors[[i, j]] = thread_rng().random::<f64>() * 2.0 - 1.0;
+                }
+            }
+            let gen_loss = self.generator.adversarial_update(
+                &latent_vectors,
+                &self.discriminator,
+                gen_learning_rate,
+            )?;
 
             // Record losses
             gen_losses.push(gen_loss);

@@ -295,6 +295,10 @@ impl HEPQuantumClassifier {
         let num_samples = x_test.nrows();
         let mut y_pred = Array1::zeros(num_samples);
         let mut confidences = Array1::zeros(num_samples);
+        // Positive-class (class index 1) probability per sample, used for AUC.
+        let mut positive_scores = Array1::zeros(num_samples);
+        // Accumulated squared error of the positive-class probability.
+        let mut loss_sum = 0.0;
 
         // Add extra metrics fields that will be populated later
         let mut class_accuracies = vec![0.0; self.class_labels.len()];
@@ -302,19 +306,30 @@ impl HEPQuantumClassifier {
 
         for i in 0..num_samples {
             let features = x_test.row(i).to_owned();
-            let (pred, conf) = self.predict(&features)?;
+            let probabilities = self.predict_proba(&features)?;
 
-            // Convert class name to index
-            let pred_idx = self
-                .class_labels
-                .iter()
-                .position(|label| label == &pred)
-                .ok_or_else(|| {
-                    MLError::MLOperationError(format!("Unknown class label: {}", pred))
-                })?;
+            // Predicted label is the arg-max of the class probabilities.
+            let mut pred_idx = 0usize;
+            for k in 1..probabilities.len() {
+                if probabilities[k] > probabilities[pred_idx] {
+                    pred_idx = k;
+                }
+            }
 
             y_pred[i] = pred_idx as f64;
-            confidences[i] = conf;
+            confidences[i] = probabilities[pred_idx];
+
+            // Positive-class score (binary problems use class index 1).
+            let positive_score = if probabilities.len() >= 2 {
+                probabilities[1]
+            } else {
+                probabilities[0]
+            };
+            positive_scores[i] = positive_score;
+
+            let target = if y_test[i] > 0.5 { 1.0 } else { 0.0 };
+            let diff = positive_score - target;
+            loss_sum += diff * diff;
         }
 
         // Compute metrics
@@ -355,8 +370,8 @@ impl HEPQuantumClassifier {
             0.0
         };
 
-        // Placeholder values for AUC and confusion matrix
-        let auc = 0.85; // Placeholder
+        // Real rank-based (Mann-Whitney) AUC from the positive-class scores.
+        let auc = compute_binary_auc(&positive_scores, y_test);
         let confusion_matrix =
             Array2::from_shape_vec((2, 2), vec![tn, fp, fn_, tp]).map_err(|e| {
                 MLError::MLOperationError(format!("Failed to create confusion matrix: {}", e))
@@ -391,28 +406,54 @@ impl HEPQuantumClassifier {
             confusion_matrix,
             class_accuracies,
             class_labels,
-            average_loss: 0.05, // Placeholder value
+            average_loss: loss_sum / num_samples as f64,
         })
     }
 
-    /// Predicts the class for a sample
+    /// Returns the class-probability distribution for a sample.
+    ///
+    /// The (fixed or trained) QNN is evaluated on `features`; its per-class
+    /// Pauli-Z expectation values are converted to a probability distribution
+    /// with a numerically stable soft-max.
+    pub fn predict_proba(&self, features: &Array1<f64>) -> Result<Array1<f64>> {
+        let logits = self.qnn.forward(features)?;
+        if logits.is_empty() {
+            return Err(MLError::MLOperationError(
+                "QNN produced an empty output for HEP prediction".to_string(),
+            ));
+        }
+
+        let max_logit = logits.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let mut probabilities: Vec<f64> = logits.iter().map(|&v| (v - max_logit).exp()).collect();
+        let sum: f64 = probabilities.iter().sum();
+        if sum > 0.0 {
+            for value in probabilities.iter_mut() {
+                *value /= sum;
+            }
+        }
+        Ok(Array1::from_vec(probabilities))
+    }
+
+    /// Predicts the class for a sample using the quantum neural network.
+    ///
+    /// Returns the highest-probability class label and its probability
+    /// (confidence).
     pub fn predict(&self, features: &Array1<f64>) -> Result<(String, f64)> {
-        // This is a dummy implementation
-        // In a real system, this would use the QNN to make predictions
+        let probabilities = self.predict_proba(features)?;
 
-        let label_idx = if thread_rng().random::<f64>() > 0.5 {
-            0
-        } else {
-            1
-        };
-        let confidence = 0.7 + 0.3 * thread_rng().random::<f64>();
+        let mut best_idx = 0usize;
+        for k in 1..probabilities.len() {
+            if probabilities[k] > probabilities[best_idx] {
+                best_idx = k;
+            }
+        }
 
-        if label_idx < self.class_labels.len() {
-            Ok((self.class_labels[label_idx].clone(), confidence))
+        if best_idx < self.class_labels.len() {
+            Ok((self.class_labels[best_idx].clone(), probabilities[best_idx]))
         } else {
             Err(MLError::MLOperationError(format!(
                 "Invalid prediction index: {}",
-                label_idx
+                best_idx
             )))
         }
     }
@@ -435,6 +476,60 @@ impl HEPQuantumClassifier {
 
         Ok(importance)
     }
+}
+
+/// Rank-based (Mann-Whitney U) area under the ROC curve for a binary problem.
+///
+/// `scores` are the model's positive-class scores and `labels` are the true
+/// binary labels (positive when `> 0.5`).  Ties in the scores receive their
+/// average rank.  When either class is absent the metric is undefined and the
+/// chance value `0.5` is returned.
+fn compute_binary_auc(scores: &Array1<f64>, labels: &Array1<f64>) -> f64 {
+    let n = scores.len();
+    if n == 0 {
+        return 0.5;
+    }
+
+    // Sort sample indices by ascending score.
+    let mut order: Vec<usize> = (0..n).collect();
+    order.sort_by(|&a, &b| {
+        scores[a]
+            .partial_cmp(&scores[b])
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    // Assign 1-based ranks, averaging ranks across tied score groups.
+    let mut ranks = vec![0.0_f64; n];
+    let mut i = 0;
+    while i < n {
+        let mut j = i;
+        while j + 1 < n && (scores[order[j + 1]] - scores[order[i]]).abs() < 1e-12 {
+            j += 1;
+        }
+        let average_rank = ((i + 1) + (j + 1)) as f64 / 2.0;
+        for &idx in &order[i..=j] {
+            ranks[idx] = average_rank;
+        }
+        i = j + 1;
+    }
+
+    let mut sum_positive_ranks = 0.0;
+    let mut n_positive = 0.0;
+    let mut n_negative = 0.0;
+    for i in 0..n {
+        if labels[i] > 0.5 {
+            sum_positive_ranks += ranks[i];
+            n_positive += 1.0;
+        } else {
+            n_negative += 1.0;
+        }
+    }
+
+    if n_positive == 0.0 || n_negative == 0.0 {
+        return 0.5;
+    }
+
+    (sum_positive_ranks - n_positive * (n_positive + 1.0) / 2.0) / (n_positive * n_negative)
 }
 
 /// Specialized detector for Higgs bosons in collision data

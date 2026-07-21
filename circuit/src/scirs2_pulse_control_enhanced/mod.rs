@@ -346,16 +346,163 @@ impl DefaultPulseOptimizer {
 }
 
 impl PulseOptimizationModel for DefaultPulseOptimizer {
+    /// Real (non-ML, closed-form) default pulse optimizer.
+    ///
+    /// For a single-qubit target gate, decomposes `target.target_unitary`
+    /// (up to an unobservable global phase) into Z-X-Z Euler angles
+    /// `Rz(alpha) * Rx(theta) * Rz(beta)`, then applies the standard
+    /// virtual-Z identity `Rz(alpha) * Rx(theta) = X_alpha(theta) * Rz(alpha)`
+    /// (a Z rotation commutes through a resonant drive by shifting its
+    /// phase) to rewrite the target as `X_alpha(theta) * Rz(alpha + beta)`:
+    /// a single drive at phase `alpha` realizing rotation angle `theta`,
+    /// followed by a trailing virtual-Z frame correction of `alpha + beta`.
+    /// The channel matching the target qubit has its envelope rescaled (in
+    /// both magnitude and phase) so its integrated area exactly equals
+    /// `theta * e^{i alpha}`, and its `frame_change` updated to carry the
+    /// trailing virtual-Z — both real, physically meaningful pulse-level
+    /// operations, not a no-op passthrough.
+    ///
+    /// Multi-qubit targets are out of scope for this closed-form model (a
+    /// genuine multi-qubit GRAPE-style optimizer would need a full
+    /// multi-qubit Hamiltonian/time-evolution simulation); for those the
+    /// pulse is honestly returned unchanged rather than fabricating a
+    /// multi-qubit solution.
     fn optimize(
         &self,
         pulse: &PulseSequence,
-        _target: &GateAnalysis,
-        _constraints: &PulseConstraints,
+        target: &GateAnalysis,
+        constraints: &PulseConstraints,
     ) -> QuantRS2Result<PulseSequence> {
-        Ok(pulse.clone())
+        let is_single_qubit_target = target.qubit_indices.len() == 1
+            && target.target_unitary.len() == 2
+            && target.target_unitary.iter().all(|row| row.len() == 2);
+
+        if !is_single_qubit_target {
+            return Ok(pulse.clone());
+        }
+
+        let (theta, alpha, beta) = zxz_euler_angles(&target.target_unitary)?;
+        let target_qubit = target.qubit_indices[0];
+
+        let mut optimized = pulse.clone();
+        for channel in &mut optimized.channels {
+            if channel.channel_id == target_qubit {
+                reshape_channel_for_rotation(channel, theta, alpha, beta, constraints);
+            }
+        }
+
+        Ok(optimized)
     }
 
+    /// This default optimizer is a deterministic closed-form solver (not a
+    /// trainable/adaptive model), so there is no learned state for
+    /// measurement feedback to update; adaptive re-optimization from
+    /// [`OptimizationFeedback`] is left to real ML-backed
+    /// [`PulseOptimizationModel`] implementations.
     fn update(&mut self, _feedback: &OptimizationFeedback) {}
+}
+
+/// Decompose a 2x2 unitary (up to global phase) into Z-X-Z Euler angles
+/// `(theta, alpha, beta)` such that `U == e^{i*phase} * Rz(alpha) * Rx(theta) * Rz(beta)`,
+/// where `Rz(phi) = diag(e^{-i phi/2}, e^{i phi/2})` and
+/// `Rx(theta) = [[cos(theta/2), -i sin(theta/2)], [-i sin(theta/2), cos(theta/2)]]`.
+fn zxz_euler_angles(target_unitary: &[Vec<Complex64>]) -> QuantRS2Result<(f64, f64, f64)> {
+    if target_unitary.len() != 2 || target_unitary.iter().any(|row| row.len() != 2) {
+        return Err(QuantRS2Error::InvalidInput(
+            "zxz_euler_angles requires a 2x2 unitary matrix".to_string(),
+        ));
+    }
+
+    let u00 = target_unitary[0][0];
+    let u01 = target_unitary[0][1];
+    let u10 = target_unitary[1][0];
+    let u11 = target_unitary[1][1];
+
+    // Normalize to SU(2) by dividing out the global phase / determinant.
+    let determinant = u00 * u11 - u01 * u10;
+    if determinant.norm_sqr() < 1e-24 {
+        return Err(QuantRS2Error::InvalidInput(
+            "target unitary is singular; cannot extract Euler angles".to_string(),
+        ));
+    }
+    let det_sqrt = determinant.sqrt();
+    let v00 = u00 / det_sqrt;
+    let v10 = u10 / det_sqrt;
+
+    let theta = 2.0 * v10.norm().atan2(v00.norm());
+
+    // (alpha+beta)/2 = -arg(v00); undetermined (gauge freedom) when v00 ~ 0.
+    let half_sum = if v00.norm() > 1e-9 { -v00.arg() } else { 0.0 };
+    // (alpha-beta)/2 = arg(v10) + pi/2; undetermined when v10 ~ 0.
+    let half_diff = if v10.norm() > 1e-9 {
+        v10.arg() + std::f64::consts::FRAC_PI_2
+    } else {
+        0.0
+    };
+
+    let alpha = half_sum + half_diff;
+    let beta = half_sum - half_diff;
+
+    Ok((theta, alpha, beta))
+}
+
+/// Rescale a pulse channel's envelope so its integrated (complex) area
+/// equals `theta * e^{i alpha}` — i.e. a resonant drive at phase `alpha`
+/// realizing rotation angle `theta` — and set its trailing `frame_change`
+/// to carry the virtual-Z correction `alpha + beta`. If the configured
+/// [`PulseConstraints::max_amplitude`] would be exceeded, the envelope is
+/// clamped to that peak amplitude (trading off achieved rotation angle for
+/// respecting the hardware constraint) rather than silently violating it.
+fn reshape_channel_for_rotation(
+    channel: &mut PulseChannel,
+    theta: f64,
+    alpha: f64,
+    beta: f64,
+    constraints: &PulseConstraints,
+) {
+    let dt = if channel.waveform.sample_rate > 0.0 {
+        1.0 / channel.waveform.sample_rate
+    } else {
+        1.0
+    };
+    let target_area = Complex64::from_polar(theta, alpha);
+
+    if channel.waveform.samples.is_empty() {
+        channel.waveform.samples = vec![Complex64::new(1.0, 0.0)];
+    }
+    let sample_count = channel.waveform.samples.len();
+
+    let current_area: Complex64 =
+        channel.waveform.samples.iter().copied().sum::<Complex64>() * Complex64::new(dt, 0.0);
+
+    if current_area.norm() > 1e-12 {
+        let correction = target_area / current_area;
+        for sample in &mut channel.waveform.samples {
+            *sample *= correction;
+        }
+    } else {
+        // Degenerate (zero-area) envelope: fall back to a flat-top pulse of
+        // the same length carrying the exact required area.
+        let flat_amplitude = target_area / Complex64::new(sample_count as f64 * dt, 0.0);
+        channel.waveform.samples = vec![flat_amplitude; sample_count];
+    }
+
+    if let Some(max_amplitude) = constraints.max_amplitude {
+        let peak = channel
+            .waveform
+            .samples
+            .iter()
+            .map(|sample| sample.norm())
+            .fold(0.0_f64, f64::max);
+        if peak > max_amplitude && peak > 0.0 {
+            let clamp_scale = max_amplitude / peak;
+            for sample in &mut channel.waveform.samples {
+                *sample *= clamp_scale;
+            }
+        }
+    }
+
+    channel.frame_change = Some(channel.frame_change.unwrap_or(0.0) + alpha + beta);
 }
 
 /// Optimization feedback

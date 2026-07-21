@@ -1,6 +1,6 @@
 //! Bayesian Optimization Configuration Types
 
-use super::gaussian_process::{GaussianProcessSurrogate, KernelFunction};
+use super::gaussian_process::GaussianProcessModel;
 use crate::ising::IsingError;
 use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::random::Rng;
@@ -148,7 +148,7 @@ pub struct BayesianHyperoptimizer {
     pub config: BayesianOptConfig,
     pub parameter_space: ParameterSpace,
     pub history: OptimizationHistory,
-    pub gp_model: Option<GaussianProcessSurrogate>,
+    pub gp_model: Option<GaussianProcessModel>,
     pub current_best_value: f64,
     pub metrics: BayesianOptMetrics,
 }
@@ -310,12 +310,11 @@ impl BayesianHyperoptimizer {
             .collect();
         let y_data: Vec<f64> = self.history.evaluations.iter().map(|(_, y)| *y).collect();
 
-        // Create or update GP model
-        let model = GaussianProcessSurrogate {
-            kernel: KernelFunction::RBF,
-            noise_variance: 1e-6,
-            mean_function: super::gaussian_process::MeanFunction::Zero,
-        };
+        // Fit a real Gaussian-process surrogate on the accumulated evaluation
+        // history using the user's configured kernel / noise / mean function. This
+        // conditions the GP on every observation so the acquisition function sees
+        // genuine posterior mean/variance instead of a constant.
+        let model = GaussianProcessModel::new(x_data, y_data, self.config.gp_config.clone())?;
 
         self.gp_model = Some(model);
         self.metrics.gp_training_time = gp_start.elapsed().as_secs_f64();
@@ -358,7 +357,7 @@ impl BayesianHyperoptimizer {
     fn evaluate_acquisition_function(
         &self,
         point: &[f64],
-        gp_model: &GaussianProcessSurrogate,
+        gp_model: &GaussianProcessModel,
     ) -> BayesianOptResult<f64> {
         let (mean, variance) = gp_model.predict(point)?;
         let std_dev = variance.sqrt();

@@ -502,31 +502,242 @@ impl CompilationValidator {
         Ok(result)
     }
 
-    pub const fn validate_semantics(
+    /// Structural semantic-equivalence check between the original source
+    /// text and the generated target code.
+    ///
+    /// `SourceCircuit` stores the original program as an opaque,
+    /// framework-specific source string (Qiskit/Cirq/PennyLane/OpenQASM
+    /// text, etc.) rather than a parsed representation, so a true
+    /// unitary/statevector equivalence check is not available at this
+    /// layer. Instead this compares the *gate-name histograms* found in
+    /// both texts (a format-agnostic structural heuristic: real quantum
+    /// gate mnemonics like `h`, `cx`, `rz`, ... appear as identifiers in
+    /// essentially every textual quantum programming language/IR dump) and
+    /// accepts the compilation only when the two histograms are similar
+    /// enough (cosine similarity) to plausibly represent the same circuit.
+    pub fn validate_semantics(
         &self,
-        _source: &SourceCircuit,
-        _target: &TargetCode,
+        source: &SourceCircuit,
+        target: &TargetCode,
     ) -> QuantRS2Result<bool> {
-        // Semantic validation logic
-        Ok(true)
+        let source_gate_counts = extract_gate_token_counts(&source.code);
+        let target_gate_counts = extract_gate_token_counts(&target.code);
+        let similarity = gate_histogram_similarity(&source_gate_counts, &target_gate_counts);
+
+        Ok(similarity >= SEMANTIC_SIMILARITY_THRESHOLD)
     }
 
-    pub const fn validate_resources(
+    /// Real resource-capacity check: estimates the number of qubits
+    /// referenced by the generated target code (from bracketed qubit-index
+    /// syntax such as `q[3]`, common to QASM/Quil-style output) and compares
+    /// it against the target platform's known qubit capacity.
+    pub fn validate_resources(
         &self,
-        _target: &TargetCode,
-        _platform: TargetPlatform,
+        target: &TargetCode,
+        platform: TargetPlatform,
     ) -> QuantRS2Result<bool> {
-        // Resource validation logic
-        Ok(true)
+        let estimated_qubits = estimate_qubit_count_from_code(&target.code);
+        let platform_capacity = platform_max_qubits(platform);
+
+        Ok(estimated_qubits <= platform_capacity)
     }
 
-    pub const fn estimate_fidelity(
+    /// Real fidelity estimate derived from the generated target code: the
+    /// per-gate-type counts extracted from `target.code` are combined with
+    /// typical single-/two-qubit gate fidelities published for the target
+    /// hardware platform (the same style of domain-derived error-rate data
+    /// used by [`crate::noise_models::NoiseModel`]) into a product-model
+    /// circuit fidelity, then scaled by the source/target structural
+    /// similarity used in [`Self::validate_semantics`] so that a compilation
+    /// which diverges structurally from its source is never scored as
+    /// perfectly faithful.
+    pub fn estimate_fidelity(
         &self,
-        _source: &SourceCircuit,
-        _target: &TargetCode,
+        source: &SourceCircuit,
+        target: &TargetCode,
     ) -> QuantRS2Result<f64> {
-        // Fidelity estimation logic
-        Ok(0.99)
+        let target_gate_counts = extract_gate_token_counts(&target.code);
+        let (single_qubit_fidelity, two_qubit_fidelity) = platform_gate_fidelities(target.platform);
+
+        let single_qubit_gate_count: i32 = SINGLE_QUBIT_GATE_TOKENS
+            .iter()
+            .map(|name| *target_gate_counts.get(*name).unwrap_or(&0) as i32)
+            .sum();
+        let two_qubit_gate_count: i32 = TWO_QUBIT_GATE_TOKENS
+            .iter()
+            .map(|name| *target_gate_counts.get(*name).unwrap_or(&0) as i32)
+            .sum();
+
+        let gate_composition_fidelity = single_qubit_fidelity.powi(single_qubit_gate_count)
+            * two_qubit_fidelity.powi(two_qubit_gate_count);
+
+        let source_gate_counts = extract_gate_token_counts(&source.code);
+        let structural_similarity =
+            gate_histogram_similarity(&source_gate_counts, &target_gate_counts);
+
+        Ok((gate_composition_fidelity * structural_similarity).clamp(0.0, 1.0))
+    }
+}
+
+/// Canonical, format-agnostic quantum gate name tokens recognized when
+/// scanning generated/source code text for structural comparison.
+const SINGLE_QUBIT_GATE_TOKENS: [&str; 13] = [
+    "h", "x", "y", "z", "s", "sdg", "t", "tdg", "rx", "ry", "rz", "u1", "u2",
+];
+const TWO_QUBIT_GATE_TOKENS: [&str; 6] = ["cx", "cnot", "cz", "swap", "iswap", "ch"];
+const MULTI_QUBIT_GATE_TOKENS: [&str; 4] = ["ccx", "toffoli", "cswap", "fredkin"];
+
+/// Tokenize `code` on non-alphanumeric boundaries and count occurrences of
+/// recognized gate-name tokens (case-insensitive).
+fn extract_gate_token_counts(code: &str) -> HashMap<String, usize> {
+    let mut counts = HashMap::new();
+    for raw_token in code.split(|c: char| !c.is_ascii_alphanumeric()) {
+        if raw_token.is_empty() {
+            continue;
+        }
+        let token = raw_token.to_ascii_lowercase();
+        let is_known_gate = SINGLE_QUBIT_GATE_TOKENS.contains(&token.as_str())
+            || TWO_QUBIT_GATE_TOKENS.contains(&token.as_str())
+            || MULTI_QUBIT_GATE_TOKENS.contains(&token.as_str());
+        if is_known_gate {
+            *counts.entry(token).or_insert(0_usize) += 1;
+        }
+    }
+    counts
+}
+
+/// Cosine similarity between two gate-name histograms. Two histograms that
+/// are both empty (no recognized gates in either text) are treated as
+/// trivially similar (score `1.0`); one empty and one non-empty are
+/// treated as maximally dissimilar (score `0.0`).
+fn gate_histogram_similarity(a: &HashMap<String, usize>, b: &HashMap<String, usize>) -> f64 {
+    let all_tokens = SINGLE_QUBIT_GATE_TOKENS
+        .iter()
+        .chain(TWO_QUBIT_GATE_TOKENS.iter())
+        .chain(MULTI_QUBIT_GATE_TOKENS.iter());
+
+    let mut dot_product = 0.0_f64;
+    let mut norm_a = 0.0_f64;
+    let mut norm_b = 0.0_f64;
+    for token in all_tokens {
+        let a_count = *a.get(*token).unwrap_or(&0) as f64;
+        let b_count = *b.get(*token).unwrap_or(&0) as f64;
+        dot_product += a_count * b_count;
+        norm_a += a_count * a_count;
+        norm_b += b_count * b_count;
+    }
+
+    if norm_a == 0.0 && norm_b == 0.0 {
+        1.0
+    } else if norm_a == 0.0 || norm_b == 0.0 {
+        0.0
+    } else {
+        dot_product / (norm_a.sqrt() * norm_b.sqrt())
+    }
+}
+
+/// Minimum gate-histogram cosine similarity required to accept a
+/// compilation as semantically consistent with its source.
+const SEMANTIC_SIMILARITY_THRESHOLD: f64 = 0.5;
+
+/// Estimate the number of qubits referenced by generated code text by
+/// scanning for the largest integer found inside bracket/parenthesis
+/// syntax (`q[3]`, `qubit(3)`, ...), a pattern shared by QASM, Quil, and
+/// most textual quantum IR dumps. Returns `0` when no qubit index syntax
+/// is found (e.g. an empty circuit).
+fn estimate_qubit_count_from_code(code: &str) -> usize {
+    let mut max_index: Option<usize> = None;
+    let mut digits = String::new();
+    let mut chars = code.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if c == '[' || c == '(' {
+            digits.clear();
+            while let Some(&next) = chars.peek() {
+                if next.is_ascii_digit() {
+                    digits.push(next);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+            if let Ok(index) = digits.parse::<usize>() {
+                max_index = Some(max_index.map_or(index, |current| current.max(index)));
+            }
+        }
+    }
+
+    max_index.map_or(0, |index| index + 1)
+}
+
+/// Estimate circuit depth via greedy list scheduling: each operation's
+/// layer is one past the deepest layer among the qubits (and controls) it
+/// touches, and each of those qubits is advanced to that layer. The
+/// circuit depth is the maximum layer reached across all qubits.
+fn estimate_circuit_depth(ir: &QuantumIR) -> usize {
+    let mut qubit_layer: HashMap<usize, usize> = HashMap::new();
+    let mut max_layer = 0_usize;
+
+    for op in &ir.operations {
+        let touched_qubits: Vec<usize> = match &op.operation_type {
+            IROperationType::Gate(_) => {
+                let mut qubits = op.qubits.clone();
+                qubits.extend_from_slice(&op.controls);
+                qubits
+            }
+            IROperationType::Measurement(qubits, _)
+            | IROperationType::Reset(qubits)
+            | IROperationType::Barrier(qubits) => qubits.clone(),
+        };
+
+        if touched_qubits.is_empty() {
+            continue;
+        }
+
+        let current_layer = touched_qubits
+            .iter()
+            .map(|q| qubit_layer.get(q).copied().unwrap_or(0))
+            .max()
+            .unwrap_or(0);
+        let new_layer = current_layer + 1;
+
+        for q in &touched_qubits {
+            qubit_layer.insert(*q, new_layer);
+        }
+        max_layer = max_layer.max(new_layer);
+    }
+
+    max_layer
+}
+
+/// Known (approximate, publicly documented) qubit capacity for each
+/// supported target platform.
+const fn platform_max_qubits(platform: TargetPlatform) -> usize {
+    match platform {
+        TargetPlatform::IBMQuantum => 127,
+        TargetPlatform::GoogleSycamore => 70,
+        TargetPlatform::IonQ => 32,
+        TargetPlatform::Rigetti => 80,
+        TargetPlatform::Honeywell => 32,
+        TargetPlatform::AWSBraket => 34,
+        TargetPlatform::AzureQuantum => 40,
+        TargetPlatform::Simulator => 1_000,
+    }
+}
+
+/// Typical (single-qubit, two-qubit) gate fidelities published for each
+/// target platform's native gate set, used as a real (if approximate)
+/// per-gate error model rather than a fixed constant.
+const fn platform_gate_fidelities(platform: TargetPlatform) -> (f64, f64) {
+    match platform {
+        TargetPlatform::IBMQuantum => (0.9999, 0.99),
+        TargetPlatform::GoogleSycamore => (0.9998, 0.995),
+        TargetPlatform::IonQ => (0.9995, 0.998),
+        TargetPlatform::Rigetti => (0.999, 0.98),
+        TargetPlatform::Honeywell => (0.9999, 0.998),
+        TargetPlatform::AWSBraket => (0.999, 0.99),
+        TargetPlatform::AzureQuantum => (0.999, 0.99),
+        TargetPlatform::Simulator => (1.0, 1.0),
     }
 }
 
@@ -560,14 +771,59 @@ impl CompilationModel {
         Self {}
     }
 
-    pub const fn predict_strategy(
+    /// Heuristic (rule-based, not trained) strategy predictor: reads the
+    /// real feature vector produced by [`CompilationFeatureExtractor`] and
+    /// selects which IR transformations are actually likely to help, rather
+    /// than returning a fixed empty list. Layout of `circuit_features`
+    /// (see [`CompilationFeatureExtractor::extract_features`]):
+    /// `[num_qubits, total_gates, single_qubit_gates, two_qubit_gates,
+    ///   multi_qubit_gates, rotation_gates, compound_gates]`.
+    pub fn predict_strategy(
         &self,
-        _features: &CompilationFeatures,
+        features: &CompilationFeatures,
     ) -> QuantRS2Result<MLOptimizationStrategy> {
-        // Placeholder implementation
+        let total_gates = features.circuit_features.get(1).copied().unwrap_or(0.0);
+        let two_qubit_gates = features.circuit_features.get(3).copied().unwrap_or(0.0);
+        let rotation_gates = features.circuit_features.get(5).copied().unwrap_or(0.0);
+        let compound_gates = features.circuit_features.get(6).copied().unwrap_or(0.0);
+
+        let mut transformations = Vec::new();
+        if rotation_gates > 0.0 {
+            transformations.push(IRTransformation {
+                transform_type: TransformationType::RotationMerging,
+                parameters: HashMap::new(),
+            });
+        }
+        if two_qubit_gates > 0.0 || total_gates > 1.0 {
+            transformations.push(IRTransformation {
+                transform_type: TransformationType::GateFusion,
+                parameters: HashMap::new(),
+            });
+            transformations.push(IRTransformation {
+                transform_type: TransformationType::Commutation,
+                parameters: HashMap::new(),
+            });
+        }
+        if compound_gates > 0.0 {
+            transformations.push(IRTransformation {
+                transform_type: TransformationType::Decomposition,
+                parameters: HashMap::new(),
+            });
+        }
+
+        // Confidence reflects how much real evidence backed the decision: a
+        // circuit with no gates gives a low-confidence (uninformed) empty
+        // strategy, while a larger, richer gate set saturates toward (but
+        // never reaches) full confidence.
+        let confidence = if total_gates <= 0.0 {
+            0.5
+        } else {
+            (0.5 + 0.5 * (total_gates / (total_gates + 10.0))).min(0.99)
+        };
+
         Ok(MLOptimizationStrategy {
-            transformations: vec![],
-            confidence: 0.9,
+            transformations,
+            confidence,
         })
     }
 }
@@ -588,15 +844,80 @@ impl CompilationFeatureExtractor {
         Self {}
     }
 
-    pub const fn extract_features(
+    /// Extract a real feature vector from the actual IR and target
+    /// platform, consumed by [`CompilationModel::predict_strategy`].
+    ///
+    /// `circuit_features` layout: `[num_qubits, total_gates,
+    /// single_qubit_gates, two_qubit_gates, multi_qubit_gates,
+    /// rotation_gates, compound_gates]`.
+    /// `target_features` layout: `[platform_qubit_capacity,
+    /// single_qubit_gate_fidelity, two_qubit_gate_fidelity]`.
+    /// `complexity_features` layout: `[gate_density, two_qubit_ratio,
+    /// estimated_depth]`.
+    pub fn extract_features(
         &self,
-        _ir: &QuantumIR,
-        _target: TargetPlatform,
+        ir: &QuantumIR,
+        target: TargetPlatform,
     ) -> QuantRS2Result<CompilationFeatures> {
+        let mut single_qubit_gates = 0.0_f64;
+        let mut two_qubit_gates = 0.0_f64;
+        let mut multi_qubit_gates = 0.0_f64;
+        let mut rotation_gates = 0.0_f64;
+        let mut compound_gates = 0.0_f64;
+        let mut total_gates = 0.0_f64;
+
+        for op in &ir.operations {
+            if let IROperationType::Gate(gate) = &op.operation_type {
+                total_gates += 1.0;
+                match op.qubits.len() {
+                    1 => single_qubit_gates += 1.0,
+                    2 => two_qubit_gates += 1.0,
+                    _ => multi_qubit_gates += 1.0,
+                }
+                if matches!(
+                    gate,
+                    IRGate::RX(_)
+                        | IRGate::RY(_)
+                        | IRGate::RZ(_)
+                        | IRGate::U1(_)
+                        | IRGate::U2(_, _)
+                        | IRGate::U3(_, _, _)
+                ) {
+                    rotation_gates += 1.0;
+                }
+                if matches!(gate, IRGate::Toffoli | IRGate::Fredkin | IRGate::SWAP) {
+                    compound_gates += 1.0;
+                }
+            }
+        }
+
+        let estimated_depth = estimate_circuit_depth(ir) as f64;
+        let (single_qubit_fidelity, two_qubit_fidelity) = platform_gate_fidelities(target);
+        let platform_capacity = platform_max_qubits(target) as f64;
+
+        let gate_density = if ir.num_qubits > 0 {
+            total_gates / ir.num_qubits as f64
+        } else {
+            0.0
+        };
+        let two_qubit_ratio = if total_gates > 0.0 {
+            two_qubit_gates / total_gates
+        } else {
+            0.0
+        };
+
         Ok(CompilationFeatures {
-            circuit_features: vec![],
-            target_features: vec![],
-            complexity_features: vec![],
+            circuit_features: vec![
+                ir.num_qubits as f64,
+                total_gates,
+                single_qubit_gates,
+                two_qubit_gates,
+                multi_qubit_gates,
+                rotation_gates,
+                compound_gates,
+            ],
+            target_features: vec![platform_capacity, single_qubit_fidelity, two_qubit_fidelity],
+            complexity_features: vec![gate_density, two_qubit_ratio, estimated_depth],
         })
     }
 }
@@ -975,5 +1296,232 @@ mod tests {
             1,
             "fallback path should apply rotation merging and fuse the two RX gates"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // CompilationValidator tests: validate_semantics / validate_resources /
+    // estimate_fidelity must now depend on their inputs, not return
+    // hardcoded true/true/0.99 for every circuit.
+    // -----------------------------------------------------------------------
+
+    fn make_source(code: &str) -> SourceCircuit {
+        SourceCircuit {
+            framework: crate::scirs2_cross_compilation_enhanced::QuantumFramework::OpenQASM,
+            code: code.to_string(),
+            metadata: HashMap::new(),
+        }
+    }
+
+    fn make_target(code: &str, platform: TargetPlatform) -> TargetCode {
+        TargetCode {
+            platform,
+            code: code.to_string(),
+            format: crate::scirs2_cross_compilation_enhanced::CodeFormat::QASM,
+            metadata: HashMap::new(),
+        }
+    }
+
+    fn validator() -> CompilationValidator {
+        CompilationValidator::new(EnhancedCrossCompilationConfig::default())
+    }
+
+    #[test]
+    fn test_validate_semantics_rejects_dissimilar_gate_content() {
+        let v = validator();
+
+        // Source has gate content; target is an entirely empty compiled program.
+        let source = make_source("h q[0]; cx q[0], q[1]; h q[1];");
+        let target = make_target("OPENQASM 2.0;\nqreg q[2];\n", TargetPlatform::IBMQuantum);
+
+        let valid = v.validate_semantics(&source, &target).unwrap();
+        assert!(
+            !valid,
+            "empty target code must not be judged semantically equivalent to a non-trivial source"
+        );
+    }
+
+    #[test]
+    fn test_validate_semantics_accepts_matching_gate_content() {
+        let v = validator();
+
+        let source = make_source("h q[0]; cx q[0], q[1];");
+        let target = make_target(
+            "OPENQASM 2.0;\nqreg q[2];\nh q[0];\ncx q[0], q[1];\n",
+            TargetPlatform::IBMQuantum,
+        );
+
+        let valid = v.validate_semantics(&source, &target).unwrap();
+        assert!(
+            valid,
+            "matching gate histograms between source and target should validate as semantically consistent"
+        );
+    }
+
+    #[test]
+    fn test_validate_semantics_both_empty_is_trivially_valid() {
+        let v = validator();
+        let source = make_source("// comment only, no gates");
+        let target = make_target("// no gates emitted", TargetPlatform::Simulator);
+
+        let valid = v.validate_semantics(&source, &target).unwrap();
+        assert!(valid, "two gateless programs are trivially consistent");
+    }
+
+    #[test]
+    fn test_validate_resources_rejects_oversized_circuit_for_platform() {
+        let v = validator();
+        // IonQ has a much smaller qubit capacity than an index of 99 implies.
+        let target = make_target("qreg q[100];\nh q[99];\n", TargetPlatform::IonQ);
+
+        let valid = v.validate_resources(&target, TargetPlatform::IonQ).unwrap();
+        assert!(
+            !valid,
+            "a circuit using 100 qubits must be rejected for a 32-qubit platform"
+        );
+    }
+
+    #[test]
+    fn test_validate_resources_accepts_small_circuit() {
+        let v = validator();
+        let target = make_target(
+            "qreg q[2];\nh q[0];\ncx q[0], q[1];\n",
+            TargetPlatform::IonQ,
+        );
+
+        let valid = v.validate_resources(&target, TargetPlatform::IonQ).unwrap();
+        assert!(
+            valid,
+            "a 2-qubit circuit must fit within any supported platform"
+        );
+    }
+
+    #[test]
+    fn test_estimate_fidelity_decreases_with_more_two_qubit_gates() {
+        let v = validator();
+        let source = make_source("h q[0]; cx q[0], q[1];");
+
+        let few_two_qubit_gates =
+            make_target("h q[0];\ncx q[0], q[1];\n", TargetPlatform::IBMQuantum);
+        let many_two_qubit_gates = make_target(
+            "h q[0];\ncx q[0], q[1];\ncx q[1], q[0];\ncx q[0], q[1];\ncx q[1], q[0];\ncx q[0], q[1];\n",
+            TargetPlatform::IBMQuantum,
+        );
+
+        let fidelity_few = v.estimate_fidelity(&source, &few_two_qubit_gates).unwrap();
+        let fidelity_many = v.estimate_fidelity(&source, &many_two_qubit_gates).unwrap();
+
+        assert!((0.0..=1.0).contains(&fidelity_few));
+        assert!((0.0..=1.0).contains(&fidelity_many));
+        assert!(
+            fidelity_many < fidelity_few,
+            "more two-qubit gates must yield a lower fidelity estimate: few={fidelity_few}, many={fidelity_many}"
+        );
+    }
+
+    #[test]
+    fn test_estimate_fidelity_not_hardcoded_constant() {
+        let v = validator();
+        let source = make_source("h q[0];");
+        let target = make_target("h q[0];\ncx q[0], q[1];\n", TargetPlatform::IonQ);
+
+        let fidelity = v.estimate_fidelity(&source, &target).unwrap();
+        assert!(
+            (fidelity - 0.99).abs() > 1e-9,
+            "fidelity must be computed from the actual gate composition, not the old hardcoded 0.99"
+        );
+    }
+
+    #[test]
+    fn test_validate_compilation_can_actually_fail() {
+        let v = validator();
+        let source = make_source("h q[0]; cx q[0], q[1]; h q[1]; cx q[1], q[0];");
+        // Deliberately mismatched / oversized target for IonQ.
+        let target = make_target("qreg q[64];\n", TargetPlatform::IonQ);
+
+        let result = v
+            .validate_compilation(&source, &target, TargetPlatform::IonQ)
+            .unwrap();
+        assert!(
+            !result.is_valid,
+            "comprehensive validation must be able to reject a broken/mismatched compilation"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // CompilationFeatureExtractor / CompilationModel tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_extract_features_reflects_actual_circuit_content() {
+        let extractor = CompilationFeatureExtractor::new();
+        let ir = build_ir(
+            2,
+            vec![
+                single_gate(IRGate::H, 0),
+                single_gate(IRGate::RX(0.5), 0),
+                two_qubit_gate(IRGate::CNOT, 0, 1),
+            ],
+        );
+
+        let features = extractor
+            .extract_features(&ir, TargetPlatform::IBMQuantum)
+            .unwrap();
+
+        assert_eq!(features.circuit_features.len(), 7);
+        assert_eq!(features.circuit_features[0], 2.0, "num_qubits");
+        assert_eq!(features.circuit_features[1], 3.0, "total_gates");
+        assert_eq!(features.circuit_features[3], 1.0, "two_qubit_gates");
+        assert_eq!(features.circuit_features[5], 1.0, "rotation_gates");
+        assert!(!features.target_features.is_empty());
+        assert!(!features.complexity_features.is_empty());
+
+        let empty_ir = build_ir(1, vec![]);
+        let empty_features = extractor
+            .extract_features(&empty_ir, TargetPlatform::IBMQuantum)
+            .unwrap();
+        assert_ne!(
+            features.circuit_features, empty_features.circuit_features,
+            "feature vectors must depend on the actual circuit content"
+        );
+    }
+
+    #[test]
+    fn test_predict_strategy_selects_real_transformations() {
+        let model = CompilationModel::new();
+        let extractor = CompilationFeatureExtractor::new();
+
+        let ir_with_rotations = build_ir(
+            1,
+            vec![
+                single_gate(IRGate::RX(0.5), 0),
+                single_gate(IRGate::RX(0.5), 0),
+            ],
+        );
+        let features = extractor
+            .extract_features(&ir_with_rotations, TargetPlatform::IBMQuantum)
+            .unwrap();
+        let strategy = model.predict_strategy(&features).unwrap();
+        assert!(
+            !strategy.transformations.is_empty(),
+            "a circuit with rotation gates must yield a non-empty strategy"
+        );
+        assert!(
+            strategy
+                .transformations
+                .iter()
+                .any(|t| matches!(t.transform_type, TransformationType::RotationMerging)),
+            "rotation-heavy circuits should select RotationMerging"
+        );
+
+        let empty_ir = build_ir(1, vec![]);
+        let empty_features = extractor
+            .extract_features(&empty_ir, TargetPlatform::IBMQuantum)
+            .unwrap();
+        let empty_strategy = model.predict_strategy(&empty_features).unwrap();
+        assert!(
+            empty_strategy.transformations.is_empty(),
+            "an empty circuit should not select any transformations"
+        );
+        assert!((empty_strategy.confidence - 0.5).abs() < 1e-9);
     }
 }

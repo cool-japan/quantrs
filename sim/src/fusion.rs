@@ -305,59 +305,28 @@ impl GateFusion {
     }
 
     /// Get matrix representation of a gate
+    ///
+    /// Uses the gate's own real [`GateOp::matrix`] implementation (already
+    /// implemented for every gate type in `quantrs2_core::gate`), so
+    /// rotation gates (RX/RY/RZ), phase gates (S/T), SWAP, Toffoli, and any
+    /// custom/parameterized gate all fuse correctly -- there is no
+    /// gate-name special case and no identity fallback for "unknown"
+    /// gates.
     fn get_gate_matrix(&self, gate: &dyn GateOp) -> Result<Array2<Complex64>> {
-        // This would use the gate's matrix() method in a real implementation
-        // For now, return a placeholder based on gate type
-        match gate.name() {
-            "Hadamard" => Ok(Array2::from_shape_vec(
-                (2, 2),
-                vec![
-                    Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-                    Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-                    Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-                    Complex64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
-                ],
-            )
-            .map_err(|_| SimulatorError::InvalidInput("Shape error".to_string()))?),
-            "PauliX" => Ok(Array2::from_shape_vec(
-                (2, 2),
-                vec![
-                    Complex64::new(0.0, 0.0),
-                    Complex64::new(1.0, 0.0),
-                    Complex64::new(1.0, 0.0),
-                    Complex64::new(0.0, 0.0),
-                ],
-            )
-            .map_err(|_| SimulatorError::InvalidInput("Shape error".to_string()))?),
-            "CNOT" => Ok(Array2::from_shape_vec(
-                (4, 4),
-                vec![
-                    Complex64::new(1.0, 0.0),
-                    Complex64::new(0.0, 0.0),
-                    Complex64::new(0.0, 0.0),
-                    Complex64::new(0.0, 0.0),
-                    Complex64::new(0.0, 0.0),
-                    Complex64::new(1.0, 0.0),
-                    Complex64::new(0.0, 0.0),
-                    Complex64::new(0.0, 0.0),
-                    Complex64::new(0.0, 0.0),
-                    Complex64::new(0.0, 0.0),
-                    Complex64::new(0.0, 0.0),
-                    Complex64::new(1.0, 0.0),
-                    Complex64::new(0.0, 0.0),
-                    Complex64::new(0.0, 0.0),
-                    Complex64::new(1.0, 0.0),
-                    Complex64::new(0.0, 0.0),
-                ],
-            )
-            .map_err(|_| SimulatorError::InvalidInput("Shape error".to_string()))?),
-            _ => {
-                // Default to identity
-                let n = gate.qubits().len();
-                let dim = 1 << n;
-                Ok(Array2::eye(dim))
-            }
-        }
+        let n = gate.qubits().len();
+        let dim = 1 << n;
+        let flat = gate.matrix().map_err(|e| {
+            SimulatorError::InvalidInput(format!(
+                "failed to get matrix for gate '{}': {e}",
+                gate.name()
+            ))
+        })?;
+        Array2::from_shape_vec((dim, dim), flat).map_err(|e| {
+            SimulatorError::InvalidInput(format!(
+                "gate '{}' returned a matrix with the wrong shape for {n} qubit(s): {e}",
+                gate.name()
+            ))
+        })
     }
 
     /// Expand a gate matrix to act on a larger qubit space
@@ -612,7 +581,7 @@ pub fn benchmark_fusion_strategies(gates: Vec<Box<dyn GateOp>>, num_qubits: usiz
 mod tests {
     use super::*;
     use quantrs2_core::gate::multi::CNOT;
-    use quantrs2_core::gate::single::{Hadamard, PauliX};
+    use quantrs2_core::gate::single::{Hadamard, PauliX, RotationX};
 
     #[test]
     fn test_gate_group_creation() {
@@ -692,5 +661,57 @@ mod tests {
             .compute_fusion_cost(&group, &gates)
             .expect("fusion cost computation should succeed");
         assert!(cost > 0.0);
+    }
+
+    /// Regression test for the P1 finding: `get_gate_matrix` used to
+    /// silently default any gate that wasn't literally named "Hadamard",
+    /// "PauliX", or "CNOT" to an identity matrix -- so fusing a rotation
+    /// gate would drop its effect entirely. RX(pi) is NOT the identity;
+    /// fusing a single-gate group containing only it must produce the
+    /// real RX(pi) matrix.
+    #[test]
+    fn test_fuse_group_uses_real_rotation_gate_matrix() {
+        let fusion = GateFusion::new(FusionStrategy::Aggressive);
+        let theta = std::f64::consts::PI;
+        let rx_gate = RotationX {
+            target: QubitId::new(0),
+            theta,
+        };
+        let expected_matrix = rx_gate
+            .matrix()
+            .expect("RX matrix computation should succeed");
+
+        let group = GateGroup {
+            gate_indices: vec![0],
+            qubits: vec![QubitId::new(0)],
+            fusable: true,
+            fusion_cost: 0.0,
+        };
+        let gates: Vec<Box<dyn GateOp>> = vec![Box::new(rx_gate)];
+
+        let fused = fusion
+            .fuse_group(&group, &gates, 1)
+            .expect("fusing a single rotation gate should succeed");
+
+        // Before the fix, this would have been the 2x2 identity (from the
+        // hardcoded gate-name fallback) instead of the real RX(pi) matrix.
+        assert!(
+            (fused.matrix[[0, 0]] - expected_matrix[0]).norm() < 1e-10,
+            "fused matrix[0,0] should match RX(pi)[0,0], got {:?} vs {:?}",
+            fused.matrix[[0, 0]],
+            expected_matrix[0]
+        );
+        assert!(
+            (fused.matrix[[0, 1]] - expected_matrix[1]).norm() < 1e-10,
+            "fused matrix[0,1] should match RX(pi)[0,1], got {:?} vs {:?}",
+            fused.matrix[[0, 1]],
+            expected_matrix[1]
+        );
+        // RX(pi) is not the identity: off-diagonal terms must be non-zero.
+        assert!(
+            fused.matrix[[0, 1]].norm() > 0.9,
+            "RX(pi) off-diagonal should be near -i, got {:?}",
+            fused.matrix[[0, 1]]
+        );
     }
 }

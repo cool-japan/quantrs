@@ -1,11 +1,24 @@
 //! Gaussian Process Surrogate Models
+//!
+//! This module provides a real Gaussian-process regression surrogate used by the
+//! Bayesian hyperparameter optimizer. Predictions follow the standard exact-GP
+//! equations (Rasmussen & Williams, *Gaussian Processes for Machine Learning*,
+//! Algorithm 2.1): the training kernel matrix `K + σ²I` is Cholesky-factorized
+//! once per fit, and the predictive mean and variance are obtained from triangular
+//! solves against the resulting lower-triangular factor.
 
 use super::config::{BayesianOptError, BayesianOptResult};
+use std::f64::consts::PI;
 
 /// Gaussian process configuration (alias for backward compatibility)
 pub type GaussianProcessConfig = GaussianProcessSurrogate;
 
-/// Gaussian process surrogate model
+/// Gaussian process configuration holder.
+///
+/// This type stores only the *configuration* of a Gaussian process (kernel, noise
+/// level, and prior mean function). It intentionally carries no training data and
+/// therefore cannot produce predictions on its own — construct a
+/// [`GaussianProcessModel`] from observed data for a fitted, predictive process.
 #[derive(Debug, Clone)]
 pub struct GaussianProcessSurrogate {
     pub kernel: KernelFunction,
@@ -24,11 +37,20 @@ impl Default for GaussianProcessSurrogate {
 }
 
 impl GaussianProcessSurrogate {
-    /// Simple predict method for compatibility
-    pub const fn predict(&self, _x: &[f64]) -> BayesianOptResult<(f64, f64)> {
-        // Simplified prediction - in practice would use trained model
-        // Returns (mean, variance)
-        Ok((0.0, 1.0))
+    /// Predictions are not available on a bare configuration holder.
+    ///
+    /// `GaussianProcessSurrogate` describes *how* a GP should behave but holds no
+    /// observations, so it has nothing to condition on. Build a
+    /// [`GaussianProcessModel`] from training data (`GaussianProcessModel::new`)
+    /// to obtain real posterior mean/variance predictions. This method returns an
+    /// honest error rather than a fabricated `(0.0, 1.0)` so that a misconfigured
+    /// call site fails loudly instead of silently degrading to a constant.
+    pub fn predict(&self, _x: &[f64]) -> BayesianOptResult<(f64, f64)> {
+        Err(BayesianOptError::GaussianProcessError(
+            "GaussianProcessSurrogate stores configuration only and cannot predict; \
+             construct a GaussianProcessModel from training data instead"
+                .to_string(),
+        ))
     }
 }
 
@@ -80,7 +102,10 @@ impl Default for GPHyperparameters {
     }
 }
 
-/// Gaussian Process Model implementation
+/// Gaussian Process regression model.
+///
+/// Conditioned on training data, this model provides posterior mean and variance
+/// predictions via an exact Cholesky-based solve of `K + σ²I`.
 #[derive(Debug, Clone)]
 pub struct GaussianProcessModel {
     /// Training input data
@@ -91,8 +116,11 @@ pub struct GaussianProcessModel {
     pub config: GaussianProcessConfig,
     /// Learned hyperparameters
     pub hyperparameters: GPHyperparameters,
-    /// Precomputed kernel matrix inverse (for efficiency)
-    pub k_inv: Option<Vec<Vec<f64>>>,
+    /// Lower-triangular Cholesky factor `L` of `K + σ²I` (row-major), where
+    /// `L * Lᵀ = K + σ²I`. Populated by [`GaussianProcessModel::fit`].
+    l_factor: Option<Vec<Vec<f64>>>,
+    /// Precomputed `α = (K + σ²I)⁻¹ (y − m)`, used for the predictive mean.
+    alpha: Option<Vec<f64>>,
 }
 
 impl GaussianProcessModel {
@@ -116,7 +144,7 @@ impl GaussianProcessModel {
 
         let input_dim = x_train[0].len();
         let hyperparameters = GPHyperparameters {
-            length_scales: vec![1.0; input_dim],
+            length_scales: vec![1.0; input_dim.max(1)],
             signal_variance: 1.0,
             noise_variance: config.noise_variance,
             mean_parameters: vec![0.0],
@@ -127,37 +155,42 @@ impl GaussianProcessModel {
             y_train,
             config,
             hyperparameters,
-            k_inv: None,
+            l_factor: None,
+            alpha: None,
         };
 
-        // Fit the model (simple implementation)
+        // Fit the model (heuristic hyperparameters + Cholesky factorization).
         model.fit()?;
 
         Ok(model)
     }
 
-    /// Fit the Gaussian Process model
+    /// Fit the Gaussian Process model.
+    ///
+    /// Sets heuristic hyperparameters, then Cholesky-factorizes `K + σ²I` and
+    /// precomputes `α` for fast predictive-mean evaluation.
     pub fn fit(&mut self) -> BayesianOptResult<()> {
-        // Simple hyperparameter setting (in practice would optimize via ML-II)
         self.optimize_hyperparameters()?;
-
-        // Precompute kernel matrix inverse for predictions
-        self.precompute_kernel_inverse()?;
-
+        self.factorize()?;
         Ok(())
     }
 
-    /// Simple hyperparameter optimization (placeholder)
+    /// Heuristic hyperparameter selection.
+    ///
+    /// Length scales are set to half the per-dimension data range and the signal
+    /// variance to the empirical output variance. (A full type-II maximum-likelihood
+    /// optimization could refine these, but these data-driven heuristics keep the
+    /// kernel well-conditioned for the small designs seen during Bayesian
+    /// optimization.)
     fn optimize_hyperparameters(&mut self) -> BayesianOptResult<()> {
         let n = self.x_train.len();
         if n == 0 {
             return Ok(());
         }
 
-        // Simple heuristic hyperparameter setting
         let input_dim = self.x_train[0].len();
 
-        // Set length scales based on input ranges
+        // Set length scales based on the spread of the observed inputs.
         for dim in 0..input_dim {
             let values: Vec<f64> = self.x_train.iter().map(|x| x[dim]).collect();
             let min_val = values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
@@ -167,7 +200,7 @@ impl GaussianProcessModel {
             self.hyperparameters.length_scales[dim] = range / 2.0;
         }
 
-        // Set signal variance based on output variance
+        // Set signal variance based on the empirical output variance.
         let mean_y = self.y_train.iter().sum::<f64>() / n as f64;
         let var_y = self
             .y_train
@@ -181,89 +214,79 @@ impl GaussianProcessModel {
         Ok(())
     }
 
-    /// Precompute kernel matrix inverse for efficient predictions
-    fn precompute_kernel_inverse(&mut self) -> BayesianOptResult<()> {
+    /// Cholesky-factorize `K + σ²I` and precompute `α`.
+    ///
+    /// If the (nominally positive-definite) matrix is numerically indefinite —
+    /// e.g. because two training inputs nearly coincide — an increasing jitter is
+    /// added to the diagonal until the factorization succeeds, a standard
+    /// regularization used by production GP libraries.
+    fn factorize(&mut self) -> BayesianOptResult<()> {
         let n = self.x_train.len();
 
-        // Compute kernel matrix
+        // Build the (noise-free) kernel Gram matrix.
         let mut k_matrix = vec![vec![0.0; n]; n];
         for i in 0..n {
-            for j in 0..n {
-                k_matrix[i][j] = self.kernel(&self.x_train[i], &self.x_train[j]);
-                if i == j {
-                    k_matrix[i][j] += self.hyperparameters.noise_variance;
-                }
+            for j in i..n {
+                let value = self.kernel(&self.x_train[i], &self.x_train[j]);
+                k_matrix[i][j] = value;
+                k_matrix[j][i] = value;
             }
         }
 
-        // Compute matrix inverse (simplified - in practice would use Cholesky decomposition)
-        let k_inv = self.matrix_inverse(k_matrix)?;
-        self.k_inv = Some(k_inv);
+        let signal_scale = self.hyperparameters.signal_variance.max(1e-12);
+        let mut jitter = self.hyperparameters.noise_variance.max(0.0);
+
+        let mut factor = None;
+        for _attempt in 0..8 {
+            let mut regularized = k_matrix.clone();
+            for d in 0..n {
+                regularized[d][d] += jitter;
+            }
+            if let Some(l) = cholesky_lower(&regularized) {
+                factor = Some(l);
+                break;
+            }
+            // Grow the jitter geometrically (seeded relative to the signal scale
+            // when the noise term is zero) and retry.
+            jitter = if jitter <= 0.0 {
+                1e-10 * signal_scale
+            } else {
+                jitter * 10.0
+            };
+        }
+
+        let l = factor.ok_or_else(|| {
+            BayesianOptError::GaussianProcessError(
+                "Kernel matrix is not positive definite even after jitter regularization"
+                    .to_string(),
+            )
+        })?;
+
+        // Center targets by the prior mean, then solve (K + σ²I) α = (y − m) via
+        // two triangular solves: L z = (y − m), then Lᵀ α = z.
+        let prior_mean = self.prior_mean_vector();
+        let centered: Vec<f64> = self
+            .y_train
+            .iter()
+            .zip(prior_mean.iter())
+            .map(|(&y, &m)| y - m)
+            .collect();
+
+        let z = forward_substitution(&l, &centered);
+        let alpha = back_substitution_transpose(&l, &z);
+
+        self.l_factor = Some(l);
+        self.alpha = Some(alpha);
 
         Ok(())
     }
 
-    /// Simple matrix inverse implementation (for small matrices)
-    fn matrix_inverse(&self, mut matrix: Vec<Vec<f64>>) -> BayesianOptResult<Vec<Vec<f64>>> {
-        let n = matrix.len();
-
-        // Create augmented matrix [A|I]
-        let mut augmented = vec![vec![0.0; 2 * n]; n];
-        for i in 0..n {
-            for j in 0..n {
-                augmented[i][j] = matrix[i][j];
-            }
-            augmented[i][i + n] = 1.0;
-        }
-
-        // Gaussian elimination
-        for i in 0..n {
-            // Find pivot
-            let mut max_row = i;
-            for k in (i + 1)..n {
-                if augmented[k][i].abs() > augmented[max_row][i].abs() {
-                    max_row = k;
-                }
-            }
-
-            // Swap rows
-            if max_row != i {
-                augmented.swap(i, max_row);
-            }
-
-            // Check for singular matrix
-            if augmented[i][i].abs() < 1e-12 {
-                return Err(BayesianOptError::GaussianProcessError(
-                    "Singular kernel matrix".to_string(),
-                ));
-            }
-
-            // Scale row
-            let pivot = augmented[i][i];
-            for j in 0..(2 * n) {
-                augmented[i][j] /= pivot;
-            }
-
-            // Eliminate column
-            for k in 0..n {
-                if k != i {
-                    let factor = augmented[k][i];
-                    for j in 0..(2 * n) {
-                        augmented[k][j] -= factor * augmented[i][j];
-                    }
-                }
-            }
-        }
-
-        // Extract inverse matrix
-        let mut inverse = vec![vec![0.0; n]; n];
-        for i in 0..n {
-            for j in 0..n {
-                inverse[i][j] = augmented[i][j + n];
-            }
-        }
-
-        Ok(inverse)
+    /// Prior-mean values evaluated at every training input.
+    fn prior_mean_vector(&self) -> Vec<f64> {
+        self.x_train
+            .iter()
+            .map(|x| self.mean_function_value(x))
+            .collect()
     }
 
     /// Compute kernel function between two points
@@ -277,7 +300,7 @@ impl GaussianProcessModel {
         }
     }
 
-    /// RBF (Gaussian) kernel
+    /// RBF (Gaussian) kernel with per-dimension length scales.
     fn rbf_kernel(&self, x1: &[f64], x2: &[f64]) -> f64 {
         let mut distance_sq = 0.0;
         for (i, (&xi, &xj)) in x1.iter().zip(x2.iter()).enumerate() {
@@ -288,7 +311,7 @@ impl GaussianProcessModel {
         self.hyperparameters.signal_variance * (-0.5 * distance_sq).exp()
     }
 
-    /// Matern kernel (simplified to Matern 3/2)
+    /// Matern kernel (Matern 3/2).
     fn matern_kernel(&self, x1: &[f64], x2: &[f64]) -> f64 {
         let mut distance = 0.0;
         for (i, (&xi, &xj)) in x1.iter().zip(x2.iter()).enumerate() {
@@ -313,41 +336,39 @@ impl GaussianProcessModel {
         self.hyperparameters.signal_variance * (1.0 + dot_product).powi(2)
     }
 
-    /// Make prediction at new point
+    /// Predict the posterior mean and variance at a new point.
+    ///
+    /// Implements the exact-GP predictive equations:
+    /// `μ(x*) = m(x*) + k*ᵀ α` and `σ²(x*) = k(x*, x*) − vᵀ v` with `v = L⁻¹ k*`.
     pub fn predict(&self, x: &[f64]) -> BayesianOptResult<(f64, f64)> {
-        let k_inv = self.k_inv.as_ref().ok_or_else(|| {
+        let l = self.l_factor.as_ref().ok_or_else(|| {
+            BayesianOptError::GaussianProcessError("Model not fitted".to_string())
+        })?;
+        let alpha = self.alpha.as_ref().ok_or_else(|| {
             BayesianOptError::GaussianProcessError("Model not fitted".to_string())
         })?;
 
-        // Compute kernel vector between x and training data
+        // Cross-covariance k* between x and every training input.
         let k_star: Vec<f64> = self
             .x_train
             .iter()
             .map(|x_train| self.kernel(x, x_train))
             .collect();
 
-        // Compute mean prediction
-        let mut mean = 0.0;
-        for i in 0..self.y_train.len() {
-            for j in 0..self.y_train.len() {
-                mean += k_star[i] * k_inv[i][j] * self.y_train[j];
-            }
+        // Predictive mean: prior mean plus k*ᵀ α.
+        let mut mean = self.mean_function_value(x);
+        for (ks, a) in k_star.iter().zip(alpha.iter()) {
+            mean += ks * a;
         }
 
-        // Add mean function value
-        mean += self.mean_function_value(x);
-
-        // Compute variance prediction
-        let k_star_star = self.kernel(x, x);
-        let mut variance = k_star_star;
-
-        for i in 0..k_star.len() {
-            for j in 0..k_star.len() {
-                variance -= k_star[i] * k_inv[i][j] * k_star[j];
-            }
+        // Predictive variance: k(x, x) − ||L⁻¹ k*||².
+        let v = forward_substitution(l, &k_star);
+        let mut variance = self.kernel(x, x);
+        for vi in &v {
+            variance -= vi * vi;
         }
 
-        // Ensure non-negative variance
+        // Numerical guard: posterior variance must stay non-negative.
         variance = variance.max(1e-12);
 
         Ok((mean, variance))
@@ -360,65 +381,254 @@ impl GaussianProcessModel {
             MeanFunction::Constant(c) => c,
             MeanFunction::Linear => {
                 // Simple linear mean: sum of coordinates
-                x.iter().sum::<f64>() * self.hyperparameters.mean_parameters.get(0).unwrap_or(&0.0)
+                x.iter().sum::<f64>() * self.hyperparameters.mean_parameters.first().unwrap_or(&0.0)
             }
             MeanFunction::Polynomial { degree: _ } => {
                 // Simplified polynomial mean
                 let x_sum = x.iter().sum::<f64>();
-                x_sum * self.hyperparameters.mean_parameters.get(0).unwrap_or(&0.0)
+                x_sum * self.hyperparameters.mean_parameters.first().unwrap_or(&0.0)
             }
         }
     }
 
-    /// Get marginal log-likelihood (for hyperparameter optimization)
+    /// Exact log marginal likelihood of the training data under the fitted GP.
+    ///
+    /// `log p(y) = −½ (y − m)ᵀ α − Σ ln L_ii − ½ n ln(2π)`, where the middle term
+    /// equals `½ ln|K + σ²I|` because `L` is the Cholesky factor.
     pub fn log_marginal_likelihood(&self) -> BayesianOptResult<f64> {
-        let k_inv = self.k_inv.as_ref().ok_or_else(|| {
+        let l = self.l_factor.as_ref().ok_or_else(|| {
+            BayesianOptError::GaussianProcessError("Model not fitted".to_string())
+        })?;
+        let alpha = self.alpha.as_ref().ok_or_else(|| {
             BayesianOptError::GaussianProcessError("Model not fitted".to_string())
         })?;
 
         let n = self.y_train.len();
+        let prior_mean = self.prior_mean_vector();
 
-        // Compute y^T K^(-1) y
-        let mut quad_form = 0.0;
+        // Data-fit term: (y − m)ᵀ α.
+        let mut data_fit = 0.0;
         for i in 0..n {
-            for j in 0..n {
-                quad_form += self.y_train[i] * k_inv[i][j] * self.y_train[j];
-            }
+            data_fit += (self.y_train[i] - prior_mean[i]) * alpha[i];
         }
 
-        // Compute log determinant (simplified - would use Cholesky in practice)
-        let log_det = self.log_determinant()?;
+        // Complexity term: ½ ln|K| = Σ ln L_ii.
+        let mut half_log_det = 0.0;
+        for i in 0..n {
+            half_log_det += l[i][i].ln();
+        }
 
-        let log_likelihood = (0.5 * n as f64).mul_add(
-            -(2.0 * std::f64::consts::PI).ln(),
-            (-0.5f64).mul_add(quad_form, -(0.5 * log_det)),
-        );
+        let log_likelihood = (-0.5 * data_fit) - half_log_det - (0.5 * n as f64) * (2.0 * PI).ln();
 
         Ok(log_likelihood)
     }
+}
 
-    /// Compute log determinant of kernel matrix (simplified)
-    fn log_determinant(&self) -> BayesianOptResult<f64> {
-        // Simplified computation - in practice would use Cholesky decomposition
-        let n = self.x_train.len();
+/// Compute the lower-triangular Cholesky factor `L` of a symmetric matrix `a`,
+/// such that `L * Lᵀ = a`.
+///
+/// Returns `None` if `a` is not positive definite (a non-positive pivot appears),
+/// which the caller uses to trigger jitter regularization.
+fn cholesky_lower(a: &[Vec<f64>]) -> Option<Vec<Vec<f64>>> {
+    let n = a.len();
+    let mut l = vec![vec![0.0; n]; n];
 
-        // Rebuild kernel matrix to compute determinant
-        let mut k_matrix = vec![vec![0.0; n]; n];
-        for i in 0..n {
-            for j in 0..n {
-                k_matrix[i][j] = self.kernel(&self.x_train[i], &self.x_train[j]);
-                if i == j {
-                    k_matrix[i][j] += self.hyperparameters.noise_variance;
+    for i in 0..n {
+        for j in 0..=i {
+            let mut sum = a[i][j];
+            for k in 0..j {
+                sum -= l[i][k] * l[j][k];
+            }
+
+            if i == j {
+                if sum <= 0.0 || !sum.is_finite() {
+                    return None;
                 }
+                l[i][i] = sum.sqrt();
+            } else {
+                let pivot = l[j][j];
+                if pivot.abs() < 1e-300 {
+                    return None;
+                }
+                l[i][j] = sum / pivot;
             }
         }
+    }
 
-        // Compute determinant via LU decomposition (simplified)
-        let mut det = 1.0;
-        for i in 0..n {
-            det *= k_matrix[i][i].max(1e-12);
+    Some(l)
+}
+
+/// Solve the lower-triangular system `L y = b` for `y` by forward substitution.
+fn forward_substitution(l: &[Vec<f64>], b: &[f64]) -> Vec<f64> {
+    let n = b.len();
+    let mut y = vec![0.0; n];
+
+    for i in 0..n {
+        let mut sum = b[i];
+        for k in 0..i {
+            sum -= l[i][k] * y[k];
+        }
+        y[i] = sum / l[i][i];
+    }
+
+    y
+}
+
+/// Solve the upper-triangular system `Lᵀ x = z` for `x` by back substitution,
+/// using the lower-triangular factor `L` transposed implicitly.
+fn back_substitution_transpose(l: &[Vec<f64>], z: &[f64]) -> Vec<f64> {
+    let n = z.len();
+    let mut x = vec![0.0; n];
+
+    for i in (0..n).rev() {
+        let mut sum = z[i];
+        for k in (i + 1)..n {
+            sum -= l[k][i] * x[k];
+        }
+        x[i] = sum / l[i][i];
+    }
+
+    x
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Regression test: fit an exact GP to a sampled 1-D quadratic and verify the
+    /// posterior interpolates the training data with near-zero variance there,
+    /// while variance grows far from the data.
+    #[test]
+    fn test_gp_cholesky_quadratic_regression() {
+        // f(x) = (x - 2)^2 sampled on an integer grid.
+        let grid = [0.0f64, 1.0, 2.0, 3.0, 4.0, 5.0];
+        let x_train: Vec<Vec<f64>> = grid.iter().map(|&x| vec![x]).collect();
+        let y_train: Vec<f64> = grid.iter().map(|&x| (x - 2.0).powi(2)).collect();
+
+        let config = GaussianProcessSurrogate {
+            kernel: KernelFunction::RBF,
+            noise_variance: 1e-8,
+            mean_function: MeanFunction::Zero,
+        };
+
+        let model = GaussianProcessModel::new(x_train, y_train.clone(), config)
+            .expect("GP should fit on well-separated quadratic samples");
+
+        // At each training input the posterior mean matches the observation and the
+        // posterior variance is tiny.
+        let mut train_var_max = 0.0f64;
+        for (&x, &y) in grid.iter().zip(y_train.iter()) {
+            let (mean, variance) = model.predict(&[x]).expect("prediction should succeed");
+            assert!(
+                (mean - y).abs() < 1e-3,
+                "at x={x}, predicted mean {mean} should match target {y}"
+            );
+            assert!(
+                variance < 1e-2,
+                "posterior variance {variance} at training point x={x} should be near zero"
+            );
+            train_var_max = train_var_max.max(variance);
         }
 
-        Ok(det.ln())
+        // Interpolation between samples: the mean should track the underlying
+        // quadratic and the variance stays finite and positive.
+        let (mean_mid, var_mid) = model.predict(&[2.5]).expect("interpolation should succeed");
+        let true_mid = (2.5f64 - 2.0).powi(2);
+        assert!(
+            (mean_mid - true_mid).abs() < 0.75,
+            "interpolated mean {mean_mid} should be near the true value {true_mid}"
+        );
+        assert!(var_mid > 0.0, "interpolation variance should be positive");
+
+        // Extrapolation far from the data has much larger posterior variance than
+        // at a training point.
+        let (_mean_far, var_far) = model
+            .predict(&[12.0])
+            .expect("extrapolation should succeed");
+        assert!(
+            var_far > 10.0 * train_var_max,
+            "extrapolation variance {var_far} should exceed training-point variance {train_var_max}"
+        );
+    }
+
+    /// The Cholesky factor must satisfy L Lᵀ = A for a known SPD matrix.
+    #[test]
+    fn test_cholesky_lower_reconstructs_matrix() {
+        let a = vec![
+            vec![4.0, 2.0, 2.0],
+            vec![2.0, 5.0, 3.0],
+            vec![2.0, 3.0, 6.0],
+        ];
+        let l = cholesky_lower(&a).expect("SPD matrix should factorize");
+
+        for i in 0..3 {
+            for j in 0..3 {
+                let mut reconstructed = 0.0;
+                for k in 0..3 {
+                    reconstructed += l[i][k] * l[j][k];
+                }
+                assert!(
+                    (reconstructed - a[i][j]).abs() < 1e-9,
+                    "L Lᵀ mismatch at ({i},{j})"
+                );
+            }
+        }
+    }
+
+    /// A non-positive-definite matrix must be rejected (so callers can add jitter).
+    #[test]
+    fn test_cholesky_rejects_non_pd() {
+        // Negative eigenvalue -> not positive definite.
+        let a = vec![vec![1.0, 2.0], vec![2.0, 1.0]];
+        assert!(cholesky_lower(&a).is_none());
+    }
+
+    /// Triangular solves must invert the factorization: L Lᵀ x = b.
+    #[test]
+    fn test_triangular_solves_roundtrip() {
+        let a = vec![
+            vec![4.0, 2.0, 2.0],
+            vec![2.0, 5.0, 3.0],
+            vec![2.0, 3.0, 6.0],
+        ];
+        let l = cholesky_lower(&a).expect("SPD matrix should factorize");
+        let b = vec![1.0, -2.0, 3.0];
+
+        // Solve A x = b via L z = b, Lᵀ x = z.
+        let z = forward_substitution(&l, &b);
+        let x = back_substitution_transpose(&l, &z);
+
+        // Verify A x = b.
+        for i in 0..3 {
+            let mut ax = 0.0;
+            for j in 0..3 {
+                ax += a[i][j] * x[j];
+            }
+            assert!((ax - b[i]).abs() < 1e-9, "A x != b at row {i}");
+        }
+    }
+
+    /// The bare configuration holder must fail loudly rather than fabricate a value.
+    #[test]
+    fn test_surrogate_predict_is_honest_error() {
+        let surrogate = GaussianProcessSurrogate::default();
+        assert!(surrogate.predict(&[0.0]).is_err());
+    }
+
+    /// Log marginal likelihood is finite for a well-conditioned fit.
+    #[test]
+    fn test_log_marginal_likelihood_finite() {
+        let x_train = vec![vec![0.0], vec![1.0], vec![2.0], vec![3.0]];
+        let y_train = vec![0.0, 1.0, 4.0, 9.0];
+        let config = GaussianProcessSurrogate {
+            kernel: KernelFunction::RBF,
+            noise_variance: 1e-6,
+            mean_function: MeanFunction::Zero,
+        };
+        let model = GaussianProcessModel::new(x_train, y_train, config).expect("fit");
+        let lml = model
+            .log_marginal_likelihood()
+            .expect("log marginal likelihood should be computable");
+        assert!(lml.is_finite());
     }
 }

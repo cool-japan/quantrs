@@ -78,6 +78,14 @@ pub struct AutoDiff {
     graph: Option<ComputationNode>,
     /// Cached forward values
     forward_cache: HashMap<String, f64>,
+    /// Circuit executor backing `ComputationNode::Expectation` nodes: given
+    /// the ordered values of `circuit_params` and the observable name,
+    /// returns the real expectation value ⟨observable⟩(params) (e.g. by
+    /// simulating a parameterised circuit). Evaluating or differentiating a
+    /// graph containing an `Expectation` node without one configured
+    /// returns an honest `MLError::NotSupported` rather than a fabricated
+    /// placeholder value.
+    executor: Option<Box<dyn Fn(&[f64], &str) -> f64>>,
 }
 
 impl AutoDiff {
@@ -87,7 +95,20 @@ impl AutoDiff {
             parameters: HashMap::new(),
             graph: None,
             forward_cache: HashMap::new(),
+            executor: None,
         }
+    }
+
+    /// Attach a circuit executor used to evaluate `ComputationNode::Expectation`
+    /// nodes. `executor(param_values, observable)` must return the real
+    /// expectation value of `observable` for the circuit parameterised by
+    /// `param_values` (in the same order as that node's `circuit_params`).
+    pub fn with_executor<F>(mut self, executor: F) -> Self
+    where
+        F: Fn(&[f64], &str) -> f64 + 'static,
+    {
+        self.executor = Some(Box::new(executor));
+        self
     }
 
     /// Register a parameter
@@ -162,16 +183,30 @@ impl AutoDiff {
                 circuit_params,
                 observable,
             } => {
-                // Simplified - would compute actual expectation value
-                let mut sum = 0.0;
-                for param_name in circuit_params {
-                    if let Some(param) = self.parameters.get(param_name) {
-                        sum += param.value;
-                    }
-                }
-                Ok(sum.cos()) // Placeholder
+                let values = self.circuit_param_values(circuit_params)?;
+                let executor = self.executor.as_ref().ok_or_else(|| {
+                    MLError::NotSupported(
+                        "ComputationNode::Expectation requires a circuit executor; call \
+                         AutoDiff::with_executor() before forward()/backward()"
+                            .to_string(),
+                    )
+                })?;
+                Ok(executor(&values, observable))
             }
         }
+    }
+
+    /// Look up the current values of a list of registered parameter names,
+    /// in order, for use as circuit-executor input.
+    fn circuit_param_values(&self, circuit_params: &[String]) -> Result<Vec<f64>> {
+        circuit_params
+            .iter()
+            .map(|name| {
+                self.parameters.get(name).map(|p| p.value).ok_or_else(|| {
+                    MLError::InvalidConfiguration(format!("Unknown parameter: {}", name))
+                })
+            })
+            .collect()
     }
 
     /// Backpropagate gradients through the graph
@@ -214,10 +249,15 @@ impl AutoDiff {
                 let x = self.evaluate_node(inner)?;
                 self.backpropagate(inner, grad * x.exp())?;
             }
-            ComputationNode::Expectation { circuit_params, .. } => {
-                // Use parameter shift rule for quantum gradients
-                for param_name in circuit_params {
-                    let shift_grad = self.parameter_shift_gradient(param_name, PI / 2.0)?;
+            ComputationNode::Expectation {
+                circuit_params,
+                observable,
+            } => {
+                // Use the exact parameter shift rule, evaluating the real
+                // executor at θ±π/2 for each circuit parameter in turn.
+                for (index, param_name) in circuit_params.iter().enumerate() {
+                    let shift_grad =
+                        self.parameter_shift_gradient(circuit_params, observable, index, PI / 2.0)?;
                     if let Some(param) = self.parameters.get_mut(param_name) {
                         if param.requires_grad {
                             param.gradient += grad * shift_grad;
@@ -229,11 +269,39 @@ impl AutoDiff {
         Ok(())
     }
 
-    /// Compute gradient using parameter shift rule
-    fn parameter_shift_gradient(&self, param_name: &str, shift: f64) -> Result<f64> {
-        // Simplified parameter shift rule
-        // In practice, would evaluate circuit with ±shift
-        Ok(0.5) // Placeholder
+    /// Compute the gradient of `⟨observable⟩` with respect to the
+    /// `index`-th entry of `circuit_params` using the exact two-point
+    /// parameter-shift rule: `(E(θ+shift) - E(θ-shift)) / (2 sin(shift))`,
+    /// evaluated by calling into the configured executor.
+    fn parameter_shift_gradient(
+        &self,
+        circuit_params: &[String],
+        observable: &str,
+        index: usize,
+        shift: f64,
+    ) -> Result<f64> {
+        let executor = self.executor.as_ref().ok_or_else(|| {
+            MLError::NotSupported(
+                "parameter_shift_gradient requires a circuit executor; call \
+                 AutoDiff::with_executor() before forward()/backward()"
+                    .to_string(),
+            )
+        })?;
+        let mut values = self.circuit_param_values(circuit_params)?;
+        if index >= values.len() {
+            return Err(MLError::InvalidParameter(format!(
+                "parameter index {index} out of range for {} circuit parameters",
+                values.len()
+            )));
+        }
+
+        let original = values[index];
+        values[index] = original + shift;
+        let plus = executor(&values, observable);
+        values[index] = original - shift;
+        let minus = executor(&values, observable);
+
+        Ok((plus - minus) / (2.0 * shift.sin()))
     }
 
     /// Get all gradients
@@ -769,5 +837,59 @@ mod tests {
             .parameter_shift_gradients(&params, PI / 2.0)
             .expect("parameter shift gradients should succeed");
         assert_eq!(gradients.len(), 2);
+    }
+
+    #[test]
+    fn test_expectation_node_without_executor_errors_honestly() {
+        // Regression test: an `Expectation` node evaluated/backpropagated
+        // without a configured executor must return an honest
+        // `MLError::NotSupported`, not a fabricated placeholder value.
+        let mut autodiff = AutoDiff::new();
+        autodiff.register_parameter(DifferentiableParam::new("theta", PI / 4.0));
+        autodiff.set_graph(ComputationNode::Expectation {
+            circuit_params: vec!["theta".to_string()],
+            observable: "Z".to_string(),
+        });
+
+        let forward_result = autodiff.forward();
+        assert!(forward_result.is_err());
+        match forward_result {
+            Err(MLError::NotSupported(_)) => {}
+            other => panic!("expected MLError::NotSupported, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_expectation_node_real_parameter_shift_gradient() {
+        // Regression test: with a real executor attached, forward() must
+        // return the executor's actual value (not a hardcoded placeholder),
+        // and backward() must compute the true parameter-shift derivative
+        // instead of the previous hardcoded `0.5`.
+        //
+        // Observable: ⟨Z⟩(θ) = cos(θ), whose exact derivative is -sin(θ).
+        let executor = |params: &[f64], _observable: &str| -> f64 { params[0].cos() };
+
+        let mut autodiff = AutoDiff::new().with_executor(executor);
+        let theta = PI / 3.0;
+        autodiff.register_parameter(DifferentiableParam::new("theta", theta));
+        autodiff.set_graph(ComputationNode::Expectation {
+            circuit_params: vec!["theta".to_string()],
+            observable: "Z".to_string(),
+        });
+
+        let forward_value = autodiff.forward().expect("forward should succeed");
+        assert!((forward_value - theta.cos()).abs() < 1e-9);
+
+        autodiff.backward(1.0).expect("backward should succeed");
+        let gradients = autodiff.gradients();
+
+        let expected_gradient = -theta.sin();
+        assert!(
+            (gradients["theta"] - expected_gradient).abs() < 1e-6,
+            "expected d/dtheta cos(theta) = {expected_gradient}, got {}",
+            gradients["theta"]
+        );
+        // Must not be the old hardcoded placeholder value.
+        assert!((gradients["theta"] - 0.5).abs() > 1e-3);
     }
 }

@@ -59,14 +59,50 @@ impl QuantumFLClient {
         let local_model = QuantumNeuralNetwork::new(layers, 4, 10, 2)?;
         let noise_scale = (2.0 * (1.25 / epsilon).ln()).sqrt() / dataset_size as f64;
 
+        // Seed the client-visible parameter map from the real QNN weights so
+        // that aggregation/serialization operate on the actual model instead
+        // of an always-empty placeholder map.
+        let local_params = local_model
+            .parameters
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| (Self::param_key(i), v))
+            .collect();
+
         Ok(Self {
             client_id,
             local_model,
             dataset_size,
             epsilon,
             noise_scale,
-            local_params: HashMap::new(),
+            local_params,
         })
+    }
+
+    /// Canonical key used to expose a given QNN parameter index in the
+    /// `local_params` map (and in `get_parameters`/`set_parameters`).
+    fn param_key(index: usize) -> String {
+        format!("param_{index}")
+    }
+
+    /// Overwrite `local_params` with the current `local_model.parameters`,
+    /// keeping the two representations in sync after a gradient step.
+    fn sync_local_params_from_model(&mut self) {
+        for (i, &v) in self.local_model.parameters.iter().enumerate() {
+            self.local_params.insert(Self::param_key(i), v);
+        }
+    }
+
+    /// Write `local_params` back into `local_model.parameters`, used after
+    /// receiving aggregated parameters from the server or after adding
+    /// differential-privacy noise.
+    fn sync_model_from_local_params(&mut self) {
+        let num_params = self.local_model.parameters.len();
+        for i in 0..num_params {
+            if let Some(&v) = self.local_params.get(&Self::param_key(i)) {
+                self.local_model.parameters[i] = v;
+            }
+        }
     }
 
     /// Train on local data
@@ -91,8 +127,9 @@ impl QuantumFLClient {
                 let loss = self.compute_loss(&output, label)?;
                 total_loss += loss;
 
-                // Backward pass (simplified)
-                self.update_parameters(&input, label, 0.01)?;
+                // Backward pass: real parameter-shift gradient of the
+                // cross-entropy loss, written back into local_model.parameters.
+                self.update_parameters(&input, label, 0.01, &output)?;
             }
         }
 
@@ -113,27 +150,57 @@ impl QuantumFLClient {
         Ok(-output[label_idx].ln())
     }
 
-    /// Update parameters (simplified)
+    /// Real gradient step on the local QNN's weights.
+    ///
+    /// Computes `d(cross_entropy_loss)/d(theta_j)` for every trainable
+    /// parameter `theta_j` via the exact parameter-shift rule
+    /// (`QuantumNeuralNetwork::output_component_gradient`) applied to the
+    /// output component that the cross-entropy loss depends on, then takes a
+    /// plain gradient-descent step. The updated weights are written directly
+    /// into `self.local_model.parameters`, and `local_params` is kept in
+    /// sync so that `get_parameters()`/aggregation see the real weights.
     fn update_parameters(
         &mut self,
         input: &Array1<f64>,
         label: i32,
         learning_rate: f64,
+        output: &Array1<f64>,
     ) -> Result<()> {
-        // Placeholder parameter update
-        for (key, value) in self.local_params.iter_mut() {
-            *value += learning_rate * fastrand::f64() * 0.1;
+        let label_idx = label as usize;
+        if label_idx >= output.len() {
+            return Err(MLError::InvalidInput("Label out of bounds".to_string()));
         }
+
+        // d(loss)/d(output[label]) for loss = -ln(output[label]).
+        // Clamp away from zero to avoid a divide-by-zero blow-up.
+        let output_val = output[label_idx].max(1e-12);
+        let d_loss_d_output = -1.0 / output_val;
+
+        // d(output[label])/d(theta_j) for every parameter via parameter shift.
+        let d_output_d_params = self
+            .local_model
+            .output_component_gradient(input, label_idx)?;
+
+        let num_params = self.local_model.parameters.len();
+        for j in 0..num_params {
+            let grad_j = d_loss_d_output * d_output_d_params[j];
+            self.local_model.parameters[j] -= learning_rate * grad_j;
+        }
+
+        self.sync_local_params_from_model();
         Ok(())
     }
 
-    /// Add differential privacy noise
+    /// Add differential privacy noise, applied both to the exposed parameter
+    /// map and back into the underlying QNN weights so that subsequent local
+    /// forward passes actually see the noised parameters.
     fn add_dp_noise(&mut self) -> Result<()> {
         for (_, value) in self.local_params.iter_mut() {
             // Add Gaussian noise scaled by sensitivity and epsilon
             let noise = self.noise_scale * Self::gaussian_noise();
             *value += noise;
         }
+        self.sync_model_from_local_params();
         Ok(())
     }
 
@@ -153,6 +220,7 @@ impl QuantumFLClient {
     /// Update model with aggregated parameters
     pub fn set_parameters(&mut self, params: HashMap<String, f64>) {
         self.local_params = params;
+        self.sync_model_from_local_params();
     }
 }
 
@@ -663,6 +731,69 @@ pub mod privacy {
 mod tests {
     use super::*;
     use scirs2_core::ndarray::array;
+
+    #[test]
+    fn test_quantum_fl_client_real_parameter_update() {
+        // Regression test: train_local() must actually move the underlying
+        // QNN weights via a real gradient step, and get_parameters() must
+        // reflect the same (non-empty, non-placeholder) values instead of an
+        // always-empty disconnected map.
+        let config = vec![
+            ("encoding".to_string(), 4),
+            ("variational".to_string(), 8),
+            ("measurement".to_string(), 0),
+        ];
+
+        let mut client = QuantumFLClient::new("client_1".to_string(), &config, 100, 1.0)
+            .expect("Failed to create client");
+
+        // get_parameters() must be populated at construction time, mirroring
+        // the real QNN weight count (8 variational parameters).
+        let initial_params = client.get_parameters();
+        assert_eq!(initial_params.len(), 8);
+
+        let initial_model_params = client.local_model.parameters.clone();
+
+        let data = array![[0.1, 0.2, 0.3, 0.4], [0.5, 0.6, 0.7, 0.8]];
+        let labels = array![0, 1];
+
+        client
+            .train_local(&data, &labels, 1)
+            .expect("Training failed");
+
+        // The real QNN weights must have moved (gradient step + DP noise),
+        // not stayed frozen because of an empty parameter map.
+        let moved = client
+            .local_model
+            .parameters
+            .iter()
+            .zip(initial_model_params.iter())
+            .any(|(&after, &before)| (after - before).abs() > 1e-9);
+        assert!(
+            moved,
+            "local_model.parameters did not change after train_local()"
+        );
+
+        // get_parameters() must track the real model weights (not the stale
+        // empty/placeholder map), so it should now differ from the values it
+        // had immediately after construction.
+        let updated_params = client.get_parameters();
+        assert_eq!(updated_params.len(), 8);
+        let params_changed = (0..8).any(|i| {
+            let key = format!("param_{i}");
+            (updated_params[&key] - initial_params[&key]).abs() > 1e-9
+        });
+        assert!(
+            params_changed,
+            "get_parameters() did not reflect the real gradient update"
+        );
+
+        // get_parameters() must always mirror local_model.parameters exactly.
+        for (i, &model_val) in client.local_model.parameters.iter().enumerate() {
+            let key = format!("param_{i}");
+            assert!((updated_params[&key] - model_val).abs() < 1e-12);
+        }
+    }
 
     #[test]
     fn test_quantum_fl_client() {

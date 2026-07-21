@@ -6,7 +6,6 @@
 
 use crate::error::{MLError, Result};
 use crate::qnn::QuantumNeuralNetwork;
-use quantrs2_circuit::prelude::Circuit;
 use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
@@ -166,32 +165,13 @@ impl ReinforcementLearning {
         self
     }
 
-    /// Encodes a state into a quantum circuit
-    fn encode_state(&self, state: &Array1<f64>) -> Result<Circuit<8>> {
-        // This is a dummy implementation
-        // In a real system, this would encode the state into a quantum circuit
-
-        let mut circuit = Circuit::<8>::new();
-
-        for i in 0..state.len().min(8) {
-            circuit.ry(i, state[i] * std::f64::consts::PI)?;
-        }
-
-        Ok(circuit)
-    }
-
-    /// Gets the Q-values for a state
+    /// Gets the Q-values for a state by evaluating the quantum neural network.
+    ///
+    /// The state is encoded into the QNN's parameterised circuit, simulated on
+    /// the state-vector backend, and each action's Q-value is read out as a
+    /// Pauli expectation value (one output per action).
     fn get_q_values(&self, state: &Array1<f64>) -> Result<Array1<f64>> {
-        // This is a dummy implementation
-        // In a real system, this would compute Q-values using the QNN
-
-        let mut q_values = Array1::zeros(self.action_dim);
-
-        for i in 0..self.action_dim {
-            q_values[i] = 0.5 + 0.5 * thread_rng().random::<f64>();
-        }
-
-        Ok(q_values)
+        self.qnn.forward(state)
     }
 }
 
@@ -202,14 +182,16 @@ impl QuantumAgent for ReinforcementLearning {
             // Explore: random action
             Ok(fastrand::usize(0..self.action_dim))
         } else {
-            // Exploit: best action
+            // Exploit: best action according to the QNN Q-values.
             let q_values = self.get_q_values(state)?;
+            if q_values.is_empty() {
+                return Err(MLError::MLOperationError(
+                    "QNN produced no Q-values".to_string(),
+                ));
+            }
             let mut best_action = 0;
-            let mut best_value = q_values[0];
-
-            for i in 1..self.action_dim {
-                if q_values[i] > best_value {
-                    best_value = q_values[i];
+            for i in 1..q_values.len() {
+                if q_values[i] > q_values[best_action] {
                     best_action = i;
                 }
             }
@@ -220,14 +202,38 @@ impl QuantumAgent for ReinforcementLearning {
 
     fn update(
         &mut self,
-        _state: &Array1<f64>,
-        _action: usize,
-        _reward: f64,
-        _next_state: &Array1<f64>,
-        _done: bool,
+        state: &Array1<f64>,
+        action: usize,
+        reward: f64,
+        next_state: &Array1<f64>,
+        done: bool,
     ) -> Result<()> {
-        // This is a dummy implementation
-        // In a real system, this would update the QNN
+        // Semi-gradient Q-learning update on the quantum neural network.
+        let q_values = self.get_q_values(state)?;
+        if action >= q_values.len() {
+            return Err(MLError::InvalidParameter(format!(
+                "action {action} out of range for {} Q-values",
+                q_values.len()
+            )));
+        }
+        let q_sa = q_values[action];
+
+        // Bellman target: r + γ · max_a' Q(s', a')  (terminal transitions use r).
+        let target = if done {
+            reward
+        } else {
+            let next_q = self.get_q_values(next_state)?;
+            let max_next = next_q.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            reward + self.discount_factor * max_next
+        };
+
+        // Loss L = (Q(s,a) - target)²  ⇒  dL/dθ = 2·(Q(s,a) - target)·∂Q(s,a)/∂θ,
+        // where ∂Q(s,a)/∂θ is obtained by the parameter-shift rule.
+        let td_error = q_sa - target;
+        let gradient = self.qnn.output_component_gradient(state, action)?;
+        for j in 0..self.qnn.parameters.len() {
+            self.qnn.parameters[j] -= self.learning_rate * 2.0 * td_error * gradient[j];
+        }
 
         Ok(())
     }

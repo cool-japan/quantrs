@@ -24,8 +24,18 @@ impl Simulator for StabilizerSimulator {
     ) -> crate::error::Result<SimulatorResult<N>> {
         let mut sim = Self::new(N);
         for gate in circuit.gates() {
-            if let Some(stab_gate) = gate_to_stabilizer(gate) {
-                let _ = sim.apply_gate(stab_gate);
+            match gate_to_stabilizer(gate) {
+                Some(stab_gate) => sim.apply_gate(stab_gate)?,
+                None => {
+                    // The stabilizer formalism can only simulate Clifford gates.
+                    // Silently dropping an unrecognised gate would fabricate an
+                    // incorrect result, so surface it as an honest error instead.
+                    return Err(crate::error::SimulatorError::UnsupportedOperation(format!(
+                        "StabilizerSimulator cannot simulate non-Clifford gate '{}' on qubits {:?}",
+                        gate.name(),
+                        gate.qubits()
+                    )));
+                }
             }
         }
         let amplitudes = sim.get_statevector();
