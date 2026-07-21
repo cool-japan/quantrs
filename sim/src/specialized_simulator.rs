@@ -229,19 +229,102 @@ impl SpecializedStateVectorSimulator {
         Ok(())
     }
 
-    /// Reorder gates for better performance
+    /// Reorder gates for better cache locality *without* changing the
+    /// circuit's semantics.
+    ///
+    /// A blind `sort_by_key` on the first qubit id (the previous
+    /// implementation) can silently reorder gates whose relative order
+    /// matters -- e.g. it would happily move `X(0)` before `CNOT(0, 1)` even
+    /// though they act on a shared qubit and do not commute, corrupting the
+    /// computed state. This implementation only ever moves a gate earlier in
+    /// program order past gates it can *provably* commute with:
+    ///
+    /// * two gates acting on completely disjoint qubit sets always commute
+    ///   (they act on independent tensor factors), and
+    /// * two gates that are both diagonal in the computational basis (Z, S,
+    ///   T, RZ, phase, controlled-diagonal, global phase, ...) always
+    ///   commute with each other regardless of qubit overlap, since diagonal
+    ///   matrices always commute.
+    ///
+    /// This is a greedy selection sort: for each output position, the
+    /// earliest-by-first-qubit gate that can be proven to commute with every
+    /// gate between its current position and the target position is chosen.
+    /// Any gate that cannot be proven to commute stops the scan, so no
+    /// dependency-violating move is ever made.
     fn reorder_gates(
         &self,
         gates: &[Arc<dyn GateOp + Send + Sync>],
     ) -> QuantRS2Result<Vec<Arc<dyn GateOp + Send + Sync>>> {
-        // Simple reordering: group gates by qubit locality
-        // This is a placeholder for more sophisticated reordering
-        let mut reordered = gates.to_vec();
+        let mut reordered: Vec<Arc<dyn GateOp + Send + Sync>> = gates.to_vec();
+        let key =
+            |gate: &Arc<dyn GateOp + Send + Sync>| gate.qubits().first().map_or(0, QubitId::id);
 
-        // Sort by first qubit to improve cache locality
-        reordered.sort_by_key(|gate| gate.qubits().first().map_or(0, quantrs2_core::QubitId::id));
+        for i in 0..reordered.len() {
+            let mut best_j = i;
+            let mut best_key = key(&reordered[i]);
+
+            for j in (i + 1)..reordered.len() {
+                // gates[j] can only be considered as a candidate for
+                // position i if it provably commutes with every gate
+                // currently occupying positions i..j (i.e. every gate it
+                // would have to move past).
+                if !Self::commutes_with_all(reordered[j].as_ref(), &reordered[i..j]) {
+                    break;
+                }
+                let candidate_key = key(&reordered[j]);
+                if candidate_key < best_key {
+                    best_key = candidate_key;
+                    best_j = j;
+                }
+            }
+
+            if best_j != i {
+                let gate = reordered.remove(best_j);
+                reordered.insert(i, gate);
+            }
+        }
 
         Ok(reordered)
+    }
+
+    /// Whether `candidate` provably commutes with every gate in `others`,
+    /// i.e. it is safe to move `candidate` past all of them without
+    /// changing the circuit's semantics.
+    fn commutes_with_all(candidate: &dyn GateOp, others: &[Arc<dyn GateOp + Send + Sync>]) -> bool {
+        others
+            .iter()
+            .all(|other| Self::gates_commute(candidate, other.as_ref()))
+    }
+
+    /// Whether two gates provably commute.
+    ///
+    /// This is intentionally conservative: it only returns `true` when
+    /// commutation is guaranteed by a structural property (disjoint qubits,
+    /// or both gates diagonal in the computational basis), never by
+    /// inspecting the numeric gate matrices. A `false` result may still
+    /// correspond to gates that happen to commute (e.g. two different CNOTs
+    /// sharing a qubit in specific configurations) -- that only forgoes an
+    /// optimization opportunity, it never risks correctness.
+    fn gates_commute(a: &dyn GateOp, b: &dyn GateOp) -> bool {
+        let qubits_a = a.qubits();
+        let qubits_b = b.qubits();
+        let disjoint = qubits_a.iter().all(|q| !qubits_b.contains(q));
+        if disjoint {
+            return true;
+        }
+        Self::is_diagonal_gate(a) && Self::is_diagonal_gate(b)
+    }
+
+    /// Whether a gate's matrix is diagonal in the computational basis.
+    ///
+    /// Any two diagonal matrices commute regardless of which qubits they
+    /// act on, so this is the basis for the only qubit-overlapping
+    /// commutation case `gates_commute` recognizes.
+    fn is_diagonal_gate(gate: &dyn GateOp) -> bool {
+        matches!(
+            gate.name(),
+            "Z" | "S" | "S†" | "T" | "T†" | "RZ" | "P" | "I" | "CZ" | "CRZ" | "CS" | "GlobalPhase"
+        )
     }
 
     /// Estimate time saved by using specialized implementation
@@ -520,6 +603,81 @@ mod tests {
         assert_eq!(sim.get_stats().total_gates, 2);
         assert_eq!(sim.get_stats().specialized_gates, 2);
         assert_eq!(sim.get_stats().generic_gates, 0);
+    }
+
+    /// Regression test for the P1 finding: `reorder_gates` used to sort
+    /// gates purely by first-qubit-id, with no regard for whether the
+    /// reordered gates actually commute. `X(1)` followed by
+    /// `CNOT(control=0, target=1)` do *not* commute (they share qubit 1),
+    /// so a naive sort (which would hoist the CNOT, whose first qubit is
+    /// 0, ahead of the X, whose first qubit is 1) changes the computed
+    /// state. Running the same circuit with reordering enabled and
+    /// disabled must now produce identical results.
+    #[test]
+    fn test_reorder_gates_preserves_semantics_for_noncommuting_gates() {
+        let mut circuit = Circuit::<2>::new();
+        let _ = circuit.x(QubitId(1));
+        let _ = circuit.cnot(QubitId(0), QubitId(1));
+
+        let reordering_config = SpecializedSimulatorConfig {
+            enable_reordering: true,
+            ..Default::default()
+        };
+        let mut sim_reordered = SpecializedStateVectorSimulator::new(reordering_config);
+        let state_reordered = sim_reordered.run(&circuit).expect("reordered run failed");
+
+        let no_reorder_config = SpecializedSimulatorConfig {
+            enable_reordering: false,
+            ..Default::default()
+        };
+        let mut sim_baseline = SpecializedStateVectorSimulator::new(no_reorder_config);
+        let state_baseline = sim_baseline
+            .run(&circuit)
+            .expect("baseline (unreordered) run failed");
+
+        for (i, (reordered_amp, baseline_amp)) in state_reordered
+            .iter()
+            .zip(state_baseline.iter())
+            .enumerate()
+        {
+            assert!(
+                (reordered_amp - baseline_amp).norm() < 1e-10,
+                "reordering changed circuit semantics at index {i}: {reordered_amp:?} vs {baseline_amp:?}"
+            );
+        }
+    }
+
+    /// Direct unit test on `reorder_gates`: a diagonal gate (`RZ`) may be
+    /// hoisted past a non-commuting, qubit-disjoint gate boundary check --
+    /// but a non-diagonal gate sharing a qubit with a preceding gate must
+    /// never be moved past it.
+    #[test]
+    fn test_gates_commute_structural_checks() {
+        use quantrs2_core::gate::single::RotationZ;
+
+        let x0 = PauliX { target: QubitId(0) };
+        let x0_again = PauliX { target: QubitId(0) };
+        let rz0 = RotationZ {
+            target: QubitId(0),
+            theta: 0.5,
+        };
+        let rz0_b = RotationZ {
+            target: QubitId(0),
+            theta: 1.5,
+        };
+        let x1 = PauliX { target: QubitId(1) };
+
+        // Two X gates on the same qubit do not commute in general (X does
+        // not commute with itself under this conservative structural
+        // check -- it's not on the recognized diagonal list), so this must
+        // be false even though X*X happens to be trivial.
+        assert!(!SpecializedStateVectorSimulator::gates_commute(
+            &x0, &x0_again
+        ));
+        // Two diagonal RZ gates on the same qubit always commute.
+        assert!(SpecializedStateVectorSimulator::gates_commute(&rz0, &rz0_b));
+        // Disjoint qubits always commute regardless of gate type.
+        assert!(SpecializedStateVectorSimulator::gates_commute(&x0, &x1));
     }
 
     #[test]

@@ -37,6 +37,50 @@ pub struct Constraint {
     pub slack_variables: Vec<String>,
 }
 
+impl Constraint {
+    /// Evaluate the real constraint violation for a given variable
+    /// assignment. Returns `0.0` when the constraint is satisfied.
+    pub fn violation(&self, assignment: &HashMap<String, bool>) -> f64 {
+        let value = self.expression.evaluate(assignment);
+        self.constraint_type.violation(value)
+    }
+}
+
+impl ConstraintType {
+    /// Compute how far `value` (the constraint's expression evaluated
+    /// against some assignment) is from satisfying this constraint. Returns
+    /// `0.0` exactly when the constraint is satisfied.
+    #[must_use]
+    pub fn violation(&self, value: f64) -> f64 {
+        match *self {
+            Self::Equality { target } => value - target,
+            Self::LessThanOrEqual { bound } => (value - bound).max(0.0),
+            Self::GreaterThanOrEqual { bound } => (bound - value).max(0.0),
+            Self::Range { lower, upper } => {
+                if value < lower {
+                    lower - value
+                } else if value > upper {
+                    value - upper
+                } else {
+                    0.0
+                }
+            }
+            // These constraints encode the violation directly in their
+            // expression (e.g. `sum(x_i) - 1` for one-hot, `sum(x_i) - k` for
+            // cardinality), so the evaluated value already *is* the
+            // violation.
+            Self::OneHot | Self::Cardinality { .. } => value,
+            // Integer-encoding "constraints" are a bookkeeping marker for the
+            // bit variables backing an encoded integer; the actual
+            // constraints they may imply (e.g. `EncodingType::Unary`,
+            // `EncodingType::OneHot`) are registered as their own
+            // `Constraint`s, so this marker itself has no independent
+            // violation to report.
+            Self::IntegerEncoding { .. } => 0.0,
+        }
+    }
+}
+
 /// Constraint handler for automatic penalty generation
 pub struct ConstraintHandler {
     constraints: Vec<Constraint>,
@@ -259,13 +303,20 @@ impl ConstraintHandler {
     }
 
     /// Generate penalty terms for all constraints
+    ///
+    /// Takes `&mut self` because inequality/range constraints that were
+    /// added without a pre-existing slack variable (i.e. not through
+    /// [`Self::add_inequality`]) have one allocated for them here, on demand,
+    /// so the returned expression is an exact quadratic penalty rather than
+    /// a fabricated zero.
     pub fn generate_penalty_terms(
-        &self,
+        &mut self,
         penalty_weights: &HashMap<String, f64>,
     ) -> Result<Expression, Box<dyn std::error::Error>> {
         let mut total_penalty = Expression::zero();
 
-        for constraint in &self.constraints {
+        for idx in 0..self.constraints.len() {
+            let constraint = self.constraints[idx].clone();
             let weight = penalty_weights
                 .get(&constraint.name)
                 .or(constraint.penalty_weight.as_ref())
@@ -286,8 +337,12 @@ impl ConstraintHandler {
                         let diff = expr_with_slack - (*bound).into();
                         diff.clone() * diff
                     } else {
-                        // Penalty for violation: max(0, expr - bound)^2
-                        self.generate_inequality_penalty(&constraint.expression, *bound, true)?
+                        // Penalty for violation: max(0, expr - bound)^2, via
+                        // an auxiliary slack variable.
+                        let (penalty, slack_name) =
+                            self.generate_inequality_penalty(&constraint.expression, *bound, true);
+                        self.constraints[idx].slack_variables.push(slack_name);
+                        penalty
                     }
                 }
                 ConstraintType::GreaterThanOrEqual { bound } => {
@@ -298,16 +353,23 @@ impl ConstraintHandler {
                         let diff = expr_with_slack - (*bound).into();
                         diff.clone() * diff
                     } else {
-                        // Penalty for violation: max(0, bound - expr)^2
-                        self.generate_inequality_penalty(&constraint.expression, *bound, false)?
+                        // Penalty for violation: max(0, bound - expr)^2, via
+                        // an auxiliary slack variable.
+                        let (penalty, slack_name) =
+                            self.generate_inequality_penalty(&constraint.expression, *bound, false);
+                        self.constraints[idx].slack_variables.push(slack_name);
+                        penalty
                     }
                 }
                 ConstraintType::Range { lower, upper } => {
-                    // Combine two inequality penalties
-                    let lower_penalty =
-                        self.generate_inequality_penalty(&constraint.expression, *lower, false)?;
-                    let upper_penalty =
-                        self.generate_inequality_penalty(&constraint.expression, *upper, true)?;
+                    // Combine two inequality penalties, each with its own
+                    // auxiliary slack variable.
+                    let (lower_penalty, lower_slack) =
+                        self.generate_inequality_penalty(&constraint.expression, *lower, false);
+                    let (upper_penalty, upper_slack) =
+                        self.generate_inequality_penalty(&constraint.expression, *upper, true);
+                    self.constraints[idx].slack_variables.push(lower_slack);
+                    self.constraints[idx].slack_variables.push(upper_slack);
                     lower_penalty + upper_penalty
                 }
                 ConstraintType::OneHot => {
@@ -332,24 +394,33 @@ impl ConstraintHandler {
         Ok(total_penalty)
     }
 
-    /// Generate inequality penalty using auxiliary binary expansion
+    /// Generate an exact quadratic inequality penalty using an auxiliary
+    /// slack variable, i.e. the same binary-expansion technique used by
+    /// [`Self::add_inequality`]: `expr <= bound` becomes the equality
+    /// `expr + slack = bound` (or `expr - slack = bound` for `>=`), penalized
+    /// as `(expr ± slack - bound)^2`. Returns the penalty expression along
+    /// with the name of the newly allocated slack variable so the caller can
+    /// register it against the owning constraint.
     fn generate_inequality_penalty(
-        &self,
-        _expression: &Expression,
-        _bound: f64,
+        &mut self,
+        expression: &Expression,
+        bound: f64,
         less_than: bool,
-    ) -> Result<Expression, Box<dyn std::error::Error>> {
-        // For now, return a quadratic penalty
-        // In a full implementation, this would use binary expansion
-        // to exactly encode the inequality
+    ) -> (Expression, String) {
+        let slack_name = self.create_slack_variable("ineq");
+        let slack_expr: Expression = Variable::new(slack_name.clone()).into();
 
-        if less_than {
-            // max(0, expr - bound)^2
-            Ok(Expression::zero()) // Placeholder
+        let penalty = if less_than {
+            // expr + slack = bound  =>  (expr + slack - bound)^2
+            let diff = expression.clone() + slack_expr - bound.into();
+            diff.clone() * diff
         } else {
-            // max(0, bound - expr)^2
-            Ok(Expression::zero()) // Placeholder
-        }
+            // expr - slack = bound  =>  (expr - slack - bound)^2
+            let diff = expression.clone() - slack_expr - bound.into();
+            diff.clone() * diff
+        };
+
+        (penalty, slack_name)
     }
 
     /// Create slack variable
@@ -502,17 +573,32 @@ trait ExpressionExt {
 
 impl ExpressionExt for Expression {
     fn zero() -> Self {
-        // Placeholder implementation
         Self::Constant(0.0)
     }
 
     fn get_variables(&self) -> Vec<String> {
-        // Placeholder implementation
-        Vec::new()
+        fn collect(expr: &Expression, vars: &mut Vec<String>) {
+            match expr {
+                Expression::Constant(_) => {}
+                Expression::Variable(name) => {
+                    if !vars.contains(name) {
+                        vars.push(name.clone());
+                    }
+                }
+                Expression::Add(lhs, rhs) | Expression::Multiply(lhs, rhs) => {
+                    collect(lhs, vars);
+                    collect(rhs, vars);
+                }
+            }
+        }
+
+        let mut vars = Vec::new();
+        collect(self, &mut vars);
+        vars
     }
 }
 
-/// Variable placeholder
+/// A named binary decision variable, used to build up [`Expression`]s.
 #[derive(Debug, Clone)]
 pub struct Variable {
     name: String,
@@ -524,13 +610,36 @@ impl Variable {
     }
 }
 
-/// Expression type placeholder
+/// A small algebraic expression tree over binary decision `Variable`s,
+/// supporting the operations needed to build QUBO/HOBO penalty terms
+/// (constants, variable references, addition, and multiplication).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Expression {
     Constant(f64),
     Variable(String),
     Add(Box<Self>, Box<Self>),
     Multiply(Box<Self>, Box<Self>),
+}
+
+impl Expression {
+    /// Evaluate this expression against a variable assignment. Variables not
+    /// present in `assignment` are treated as `false` (i.e. `0.0`), matching
+    /// the convention used elsewhere in this crate for QUBO assignments.
+    #[must_use]
+    pub fn evaluate(&self, assignment: &HashMap<String, bool>) -> f64 {
+        match self {
+            Self::Constant(c) => *c,
+            Self::Variable(name) => {
+                if assignment.get(name).copied().unwrap_or(false) {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
+            Self::Add(lhs, rhs) => lhs.evaluate(assignment) + rhs.evaluate(assignment),
+            Self::Multiply(lhs, rhs) => lhs.evaluate(assignment) * rhs.evaluate(assignment),
+        }
+    }
 }
 
 impl From<f64> for Expression {
@@ -580,5 +689,94 @@ impl std::ops::Mul<Expression> for f64 {
 
     fn mul(self, rhs: Expression) -> Self::Output {
         Expression::Multiply(Box::new(Expression::Constant(self)), Box::new(rhs))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assignment(pairs: &[(&str, bool)]) -> HashMap<String, bool> {
+        pairs
+            .iter()
+            .map(|(name, value)| ((*name).to_string(), *value))
+            .collect()
+    }
+
+    #[test]
+    fn test_get_variables_collects_all_leaves() {
+        let expr: Expression = (Expression::from(Variable::new("x0".to_string()))
+            + Variable::new("x1".to_string()).into())
+            * Variable::new("x0".to_string()).into();
+
+        let mut vars = expr.get_variables();
+        vars.sort();
+        assert_eq!(vars, vec!["x0".to_string(), "x1".to_string()]);
+    }
+
+    #[test]
+    fn test_expression_evaluate() {
+        // (x0 + x1) * x0, with x0=true, x1=true -> (1+1)*1 = 2
+        let expr: Expression = (Expression::from(Variable::new("x0".to_string()))
+            + Variable::new("x1".to_string()).into())
+            * Variable::new("x0".to_string()).into();
+
+        let assign = assignment(&[("x0", true), ("x1", true)]);
+        assert_eq!(expr.evaluate(&assign), 2.0);
+
+        let assign = assignment(&[("x0", false), ("x1", true)]);
+        assert_eq!(expr.evaluate(&assign), 0.0);
+    }
+
+    #[test]
+    fn test_constraint_violation_equality() {
+        let mut handler = ConstraintHandler::new();
+        let expr: Expression = Variable::new("x0".to_string()).into();
+        handler
+            .add_equality("eq".to_string(), expr, 1.0)
+            .expect("add_equality should succeed");
+
+        let satisfied = assignment(&[("x0", true)]);
+        let violated = assignment(&[("x0", false)]);
+
+        assert_eq!(handler.constraints[0].violation(&satisfied), 0.0);
+        assert_eq!(handler.constraints[0].violation(&violated), -1.0);
+        // get_variables() must no longer be a fabricated empty Vec.
+        assert_eq!(handler.constraints[0].variables, vec!["x0".to_string()]);
+    }
+
+    #[test]
+    fn test_generate_penalty_terms_inequality_is_not_zero() {
+        let mut handler = ConstraintHandler::new();
+        // x0 <= 0, constructed directly (bypassing add_inequality) so no
+        // slack variable pre-exists, exercising generate_inequality_penalty.
+        let expr: Expression = Variable::new("x0".to_string()).into();
+        handler.add_constraint(Constraint {
+            name: "le".to_string(),
+            constraint_type: ConstraintType::LessThanOrEqual { bound: 0.0 },
+            expression: expr,
+            variables: vec!["x0".to_string()],
+            penalty_weight: None,
+            slack_variables: Vec::new(),
+        });
+
+        let penalty = handler
+            .generate_penalty_terms(&HashMap::new())
+            .expect("penalty generation should succeed");
+
+        // A real penalty term must reference the newly created slack
+        // variable, i.e. it must not simply be Expression::zero().
+        let vars = penalty.get_variables();
+        assert!(
+            vars.iter().any(|v| v.starts_with("_slack_")),
+            "expected a slack variable in generated penalty, got {vars:?}"
+        );
+
+        // With x0 = true (violates x0 <= 0), the optimal slack (>=0, but here
+        // slack is itself a free binary/continuous placeholder variable in
+        // {0,1}) cannot bring the penalty to zero, so the penalty must be
+        // strictly positive for some assignment reflecting the violation.
+        let violated = assignment(&[("x0", true)]);
+        assert!(penalty.evaluate(&violated) > 0.0);
     }
 }

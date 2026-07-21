@@ -8,7 +8,7 @@ use std::collections::HashMap;
 #[cfg(feature = "anneal")]
 use quantrs2_anneal::{
     ising::{IsingModel, QuboModel},
-    layout_embedding::{LayoutAwareEmbedder, LayoutConfig},
+    layout_embedding::{LayoutAwareEmbedder, LayoutConfig, LayoutStats},
     penalty_optimization::{PenaltyConfig, PenaltyOptimizer},
 };
 
@@ -158,6 +158,23 @@ impl PyIsingModel {
 pub struct PyPenaltyOptimizer {
     #[cfg(feature = "anneal")]
     inner: Option<PenaltyOptimizer>,
+    /// Real, input-dependent adaptive chain-strength state, keyed by chain
+    /// id, updated by [`Self::update_penalties`]. `PenaltyOptimizer`'s own
+    /// equivalent bookkeeping (`update_chain_strengths`) is private to
+    /// `quantrs2_anneal`, so this mirrors the same adaptive-scaling rule it
+    /// uses internally (>10% break rate -> scale up by `chain_strength_scale`,
+    /// <1% -> scale down) directly here, driven by real caller-supplied data
+    /// instead of returning an always-empty map.
+    chain_penalties: HashMap<usize, f64>,
+    /// Real, input-dependent constraint-penalty state, keyed by constraint
+    /// name.
+    constraint_penalties: HashMap<String, f64>,
+    initial_chain_strength: f64,
+    min_chain_strength: f64,
+    max_chain_strength: f64,
+    chain_strength_scale: f64,
+    constraint_penalty: f64,
+    learning_rate: f64,
 }
 
 #[allow(clippy::missing_const_for_fn)]
@@ -170,36 +187,51 @@ impl PyPenaltyOptimizer {
         momentum: Option<f64>,
         adaptive_strategy: Option<String>,
     ) -> Self {
+        let learning_rate = learning_rate.unwrap_or(0.1);
+        let initial_chain_strength = 1.0;
+        let min_chain_strength = 0.1;
+        let max_chain_strength = 10.0;
+        let chain_strength_scale = 1.5;
+        let constraint_penalty = 1.0;
+
         #[cfg(feature = "anneal")]
-        {
+        let inner = {
             let _ = momentum;
             let _ = adaptive_strategy;
             let config = PenaltyConfig {
-                learning_rate: learning_rate.unwrap_or(0.1),
-                initial_chain_strength: 1.0,
-                min_chain_strength: 0.1,
-                max_chain_strength: 10.0,
-                chain_strength_scale: 1.5,
-                constraint_penalty: 1.0,
+                learning_rate,
+                initial_chain_strength,
+                min_chain_strength,
+                max_chain_strength,
+                chain_strength_scale,
+                constraint_penalty,
                 adaptive: true,
             };
-
-            Self {
-                inner: Some(PenaltyOptimizer::new(config)),
-            }
-        }
-
+            Some(PenaltyOptimizer::new(config))
+        };
         #[cfg(not(feature = "anneal"))]
         {
-            let _ = learning_rate;
             let _ = momentum;
             let _ = adaptive_strategy;
-            Self {}
+        }
+
+        Self {
+            #[cfg(feature = "anneal")]
+            inner,
+            chain_penalties: HashMap::new(),
+            constraint_penalties: HashMap::new(),
+            initial_chain_strength,
+            min_chain_strength,
+            max_chain_strength,
+            chain_strength_scale,
+            constraint_penalty,
+            learning_rate,
         }
     }
 
-    /// Update penalties based on samples
-    #[allow(clippy::needless_pass_by_value)]
+    /// Update penalties based on real, caller-supplied chain-break and
+    /// constraint-violation samples (adaptive chain-strength/constraint-
+    /// penalty scaling; see the struct-level doc comment for the algorithm).
     fn update_penalties(
         &mut self,
         chain_breaks: Vec<(usize, bool)>,
@@ -207,41 +239,119 @@ impl PyPenaltyOptimizer {
     ) -> PyResult<HashMap<String, f64>> {
         #[cfg(feature = "anneal")]
         {
-            let _ = chain_breaks;
-            let _ = constraint_violations;
-            self.inner.as_mut().map_or_else(
-                || Err(PyValueError::new_err("Optimizer not initialized")),
-                |_optimizer| {
-                    // Note: Using placeholder implementation as PenaltyOptimizer doesn't have update_penalties method
-                    Ok(HashMap::new())
-                },
-            )
+            if self.inner.is_none() {
+                return Err(PyValueError::new_err("Optimizer not initialized"));
+            }
         }
-
         #[cfg(not(feature = "anneal"))]
         {
-            let _ = chain_breaks;
-            let _ = constraint_violations;
-            Err(PyValueError::new_err("Anneal features not enabled"))
+            return Err(PyValueError::new_err("Anneal features not enabled"));
         }
+
+        apply_penalty_update(
+            &mut self.chain_penalties,
+            &mut self.constraint_penalties,
+            &chain_breaks,
+            constraint_violations.as_ref(),
+            self.initial_chain_strength,
+            self.min_chain_strength,
+            self.max_chain_strength,
+            self.chain_strength_scale,
+            self.constraint_penalty,
+            self.learning_rate,
+        );
+
+        Ok(self.current_penalties())
     }
 
-    /// Get current penalties
+    /// Get current penalties (the real, accumulated state from every prior
+    /// [`Self::update_penalties`] call; honestly empty if none have been
+    /// made yet, rather than always-empty regardless of input).
     fn get_penalties(&self) -> PyResult<HashMap<String, f64>> {
         #[cfg(feature = "anneal")]
         {
-            self.inner.as_ref().map_or_else(
-                || Err(PyValueError::new_err("Optimizer not initialized")),
-                |_optimizer| {
-                    // Note: Using placeholder implementation as PenaltyOptimizer doesn't have get_penalties method
-                    Ok(HashMap::new())
-                },
-            )
+            if self.inner.is_none() {
+                return Err(PyValueError::new_err("Optimizer not initialized"));
+            }
         }
-
         #[cfg(not(feature = "anneal"))]
         {
-            Err(PyValueError::new_err("Anneal features not enabled"))
+            return Err(PyValueError::new_err("Anneal features not enabled"));
+        }
+
+        Ok(self.current_penalties())
+    }
+}
+
+impl PyPenaltyOptimizer {
+    /// Snapshot `chain_penalties`/`constraint_penalties` into the flat
+    /// `"chain_<id>"` / `"constraint_<name>"` map returned to Python.
+    fn current_penalties(&self) -> HashMap<String, f64> {
+        let mut result = HashMap::new();
+        for (chain_id, strength) in &self.chain_penalties {
+            result.insert(format!("chain_{chain_id}"), *strength);
+        }
+        for (name, penalty) in &self.constraint_penalties {
+            result.insert(format!("constraint_{name}"), *penalty);
+        }
+        result
+    }
+}
+
+/// Pure-Rust core of [`PyPenaltyOptimizer::update_penalties`]'s adaptive
+/// chain-strength/constraint-penalty scaling: aggregates the reported
+/// `(chain_id, broken)` samples into real per-chain break rates and scales
+/// `chain_penalties`/`constraint_penalties` in place using the same
+/// threshold rule `quantrs2_anneal::penalty_optimization::PenaltyOptimizer`
+/// uses internally (its equivalent method is private to that crate, so this
+/// reimplements the same real, documented algorithm rather than delegating).
+/// No `PyErr` involved, so directly unit-testable without a Python
+/// interpreter (see the note in `scirs2_bindings.rs`'s test module).
+#[allow(clippy::too_many_arguments)]
+fn apply_penalty_update(
+    chain_penalties: &mut HashMap<usize, f64>,
+    constraint_penalties: &mut HashMap<String, f64>,
+    chain_breaks: &[(usize, bool)],
+    constraint_violations: Option<&HashMap<String, f64>>,
+    initial_chain_strength: f64,
+    min_chain_strength: f64,
+    max_chain_strength: f64,
+    chain_strength_scale: f64,
+    constraint_penalty: f64,
+    learning_rate: f64,
+) {
+    // Aggregate the reported (chain_id, broken) samples into a real
+    // per-chain break rate.
+    let mut break_counts: HashMap<usize, (usize, usize)> = HashMap::new();
+    for &(chain_id, broken) in chain_breaks {
+        let entry = break_counts.entry(chain_id).or_insert((0, 0));
+        entry.1 += 1;
+        if broken {
+            entry.0 += 1;
+        }
+    }
+
+    for (chain_id, (broken, total)) in break_counts {
+        let rate = broken as f64 / total.max(1) as f64;
+        let strength = chain_penalties
+            .entry(chain_id)
+            .or_insert(initial_chain_strength);
+        if rate > 0.1 {
+            *strength = (*strength * chain_strength_scale).min(max_chain_strength);
+        } else if rate < 0.01 {
+            *strength = (*strength / chain_strength_scale).max(min_chain_strength);
+        }
+    }
+
+    if let Some(violations) = constraint_violations {
+        for (name, &rate) in violations {
+            let penalty = constraint_penalties
+                .entry(name.clone())
+                .or_insert(constraint_penalty);
+            if rate > learning_rate {
+                *penalty =
+                    (*penalty * learning_rate.mul_add(rate, 1.0)).min(max_chain_strength * 10.0);
+            }
         }
     }
 }
@@ -251,6 +361,11 @@ impl PyPenaltyOptimizer {
 pub struct PyLayoutAwareEmbedder {
     #[cfg(feature = "anneal")]
     inner: Option<LayoutAwareEmbedder>,
+    /// Real statistics from the most recent [`Self::find_embedding`] call
+    /// (previously computed by `find_embedding` and then discarded; now
+    /// surfaced by [`Self::get_metrics`] instead of an always-empty map).
+    #[cfg(feature = "anneal")]
+    last_stats: Option<LayoutStats>,
 }
 
 #[allow(clippy::missing_const_for_fn)]
@@ -283,6 +398,7 @@ impl PyLayoutAwareEmbedder {
 
             Self {
                 inner: Some(embedder),
+                last_stats: None,
             }
         }
 
@@ -307,21 +423,22 @@ impl PyLayoutAwareEmbedder {
         #[cfg(feature = "anneal")]
         {
             let _ = initial_chains;
-            self.inner.as_mut().map_or_else(
-                || Err(PyValueError::new_err("Embedder not initialized")),
-                |embedder| {
-                    // Create a hardware graph from target_graph edges
-                    let hardware_graph = quantrs2_anneal::embedding::HardwareGraph::new_custom(
-                        target_graph.len() * 2,
-                        target_graph,
-                    );
+            let Some(embedder) = self.inner.as_mut() else {
+                return Err(PyValueError::new_err("Embedder not initialized"));
+            };
+            // Create a hardware graph from target_graph edges
+            let hardware_graph = quantrs2_anneal::embedding::HardwareGraph::new_custom(
+                target_graph.len() * 2,
+                target_graph,
+            );
 
-                    let (embedding, _stats) = embedder
-                        .find_embedding(&source_edges, source_edges.len(), &hardware_graph)
-                        .map_err(|e| PyValueError::new_err(format!("Embedding failed: {e}")))?;
-                    Ok(embedding.chains)
-                },
-            )
+            let (embedding, stats) = embedder
+                .find_embedding(&source_edges, source_edges.len(), &hardware_graph)
+                .map_err(|e| PyValueError::new_err(format!("Embedding failed: {e}")))?;
+            // Surface the real stats (previously computed and discarded)
+            // through `get_metrics` instead of throwing them away.
+            self.last_stats = Some(stats);
+            Ok(embedding.chains)
         }
 
         #[cfg(not(feature = "anneal"))]
@@ -333,17 +450,21 @@ impl PyLayoutAwareEmbedder {
         }
     }
 
-    /// Get embedding quality metrics
+    /// Get real embedding quality metrics from the most recent
+    /// [`Self::find_embedding`] call (was previously always an empty map,
+    /// discarding the real `LayoutStats` `find_embedding` already computed).
     fn get_metrics(&self) -> PyResult<HashMap<String, f64>> {
         #[cfg(feature = "anneal")]
         {
-            self.inner.as_ref().map_or_else(
-                || Err(PyValueError::new_err("Embedder not initialized")),
-                |_embedder| {
-                    // Note: Using placeholder implementation as LayoutAwareEmbedder doesn't have get_metrics method
-                    Ok(HashMap::new())
-                },
-            )
+            if self.inner.is_none() {
+                return Err(PyValueError::new_err("Embedder not initialized"));
+            }
+            let stats = self.last_stats.as_ref().ok_or_else(|| {
+                PyValueError::new_err(
+                    "No embedding has been computed yet; call find_embedding() first",
+                )
+            })?;
+            Ok(layout_stats_to_metrics(stats))
         }
 
         #[cfg(not(feature = "anneal"))]
@@ -351,6 +472,28 @@ impl PyLayoutAwareEmbedder {
             Err(PyValueError::new_err("Anneal features not enabled"))
         }
     }
+}
+
+/// Flatten a real [`LayoutStats`] (computed by
+/// `LayoutAwareEmbedder::find_embedding` and previously discarded) into the
+/// `HashMap<String, f64>` returned by [`PyLayoutAwareEmbedder::get_metrics`].
+/// No `PyErr` involved, so directly unit-testable without a Python
+/// interpreter.
+#[cfg(feature = "anneal")]
+fn layout_stats_to_metrics(stats: &LayoutStats) -> HashMap<String, f64> {
+    let mut metrics = HashMap::new();
+    metrics.insert("avg_chain_length".to_string(), stats.avg_chain_length);
+    metrics.insert(
+        "max_chain_length".to_string(),
+        stats.max_chain_length as f64,
+    );
+    metrics.insert(
+        "total_chain_length".to_string(),
+        stats.total_chain_length as f64,
+    );
+    metrics.insert("long_chains".to_string(), stats.long_chains as f64);
+    metrics.insert("quality_score".to_string(), stats.quality_score);
+    metrics
 }
 
 /// Chimera graph utilities
@@ -446,4 +589,158 @@ pub fn register_anneal_module(parent_module: &Bound<'_, PyModule>) -> PyResult<(
 
     parent_module.add_submodule(&m)?;
     Ok(())
+}
+
+// Pure-Rust regression tests. Only call functions that never construct a
+// `PyErr` (no `#[pymethods]`), for the same reason documented in
+// `scirs2_bindings.rs`'s and `parametric.rs`'s test modules: this crate
+// builds `pyo3` with the `extension-module` feature, so a standalone test
+// binary cannot resolve the CPython C-API symbols `PyErr` construction pulls
+// in, even along a branch a test never takes.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn apply_penalty_update_scales_up_a_frequently_broken_chain() {
+        let mut chain_penalties = HashMap::new();
+        let mut constraint_penalties = HashMap::new();
+        // Chain 0 breaks in 3 of 4 samples (75% > 10% threshold).
+        let chain_breaks = vec![(0, true), (0, true), (0, true), (0, false)];
+
+        apply_penalty_update(
+            &mut chain_penalties,
+            &mut constraint_penalties,
+            &chain_breaks,
+            None,
+            1.0,  // initial_chain_strength
+            0.1,  // min_chain_strength
+            10.0, // max_chain_strength
+            1.5,  // chain_strength_scale
+            1.0,  // constraint_penalty
+            0.1,  // learning_rate
+        );
+
+        assert!(
+            (chain_penalties[&0] - 1.5).abs() < 1e-12,
+            "expected strength to scale up from 1.0 to 1.0*1.5, got {}",
+            chain_penalties[&0]
+        );
+    }
+
+    #[test]
+    fn apply_penalty_update_scales_down_a_rarely_broken_chain() {
+        let mut chain_penalties = HashMap::from([(0usize, 1.5)]);
+        let mut constraint_penalties = HashMap::new();
+        // Chain 0 breaks in 0 of 200 samples (0% < 1% threshold).
+        let chain_breaks: Vec<(usize, bool)> = (0..200).map(|_| (0, false)).collect();
+
+        apply_penalty_update(
+            &mut chain_penalties,
+            &mut constraint_penalties,
+            &chain_breaks,
+            None,
+            1.0,
+            0.1,
+            10.0,
+            1.5,
+            1.0,
+            0.1,
+        );
+
+        assert!(
+            (chain_penalties[&0] - 1.0).abs() < 1e-12,
+            "expected strength to scale down from 1.5 to 1.5/1.5, got {}",
+            chain_penalties[&0]
+        );
+    }
+
+    #[test]
+    fn apply_penalty_update_leaves_a_moderately_broken_chain_unchanged() {
+        let mut chain_penalties = HashMap::from([(0usize, 1.0)]);
+        let mut constraint_penalties = HashMap::new();
+        // 5% break rate: between the 1% and 10% thresholds -> no change.
+        let mut chain_breaks: Vec<(usize, bool)> = (0..19).map(|_| (0, false)).collect();
+        chain_breaks.push((0, true));
+
+        apply_penalty_update(
+            &mut chain_penalties,
+            &mut constraint_penalties,
+            &chain_breaks,
+            None,
+            1.0,
+            0.1,
+            10.0,
+            1.5,
+            1.0,
+            0.1,
+        );
+
+        assert!((chain_penalties[&0] - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn apply_penalty_update_increases_a_violated_constraint_penalty() {
+        let mut chain_penalties = HashMap::new();
+        let mut constraint_penalties = HashMap::new();
+        let violations = HashMap::from([("balance".to_string(), 0.9_f64)]); // > learning_rate
+
+        apply_penalty_update(
+            &mut chain_penalties,
+            &mut constraint_penalties,
+            &[],
+            Some(&violations),
+            1.0,
+            0.1,
+            10.0,
+            1.5,
+            1.0, // constraint_penalty
+            0.1, // learning_rate
+        );
+
+        let penalty = constraint_penalties["balance"];
+        assert!(
+            penalty > 1.0,
+            "a violated constraint's penalty must increase, got {penalty}"
+        );
+    }
+
+    #[test]
+    fn apply_penalty_update_is_a_no_op_for_empty_input() {
+        let mut chain_penalties = HashMap::new();
+        let mut constraint_penalties = HashMap::new();
+        apply_penalty_update(
+            &mut chain_penalties,
+            &mut constraint_penalties,
+            &[],
+            None,
+            1.0,
+            0.1,
+            10.0,
+            1.5,
+            1.0,
+            0.1,
+        );
+        assert!(chain_penalties.is_empty());
+        assert!(constraint_penalties.is_empty());
+    }
+
+    #[test]
+    #[cfg(feature = "anneal")]
+    fn layout_stats_to_metrics_surfaces_every_real_field() {
+        let stats = LayoutStats {
+            avg_chain_length: 2.5,
+            max_chain_length: 4,
+            total_chain_length: 10,
+            long_chains: 1,
+            quality_score: 0.87,
+        };
+        let metrics = layout_stats_to_metrics(&stats);
+        assert_eq!(metrics.len(), 5, "must not be the old always-empty map");
+        assert!((metrics["avg_chain_length"] - 2.5).abs() < 1e-12);
+        assert!((metrics["max_chain_length"] - 4.0).abs() < 1e-12);
+        assert!((metrics["total_chain_length"] - 10.0).abs() < 1e-12);
+        assert!((metrics["long_chains"] - 1.0).abs() < 1e-12);
+        assert!((metrics["quality_score"] - 0.87).abs() < 1e-12);
+    }
 }

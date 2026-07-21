@@ -446,13 +446,33 @@ fn zxz_euler_angles(target_unitary: &[Vec<Complex64>]) -> QuantRS2Result<(f64, f
     Ok((theta, alpha, beta))
 }
 
+/// Upper bound on how many samples [`reshape_channel_for_rotation`] will
+/// synthesize when extending a pulse's duration to respect
+/// [`PulseConstraints::max_amplitude`]. This keeps the (physically
+/// legitimate) duration-extension strategy from ever attempting to
+/// allocate an unbounded number of samples for pathological inputs (e.g. a
+/// target rotation combined with an extremely low amplitude ceiling and an
+/// extremely high sample rate, which would imply a pulse lasting many
+/// physical seconds at nanosecond sampling).
+const MAX_PULSE_EXTENSION_SAMPLES: usize = 1_000_000;
+
 /// Rescale a pulse channel's envelope so its integrated (complex) area
 /// equals `theta * e^{i alpha}` — i.e. a resonant drive at phase `alpha`
 /// realizing rotation angle `theta` — and set its trailing `frame_change`
-/// to carry the virtual-Z correction `alpha + beta`. If the configured
-/// [`PulseConstraints::max_amplitude`] would be exceeded, the envelope is
-/// clamped to that peak amplitude (trading off achieved rotation angle for
-/// respecting the hardware constraint) rather than silently violating it.
+/// to carry the virtual-Z correction `alpha + beta`.
+///
+/// If the configured [`PulseConstraints::max_amplitude`] would be
+/// exceeded, naively clamping every sample's amplitude down to the ceiling
+/// would silently shrink the pulse's integrated area and therefore fail to
+/// realize the intended rotation at all — a physically wrong result
+/// dressed up as success. Instead, the pulse duration is extended (more,
+/// proportionally smaller-amplitude samples at the same sample rate) so
+/// the *exact* target area can still be reached without exceeding the
+/// amplitude ceiling, exactly as a real hardware pulse generator would
+/// trade duration for peak power. Only when the required extension would
+/// need an unreasonable number of samples ([`MAX_PULSE_EXTENSION_SAMPLES`])
+/// does this fall back to a bounded-duration clamp, honestly accepting a
+/// reduced rotation angle rather than allocating unbounded memory.
 fn reshape_channel_for_rotation(
     channel: &mut PulseChannel,
     theta: f64,
@@ -494,10 +514,41 @@ fn reshape_channel_for_rotation(
             .iter()
             .map(|sample| sample.norm())
             .fold(0.0_f64, f64::max);
-        if peak > max_amplitude && peak > 0.0 {
-            let clamp_scale = max_amplitude / peak;
-            for sample in &mut channel.waveform.samples {
-                *sample *= clamp_scale;
+        if peak > max_amplitude && peak > 0.0 && max_amplitude > 0.0 && dt > 0.0 {
+            // Minimum sample count for a flat-top pulse at exactly
+            // `max_amplitude` to still integrate to the full target area:
+            // n * max_amplitude * dt >= |target_area|.
+            let min_samples_for_target_area = (target_area.norm() / (max_amplitude * dt)).ceil();
+
+            let extended_len = if min_samples_for_target_area.is_finite()
+                && min_samples_for_target_area <= MAX_PULSE_EXTENSION_SAMPLES as f64
+            {
+                sample_count
+                    .max(min_samples_for_target_area as usize)
+                    .max(1)
+            } else {
+                usize::MAX
+            };
+
+            if extended_len <= MAX_PULSE_EXTENSION_SAMPLES {
+                // Physically realizable within a reasonable duration:
+                // synthesize an exact flat-top pulse of the required
+                // length, hitting the target area exactly while never
+                // exceeding the amplitude ceiling.
+                let flat_amplitude = target_area / Complex64::new(extended_len as f64 * dt, 0.0);
+                channel.waveform.samples = vec![flat_amplitude; extended_len];
+            } else {
+                // The required duration extension is unreasonably large
+                // (e.g. an extremely tight amplitude ceiling paired with an
+                // extremely high sample rate). Rather than allocate an
+                // unbounded number of samples, honestly clamp the peak
+                // amplitude at the existing duration: the requested
+                // rotation angle will not be fully achieved, which is a
+                // genuine hardware limitation, not a fabricated success.
+                let clamp_scale = max_amplitude / peak;
+                for sample in &mut channel.waveform.samples {
+                    *sample *= clamp_scale;
+                }
             }
         }
     }

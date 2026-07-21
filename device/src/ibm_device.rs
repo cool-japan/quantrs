@@ -110,8 +110,14 @@ impl IBMQuantumDevice {
         })
     }
 
-    /// Convert a Quantrs circuit to QASM for IBM Quantum
-    fn circuit_to_qasm<const N: usize>(&self, _circuit: &Circuit<N>) -> DeviceResult<String> {
+    /// Convert a Quantrs circuit to QASM for IBM Quantum.
+    ///
+    /// Delegates the actual gate-by-gate translation to
+    /// [`IBMQuantumClient::circuit_to_qasm`], which in turn uses the circuit
+    /// crate's validated OpenQASM 2.0 exporter (`quantrs2_circuit::qasm`).
+    /// This guarantees the emitted QASM contains every gate in `circuit`
+    /// rather than just the register declarations.
+    fn circuit_to_qasm<const N: usize>(&self, circuit: &Circuit<N>) -> DeviceResult<String> {
         if N > self.backend.n_qubits {
             return Err(DeviceError::CircuitConversion(format!(
                 "Circuit has {} qubits but backend {} only supports {} qubits",
@@ -119,19 +125,7 @@ impl IBMQuantumDevice {
             )));
         }
 
-        // Start QASM generation
-        let mut qasm = String::from("OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\n");
-
-        // Define the quantum and classical registers
-        use std::fmt::Write;
-        let _ = writeln!(qasm, "qreg q[{N}];");
-        let _ = writeln!(qasm, "creg c[{N}];");
-
-        // Process each gate in the circuit
-        // This is a simplified placeholder implementation
-        // In a real implementation, you would traverse the circuit gates and convert each to QASM
-
-        Ok(qasm)
+        IBMQuantumClient::circuit_to_qasm(circuit, None)
     }
 }
 
@@ -149,7 +143,7 @@ impl IBMQuantumDevice {
     }
 }
 
-#[cfg(feature = "ibm")]
+#[cfg(feature = "_async_device")]
 #[async_trait]
 impl QuantumDevice for IBMQuantumDevice {
     async fn is_available(&self) -> DeviceResult<bool> {
@@ -180,7 +174,7 @@ impl QuantumDevice for IBMQuantumDevice {
     }
 }
 
-#[cfg(not(feature = "ibm"))]
+#[cfg(not(feature = "_async_device"))]
 impl QuantumDevice for IBMQuantumDevice {
     fn is_available(&self) -> DeviceResult<bool> {
         Err(DeviceError::UnsupportedDevice(
@@ -207,7 +201,7 @@ impl QuantumDevice for IBMQuantumDevice {
     }
 }
 
-#[cfg(feature = "ibm")]
+#[cfg(feature = "_async_device")]
 #[async_trait]
 impl CircuitExecutor for IBMQuantumDevice {
     async fn execute_circuit<const N: usize>(
@@ -332,7 +326,7 @@ impl CircuitExecutor for IBMQuantumDevice {
     }
 }
 
-#[cfg(not(feature = "ibm"))]
+#[cfg(not(feature = "_async_device"))]
 impl CircuitExecutor for IBMQuantumDevice {
     fn execute_circuit<const N: usize>(
         &self,
@@ -367,5 +361,60 @@ impl CircuitExecutor for IBMQuantumDevice {
         Err(DeviceError::UnsupportedDevice(
             "IBM Quantum support not enabled".to_string(),
         ))
+    }
+}
+
+#[cfg(all(test, feature = "ibm"))]
+mod tests {
+    use super::*;
+
+    fn test_device() -> IBMQuantumDevice {
+        let client = IBMQuantumClient::new("test_token").expect("build test client");
+        let backend = crate::ibm::IBMBackend {
+            id: "ibmq_test".to_string(),
+            name: "ibmq_test".to_string(),
+            simulator: true,
+            n_qubits: 5,
+            status: "active".to_string(),
+            description: "Test backend".to_string(),
+            version: "1.0".to_string(),
+        };
+
+        IBMQuantumDevice {
+            client: Arc::new(client),
+            backend,
+            config: IBMDeviceConfig::default(),
+        }
+    }
+
+    #[test]
+    fn test_circuit_to_qasm_emits_real_gates_on_device() {
+        // Build a Bell-state circuit: H on q0, CNOT(q0, q1).
+        let mut circuit = Circuit::<2>::new();
+        circuit.h(0).expect("add H");
+        circuit.cnot(0, 1).expect("add CNOT");
+
+        let device = test_device();
+        let qasm = device
+            .circuit_to_qasm(&circuit)
+            .expect("QASM conversion should succeed");
+
+        // Header and registers must be present.
+        assert!(qasm.contains("OPENQASM 2.0"), "missing header: {qasm}");
+        assert!(qasm.contains("qreg q[2]"), "missing register: {qasm}");
+
+        // Critically: the REAL gate lines must be emitted (not just headers).
+        assert!(qasm.contains("h q[0]"), "missing H gate: {qasm}");
+        assert!(qasm.contains("cx q[0], q[1]"), "missing CNOT gate: {qasm}");
+    }
+
+    #[test]
+    fn test_circuit_to_qasm_rejects_oversized_circuit() {
+        let mut circuit = Circuit::<8>::new();
+        circuit.h(0).expect("add H");
+
+        let device = test_device(); // backend only supports 5 qubits
+        let result = device.circuit_to_qasm(&circuit);
+        assert!(result.is_err(), "expected oversized circuit to be rejected");
     }
 }

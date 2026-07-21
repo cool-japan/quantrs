@@ -1,6 +1,7 @@
 //! Test result types and result storage management
 
 use std::collections::{BTreeMap, HashMap};
+use std::fs;
 use std::time::{Duration, SystemTime};
 
 use super::config::TestStorageConfig;
@@ -491,17 +492,255 @@ impl TestResultStorage {
         self.storage_stats.last_cleanup = SystemTime::now();
     }
 
-    /// Export results to a file (placeholder)
-    pub const fn export_results(&self, _file_path: &str) -> Result<(), String> {
-        // Placeholder for file export functionality
-        Ok(())
+    /// Export all currently cached results to a JSON file at `file_path`.
+    ///
+    /// Each cached [`super::execution::TestExecutionResult`] is serialized as
+    /// a JSON object capturing its execution id, test case id, status,
+    /// start/end times, outcome, performance metrics, validation summary and
+    /// metadata. Fields that are not persisted here (individual validations,
+    /// error details, artifacts) are honestly omitted rather than fabricated;
+    /// [`Self::import_results`] restores them as empty/`None`.
+    pub fn export_results(&self, file_path: &str) -> Result<(), String> {
+        let mut entries = Vec::with_capacity(self.result_cache.len());
+        for result in self.result_cache.values() {
+            entries.push(execution_result_to_json(result));
+        }
+        let document = serde_json::Value::Array(entries);
+        let text = serde_json::to_string_pretty(&document)
+            .map_err(|e| format!("failed to serialize results: {e}"))?;
+        fs::write(file_path, text)
+            .map_err(|e| format!("failed to write results to '{file_path}': {e}"))
     }
 
-    /// Import results from a file (placeholder)
-    pub const fn import_results(&mut self, _file_path: &str) -> Result<usize, String> {
-        // Placeholder for file import functionality
-        Ok(0)
+    /// Import results previously written by [`Self::export_results`], merging
+    /// them into this storage's cache/index and returning the number of
+    /// records actually imported.
+    pub fn import_results(&mut self, file_path: &str) -> Result<usize, String> {
+        let text = fs::read_to_string(file_path)
+            .map_err(|e| format!("failed to read results from '{file_path}': {e}"))?;
+        let document: serde_json::Value = serde_json::from_str(&text)
+            .map_err(|e| format!("failed to parse results file '{file_path}': {e}"))?;
+        let array = document
+            .as_array()
+            .ok_or_else(|| format!("results file '{file_path}' is not a JSON array"))?;
+
+        let mut imported = 0usize;
+        for entry in array {
+            let result = execution_result_from_json(entry)
+                .map_err(|e| format!("malformed result entry in '{file_path}': {e}"))?;
+            self.store_result(result)?;
+            imported += 1;
+        }
+        Ok(imported)
     }
+}
+
+/// Serialize a [`super::execution::TestExecutionResult`] into a self-describing
+/// JSON value. Used by [`TestResultStorage::export_results`].
+fn execution_result_to_json(result: &super::execution::TestExecutionResult) -> serde_json::Value {
+    use super::execution::ExecutionStatus;
+
+    let status = match &result.status {
+        ExecutionStatus::Success => serde_json::json!({"kind": "Success"}),
+        ExecutionStatus::Failure(msg) => serde_json::json!({"kind": "Failure", "message": msg}),
+        ExecutionStatus::Timeout => serde_json::json!({"kind": "Timeout"}),
+        ExecutionStatus::Cancelled => serde_json::json!({"kind": "Cancelled"}),
+        ExecutionStatus::Error(msg) => serde_json::json!({"kind": "Error", "message": msg}),
+    };
+
+    let outcome = match result.result.outcome {
+        TestOutcome::Passed => "Passed",
+        TestOutcome::Failed => "Failed",
+        TestOutcome::Skipped => "Skipped",
+        TestOutcome::Timeout => "Timeout",
+        TestOutcome::Error => "Error",
+    };
+
+    let validation_status = match result.result.validation_results.status {
+        ValidationStatus::Passed => "Passed",
+        ValidationStatus::Failed => "Failed",
+        ValidationStatus::Partial => "Partial",
+        ValidationStatus::NotExecuted => "NotExecuted",
+    };
+
+    serde_json::json!({
+        "execution_id": result.execution_id,
+        "test_case_id": result.test_case_id,
+        "status": status,
+        "start_time_secs": system_time_to_secs(result.start_time),
+        "end_time_secs": system_time_to_secs(result.end_time),
+        "outcome": outcome,
+        "performance_metrics": {
+            "execution_duration_secs": result.result.performance_metrics.execution_duration.as_secs_f64(),
+            "setup_duration_secs": result.result.performance_metrics.setup_duration.as_secs_f64(),
+            "cleanup_duration_secs": result.result.performance_metrics.cleanup_duration.as_secs_f64(),
+            "peak_memory_usage": result.result.performance_metrics.peak_memory_usage,
+            "avg_cpu_usage": result.result.performance_metrics.avg_cpu_usage,
+            "custom_metrics": result.result.performance_metrics.custom_metrics,
+        },
+        "validation_status": validation_status,
+        "validation_summary": {
+            "total": result.result.validation_results.summary.total,
+            "passed": result.result.validation_results.summary.passed,
+            "failed": result.result.validation_results.summary.failed,
+            "skipped": result.result.validation_results.summary.skipped,
+        },
+        "metadata": result.metadata,
+    })
+}
+
+/// Reconstruct a [`super::execution::TestExecutionResult`] from a JSON value
+/// produced by [`execution_result_to_json`]. Fields not captured by the
+/// export format (individual validations, error details, artifacts) are
+/// honestly restored empty rather than fabricated.
+fn execution_result_from_json(
+    value: &serde_json::Value,
+) -> Result<super::execution::TestExecutionResult, String> {
+    use super::execution::{ExecutionStatus, TestExecutionResult};
+
+    let get_str = |key: &str| -> Result<String, String> {
+        value
+            .get(key)
+            .and_then(serde_json::Value::as_str)
+            .map(std::string::ToString::to_string)
+            .ok_or_else(|| format!("missing or invalid field '{key}'"))
+    };
+    let get_u64 = |key: &str| -> Result<u64, String> {
+        value
+            .get(key)
+            .and_then(serde_json::Value::as_u64)
+            .ok_or_else(|| format!("missing or invalid field '{key}'"))
+    };
+
+    let execution_id = get_str("execution_id")?;
+    let test_case_id = get_str("test_case_id")?;
+    let start_time = secs_to_system_time(get_u64("start_time_secs")?);
+    let end_time = secs_to_system_time(get_u64("end_time_secs")?);
+
+    let status_value = value
+        .get("status")
+        .ok_or_else(|| "missing field 'status'".to_string())?;
+    let status_kind = status_value
+        .get("kind")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| "missing field 'status.kind'".to_string())?;
+    let status = match status_kind {
+        "Success" => ExecutionStatus::Success,
+        "Timeout" => ExecutionStatus::Timeout,
+        "Cancelled" => ExecutionStatus::Cancelled,
+        "Failure" => ExecutionStatus::Failure(
+            status_value
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+        ),
+        "Error" => ExecutionStatus::Error(
+            status_value
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+        ),
+        other => return Err(format!("unknown status kind '{other}'")),
+    };
+
+    let outcome = match get_str("outcome")?.as_str() {
+        "Passed" => TestOutcome::Passed,
+        "Failed" => TestOutcome::Failed,
+        "Skipped" => TestOutcome::Skipped,
+        "Timeout" => TestOutcome::Timeout,
+        "Error" => TestOutcome::Error,
+        other => return Err(format!("unknown outcome '{other}'")),
+    };
+
+    let validation_status = match get_str("validation_status")?.as_str() {
+        "Passed" => ValidationStatus::Passed,
+        "Failed" => ValidationStatus::Failed,
+        "Partial" => ValidationStatus::Partial,
+        "NotExecuted" => ValidationStatus::NotExecuted,
+        other => return Err(format!("unknown validation status '{other}'")),
+    };
+
+    let pm = value
+        .get("performance_metrics")
+        .ok_or_else(|| "missing field 'performance_metrics'".to_string())?;
+    let f64_field = |key: &str| -> Result<f64, String> {
+        pm.get(key)
+            .and_then(serde_json::Value::as_f64)
+            .ok_or_else(|| format!("missing or invalid field 'performance_metrics.{key}'"))
+    };
+    let performance_metrics = PerformanceMetrics {
+        execution_duration: Duration::from_secs_f64(f64_field("execution_duration_secs")?),
+        setup_duration: Duration::from_secs_f64(f64_field("setup_duration_secs")?),
+        cleanup_duration: Duration::from_secs_f64(f64_field("cleanup_duration_secs")?),
+        peak_memory_usage: pm
+            .get("peak_memory_usage")
+            .and_then(serde_json::Value::as_u64)
+            .ok_or_else(|| {
+                "missing or invalid field 'performance_metrics.peak_memory_usage'".to_string()
+            })? as usize,
+        avg_cpu_usage: f64_field("avg_cpu_usage")?,
+        custom_metrics: pm
+            .get("custom_metrics")
+            .and_then(|v| serde_json::from_value::<HashMap<String, f64>>(v.clone()).ok())
+            .unwrap_or_default(),
+    };
+
+    let vs = value
+        .get("validation_summary")
+        .ok_or_else(|| "missing field 'validation_summary'".to_string())?;
+    let usize_field = |key: &str| -> Result<usize, String> {
+        vs.get(key)
+            .and_then(serde_json::Value::as_u64)
+            .map(|n| n as usize)
+            .ok_or_else(|| format!("missing or invalid field 'validation_summary.{key}'"))
+    };
+    let validation_summary = ValidationSummary {
+        total: usize_field("total")?,
+        passed: usize_field("passed")?,
+        failed: usize_field("failed")?,
+        skipped: usize_field("skipped")?,
+    };
+
+    let metadata = value
+        .get("metadata")
+        .and_then(|v| serde_json::from_value::<HashMap<String, String>>(v.clone()).ok())
+        .unwrap_or_default();
+
+    let integration_result = IntegrationTestResult {
+        test_case_id: test_case_id.clone(),
+        timestamp: end_time,
+        outcome,
+        performance_metrics,
+        validation_results: ValidationResults {
+            status: validation_status,
+            validations: Vec::new(),
+            summary: validation_summary,
+        },
+        error_info: None,
+        artifacts: Vec::new(),
+    };
+
+    Ok(TestExecutionResult {
+        execution_id,
+        test_case_id,
+        status,
+        start_time,
+        end_time,
+        result: integration_result,
+        metadata,
+    })
+}
+
+fn system_time_to_secs(time: SystemTime) -> u64 {
+    time.duration_since(SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+fn secs_to_system_time(secs: u64) -> SystemTime {
+    SystemTime::UNIX_EPOCH + Duration::from_secs(secs)
 }
 
 /// Storage statistics
@@ -525,5 +764,109 @@ impl Default for StorageStatistics {
             last_cleanup: SystemTime::now(),
             compression_ratio: 1.0,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::execution::{ExecutionStatus, TestExecutionResult};
+    use super::*;
+
+    fn make_execution_result(id: &str, outcome: TestOutcome) -> TestExecutionResult {
+        let now = SystemTime::now();
+        let mut metadata = HashMap::new();
+        metadata.insert("suite".to_string(), "regression".to_string());
+
+        TestExecutionResult {
+            execution_id: id.to_string(),
+            test_case_id: format!("{id}_case"),
+            status: ExecutionStatus::Success,
+            start_time: now,
+            end_time: now + Duration::from_secs(3),
+            result: IntegrationTestResult {
+                test_case_id: format!("{id}_case"),
+                timestamp: now,
+                outcome,
+                performance_metrics: PerformanceMetrics {
+                    execution_duration: Duration::from_secs(3),
+                    setup_duration: Duration::from_millis(200),
+                    cleanup_duration: Duration::from_millis(50),
+                    peak_memory_usage: 2048,
+                    avg_cpu_usage: 0.42,
+                    custom_metrics: HashMap::new(),
+                },
+                validation_results: ValidationResults {
+                    status: ValidationStatus::Passed,
+                    validations: vec![],
+                    summary: ValidationSummary {
+                        total: 2,
+                        passed: 2,
+                        failed: 0,
+                        skipped: 0,
+                    },
+                },
+                error_info: None,
+                artifacts: vec![],
+            },
+            metadata,
+        }
+    }
+
+    #[test]
+    fn export_and_import_results_round_trip_real_data() {
+        let mut storage = TestResultStorage::new(TestStorageConfig::default());
+        storage
+            .store_result(make_execution_result("exec_a", TestOutcome::Passed))
+            .expect("store should succeed");
+        storage
+            .store_result(make_execution_result("exec_b", TestOutcome::Failed))
+            .expect("store should succeed");
+
+        let mut path = std::env::temp_dir();
+        path.push(format!(
+            "quantrs2_anneal_results_export_test_{}.json",
+            std::process::id()
+        ));
+        let path_str = path.to_str().expect("path should be valid UTF-8");
+
+        storage
+            .export_results(path_str)
+            .expect("export should succeed");
+
+        let written = std::fs::read_to_string(&path).expect("exported file should exist");
+        // The file must contain the real outcome/id data, not a fabricated placeholder.
+        assert!(written.contains("exec_a"));
+        assert!(written.contains("exec_b"));
+        assert!(written.contains("Failed"));
+
+        let mut restored = TestResultStorage::new(TestStorageConfig::default());
+        let imported = restored
+            .import_results(path_str)
+            .expect("import should succeed");
+        assert_eq!(imported, 2);
+        assert_eq!(restored.result_cache.len(), 2);
+
+        let restored_b = restored
+            .get_result("exec_b")
+            .expect("exec_b should have been restored");
+        assert_eq!(restored_b.result.outcome, TestOutcome::Failed);
+        assert_eq!(
+            restored_b.metadata.get("suite").map(String::as_str),
+            Some("regression")
+        );
+
+        std::fs::remove_file(&path).expect("cleanup should succeed");
+    }
+
+    #[test]
+    fn import_results_errors_on_missing_file() {
+        let mut storage = TestResultStorage::new(TestStorageConfig::default());
+        let mut path = std::env::temp_dir();
+        path.push(format!(
+            "quantrs2_anneal_results_missing_{}.json",
+            std::process::id()
+        ));
+        let result = storage.import_results(path.to_str().unwrap());
+        assert!(result.is_err());
     }
 }

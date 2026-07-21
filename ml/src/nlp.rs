@@ -183,44 +183,126 @@ impl WordEmbedding {
         }
     }
 
-    /// Fits the embedding on a corpus
+    /// Fits the embedding on a corpus using Random Indexing (Kanerva et al.;
+    /// see also Sahlgren, 2005): each vocabulary word is assigned a fixed,
+    /// sparse, near-orthogonal random "index vector"; a word's embedding is
+    /// then the (L2-normalized) sum of the index vectors of every word that
+    /// co-occurs with it within a sliding window across the corpus.
+    ///
+    /// This makes embeddings depend on real corpus co-occurrence statistics
+    /// -- words that tend to appear in similar contexts end up with
+    /// correlated embeddings -- unlike drawing an independent random vector
+    /// per word regardless of context (which was the previous behavior for
+    /// every [`EmbeddingStrategy`]). Random Indexing is used here as the one
+    /// concrete real backend for all strategy variants; a full trained
+    /// skip-gram/CBOW Word2Vec model and TF-IDF-weighted bag-of-words are
+    /// not implemented separately in this release.
     pub fn fit(&mut self, corpus: &[&str]) -> Result<()> {
-        // This is a dummy implementation
-        // In a real system, this would build the vocabulary and compute embeddings
+        const WINDOW_RADIUS: usize = 2;
+        const INDEX_VECTOR_NONZEROS: usize = 4;
 
-        let mut vocabulary = HashMap::new();
+        let mut word_counts: HashMap<String, usize> = HashMap::new();
+        let tokenized_corpus: Vec<Vec<String>> = corpus
+            .iter()
+            .map(|text| {
+                let tokens: Vec<String> = text.split_whitespace().map(|s| s.to_string()).collect();
+                for token in &tokens {
+                    *word_counts.entry(token.clone()).or_insert(0) += 1;
+                }
+                tokens
+            })
+            .collect();
 
-        // Build the vocabulary
-        for text in corpus {
-            for word in text.split_whitespace() {
-                let count = vocabulary.entry(word.to_string()).or_insert(0);
-                *count += 1;
-            }
-        }
-
-        // Sort by frequency
-        let mut vocab_items = vocabulary
+        // Build the vocabulary, sorted by descending frequency.
+        let mut vocab_items: Vec<(String, usize)> = word_counts
             .iter()
             .map(|(word, count)| (word.clone(), *count))
-            .collect::<Vec<_>>();
+            .collect();
+        vocab_items.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
 
-        vocab_items.sort_by(|a, b| b.1.cmp(&a.1));
-
-        // Take the top N words
         self.vocabulary = vocab_items
-            .iter()
-            .map(|(word, _)| word.clone())
+            .into_iter()
+            .map(|(word, _)| word)
             .take(10000)
             .collect();
 
-        // Generate random embeddings for each word
-        for word in &self.vocabulary {
-            let embedding = Array1::from_vec(
-                (0..self.dimension)
-                    .map(|_| thread_rng().random::<f64>() * 2.0 - 1.0)
-                    .collect(),
-            );
+        self.embeddings.clear();
+        if self.vocabulary.is_empty() {
+            return Ok(());
+        }
 
+        let word_index: HashMap<&str, usize> = self
+            .vocabulary
+            .iter()
+            .enumerate()
+            .map(|(i, w)| (w.as_str(), i))
+            .collect();
+
+        // Fixed, sparse, near-orthogonal index vector per vocabulary word.
+        let mut rng = thread_rng();
+        let index_vectors: Vec<Array1<f64>> = (0..self.vocabulary.len())
+            .map(|_| {
+                let mut vector = Array1::<f64>::zeros(self.dimension);
+                let nonzeros = INDEX_VECTOR_NONZEROS.min(self.dimension);
+                let mut placed = 0;
+                let mut attempts = 0;
+                while placed < nonzeros && attempts < nonzeros * 20 {
+                    attempts += 1;
+                    let raw_position = (rng.random::<f64>() * self.dimension as f64) as usize;
+                    let position = raw_position.min(self.dimension.saturating_sub(1));
+                    if vector[position] == 0.0 {
+                        let sign = if rng.random::<f64>() < 0.5 { -1.0 } else { 1.0 };
+                        vector[position] = sign;
+                        placed += 1;
+                    }
+                }
+                vector
+            })
+            .collect();
+
+        // Accumulate context vectors from real corpus co-occurrence within a
+        // sliding window, restricted to in-vocabulary words.
+        let mut context_vectors: Vec<Array1<f64>> = (0..self.vocabulary.len())
+            .map(|_| Array1::<f64>::zeros(self.dimension))
+            .collect();
+
+        for tokens in &tokenized_corpus {
+            let indices: Vec<Option<usize>> = tokens
+                .iter()
+                .map(|token| word_index.get(token.as_str()).copied())
+                .collect();
+
+            for (position, target_idx_opt) in indices.iter().enumerate() {
+                let target_idx = match target_idx_opt {
+                    Some(idx) => *idx,
+                    None => continue,
+                };
+                let window_start = position.saturating_sub(WINDOW_RADIUS);
+                let window_end = (position + WINDOW_RADIUS + 1).min(indices.len());
+                for context_position in window_start..window_end {
+                    if context_position == position {
+                        continue;
+                    }
+                    if let Some(context_idx) = indices[context_position] {
+                        context_vectors[target_idx] =
+                            &context_vectors[target_idx] + &index_vectors[context_idx];
+                    }
+                }
+            }
+        }
+
+        for (i, word) in self.vocabulary.iter().enumerate() {
+            let mut embedding = context_vectors[i].clone();
+            let norm = embedding.dot(&embedding).sqrt();
+            if norm > 1e-10 {
+                embedding.mapv_inplace(|x| x / norm);
+            } else {
+                // Word never co-occurred with any in-vocabulary word within
+                // the window (e.g. it only appears in single-word corpus
+                // entries): fall back to its own deterministic index vector
+                // rather than leaving an all-zero embedding.
+                embedding = index_vectors[i].clone();
+            }
             self.embeddings.insert(word.clone(), embedding);
         }
 
@@ -599,5 +681,79 @@ impl QuantumLanguageModel {
         let confidence = 0.7 + 0.3 * (hash % 100) as f64 / 100.0;
 
         Ok((self.labels[class_idx].clone(), confidence))
+    }
+}
+
+#[cfg(test)]
+mod regression_tests {
+    use super::*;
+
+    /// Regression test for the "every word gets an independent random
+    /// embedding" fabrication bug: words that share contexts across the
+    /// corpus should end up with embeddings that are meaningfully more
+    /// similar (higher cosine similarity) than words that never co-occur
+    /// with anything, which is only possible if `fit` actually derives
+    /// embeddings from real co-occurrence statistics.
+    #[test]
+    fn fit_produces_context_correlated_embeddings_not_pure_noise() {
+        let corpus = [
+            "king queen throne royal palace",
+            "queen king throne royal crown",
+            "throne king queen royal power",
+            "banana apple fruit sweet tasty",
+            "apple banana fruit juicy sweet",
+            "fruit apple banana tasty juicy",
+        ];
+
+        let mut embedding = WordEmbedding::new(EmbeddingStrategy::Word2Vec, 64);
+        embedding.fit(&corpus).expect("fit should succeed");
+
+        assert!(!embedding.vocabulary.is_empty());
+        assert!(embedding.get_embedding("king").is_some());
+        assert!(embedding.get_embedding("apple").is_some());
+
+        let cosine = |a: &Array1<f64>, b: &Array1<f64>| -> f64 {
+            let dot = a.dot(b);
+            let norm_a = a.dot(a).sqrt();
+            let norm_b = b.dot(b).sqrt();
+            if norm_a > 1e-12 && norm_b > 1e-12 {
+                dot / (norm_a * norm_b)
+            } else {
+                0.0
+            }
+        };
+
+        let king = embedding.get_embedding("king").expect("king embedded");
+        let queen = embedding.get_embedding("queen").expect("queen embedded");
+        let apple = embedding.get_embedding("apple").expect("apple embedded");
+
+        // "king" and "queen" repeatedly co-occur with the same royalty
+        // context words across the corpus, so their embeddings should be
+        // noticeably more similar to each other than "king" is to the
+        // unrelated "apple" -- a signal that cannot exist if embeddings are
+        // independent random noise per word.
+        let king_queen_similarity = cosine(king, queen);
+        let king_apple_similarity = cosine(king, apple);
+        assert!(
+            king_queen_similarity > king_apple_similarity,
+            "expected king~queen similarity ({king_queen_similarity}) to exceed \
+             king~apple similarity ({king_apple_similarity})"
+        );
+
+        // Fitting twice on the same corpus must reproduce the same
+        // vocabulary (a real, deterministic frequency-based selection).
+        let mut embedding2 = WordEmbedding::new(EmbeddingStrategy::Word2Vec, 64);
+        embedding2.fit(&corpus).expect("fit should succeed");
+        assert_eq!(embedding.vocabulary, embedding2.vocabulary);
+    }
+
+    #[test]
+    fn fit_on_empty_corpus_yields_empty_vocabulary_and_no_panic() {
+        let mut embedding = WordEmbedding::new(EmbeddingStrategy::BagOfWords, 16);
+        embedding
+            .fit(&[])
+            .expect("fit on empty corpus should succeed");
+        assert!(embedding.vocabulary.is_empty());
+        assert!(embedding.embeddings.is_empty());
     }
 }

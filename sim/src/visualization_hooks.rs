@@ -579,9 +579,12 @@ impl VisualizationManager {
 
         let mut entropy = 0.0;
         for &eigenvalue in decomposition.eigenvalues.iter() {
-            // Eigenvalues can be slightly negative/greater-than-one due to
-            // floating point noise; clamp into the physical [0, 1] range.
-            let p = eigenvalue.clamp(0.0, 1.0);
+            // A Hermitian density matrix has real eigenvalues; `complex_eigh`
+            // still returns them as `Complex<f64>` with (up to floating-point
+            // noise) zero imaginary part, so take the real part. Eigenvalues
+            // can also be slightly negative/greater-than-one due to floating
+            // point noise; clamp into the physical [0, 1] range.
+            let p = eigenvalue.re.clamp(0.0, 1.0);
             if p > 1e-12 {
                 entropy -= p * p.ln();
             }

@@ -995,6 +995,130 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    /// Regression test for the fabricated-autograd bug: `MatmulGradFn`,
+    /// `MulGradFn`, and `SumGradFn`'s `backward()` used to be a bare `Ok(())`
+    /// no-op, and `SciRS2Array` had no way to reach back to the input nodes
+    /// that produced an output, so gradients could never propagate through
+    /// matmul/mul/sum. This checks the exact analytic gradients:
+    /// `d(A@B)/dA = grad@B^T`, `d(A@B)/dB = A^T@grad`,
+    /// `d(A*B)/dA = grad*B`, `d(A*B)/dB = grad*A`, and that `sum()`
+    /// broadcasts its scalar seed gradient back across every input element.
+    #[test]
+    fn test_matmul_mul_sum_backward_are_real() {
+        // matmul: A (2x2) @ B (2x2) -> C; seed dL/dC with a known,
+        // non-uniform gradient and check dL/dA, dL/dB analytically.
+        let a_arr = Array2::from_shape_vec((2, 2), vec![1.0, 2.0, 3.0, 4.0])
+            .expect("valid shape for 2x2 array");
+        let b_arr = Array2::from_shape_vec((2, 2), vec![5.0, 6.0, 7.0, 8.0])
+            .expect("valid shape for 2x2 array");
+        let a = SciRS2Array::with_grad(a_arr.clone());
+        let b = SciRS2Array::with_grad(b_arr.clone());
+
+        let mut c = a.matmul(&b).expect("matmul should succeed");
+        let seed = Array2::from_shape_vec((2, 2), vec![1.0, 0.0, 0.0, 1.0])
+            .expect("valid shape for 2x2 array")
+            .into_dyn();
+        c.set_grad(seed.clone());
+        c.backward().expect("matmul backward should succeed");
+
+        // dL/dA = seed @ B^T, dL/dB = A^T @ seed (both computed independently
+        // here via plain ndarray ops, not by re-using the code under test).
+        let seed_2d = seed.into_dimensionality::<Ix2>().expect("2d seed");
+        let expected_grad_a = seed_2d.dot(&b_arr.t());
+        let expected_grad_b = a_arr.t().dot(&seed_2d);
+
+        let grad_a = a
+            .grad
+            .as_ref()
+            .expect("a should have a grad cell")
+            .lock()
+            .expect("grad lock should not be poisoned")
+            .clone();
+        let grad_b = b
+            .grad
+            .as_ref()
+            .expect("b should have a grad cell")
+            .lock()
+            .expect("grad lock should not be poisoned")
+            .clone();
+
+        for ((i, j), &expected) in expected_grad_a.indexed_iter() {
+            assert!(
+                (grad_a[[i, j]] - expected).abs() < 1e-9,
+                "matmul dL/dA mismatch at ({i},{j}): got {}, expected {expected}",
+                grad_a[[i, j]]
+            );
+        }
+        for ((i, j), &expected) in expected_grad_b.indexed_iter() {
+            assert!(
+                (grad_b[[i, j]] - expected).abs() < 1e-9,
+                "matmul dL/dB mismatch at ({i},{j}): got {}, expected {expected}",
+                grad_b[[i, j]]
+            );
+        }
+
+        // mul: element-wise x * y; dL/dx = seed * y, dL/dy = seed * x.
+        let x_arr = Array1::from_vec(vec![2.0, 3.0, 4.0]);
+        let y_arr = Array1::from_vec(vec![10.0, 20.0, 30.0]);
+        let x = SciRS2Array::with_grad(x_arr.clone());
+        let y = SciRS2Array::with_grad(y_arr.clone());
+
+        let mut z = x.mul(&y).expect("mul should succeed");
+        z.set_grad(ArrayD::from_elem(IxDyn(&[3]), 2.0));
+        z.backward().expect("mul backward should succeed");
+
+        let grad_x = x
+            .grad
+            .as_ref()
+            .expect("x should have a grad cell")
+            .lock()
+            .expect("grad lock should not be poisoned")
+            .clone();
+        let grad_y = y
+            .grad
+            .as_ref()
+            .expect("y should have a grad cell")
+            .lock()
+            .expect("grad lock should not be poisoned")
+            .clone();
+
+        for (i, (&gx, &yv)) in grad_x.iter().zip(y_arr.iter()).enumerate() {
+            assert!(
+                (gx - 2.0 * yv).abs() < 1e-9,
+                "mul dL/dx mismatch at {i}: got {gx}, expected {}",
+                2.0 * yv
+            );
+        }
+        for (i, (&gy, &xv)) in grad_y.iter().zip(x_arr.iter()).enumerate() {
+            assert!(
+                (gy - 2.0 * xv).abs() < 1e-9,
+                "mul dL/dy mismatch at {i}: got {gy}, expected {}",
+                2.0 * xv
+            );
+        }
+
+        // sum (full reduction): dL/d(input[i]) = seed for every element.
+        let s_arr = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0]);
+        let s = SciRS2Array::with_grad(s_arr);
+        let mut total = s.sum(None).expect("sum should succeed");
+        total.set_grad(ArrayD::from_elem(IxDyn(&[]), 3.5));
+        total.backward().expect("sum backward should succeed");
+
+        let grad_s = s
+            .grad
+            .as_ref()
+            .expect("s should have a grad cell")
+            .lock()
+            .expect("grad lock should not be poisoned")
+            .clone();
+        for &g in grad_s.iter() {
+            assert!(
+                (g - 3.5).abs() < 1e-9,
+                "sum backward did not broadcast the seed gradient: got {g}, expected 3.5"
+            );
+        }
+    }
+
     #[test]
     fn test_integration_helpers() {
         let arr = Array2::from_shape_vec((2, 2), vec![1.0, 2.0, 3.0, 4.0])

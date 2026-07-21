@@ -55,7 +55,10 @@ impl MLOptimizedQuantumLoadBalancer {
             .await?;
 
         // Get ML prediction for optimal node
-        let ml_prediction = self.ml_predictor.predict_optimal_node(&features).await?;
+        let ml_prediction = self
+            .ml_predictor
+            .predict_optimal_node(available_nodes, circuit_partition, &features)
+            .await?;
 
         // Apply quantum-aware scheduling constraints
         let quantum_constraints = self
@@ -112,21 +115,21 @@ impl MLOptimizedQuantumLoadBalancer {
 
             // Quantum hardware features
             features.insert(
-                format!("{node_prefix}_max_qubits "),
+                format!("{node_prefix}_max_qubits"),
                 node.capabilities.max_qubits as f64,
             );
             features.insert(
-                format!("{node_prefix}_readout_fidelity "),
+                format!("{node_prefix}_readout_fidelity"),
                 node.capabilities.readout_fidelity,
             );
 
             // Current load features
             features.insert(
-                format!("{node_prefix}_qubits_in_use "),
+                format!("{node_prefix}_qubits_in_use"),
                 node.current_load.qubits_in_use as f64,
             );
             features.insert(
-                format!("{node_prefix}_queue_length "),
+                format!("{node_prefix}_queue_length"),
                 node.current_load.queue_length as f64,
             );
 
@@ -135,14 +138,14 @@ impl MLOptimizedQuantumLoadBalancer {
                 self.get_node_entanglement_quality(&node.node_id).await?
             {
                 features.insert(
-                    format!("{node_prefix}_entanglement_quality "),
+                    format!("{node_prefix}_entanglement_quality"),
                     entanglement_quality,
                 );
             }
 
             if let Some(coherence_metrics) = self.get_node_coherence_metrics(&node.node_id).await? {
                 features.insert(
-                    format!("{node_prefix}_avg_coherence_time "),
+                    format!("{node_prefix}_avg_coherence_time"),
                     coherence_metrics.average_coherence_time.as_secs_f64(),
                 );
             }
@@ -838,18 +841,82 @@ impl LoadBalancer for CapabilityBasedQuantumBalancer {
         }
     }
 
+    /// Real per-partition, capability- and load-aware node assignment:
+    /// each partition is scored against every node using its actual
+    /// `resource_requirements` (qubit count) and the node's real
+    /// capabilities/fidelity, and a running per-node assigned-qubit tally
+    /// is tracked so later partitions are genuinely load-balanced across
+    /// capable nodes instead of every partition landing on whichever node
+    /// `HashMap::iter().next()` happened to return.
     fn select_nodes(
         &self,
         partitions: &[CircuitPartition],
         available_nodes: &HashMap<NodeId, NodeInfo>,
-        requirements: &ExecutionRequirements,
+        _requirements: &ExecutionRequirements,
     ) -> std::result::Result<HashMap<Uuid, NodeId>, DistributedComputationError> {
+        if available_nodes.is_empty() {
+            return Err(DistributedComputationError::ResourceAllocation(
+                "no available nodes for partition assignment".to_string(),
+            ));
+        }
+
+        let qubit_weight = self
+            .quantum_capability_weights
+            .get("qubit_count")
+            .copied()
+            .unwrap_or(0.3);
+        let fidelity_weight = self
+            .quantum_capability_weights
+            .get("gate_fidelity")
+            .copied()
+            .unwrap_or(0.4);
+
         let mut allocation = HashMap::new();
+        let mut assigned_qubits: HashMap<NodeId, u32> = HashMap::new();
 
         for partition in partitions {
-            if let Some((node_id, _)) = available_nodes.iter().next() {
-                allocation.insert(partition.partition_id, node_id.clone());
+            let required_qubits = partition.resource_requirements.qubits_needed.max(1);
+            let mut best_node: Option<NodeId> = None;
+            let mut best_score = f64::NEG_INFINITY;
+
+            for (node_id, node) in available_nodes {
+                if node.capabilities.max_qubits < required_qubits {
+                    continue;
+                }
+                let already_assigned = *assigned_qubits.get(node_id).unwrap_or(&0);
+                let projected_load = already_assigned + required_qubits;
+                let max_qubits = node.capabilities.max_qubits.max(1);
+                let utilization = projected_load as f64 / max_qubits as f64;
+                if utilization > 1.0 {
+                    // This node cannot take on this partition on top of
+                    // what has already been assigned to it in this batch.
+                    continue;
+                }
+
+                let qubit_score =
+                    (node.capabilities.max_qubits as f64 / required_qubits as f64).min(1.0);
+                let fidelity_score = node.capabilities.readout_fidelity;
+                let load_score = 1.0 - utilization;
+
+                let score = qubit_score * qubit_weight
+                    + fidelity_score * fidelity_weight
+                    + load_score * 0.3;
+
+                if score > best_score {
+                    best_score = score;
+                    best_node = Some(node_id.clone());
+                }
             }
+
+            let Some(node_id) = best_node else {
+                return Err(DistributedComputationError::ResourceAllocation(format!(
+                    "no node has sufficient remaining capacity ({required_qubits} qubits) for partition {}",
+                    partition.partition_id
+                )));
+            };
+
+            *assigned_qubits.entry(node_id.clone()).or_insert(0) += required_qubits;
+            allocation.insert(partition.partition_id, node_id);
         }
 
         Ok(allocation)
@@ -1121,22 +1188,99 @@ impl QuantumLoadPredictionModel {
         Self::default()
     }
 
+    /// Predict the optimal node from the real per-node features extracted
+    /// by `extract_quantum_features` (keyed `node_{i}_...` in
+    /// `features.features`, matching `available_nodes`'s order) -- rather
+    /// than always returning a fixed `NodeId("node_1")` regardless of
+    /// which nodes actually exist. Nodes without enough qubit capacity for
+    /// `circuit_partition` are excluded; among the remaining nodes the
+    /// candidate with the best weighted score (readout fidelity,
+    /// entanglement quality, coherence time, queue pressure, and
+    /// utilization) is selected.
     pub async fn predict_optimal_node(
         &self,
-        _features: &FeatureVector,
+        available_nodes: &[NodeInfo],
+        circuit_partition: &CircuitPartition,
+        features: &FeatureVector,
     ) -> Result<QuantumPredictionResult> {
-        // Placeholder implementation
+        if available_nodes.is_empty() {
+            return Err(QuantumLoadBalancingError::QuantumSchedulingConflict(
+                "no available nodes to predict from".to_string(),
+            ));
+        }
+        let required_qubits = circuit_partition.input_qubits.len().max(1) as f64;
+
+        let mut best_index: Option<usize> = None;
+        let mut best_score = f64::NEG_INFINITY;
+        let mut best_fidelity = 0.95_f64;
+
+        for (i, node) in available_nodes.iter().enumerate() {
+            let prefix = format!("node_{i}");
+            let get = |suffix: &str, default: f64| -> f64 {
+                features
+                    .features
+                    .get(&format!("{prefix}_{suffix}"))
+                    .copied()
+                    .unwrap_or(default)
+            };
+
+            let max_qubits = get("max_qubits", node.capabilities.max_qubits as f64);
+            if max_qubits < required_qubits {
+                continue;
+            }
+            let readout_fidelity = get("readout_fidelity", node.capabilities.readout_fidelity);
+            let qubits_in_use = get("qubits_in_use", node.current_load.qubits_in_use as f64);
+            let queue_length = get("queue_length", node.current_load.queue_length as f64);
+            // Neutral defaults (0.5 quality, 50us coherence) when this
+            // node has no recorded entanglement/coherence measurements
+            // yet, rather than silently scoring it as perfect or zero.
+            let entanglement_quality = get("entanglement_quality", 0.5);
+            let coherence_time = get("avg_coherence_time", 50e-6);
+
+            let utilization = if max_qubits > 0.0 {
+                (qubits_in_use / max_qubits).clamp(0.0, 1.0)
+            } else {
+                1.0
+            };
+            let queue_penalty = 1.0 / (1.0 + queue_length.max(0.0));
+            let coherence_score = (coherence_time / 100e-6).clamp(0.0, 1.0);
+
+            let score = readout_fidelity * 0.35
+                + entanglement_quality * 0.25
+                + coherence_score * 0.15
+                + queue_penalty * 0.15
+                + (1.0 - utilization) * 0.10;
+
+            if score > best_score {
+                best_score = score;
+                best_index = Some(i);
+                best_fidelity = readout_fidelity;
+            }
+        }
+
+        let Some(best_index) = best_index else {
+            return Err(QuantumLoadBalancingError::QuantumSchedulingConflict(
+                format!(
+                    "no node has sufficient qubit capacity ({required_qubits}) for this partition"
+                ),
+            ));
+        };
+
+        let predicted_node = available_nodes[best_index].node_id.clone();
+        let confidence = best_score.clamp(0.0, 1.0);
+        let predicted_entanglement_overhead = (required_qubits / 2.0).ceil() as u32;
+
         Ok(QuantumPredictionResult {
-            predicted_node: NodeId("node_1".to_string()),
-            predicted_execution_time: Duration::from_millis(100),
-            predicted_fidelity: 0.95,
-            predicted_entanglement_overhead: 2,
-            confidence: 0.85,
+            predicted_node,
+            predicted_execution_time: Duration::from_millis((100.0 / confidence.max(0.1)) as u64),
+            predicted_fidelity: best_fidelity,
+            predicted_entanglement_overhead,
+            confidence,
             quantum_uncertainty: QuantumUncertaintyFactors {
-                decoherence_uncertainty: 0.05,
-                entanglement_uncertainty: 0.03,
-                measurement_uncertainty: 0.02,
-                calibration_uncertainty: 0.01,
+                decoherence_uncertainty: (1.0 - confidence) * 0.1,
+                entanglement_uncertainty: (1.0 - confidence) * 0.06,
+                measurement_uncertainty: (1.0 - confidence) * 0.04,
+                calibration_uncertainty: (1.0 - confidence) * 0.02,
             },
             prediction_timestamp: Utc::now(),
         })
@@ -1148,8 +1292,49 @@ impl QuantumPerformanceLearner {
         Self::default()
     }
 
-    pub async fn add_training_data(&self, _data: QuantumLearningDataPoint) -> Result<()> {
-        // Placeholder implementation
+    /// Actually record training feedback in `performance_history` (a real
+    /// `Arc<RwLock<HashMap<NodeId, QuantumPerformanceHistory>>>` field that
+    /// previously sat unused) rather than silently discarding every
+    /// training data point.
+    pub async fn add_training_data(&self, data: QuantumLearningDataPoint) -> Result<()> {
+        let mut history = self
+            .performance_history
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let node_history = history
+            .entry(data.selected_node.clone())
+            .or_insert_with(QuantumPerformanceHistory::default);
+
+        node_history
+            .classical_metrics
+            .execution_times
+            .push_back(data.circuit_partition.estimated_execution_time);
+        if node_history.classical_metrics.execution_times.len() > 100 {
+            node_history.classical_metrics.execution_times.pop_front();
+        }
+
+        node_history
+            .fidelity_history
+            .push_back(FidelityMeasurement {
+                timestamp: data.timestamp,
+                process_fidelity: data.quantum_requirements.fidelity_requirement,
+                state_fidelity: data.quantum_requirements.fidelity_requirement,
+                gate_fidelities: HashMap::new(),
+                measurement_context: FidelityMeasurementContext {
+                    temperature: data
+                        .context_features
+                        .get("temperature")
+                        .copied()
+                        .unwrap_or(0.0),
+                    time_since_calibration: Duration::from_secs(0),
+                    circuit_depth: data.circuit_partition.gates.len() as u32,
+                    concurrent_operations: 0,
+                },
+            });
+        if node_history.fidelity_history.len() > 100 {
+            node_history.fidelity_history.pop_front();
+        }
+
         Ok(())
     }
 }
@@ -1340,5 +1525,239 @@ mod tests {
         // Should select the high capability node
         let node_id = selected_node.expect("Node selection should succeed");
         assert_eq!(node_id.0, "high_capability_node");
+    }
+
+    fn make_test_node(
+        id: &str,
+        max_qubits: u32,
+        readout_fidelity: f64,
+        qubits_in_use: u32,
+        queue_length: u32,
+    ) -> NodeInfo {
+        NodeInfo {
+            node_id: NodeId(id.to_string()),
+            capabilities: crate::quantum_network::distributed_protocols::NodeCapabilities {
+                max_qubits,
+                supported_gates: vec!["H".to_string(), "CNOT".to_string()],
+                connectivity_graph: vec![],
+                gate_fidelities: HashMap::new(),
+                readout_fidelity,
+                coherence_times: HashMap::new(),
+                classical_compute_power: 1000.0,
+                memory_capacity_gb: 8,
+                network_bandwidth_mbps: 1000.0,
+            },
+            current_load: crate::quantum_network::distributed_protocols::NodeLoad {
+                qubits_in_use,
+                active_circuits: 1,
+                cpu_utilization: 0.2,
+                memory_utilization: 0.2,
+                network_utilization: 0.2,
+                queue_length,
+                estimated_completion_time: Duration::from_secs(10),
+            },
+            network_info: crate::quantum_network::distributed_protocols::NetworkInfo {
+                ip_address: "127.0.0.1".to_string(),
+                port: 8080,
+                latency_to_nodes: HashMap::new(),
+                bandwidth_to_nodes: HashMap::new(),
+                connection_quality: HashMap::new(),
+            },
+            status: crate::quantum_network::distributed_protocols::NodeStatus::Active,
+            last_heartbeat: Utc::now(),
+        }
+    }
+
+    fn make_test_partition(qubits_needed: u32) -> CircuitPartition {
+        let node_id = NodeId("unassigned".to_string());
+        CircuitPartition {
+            partition_id: Uuid::new_v4(),
+            node_id: node_id.clone(),
+            gates: vec![],
+            dependencies: vec![],
+            input_qubits: (0..qubits_needed)
+                .map(|i| crate::quantum_network::distributed_protocols::QubitId {
+                    node_id: node_id.clone(),
+                    local_id: i,
+                    global_id: Uuid::new_v4(),
+                })
+                .collect(),
+            output_qubits: vec![],
+            classical_inputs: vec![],
+            estimated_execution_time: Duration::from_millis(100),
+            resource_requirements: ResourceRequirements {
+                qubits_needed,
+                gates_count: 10,
+                memory_mb: 50,
+                execution_time_estimate: Duration::from_millis(100),
+                entanglement_pairs_needed: 1,
+                classical_communication_bits: 100,
+            },
+        }
+    }
+
+    #[tokio::test]
+    async fn test_predict_optimal_node_not_fixed_to_node1() {
+        let predictor = QuantumLoadPredictionModel::new();
+        let balancer = MLOptimizedQuantumLoadBalancer::new();
+
+        // node index 0 ("best_node") clearly dominates node index 1
+        // ("weak_node") on every feature: higher fidelity, less load, no
+        // queue. The old placeholder always returned NodeId("node_1")
+        // regardless of quality -- a real predictor must pick the actually
+        // better node "best_node" here.
+        let nodes = vec![
+            make_test_node("best_node", 20, 0.99, 0, 0),
+            make_test_node("weak_node", 20, 0.5, 18, 20),
+        ];
+        let partition = make_test_partition(2);
+        let quantum_requirements = QuantumResourceRequirements {
+            qubits_needed: 2,
+            gate_count_estimate: 5,
+            circuit_depth: 5,
+            fidelity_requirement: 0.9,
+            coherence_time_needed: Duration::from_micros(50),
+            entanglement_pairs: 1,
+        };
+        let features = balancer
+            .extract_quantum_features(&nodes, &partition, &quantum_requirements)
+            .await
+            .expect("feature extraction should succeed");
+
+        let prediction = predictor
+            .predict_optimal_node(&nodes, &partition, &features)
+            .await
+            .expect("prediction should succeed");
+        assert_eq!(prediction.predicted_node.0, "best_node");
+
+        // Swap node order: the winner must still be "best_node" by
+        // identity/quality, not by fixed position "node_1".
+        let nodes_swapped = vec![
+            make_test_node("weak_node", 20, 0.5, 18, 20),
+            make_test_node("best_node", 20, 0.99, 0, 0),
+        ];
+        let features_swapped = balancer
+            .extract_quantum_features(&nodes_swapped, &partition, &quantum_requirements)
+            .await
+            .expect("feature extraction should succeed");
+        let prediction_swapped = predictor
+            .predict_optimal_node(&nodes_swapped, &partition, &features_swapped)
+            .await
+            .expect("prediction should succeed");
+        assert_eq!(prediction_swapped.predicted_node.0, "best_node");
+    }
+
+    #[tokio::test]
+    async fn test_predict_optimal_node_respects_qubit_capacity() {
+        let predictor = QuantumLoadPredictionModel::new();
+        let balancer = MLOptimizedQuantumLoadBalancer::new();
+
+        // "tiny_node" has excellent fidelity but cannot fit the partition;
+        // a real capacity-aware predictor must never select it.
+        let nodes = vec![
+            make_test_node("tiny_node", 2, 0.999, 0, 0),
+            make_test_node("adequate_node", 10, 0.8, 2, 1),
+        ];
+        let partition = make_test_partition(8);
+        let quantum_requirements = QuantumResourceRequirements {
+            qubits_needed: 8,
+            gate_count_estimate: 20,
+            circuit_depth: 10,
+            fidelity_requirement: 0.7,
+            coherence_time_needed: Duration::from_micros(50),
+            entanglement_pairs: 2,
+        };
+        let features = balancer
+            .extract_quantum_features(&nodes, &partition, &quantum_requirements)
+            .await
+            .expect("feature extraction should succeed");
+
+        let prediction = predictor
+            .predict_optimal_node(&nodes, &partition, &features)
+            .await
+            .expect("prediction should succeed");
+        assert_eq!(prediction.predicted_node.0, "adequate_node");
+    }
+
+    #[tokio::test]
+    async fn test_add_training_data_is_actually_recorded() {
+        let learner = QuantumPerformanceLearner::new();
+        let node_id = NodeId("trained_node".to_string());
+        let data_point = QuantumLearningDataPoint {
+            timestamp: Utc::now(),
+            selected_node: node_id.clone(),
+            circuit_partition: make_test_partition(4),
+            quantum_requirements: QuantumResourceRequirements {
+                qubits_needed: 4,
+                gate_count_estimate: 8,
+                circuit_depth: 4,
+                fidelity_requirement: 0.92,
+                coherence_time_needed: Duration::from_micros(40),
+                entanglement_pairs: 1,
+            },
+            context_features: HashMap::new(),
+        };
+
+        learner
+            .add_training_data(data_point)
+            .await
+            .expect("add_training_data should succeed");
+
+        // The training data point must actually be reflected in the
+        // learner's real performance-history state, not silently discarded.
+        let history = learner
+            .performance_history
+            .read()
+            .expect("history lock should not be poisoned");
+        let node_history = history
+            .get(&node_id)
+            .expect("training data should have created a history entry for the node");
+        assert_eq!(node_history.fidelity_history.len(), 1);
+        assert_eq!(node_history.classical_metrics.execution_times.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_select_nodes_load_balances_across_partitions() {
+        let balancer = CapabilityBasedQuantumBalancer::new();
+        let mut nodes = HashMap::new();
+        nodes.insert(
+            NodeId("node_a".to_string()),
+            make_test_node("node_a", 8, 0.9, 0, 0),
+        );
+        nodes.insert(
+            NodeId("node_b".to_string()),
+            make_test_node("node_b", 8, 0.9, 0, 0),
+        );
+
+        // Two partitions each needing 6 qubits: no single 8-qubit node can
+        // hold more than one (6 + 6 > 8), so a real load-balanced
+        // assignment must spread them across both nodes rather than
+        // routing every partition to whichever node
+        // `HashMap::iter().next()` returns.
+        let partitions = vec![make_test_partition(6), make_test_partition(6)];
+        let requirements = ExecutionRequirements {
+            min_fidelity: 0.5,
+            max_latency: Duration::from_secs(10),
+            fault_tolerance: false,
+            preferred_nodes: vec![],
+            excluded_nodes: vec![],
+            resource_constraints:
+                crate::quantum_network::distributed_protocols::ResourceConstraints {
+                    max_cost: None,
+                    max_execution_time: Duration::from_secs(60),
+                    max_memory_usage: 1024,
+                    preferred_providers: vec![],
+                },
+        };
+
+        let allocation = balancer
+            .select_nodes(&partitions, &nodes, &requirements)
+            .expect("at least some partitions should be assignable");
+
+        let assigned_node_ids: std::collections::HashSet<_> = allocation.values().collect();
+        assert!(
+            assigned_node_ids.len() > 1,
+            "expected partitions to be spread across more than one node, got {assigned_node_ids:?}"
+        );
     }
 }

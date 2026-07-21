@@ -13,10 +13,18 @@ use crate::sampler::SampleResult;
 #[cfg(feature = "scirs")]
 use crate::scirs_stub;
 
-/// Enhanced QUBO optimization using SciRS2 (when available)
+/// Enhanced QUBO optimization using SciRS2's parallel execution primitives
 ///
-/// This function provides enhanced optimization for QUBO problems,
-/// using advanced techniques from SciRS2 when available.
+/// This performs genuine multi-start simulated annealing: the same
+/// Metropolis-criterion local search as the non-`advanced_optimization`
+/// fallback below, but run as several independent, differently-seeded
+/// restarts in parallel via `scirs2_core::parallel_ops`. Running more
+/// independent restarts explores more of the search space and is a real,
+/// honest enhancement over a single-threaded run — unlike the previous
+/// implementation, which despite its "Enhanced ... advanced techniques from
+/// SciRS2" doc comment only ever performed uniform random sampling with no
+/// annealing at all (worse than the plain fallback below for the same
+/// wall-clock budget).
 #[cfg(feature = "advanced_optimization")]
 pub fn optimize_qubo(
     matrix: &Array<f64, Ix2>,
@@ -24,19 +32,77 @@ pub fn optimize_qubo(
     initial_guess: Option<Vec<bool>>,
     max_iterations: usize,
 ) -> Vec<SampleResult> {
-    // Use SciRS2 enhanced parallel sampling
-    let enhanced_matrix = scirs_stub::enhance_qubo_matrix(matrix);
-    let samples = scirs_stub::parallel_sample_qubo(&enhanced_matrix, max_iterations);
+    use scirs2_core::parallel_ops::*;
 
-    // Map from indices back to variable names
+    let n_vars = var_map.len();
+    if n_vars == 0 {
+        return Vec::new();
+    }
+
     let idx_to_var: HashMap<usize, String> = var_map
         .iter()
         .map(|(var, &idx)| (idx, var.clone()))
         .collect();
 
-    // Convert to SampleResults
-    let mut results: Vec<SampleResult> = samples
-        .into_iter()
+    let num_runs = scirs2_core::parallel_ops::current_num_threads().max(4);
+    let sweeps = max_iterations.max(1);
+
+    let seeds: Vec<u64> = {
+        let mut seeder = thread_rng();
+        (0..num_runs)
+            .map(|i| seeder.random::<u64>().wrapping_add(i as u64))
+            .collect()
+    };
+
+    let mut runs: Vec<(Vec<bool>, f64)> = seeds
+        .into_par_iter()
+        .map(|seed| {
+            let mut rng = StdRng::seed_from_u64(seed);
+
+            let mut solution: Vec<bool> = initial_guess
+                .clone()
+                .unwrap_or_else(|| (0..n_vars).map(|_| rng.random_bool()).collect());
+            let mut energy = calculate_energy(&solution, matrix);
+            let mut best_solution = solution.clone();
+            let mut best_energy = energy;
+
+            let mut temperature = 10.0_f64;
+            let cooling_rate = 0.99_f64;
+
+            for _ in 0..sweeps {
+                let flip_idx = rng.random_range(0..n_vars);
+                solution[flip_idx] = !solution[flip_idx];
+                let new_energy = calculate_energy(&solution, matrix);
+
+                let accept = new_energy < energy || {
+                    let p = ((energy - new_energy) / temperature).exp();
+                    rng.random::<f64>() < p
+                };
+
+                if accept {
+                    energy = new_energy;
+                    if energy < best_energy {
+                        best_energy = energy;
+                        best_solution = solution.clone();
+                    }
+                } else {
+                    solution[flip_idx] = !solution[flip_idx];
+                }
+
+                temperature *= cooling_rate;
+            }
+
+            (best_solution, best_energy)
+        })
+        .collect();
+
+    // Sort by energy, deduplicate identical solutions across restarts, and
+    // return the best (up to 10) distinct solutions found.
+    runs.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+    runs.dedup_by(|a, b| a.0 == b.0);
+    runs.truncate(10);
+
+    runs.into_iter()
         .map(|(solution, energy)| {
             let assignments: HashMap<String, bool> = solution
                 .iter()
@@ -54,17 +120,7 @@ pub fn optimize_qubo(
                 occurrences: 1,
             }
         })
-        .collect();
-
-    // Sort by energy and return best solutions
-    results.sort_by(|a, b| {
-        a.energy
-            .partial_cmp(&b.energy)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-    results.truncate(10); // Return top 10 solutions
-
-    results
+        .collect()
 }
 
 /// Fallback QUBO optimization implementation
@@ -307,4 +363,43 @@ fn optimize_hobo_basic(
         energy: best_energy,
         occurrences: 1,
     }]
+}
+
+#[cfg(all(test, feature = "advanced_optimization"))]
+mod tests {
+    use super::*;
+    use scirs2_core::ndarray::Array2;
+
+    #[test]
+    fn test_optimize_qubo_advanced_finds_real_optimum() {
+        // Minimizing QUBO: x_i = 1 is favorable for every i (diagonal = -1,
+        // no interaction terms), so the true optimum is all-ones with
+        // energy = -n. The old fabricated implementation only ever
+        // performed uniform random sampling with no annealing, so it had no
+        // reliable way to consistently land on the true optimum.
+        let n = 6;
+        let matrix = Array2::from_shape_fn((n, n), |(i, j)| if i == j { -1.0 } else { 0.0 });
+
+        let mut var_map = HashMap::new();
+        for i in 0..n {
+            var_map.insert(format!("x{i}"), i);
+        }
+
+        let results = optimize_qubo(&matrix, &var_map, None, 200);
+        assert!(!results.is_empty());
+
+        let best = results
+            .iter()
+            .fold(f64::INFINITY, |acc, r| acc.min(r.energy));
+        assert!(
+            (best - (-(n as f64))).abs() < 1e-9,
+            "expected best energy {}, got {best}",
+            -(n as f64)
+        );
+
+        // Results must actually be sorted best-first and distinct.
+        for pair in results.windows(2) {
+            assert!(pair[0].energy <= pair[1].energy);
+        }
+    }
 }

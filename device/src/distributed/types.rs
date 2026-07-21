@@ -3,12 +3,25 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
+use super::config::DistributedOrchestratorConfig;
+
 // Main orchestrator type
+//
+// Holds the real, locally-computable state needed for node registration and
+// workflow scheduling: a node registry, a workflow registry, and a monotonic
+// execution-id counter. Actual network dispatch to remote nodes is not
+// implemented (it requires a real inter-node transport), so
+// `execute_distributed` reports that limitation honestly instead of
+// fabricating a successful result.
 #[derive(Debug)]
 pub struct DistributedQuantumOrchestrator {
-    // Implementation will be added
+    pub(crate) config: DistributedOrchestratorConfig,
+    pub(crate) nodes: Arc<Mutex<HashMap<String, NodeInfo>>>,
+    pub(crate) workflows: Arc<Mutex<HashMap<String, DistributedWorkflow>>>,
+    pub(crate) execution_counter: Arc<Mutex<u64>>,
 }
 
 // Core execution types

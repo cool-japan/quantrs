@@ -640,60 +640,68 @@ impl PhotonicProtocolEngine {
         })
     }
 
-    /// Execute other protocols (placeholder implementations)
-    const fn execute_state_distribution_protocol(
+    /// Execute the quantum state distribution protocol.
+    ///
+    /// Not yet implemented: a real state-distribution protocol requires its
+    /// own physical model (entanglement distribution over a lossy/noisy
+    /// photonic channel, herald/retry logic, etc.). Rather than fabricate a
+    /// plausible-looking success report, this honestly reports the protocol
+    /// as unsupported -- mirroring [`Self::execute_qkd_protocol`]'s handling
+    /// of unimplemented QKD variants.
+    fn execute_state_distribution_protocol(
         &self,
         context: &ProtocolContext,
     ) -> Result<ProtocolResult, PhotonicProtocolError> {
-        // Placeholder implementation
-        Ok(self.create_placeholder_result(context))
+        let _ = context;
+        Err(PhotonicProtocolError::UnsupportedProtocol(
+            "Quantum state distribution protocol simulation is not yet implemented".to_string(),
+        ))
     }
 
-    const fn execute_clock_sync_protocol(
+    /// Execute the quantum clock synchronization protocol.
+    ///
+    /// Not yet implemented: see [`Self::execute_state_distribution_protocol`]
+    /// for the rationale for reporting an honest error instead of a
+    /// fabricated success result.
+    fn execute_clock_sync_protocol(
         &self,
         context: &ProtocolContext,
     ) -> Result<ProtocolResult, PhotonicProtocolError> {
-        // Placeholder implementation
-        Ok(self.create_placeholder_result(context))
+        let _ = context;
+        Err(PhotonicProtocolError::UnsupportedProtocol(
+            "Quantum clock synchronization protocol simulation is not yet implemented".to_string(),
+        ))
     }
 
-    const fn execute_sensing_protocol(
+    /// Execute the quantum sensing network protocol.
+    ///
+    /// Not yet implemented: see [`Self::execute_state_distribution_protocol`]
+    /// for the rationale for reporting an honest error instead of a
+    /// fabricated success result.
+    fn execute_sensing_protocol(
         &self,
         context: &ProtocolContext,
     ) -> Result<ProtocolResult, PhotonicProtocolError> {
-        // Placeholder implementation
-        Ok(self.create_placeholder_result(context))
+        let _ = context;
+        Err(PhotonicProtocolError::UnsupportedProtocol(
+            "Quantum sensing network protocol simulation is not yet implemented".to_string(),
+        ))
     }
 
-    const fn execute_quantum_internet_protocol(
+    /// Execute the quantum internet protocol.
+    ///
+    /// Not yet implemented: see [`Self::execute_state_distribution_protocol`]
+    /// for the rationale for reporting an honest error instead of a
+    /// fabricated success result.
+    fn execute_quantum_internet_protocol(
         &self,
         context: &ProtocolContext,
-        _protocol_version: &str,
+        protocol_version: &str,
     ) -> Result<ProtocolResult, PhotonicProtocolError> {
-        // Placeholder implementation
-        Ok(self.create_placeholder_result(context))
-    }
-
-    /// Create placeholder result for unimplemented protocols
-    const fn create_placeholder_result(&self, _context: &ProtocolContext) -> ProtocolResult {
-        ProtocolResult {
-            success: true,
-            key: None,
-            transmitted_state: None,
-            metrics: ProtocolMetrics {
-                execution_time: Duration::from_millis(100),
-                key_rate: None,
-                error_rate: 0.01,
-                fidelity: 0.99,
-                throughput: 1.0,
-            },
-            security_analysis: SecurityAnalysis {
-                information_leakage: 0.01,
-                eavesdropping_detected: false,
-                security_proof_valid: true,
-                achieved_security: 128.0,
-            },
-        }
+        let _ = context;
+        Err(PhotonicProtocolError::UnsupportedProtocol(format!(
+            "Quantum internet protocol (version {protocol_version}) simulation is not yet implemented"
+        )))
     }
 
     /// Update protocol statistics
@@ -890,5 +898,68 @@ mod tests {
 
         assert!(result.key.is_some());
         assert!(result.metrics.key_rate.is_some());
+    }
+
+    fn make_context(protocol_id: &str) -> ProtocolContext {
+        ProtocolContext {
+            protocol_id: protocol_id.to_string(),
+            parties: vec![],
+            security_params: SecurityParameters {
+                security_level: 128,
+                error_tolerance: 0.05,
+                privacy_amplification: PrivacyAmplificationParams {
+                    hash_family: "SHA256".to_string(),
+                    compression_ratio: 0.5,
+                    rounds: 1,
+                },
+                authentication: AuthenticationMethod::Classical {
+                    algorithm: "HMAC".to_string(),
+                },
+            },
+            network_config: NetworkConfiguration {
+                topology: NetworkTopology::PointToPoint,
+                channels: vec![],
+                routing: RoutingConfig {
+                    algorithm: RoutingAlgorithm::ShortestPath,
+                    max_hops: 1,
+                    load_balancing: false,
+                },
+            },
+            start_time: Instant::now(),
+        }
+    }
+
+    /// Regression test: the four not-yet-implemented photonic network
+    /// protocols must return an honest `UnsupportedProtocol` error instead
+    /// of a fabricated "successful" result with placeholder fidelity/security
+    /// numbers.
+    #[test]
+    fn test_unimplemented_protocols_return_honest_errors_not_fabricated_success() {
+        let unimplemented_protocols = [
+            PhotonicProtocolType::StateDistribution,
+            PhotonicProtocolType::ClockSynchronization,
+            PhotonicProtocolType::SensingNetwork,
+            PhotonicProtocolType::QuantumInternet {
+                protocol_version: "v1".to_string(),
+            },
+        ];
+
+        for protocol_type in unimplemented_protocols {
+            let mut engine = PhotonicProtocolEngine::new();
+            let context = make_context("test_unimplemented");
+
+            let result = engine.execute_protocol(protocol_type.clone(), context);
+
+            match result {
+                Err(PhotonicProtocolError::UnsupportedProtocol(_)) => {}
+                Err(other) => panic!(
+                    "expected UnsupportedProtocol error for {protocol_type:?}, got a different error: {other:?}"
+                ),
+                Ok(fabricated) => panic!(
+                    "expected an honest error for unimplemented protocol {protocol_type:?}, \
+                     but got a fabricated success result instead: {fabricated:?}"
+                ),
+            }
+        }
     }
 }

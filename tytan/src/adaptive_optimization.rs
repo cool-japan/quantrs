@@ -528,12 +528,12 @@ impl AdaptiveOptimizer {
 
         if recent_improvement < 0.0 {
             // Good direction, increase learning
-            for (_, value) in params.iter_mut() {
+            for value in params.values_mut() {
                 *value *= 1.0 + self.learning_rate;
             }
         } else {
             // Bad direction, reverse and decrease
-            for (_, value) in params.iter_mut() {
+            for value in params.values_mut() {
                 *value *= self.learning_rate.mul_add(-0.5, 1.0);
             }
         }
@@ -876,6 +876,36 @@ mod tests {
         assert!(!result.best_solution.is_empty());
         assert!(result.best_energy < 0.0);
         assert!(!result.improvement_history.is_empty());
+    }
+
+    #[test]
+    fn test_adjust_parameters_scales_all_values_via_values_mut() {
+        // Regression test for the `for value in params.values_mut()` refactor in
+        // `adjust_parameters` (previously `for (_, value) in params.iter_mut()`).
+        // Verifies every entry in the map is still scaled, regardless of key.
+        let mut optimizer = AdaptiveOptimizer::new();
+        let learning_rate = optimizer.learning_rate;
+
+        // Improving history (energy decreasing) should scale all params up.
+        let mut params = HashMap::new();
+        params.insert("temperature".to_string(), 2.0);
+        params.insert("cooling_rate".to_string(), 4.0);
+        let history = vec![(0.0, 10.0), (1.0, 5.0)];
+        optimizer.adjust_parameters(&mut params, &history);
+
+        assert!((params["temperature"] - 2.0 * (1.0 + learning_rate)).abs() < 1e-9);
+        assert!((params["cooling_rate"] - 4.0 * (1.0 + learning_rate)).abs() < 1e-9);
+
+        // Worsening history (energy increasing) should scale all params down.
+        let mut params = HashMap::new();
+        params.insert("temperature".to_string(), 2.0);
+        params.insert("cooling_rate".to_string(), 4.0);
+        let history = vec![(0.0, 5.0), (1.0, 10.0)];
+        optimizer.adjust_parameters(&mut params, &history);
+
+        let expected_factor = learning_rate.mul_add(-0.5, 1.0);
+        assert!((params["temperature"] - 2.0 * expected_factor).abs() < 1e-9);
+        assert!((params["cooling_rate"] - 4.0 * expected_factor).abs() < 1e-9);
     }
 
     #[test]

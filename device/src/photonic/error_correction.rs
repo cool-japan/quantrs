@@ -80,7 +80,20 @@ impl PhotonicQECEngine {
             PhotonicErrorCorrectionCode::ContinuousVariable { code_type } => {
                 self.apply_cv_error_correction(state, code_type)
             }
-            _ => Ok(()), // Placeholder for other codes
+            PhotonicErrorCorrectionCode::MeasurementBased { cluster_size } => {
+                Err(PhotonicQECError::CorrectionFailed(format!(
+                    "Measurement-based error correction (cluster size {cluster_size}) is not yet \
+                     implemented; no correction was applied to the state"
+                )))
+            }
+            PhotonicErrorCorrectionCode::Hybrid {
+                photonic_modes,
+                matter_qubits,
+            } => Err(PhotonicQECError::CorrectionFailed(format!(
+                "Hybrid photonic-matter error correction ({photonic_modes} photonic modes, \
+                 {matter_qubits} matter qubits) is not yet implemented; no correction was applied \
+                 to the state"
+            ))),
         }
     }
 
@@ -166,7 +179,26 @@ impl PhotonicQECEngine {
 
                 Ok(syndrome)
             }
-            _ => Ok(vec![false; 4]), // Placeholder syndrome
+            PhotonicErrorCorrectionCode::MeasurementBased { cluster_size } => {
+                Err(PhotonicQECError::SyndromeExtractionFailed(format!(
+                    "Measurement-based syndrome extraction (cluster size {cluster_size}) is not \
+                     yet implemented; the actual state was not inspected"
+                )))
+            }
+            PhotonicErrorCorrectionCode::Hybrid {
+                photonic_modes,
+                matter_qubits,
+            } => Err(PhotonicQECError::SyndromeExtractionFailed(format!(
+                "Hybrid photonic-matter syndrome extraction ({photonic_modes} photonic modes, \
+                 {matter_qubits} matter qubits) is not yet implemented; the actual state was not \
+                 inspected"
+            ))),
+            PhotonicErrorCorrectionCode::ContinuousVariable { code_type } => {
+                Err(PhotonicQECError::SyndromeExtractionFailed(format!(
+                    "Continuous-variable syndrome extraction ({code_type:?}) is not yet \
+                     implemented; the actual state was not inspected"
+                )))
+            }
         }
     }
 
@@ -238,5 +270,42 @@ mod tests {
             .extract_syndrome(&state, &code)
             .expect("Syndrome extraction should succeed");
         assert_eq!(syndrome.len(), 2);
+    }
+
+    /// Regression test: unimplemented QEC code variants must honestly error
+    /// out of both `apply_error_correction` and `extract_syndrome` instead of
+    /// silently reporting success / an all-clear syndrome.
+    #[test]
+    fn test_unimplemented_qec_codes_return_honest_errors_not_fabricated_success() {
+        let unimplemented_codes = [
+            PhotonicErrorCorrectionCode::MeasurementBased { cluster_size: 4 },
+            PhotonicErrorCorrectionCode::Hybrid {
+                photonic_modes: 2,
+                matter_qubits: 1,
+            },
+        ];
+
+        for code in unimplemented_codes {
+            let mut engine = PhotonicQECEngine::new();
+            let mut state = GaussianState::vacuum(2);
+
+            let correction_result = engine.apply_error_correction(&mut state, &code);
+            assert!(
+                matches!(
+                    correction_result,
+                    Err(PhotonicQECError::CorrectionFailed(_))
+                ),
+                "expected an honest CorrectionFailed error for {code:?}, got {correction_result:?}"
+            );
+
+            let syndrome_result = engine.extract_syndrome(&state, &code);
+            assert!(
+                matches!(
+                    syndrome_result,
+                    Err(PhotonicQECError::SyndromeExtractionFailed(_))
+                ),
+                "expected an honest SyndromeExtractionFailed error for {code:?}, got {syndrome_result:?}"
+            );
+        }
     }
 }

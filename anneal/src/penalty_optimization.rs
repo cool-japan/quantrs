@@ -64,6 +64,11 @@ pub struct PenaltyOptimizer {
     chain_break_history: HashMap<usize, Vec<bool>>,
     /// Constraint violation history
     constraint_history: HashMap<String, Vec<f64>>,
+    /// Problem constraints to check violations against. Empty by default:
+    /// with no constraints registered, `analyze_samples` honestly reports
+    /// zero violations because there is nothing to check, not because
+    /// checking was skipped.
+    constraints: Vec<Constraint>,
 }
 
 impl PenaltyOptimizer {
@@ -74,6 +79,26 @@ impl PenaltyOptimizer {
             config,
             chain_break_history: HashMap::new(),
             constraint_history: HashMap::new(),
+            constraints: Vec::new(),
+        }
+    }
+
+    /// Register a problem constraint. Registered constraints are checked
+    /// against every sample in [`Self::optimize_ising_penalties`] /
+    /// [`Self::optimize_qubo_penalties`], and their real violation rates
+    /// drive [`Self::update_constraint_penalties`].
+    pub fn add_constraint(&mut self, constraint: Constraint) {
+        self.constraints.push(constraint);
+    }
+
+    /// Create a penalty optimizer pre-populated with problem constraints.
+    #[must_use]
+    pub fn with_constraints(config: PenaltyConfig, constraints: Vec<Constraint>) -> Self {
+        Self {
+            config,
+            chain_break_history: HashMap::new(),
+            constraint_history: HashMap::new(),
+            constraints,
         }
     }
 
@@ -114,7 +139,7 @@ impl PenaltyOptimizer {
                 self.update_chain_strengths(&mut stats.chain_strengths, &chain_breaks);
 
                 // Update constraint penalties based on violations
-                self.update_constraint_penalties(model, &violations);
+                self.update_constraint_penalties(model, &violations)?;
 
                 // Apply updated penalties
                 self.apply_static_penalties(model, embedding, &stats.chain_strengths)?;
@@ -183,7 +208,13 @@ impl PenaltyOptimizer {
         Ok(())
     }
 
-    /// Analyze samples for chain breaks and constraint violations
+    /// Analyze samples for chain breaks and constraint violations.
+    ///
+    /// `violations` maps each registered [`Constraint`]'s name to its real
+    /// violation rate over `samples` (the fraction of samples that fail
+    /// [`constraint_is_satisfied`]) — not a placeholder. Optimizers that
+    /// haven't registered any constraints via [`Self::add_constraint`] /
+    /// [`Self::with_constraints`] will honestly get back an empty map.
     fn analyze_samples(
         &self,
         samples: &[Vec<i8>],
@@ -211,15 +242,26 @@ impl PenaltyOptimizer {
                     *count += 1.0;
                 }
             }
-
-            // Check constraint violations (placeholder)
-            // In practice, would check specific problem constraints
         }
 
         // Normalize by number of samples
         let n = samples.len() as f64;
         for count in chain_breaks.values_mut() {
             *count /= n;
+        }
+
+        // Real per-constraint violation rates over the registered constraints.
+        if !samples.is_empty() {
+            for constraint in &self.constraints {
+                let violation_count = samples
+                    .iter()
+                    .filter(|sample| !constraint_is_satisfied(constraint, sample))
+                    .count();
+                violations.insert(
+                    constraint.name.clone(),
+                    violation_count as f64 / samples.len() as f64,
+                );
+            }
         }
 
         (chain_breaks, violations)
@@ -248,14 +290,57 @@ impl PenaltyOptimizer {
         }
     }
 
-    /// Update constraint penalties based on violations
-    const fn update_constraint_penalties(
+    /// Update constraint penalties based on real, measured violation rates.
+    ///
+    /// For every registered constraint whose violation rate exceeds
+    /// `self.config.learning_rate` (used here as an adaptive tolerance
+    /// threshold), reinforces the standard quadratic penalty for
+    /// `(sum_{i in variables} s_i - target)^2` on `model`: a linear bias
+    /// term `-2 * weight * target` on each variable in the constraint, plus
+    /// a pairwise coupling `+2 * weight` between every pair of the
+    /// constraint's variables, where
+    /// `weight = self.config.constraint_penalty * self.config.learning_rate * violation_rate`
+    /// scales with how often the constraint was actually violated. This
+    /// is the standard QUBO/Ising equality-constraint encoding; inequality
+    /// constraint types (`LessEqual`/`GreaterEqual`) are approximated with
+    /// the same toward-target formula rather than a full slack-variable
+    /// encoding.
+    fn update_constraint_penalties(
         &self,
-        model: &IsingModel,
+        model: &mut IsingModel,
         violations: &HashMap<String, f64>,
-    ) {
-        // Placeholder - would update specific constraint penalties
-        // based on violation frequencies
+    ) -> IsingResult<()> {
+        for constraint in &self.constraints {
+            let Some(&violation_rate) = violations.get(&constraint.name) else {
+                continue;
+            };
+            if violation_rate <= self.config.learning_rate {
+                continue;
+            }
+
+            let weight =
+                self.config.constraint_penalty * self.config.learning_rate * violation_rate;
+            if weight.abs() < 1e-12 {
+                continue;
+            }
+
+            for &var in &constraint.variables {
+                let current_bias = model.get_bias(var).unwrap_or(0.0);
+                model.set_bias(
+                    var,
+                    (-2.0 * weight).mul_add(constraint.target, current_bias),
+                )?;
+            }
+            for i in 0..constraint.variables.len() {
+                for j in (i + 1)..constraint.variables.len() {
+                    let (vi, vj) = (constraint.variables[i], constraint.variables[j]);
+                    let current_coupling = model.get_coupling(vi, vj).unwrap_or(0.0);
+                    model.set_coupling(vi, vj, current_coupling + 2.0 * weight)?;
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Compute average energy of samples
@@ -476,6 +561,26 @@ pub enum ConstraintType {
     AtMostOne,
 }
 
+/// Check whether `sample` satisfies `constraint`. Shared by
+/// [`ConstraintPenaltyOptimizer::check_constraint`] and
+/// [`PenaltyOptimizer::analyze_samples`] so both real constraint-checking
+/// paths in this module agree on the same semantics.
+fn constraint_is_satisfied(constraint: &Constraint, sample: &[i8]) -> bool {
+    let sum: i8 = constraint
+        .variables
+        .iter()
+        .map(|&var| sample.get(var).copied().unwrap_or(0))
+        .sum();
+
+    match constraint.constraint_type {
+        ConstraintType::Equality => (f64::from(sum) - constraint.target).abs() < 1e-6,
+        ConstraintType::LessEqual => f64::from(sum) <= constraint.target,
+        ConstraintType::GreaterEqual => f64::from(sum) >= constraint.target,
+        ConstraintType::ExactlyOne => sum == 1,
+        ConstraintType::AtMostOne => sum <= 1,
+    }
+}
+
 impl ConstraintPenaltyOptimizer {
     /// Create a new constraint penalty optimizer
     #[must_use]
@@ -542,19 +647,7 @@ impl ConstraintPenaltyOptimizer {
 
     /// Check if a sample satisfies a constraint
     fn check_constraint(&self, constraint: &Constraint, sample: &[i8]) -> bool {
-        let sum: i8 = constraint
-            .variables
-            .iter()
-            .map(|&var| sample.get(var).copied().unwrap_or(0))
-            .sum();
-
-        match constraint.constraint_type {
-            ConstraintType::Equality => (f64::from(sum) - constraint.target).abs() < 1e-6,
-            ConstraintType::LessEqual => f64::from(sum) <= constraint.target,
-            ConstraintType::GreaterEqual => f64::from(sum) >= constraint.target,
-            ConstraintType::ExactlyOne => sum == 1,
-            ConstraintType::AtMostOne => sum <= 1,
-        }
+        constraint_is_satisfied(constraint, sample)
     }
 }
 
@@ -608,5 +701,133 @@ mod tests {
 
         assert!(optimizer.check_constraint(&optimizer.constraints[0], &sample1));
         assert!(!optimizer.check_constraint(&optimizer.constraints[0], &sample2));
+    }
+
+    #[test]
+    fn analyze_samples_reports_real_constraint_violation_rates() {
+        let config = PenaltyConfig::default();
+        let mut optimizer = PenaltyOptimizer::new(config);
+        optimizer.add_constraint(Constraint {
+            name: "balanced_pair".to_string(),
+            variables: vec![0, 1],
+            constraint_type: ConstraintType::Equality,
+            target: 0.0, // For +-1 spins, sum==0 means one spin up and one down.
+        });
+
+        let embedding = Embedding::new();
+        let samples = vec![
+            vec![1, -1],  // sum=0 -> satisfies
+            vec![1, 1],   // sum=2 -> violates
+            vec![-1, -1], // sum=-2 -> violates
+            vec![-1, 1],  // sum=0 -> satisfies
+        ];
+
+        let (_chain_breaks, violations) = optimizer.analyze_samples(&samples, &embedding);
+        let rate = violations
+            .get("balanced_pair")
+            .copied()
+            .expect("registered constraint must be tracked, not silently dropped");
+        assert!(
+            (rate - 0.5).abs() < 1e-9,
+            "expected the real 50% violation rate, got {rate}"
+        );
+    }
+
+    #[test]
+    fn analyze_samples_reports_no_violations_when_no_constraints_are_registered() {
+        // Honest zero: nothing was registered, so nothing is violated -- this
+        // must be distinguishable in intent from the old placeholder (which
+        // never checked anything regardless of registration).
+        let config = PenaltyConfig::default();
+        let optimizer = PenaltyOptimizer::new(config);
+        let embedding = Embedding::new();
+        let samples = vec![vec![1, 1], vec![-1, -1]];
+
+        let (_chain_breaks, violations) = optimizer.analyze_samples(&samples, &embedding);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn update_constraint_penalties_actually_modifies_the_model_when_violated() {
+        let config = PenaltyConfig {
+            learning_rate: 0.05,
+            constraint_penalty: 2.0,
+            ..PenaltyConfig::default()
+        };
+
+        let mut optimizer = PenaltyOptimizer::new(config);
+        optimizer.add_constraint(Constraint {
+            name: "sum_equals_one".to_string(),
+            variables: vec![0, 1],
+            constraint_type: ConstraintType::Equality,
+            target: 1.0,
+        });
+
+        let mut model = IsingModel::new(2);
+        let embedding = Embedding::new();
+        // Every sample violates the constraint (sum=2, not 1): a 100%
+        // violation rate, well above the learning-rate tolerance.
+        let samples = vec![vec![1, 1], vec![1, 1], vec![1, 1], vec![1, 1]];
+
+        let bias_before = model.get_bias(0).expect("bias should be readable");
+        let coupling_before = model
+            .get_coupling(0, 1)
+            .expect("coupling should be readable");
+
+        let (_chain_breaks, violations) = optimizer.analyze_samples(&samples, &embedding);
+        optimizer
+            .update_constraint_penalties(&mut model, &violations)
+            .expect("penalty update should succeed");
+
+        let bias_after = model.get_bias(0).expect("bias should be readable");
+        let coupling_after = model
+            .get_coupling(0, 1)
+            .expect("coupling should be readable");
+
+        // With a non-zero target, the toward-target quadratic penalty
+        // contributes both a linear bias term (`-2*weight*target`) and a
+        // pairwise coupling term (`+2*weight`); both must actually move.
+        assert_ne!(
+            bias_after, bias_before,
+            "a real, heavily-violated constraint must actually adjust the model's bias"
+        );
+        assert_ne!(
+            coupling_after, coupling_before,
+            "a real, heavily-violated constraint must actually adjust the model's coupling"
+        );
+    }
+
+    #[test]
+    fn update_constraint_penalties_leaves_model_untouched_when_within_tolerance() {
+        let config = PenaltyConfig {
+            learning_rate: 0.5, // High tolerance: a 25% violation rate should be ignored.
+            constraint_penalty: 2.0,
+            ..PenaltyConfig::default()
+        };
+
+        let mut optimizer = PenaltyOptimizer::new(config);
+        optimizer.add_constraint(Constraint {
+            name: "balanced_pair".to_string(),
+            variables: vec![0, 1],
+            constraint_type: ConstraintType::Equality,
+            target: 0.0,
+        });
+
+        let mut model = IsingModel::new(2);
+        let embedding = Embedding::new();
+        let samples = vec![vec![1, -1], vec![1, -1], vec![1, -1], vec![1, 1]];
+
+        let (_chain_breaks, violations) = optimizer.analyze_samples(&samples, &embedding);
+        optimizer
+            .update_constraint_penalties(&mut model, &violations)
+            .expect("penalty update should succeed");
+
+        assert_eq!(model.get_bias(0).expect("bias should be readable"), 0.0);
+        assert_eq!(
+            model
+                .get_coupling(0, 1)
+                .expect("coupling should be readable"),
+            0.0
+        );
     }
 }

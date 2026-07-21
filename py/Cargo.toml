@@ -41,10 +41,12 @@ serde_json.workspace = true
 # SciRS2 dependencies (SCIRS2 POLICY)
 scirs2-core.workspace = true
 scirs2-autograd.workspace = true
+scirs2-linalg.workspace = true
+scirs2-fft.workspace = true
 
 [features]
 default = ["ml", "anneal", "tytan"]
-gpu = ["quantrs2-sim/gpu"]
+gpu = ["quantrs2-sim/gpu", "scirs2-core/gpu"]
 ml = ["quantrs2-ml"]
 anneal = ["quantrs2-anneal"]
 tytan = ["quantrs2-tytan"]

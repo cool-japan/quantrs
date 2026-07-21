@@ -344,17 +344,142 @@ pub const fn is_projector_form(_expr: &Expression) -> bool {
     false
 }
 
-/// Check if an expression is a pure imaginary number (i * real)
-pub fn is_pure_imaginary(expr: &Expression) -> bool {
-    let s = expr.to_string();
-    s.contains("(* ") && s.contains(" I)") || s.contains("(* I ")
+/// Recognized unary AST operator names (mirrors the tokens accepted by
+/// [`Expression::unary_arg`]).
+const UNARY_OPS: &[&str] = &[
+    "neg",
+    "inv",
+    "abs",
+    "sin",
+    "cos",
+    "tan",
+    "exp",
+    "log",
+    "sqrt",
+    "asin",
+    "acos",
+    "atan",
+    "sinh",
+    "cosh",
+    "tanh",
+    "re",
+    "im",
+    "conj",
+    "trace",
+    "dagger",
+    "det",
+    "transpose",
+];
+
+/// Recognized binary AST operator names (mirrors the tokens accepted by
+/// [`Expression::binary_args`]).
+const BINARY_OPS: &[&str] = &["+", "*", "/", "^", "comm", "anticomm", "tensor"];
+
+/// Check whether `expr` contains the symbol `name` anywhere in its AST,
+/// however deeply nested (inside sums, products, powers, trig/exp/log
+/// wrappers, commutators, tensor products, ...).
+///
+/// This performs a full structural traversal via the `unary_arg`/`binary_args`
+/// accessors rather than using [`Expression::free_symbols`], which
+/// deliberately excludes the special constant `I` from its result (it treats
+/// `I` like `pi`/`e`, not like a free variable).
+fn contains_symbol(expr: &Expression, name: &str) -> bool {
+    if expr.as_symbol() == Some(name) {
+        return true;
+    }
+    for op in UNARY_OPS {
+        if let Some(inner) = expr.unary_arg(op) {
+            return contains_symbol(&inner, name);
+        }
+    }
+    for op in BINARY_OPS {
+        if let Some((left, right)) = expr.binary_args(op) {
+            return contains_symbol(&left, name) || contains_symbol(&right, name);
+        }
+    }
+    false
 }
 
-/// Check if an expression is a unit complex number (|z| = 1)
+/// Check whether a flattened list of multiplication factors decomposes as
+/// exactly one occurrence of the imaginary unit `I` times factors that are
+/// all real, i.e. none of them contain a nested occurrence of `I` (which
+/// would make the product genuinely complex rather than `i * real`).
+fn is_imaginary_times_real(factors: &[Expression]) -> bool {
+    let mut has_imaginary = false;
+    for factor in factors {
+        if factor.as_symbol() == Some("I") {
+            if has_imaginary {
+                // A second bare `I` factor (`I * I * rest`) collapses to a
+                // real value, so this is no longer "a single imaginary unit
+                // times a real factor".
+                return false;
+            }
+            has_imaginary = true;
+        } else if contains_symbol(factor, "I") {
+            return false;
+        }
+    }
+    has_imaginary
+}
+
+/// Check if an expression is a pure imaginary number, i.e. structurally
+/// `I * real` (in any factor order, and optionally negated as a whole),
+/// where `real` contains no nested occurrence of `I`.
+///
+/// This walks the real `RecExpr` structure (via [`flatten_factors`] and
+/// [`contains_symbol`]) rather than matching substrings of
+/// `expr.to_string()` (the previous implementation), which produced false
+/// positives on compound expressions such as `x*I + y`: that expression's
+/// string form `"(+ (* x I) y)"` contains the substring `"(* x I)"` even
+/// though the *outer* expression is a sum, not a pure imaginary number.
+#[must_use]
+pub fn is_pure_imaginary(expr: &Expression) -> bool {
+    let stripped = expr.unary_arg("neg").unwrap_or_else(|| expr.clone());
+
+    // The bare imaginary unit is trivially pure imaginary (real part = 1).
+    if stripped.as_symbol() == Some("I") {
+        return true;
+    }
+
+    // Anything that is not (structurally) a product node after stripping an
+    // outer negation cannot be `I * real` in this representation - notably
+    // an `Add` node such as `x*I + y` is rejected here rather than
+    // accidentally matching via substring search.
+    if stripped.binary_args("*").is_none() {
+        return false;
+    }
+
+    is_imaginary_times_real(&flatten_factors(&stripped))
+}
+
+/// Check if an expression is a unit-modulus complex exponential.
+///
+/// Structurally `exp(I * real)` (in any factor order, and with the whole
+/// exponent optionally negated), where `real` contains no nested occurrence
+/// of `I`. Such a "phase factor" `e^{iθ}` always has `|e^{iθ}| = 1` for real
+/// `θ`.
+///
+/// This walks the real `RecExpr` structure rather than matching a string
+/// prefix (the previous implementation), which both false-positived on
+/// `exp(I * (a + I*b))` (a genuinely complex, not real, angle - modulus != 1
+/// in general) and false-negatived on the commuted form `exp(θ * I)`.
+#[must_use]
 pub fn is_unit_complex_form(expr: &Expression) -> bool {
-    let s = expr.to_string();
-    // exp(i * θ) has |exp(i*θ)| = 1
-    s.starts_with("(exp (* I ") || s.starts_with("(exp (* (neg I) ")
+    let Some(arg) = expr.unary_arg("exp") else {
+        return false;
+    };
+    let inner = arg.unary_arg("neg").unwrap_or(arg);
+
+    // A bare `exp(I)` (angle = 1) is still a unit-modulus phase factor.
+    if inner.as_symbol() == Some("I") {
+        return true;
+    }
+
+    if inner.binary_args("*").is_none() {
+        return false;
+    }
+
+    is_imaginary_times_real(&flatten_factors(&inner))
 }
 
 /// Recognize common quantum gate patterns
@@ -384,7 +509,19 @@ pub enum QuantumGatePattern {
     Unknown,
 }
 
-/// Try to recognize a quantum gate from its matrix expression
+/// Try to recognize a quantum gate from its matrix/generator expression.
+///
+/// Bare Pauli/Clifford symbols (`X`, `H`, `S`, ...) are recognized directly.
+/// Compound `exp(-i θ G / 2)` forms are recognized structurally via
+/// [`is_rotation_gate`]: when the generator `G` is (up to naming) one of the
+/// single-qubit Pauli operators, the angle is reported through the
+/// corresponding [`QuantumGatePattern::Rx`]/[`Ry`](QuantumGatePattern::Ry)/
+/// [`Rz`](QuantumGatePattern::Rz) variant; any other recognized rotation
+/// generator is reported as a general [`QuantumGatePattern::Rotation`] with
+/// the angle in the `θ` slot and `φ = λ = 0` (this expression language only
+/// carries a single rotation angle per generator, so the Euler `φ`/`λ`
+/// decomposition is not recoverable from a single `exp(...)` node).
+#[must_use]
 pub fn recognize_gate_pattern(expr: &Expression) -> QuantumGatePattern {
     if let Some(sym) = expr.as_symbol() {
         match sym {
@@ -397,10 +534,34 @@ pub fn recognize_gate_pattern(expr: &Expression) -> QuantumGatePattern {
             _ => {}
         }
     }
+
+    if let Some((angle, generator)) = is_rotation_gate(expr) {
+        return match generator.as_symbol() {
+            Some("X" | "sigma_x" | "pauli_x") => QuantumGatePattern::Rx(angle),
+            Some("Y" | "sigma_y" | "pauli_y") => QuantumGatePattern::Ry(angle),
+            Some("Z" | "sigma_z" | "pauli_z") => QuantumGatePattern::Rz(angle),
+            _ => QuantumGatePattern::Rotation(angle, Expression::zero(), Expression::zero()),
+        };
+    }
+
     QuantumGatePattern::Unknown
 }
 
-/// Recognize variational quantum circuit parameter patterns
+/// Recognize variational quantum circuit parameter patterns.
+///
+/// [`VariationalPattern::SingleRotation`], [`VariationalPattern::QaoaMixer`]
+/// and [`VariationalPattern::QaoaCost`] are constructible from a single gate
+/// expression and are produced by [`recognize_variational_pattern`].
+///
+/// [`VariationalPattern::EntanglingLayer`] and
+/// [`VariationalPattern::VqeAnsatz`] are **forward-declared scaffolding for a
+/// future circuit-level pattern API**: recognizing an entangling layer or a
+/// full VQE ansatz genuinely requires looking at a *sequence* of gates (e.g.
+/// the CNOT/CZ ladder plus the per-qubit rotations that make up one ansatz
+/// layer), which cannot be read off a single [`Expression`]. No function in
+/// this crate constructs these two variants today; they exist purely as
+/// planned enum shape for when a multi-gate (`&[Expression]`-based)
+/// recognizer is added.
 #[derive(Debug, Clone)]
 pub enum VariationalPattern {
     /// Single parameter rotation
@@ -408,17 +569,22 @@ pub enum VariationalPattern {
         axis: char, // 'x', 'y', or 'z'
         param: Expression,
     },
-    /// Parametric entangling layer
+    /// Parametric entangling layer.
+    ///
+    /// Not yet constructible: see the enum-level doc comment.
     EntanglingLayer { params: Vec<Expression> },
-    /// VQE ansatz pattern
+    /// VQE ansatz pattern.
+    ///
+    /// Not yet constructible: see the enum-level doc comment.
     VqeAnsatz { params: Vec<Expression> },
-    /// QAOA pattern
+    /// QAOA mixer pattern
     QaoaMixer { beta: Expression },
     /// QAOA cost pattern
     QaoaCost { gamma: Expression },
 }
 
 /// Check if expression matches a VQE parameter pattern
+#[must_use]
 pub fn is_vqe_parameter(expr: &Expression) -> bool {
     expr.as_symbol().is_some_and(|sym| {
         sym.starts_with("theta") || sym.starts_with("phi") || sym.starts_with("lambda")
@@ -426,9 +592,50 @@ pub fn is_vqe_parameter(expr: &Expression) -> bool {
 }
 
 /// Check if expression matches a QAOA parameter
+#[must_use]
 pub fn is_qaoa_parameter(expr: &Expression) -> bool {
     expr.as_symbol()
         .is_some_and(|sym| sym.starts_with("beta") || sym.starts_with("gamma"))
+}
+
+/// Try to recognize a single-gate variational-circuit pattern.
+///
+/// Structurally recognizes `exp(-i θ G / 2)` (via [`is_rotation_gate`]) where
+/// `G` is a single-qubit Pauli generator:
+///
+/// * if `θ` contains an [`is_qaoa_parameter`]-recognized `beta*` factor and
+///   `G` is the `X` generator, this is a [`VariationalPattern::QaoaMixer`];
+/// * if `θ` contains an [`is_qaoa_parameter`]-recognized `gamma*` factor and
+///   `G` is the `Z` generator, this is a [`VariationalPattern::QaoaCost`];
+/// * otherwise it is a generic [`VariationalPattern::SingleRotation`] around
+///   the recognized axis.
+///
+/// Returns `None` when `expr` is not a structurally recognizable single-axis
+/// rotation. This function never produces
+/// [`VariationalPattern::EntanglingLayer`]/[`VariationalPattern::VqeAnsatz`];
+/// see the enum-level doc comment on [`VariationalPattern`] for why those
+/// require multi-gate context that this function does not have.
+#[must_use]
+pub fn recognize_variational_pattern(expr: &Expression) -> Option<VariationalPattern> {
+    let (angle, generator) = is_rotation_gate(expr)?;
+    let axis = match generator.as_symbol() {
+        Some("X" | "sigma_x" | "pauli_x") => 'x',
+        Some("Y" | "sigma_y" | "pauli_y") => 'y',
+        Some("Z" | "sigma_z" | "pauli_z") => 'z',
+        _ => return None,
+    };
+
+    let angle_factors = flatten_factors(&angle);
+    let angle_has_qaoa_param = angle_factors.iter().any(is_qaoa_parameter);
+
+    if axis == 'x' && angle_has_qaoa_param {
+        return Some(VariationalPattern::QaoaMixer { beta: angle });
+    }
+    if axis == 'z' && angle_has_qaoa_param {
+        return Some(VariationalPattern::QaoaCost { gamma: angle });
+    }
+
+    Some(VariationalPattern::SingleRotation { axis, param: angle })
 }
 
 #[cfg(test)]
@@ -612,5 +819,160 @@ mod tests {
 
         // A bare symbol is not an exp(...) at all.
         assert!(is_rotation_gate(&x).is_none());
+    }
+
+    #[test]
+    fn test_is_pure_imaginary_structural() {
+        // Bare I and I * real are pure imaginary.
+        assert!(is_pure_imaginary(&Expression::i()));
+        let r = Expression::symbol("r");
+        assert!(is_pure_imaginary(&(Expression::i() * r.clone())));
+        assert!(is_pure_imaginary(&(r.clone() * Expression::i())));
+        // Negated forms are still pure imaginary.
+        assert!(is_pure_imaginary(&(-(Expression::i() * r.clone()))));
+
+        // Regression: x*I + y is a SUM containing an imaginary term, not a
+        // pure imaginary number. The old substring-based implementation
+        // returned `true` here because "(* x I)" appears in the string form
+        // "(+ (* x I) y)".
+        let x = Expression::symbol("x");
+        let y = Expression::symbol("y");
+        let sum = (x.clone() * Expression::i()) + y;
+        assert!(
+            !is_pure_imaginary(&sum),
+            "x*I + y must not be recognized as pure imaginary"
+        );
+
+        // A factor that itself nests `I` (e.g. x * (I + y)) is not `I * real`.
+        let nested = x * (Expression::i() + r);
+        assert!(!is_pure_imaginary(&nested));
+
+        // A plain real symbol is not pure imaginary.
+        assert!(!is_pure_imaginary(&Expression::symbol("z")));
+    }
+
+    #[test]
+    fn test_is_unit_complex_form_structural() {
+        let theta = Expression::symbol("theta");
+
+        // exp(I * theta) and the commuted exp(theta * I) are both unit
+        // modulus phase factors; the old prefix-matching implementation
+        // false-negatived on the commuted form.
+        assert!(is_unit_complex_form(&crate::ops::trig::exp(
+            &(Expression::i() * theta.clone())
+        )));
+        assert!(is_unit_complex_form(&crate::ops::trig::exp(
+            &(theta.clone() * Expression::i())
+        )));
+
+        // exp(-i * theta) is also unit modulus.
+        assert!(is_unit_complex_form(&crate::ops::trig::exp(
+            &(-(Expression::i() * theta.clone()))
+        )));
+
+        // Regression: exp(I * (a + I*b)) has a genuinely COMPLEX angle
+        // (a + i*b), so |exp(i*(a+ib))| = e^{-b} != 1 in general. The old
+        // prefix-matching implementation returned `true` because the string
+        // still started with "(exp (* I ".
+        let a = Expression::symbol("a");
+        let b = Expression::symbol("b");
+        let complex_angle = a + Expression::i() * b;
+        let fake_phase = crate::ops::trig::exp(&(Expression::i() * complex_angle));
+        assert!(
+            !is_unit_complex_form(&fake_phase),
+            "exp(I * (a + I*b)) must not be recognized as unit modulus"
+        );
+
+        // exp(x) with no imaginary unit at all is not a phase factor.
+        assert!(!is_unit_complex_form(&crate::ops::trig::exp(
+            &Expression::symbol("x")
+        )));
+
+        // A bare (non-exp) expression is never a unit complex form.
+        assert!(!is_unit_complex_form(&theta));
+    }
+
+    #[test]
+    fn test_recognize_gate_pattern_rotations() {
+        let theta = Expression::symbol("theta");
+        let half = Expression::float_unchecked(0.5);
+
+        let make_rotation = |generator: Expression| {
+            crate::ops::trig::exp(
+                &(-(((Expression::i() * theta.clone()) * generator) * half.clone())),
+            )
+        };
+
+        match recognize_gate_pattern(&make_rotation(Expression::symbol("X"))) {
+            QuantumGatePattern::Rx(angle) => {
+                let mut values = std::collections::HashMap::new();
+                values.insert("theta".to_string(), 0.7_f64);
+                let v = angle.eval(&values).expect("angle must evaluate");
+                assert!((v - 0.7).abs() < 1e-10, "angle was {v}");
+            }
+            other => panic!("expected Rx, got {other:?}"),
+        }
+
+        assert!(matches!(
+            recognize_gate_pattern(&make_rotation(Expression::symbol("Y"))),
+            QuantumGatePattern::Ry(_)
+        ));
+        assert!(matches!(
+            recognize_gate_pattern(&make_rotation(Expression::symbol("Z"))),
+            QuantumGatePattern::Rz(_)
+        ));
+
+        // Bare symbols still resolve to their fixed-gate variants.
+        assert_eq!(
+            recognize_gate_pattern(&Expression::symbol("H")),
+            QuantumGatePattern::Hadamard
+        );
+
+        // A non-rotation, non-symbol expression is Unknown.
+        assert_eq!(
+            recognize_gate_pattern(&(Expression::symbol("x") + Expression::symbol("y"))),
+            QuantumGatePattern::Unknown
+        );
+    }
+
+    #[test]
+    fn test_recognize_variational_pattern() {
+        let half = Expression::float_unchecked(0.5);
+
+        // exp(-i * beta_0 * X / 2) is a QAOA mixer term.
+        let beta = Expression::symbol("beta_0");
+        let mixer = crate::ops::trig::exp(
+            &(-(((Expression::i() * beta) * Expression::symbol("X")) * half.clone())),
+        );
+        match recognize_variational_pattern(&mixer) {
+            Some(VariationalPattern::QaoaMixer { beta }) => {
+                assert!(is_qaoa_parameter(&flatten_factors(&beta)[0]));
+            }
+            other => panic!("expected QaoaMixer, got {other:?}"),
+        }
+
+        // exp(-i * gamma_1 * Z / 2) is a QAOA cost term.
+        let gamma = Expression::symbol("gamma_1");
+        let cost = crate::ops::trig::exp(
+            &(-(((Expression::i() * gamma) * Expression::symbol("Z")) * half.clone())),
+        );
+        assert!(matches!(
+            recognize_variational_pattern(&cost),
+            Some(VariationalPattern::QaoaCost { .. })
+        ));
+
+        // exp(-i * theta_0 * Y / 2) with a non-QAOA-named angle is a plain
+        // single rotation, not a QAOA variant.
+        let theta = Expression::symbol("theta_0");
+        let single = crate::ops::trig::exp(
+            &(-(((Expression::i() * theta) * Expression::symbol("Y")) * half)),
+        );
+        match recognize_variational_pattern(&single) {
+            Some(VariationalPattern::SingleRotation { axis, .. }) => assert_eq!(axis, 'y'),
+            other => panic!("expected SingleRotation, got {other:?}"),
+        }
+
+        // A non-rotation expression yields no variational pattern.
+        assert!(recognize_variational_pattern(&Expression::symbol("H")).is_none());
     }
 }

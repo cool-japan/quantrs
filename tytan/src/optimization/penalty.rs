@@ -3,6 +3,7 @@
 //! This module provides advanced penalty weight optimization using SciRS2
 //! for automatic tuning and constraint satisfaction analysis.
 
+use crate::optimization::constraints::{ConstraintType, Expression};
 use scirs2_core::ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -212,14 +213,22 @@ impl PenaltyOptimizer {
     }
 
     /// Evaluate single constraint violation
+    ///
+    /// Actually evaluates `constraint.expression` against `assignment`
+    /// (mapped through `var_map`) and computes the real violation for
+    /// `constraint.constraint_type`, rather than a hardcoded `0.0`.
     fn evaluate_constraint_violation(
         &self,
-        _constraint: &ConstraintExpr,
-        _assignment: &[bool],
-        _var_map: &HashMap<String, usize>,
+        constraint: &ConstraintExpr,
+        assignment: &[bool],
+        var_map: &HashMap<String, usize>,
     ) -> Result<f64, Box<dyn std::error::Error>> {
-        // Placeholder evaluation - in real implementation would parse and evaluate expression
-        let value: f64 = 0.0; // Placeholder
+        let named_assignment: HashMap<String, bool> = var_map
+            .iter()
+            .filter_map(|(name, &index)| assignment.get(index).map(|&value| (name.clone(), value)))
+            .collect();
+
+        let value = constraint.violation(&named_assignment);
 
         // Calculate violation based on constraint type
         Ok(match self.config.penalty_type {
@@ -436,7 +445,9 @@ impl crate::scirs_stub::scirs2_optimization::ObjectiveFunction for WeightOptimiz
     }
 }
 
-/// Compiled model placeholder
+/// A penalty-optimization view of a compiled QUBO/HOBO model: the set of
+/// named constraints (as real, evaluable [`ConstraintExpr`]s) plus the
+/// variable name -> QUBO index mapping used to interpret sample bit vectors.
 #[derive(Debug, Clone)]
 pub struct CompiledModel {
     constraints: HashMap<String, ConstraintExpr>,
@@ -457,6 +468,30 @@ impl CompiledModel {
         }
     }
 
+    /// Build a model with an explicit variable ordering (name -> QUBO index).
+    #[must_use]
+    pub fn with_variables(variables: &[String]) -> Self {
+        let variable_map = variables
+            .iter()
+            .enumerate()
+            .map(|(index, name)| (name.clone(), index))
+            .collect();
+        Self {
+            constraints: HashMap::new(),
+            variable_map,
+        }
+    }
+
+    /// Register a real constraint to be tracked/optimized.
+    pub fn add_constraint(&mut self, name: impl Into<String>, constraint: ConstraintExpr) {
+        self.constraints.insert(name.into(), constraint);
+    }
+
+    /// Register (or overwrite) a variable's QUBO index.
+    pub fn set_variable_index(&mut self, name: impl Into<String>, index: usize) {
+        self.variable_map.insert(name.into(), index);
+    }
+
     pub const fn get_constraints(&self) -> &HashMap<String, ConstraintExpr> {
         &self.constraints
     }
@@ -471,19 +506,32 @@ impl CompiledModel {
     }
 }
 
-/// Constraint expression placeholder
+/// A real, evaluable constraint expression: an [`Expression`] tree (reusing
+/// the evaluator from [`crate::optimization::constraints`]) together with
+/// the [`ConstraintType`] that determines how far a given expression value
+/// is from feasibility.
 #[derive(Debug, Clone)]
 pub struct ConstraintExpr {
-    pub expression: String,
+    pub expression: Expression,
+    pub constraint_type: ConstraintType,
 }
 
-// Helper trait extension for Term evaluation
-trait TermEvaluator {
-    fn evaluate_with_assignment(
-        &self,
-        assignment: &[bool],
-        var_map: &HashMap<String, usize>,
-    ) -> Result<f64, Box<dyn std::error::Error>>;
+impl ConstraintExpr {
+    #[must_use]
+    pub const fn new(expression: Expression, constraint_type: ConstraintType) -> Self {
+        Self {
+            expression,
+            constraint_type,
+        }
+    }
+
+    /// Evaluate the real constraint violation (`0.0` when satisfied) for a
+    /// given named variable assignment.
+    #[must_use]
+    pub fn violation(&self, assignment: &HashMap<String, bool>) -> f64 {
+        let value = self.expression.evaluate(assignment);
+        self.constraint_type.violation(value)
+    }
 }
 
 /// Analyze penalty function behavior
@@ -599,4 +647,89 @@ pub struct PenaltyPoint {
     pub avg_penalty: f64,
     pub max_penalty: f64,
     pub min_penalty: f64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::optimization::constraints::Variable;
+
+    /// Builds a model with a single equality constraint `x0 == 1` over two
+    /// QUBO variables `x0`, `x1`.
+    fn equality_model() -> CompiledModel {
+        let mut model = CompiledModel::with_variables(&["x0".to_string(), "x1".to_string()]);
+        let expr: Expression = Variable::new("x0".to_string()).into();
+        model.add_constraint(
+            "x0_must_be_true",
+            ConstraintExpr::new(expr, ConstraintType::Equality { target: 1.0 }),
+        );
+        model
+    }
+
+    #[test]
+    fn test_evaluate_constraint_violation_is_real() {
+        let optimizer = PenaltyOptimizer::new(PenaltyConfig::default());
+        let model = equality_model();
+        let constraint = &model.get_constraints()["x0_must_be_true"];
+
+        // x0 = false violates x0 == 1 by -1.0; quadratic penalty type squares it.
+        let violated = optimizer
+            .evaluate_constraint_violation(constraint, &[false, true], model.get_variable_map())
+            .expect("evaluation should succeed");
+        assert_eq!(violated, 1.0);
+
+        // x0 = true satisfies the constraint exactly.
+        let satisfied = optimizer
+            .evaluate_constraint_violation(constraint, &[true, false], model.get_variable_map())
+            .expect("evaluation should succeed");
+        assert_eq!(satisfied, 0.0);
+    }
+
+    #[test]
+    fn test_optimize_penalties_detects_real_violations() {
+        let mut optimizer = PenaltyOptimizer::new(PenaltyConfig {
+            max_iterations: 5,
+            ..PenaltyConfig::default()
+        });
+        let model = equality_model();
+        optimizer.initialize_weights(&["x0_must_be_true".to_string()]);
+
+        // All sampled assignments violate x0 == 1 (x0 is always false).
+        let sample_results = vec![
+            (vec![false, false], 0.0),
+            (vec![false, true], 0.0),
+            (vec![false, true], 0.0),
+        ];
+
+        let result = optimizer
+            .optimize_penalties(&model, &sample_results)
+            .expect("optimization should succeed");
+
+        // With a genuine (nonzero) violation, satisfaction cannot be
+        // trivially reported as perfect, and the penalty weight must have
+        // been increased from its initial value to push toward feasibility.
+        assert!(result.final_violations["x0_must_be_true"].abs() > 0.0);
+        assert!(result.constraint_satisfaction < 1.0);
+        assert!(
+            result.optimal_weights["x0_must_be_true"] > PenaltyConfig::default().initial_weight
+        );
+    }
+
+    #[test]
+    fn test_optimize_penalties_recognizes_feasible_samples() {
+        let mut optimizer = PenaltyOptimizer::new(PenaltyConfig::default());
+        let model = equality_model();
+        optimizer.initialize_weights(&["x0_must_be_true".to_string()]);
+
+        // All sampled assignments satisfy x0 == 1.
+        let sample_results = vec![(vec![true, false], -1.0), (vec![true, true], -0.5)];
+
+        let result = optimizer
+            .optimize_penalties(&model, &sample_results)
+            .expect("optimization should succeed");
+
+        assert!(result.converged);
+        assert_eq!(result.constraint_satisfaction, 1.0);
+        assert_eq!(result.final_violations["x0_must_be_true"], 0.0);
+    }
 }

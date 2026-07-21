@@ -1,188 +1,23 @@
-//! Advanced Error Mitigation for Quantum Machine Learning
-//!
-//! This module provides comprehensive error mitigation techniques specifically designed
-//! for quantum machine learning applications, including noise-aware training,
-//! error correction protocols, and adaptive mitigation strategies.
+//! Core mitigation logic: [`QuantumMLErrorMitigator`]'s constructors, the
+//! strategy-dispatch pipeline (`mitigate_training_errors`/`mitigate_inference_errors`),
+//! the real ZNE/readout-error-correction implementations, and the adaptive-strategy
+//! machinery. Data types live in `super::types`.
 
+use super::types::*;
 use crate::error::{MLError, Result};
 use quantrs2_circuit::builder::Simulator;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::qubit::QubitId;
 use quantrs2_sim::noise::NoiseModelBuilder;
 use quantrs2_sim::statevector::StateVectorSimulator;
-use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayD, Axis};
+use scirs2_core::ndarray::{Array1, Array2, Axis};
 use scirs2_core::random::prelude::*;
 use scirs2_core::Complex64;
-use std::collections::HashMap;
-use std::sync::Arc;
 
 /// Number of measurement shots simulated per circuit execution during error
 /// mitigation (matches the shape of the `Array2` measurement buffers used
 /// throughout this module).
 const DEFAULT_NUM_SHOTS: usize = 100;
-
-/// Advanced error mitigation framework for quantum ML
-pub struct QuantumMLErrorMitigator {
-    pub mitigation_strategy: MitigationStrategy,
-    pub noise_model: NoiseModel,
-    pub calibration_data: CalibrationData,
-    pub adaptive_config: AdaptiveConfig,
-    pub performance_metrics: PerformanceMetrics,
-}
-
-/// Performance tracker for mitigation strategies
-#[derive(Debug, Clone)]
-pub struct PerformanceTracker {
-    /// Performance metrics over time
-    pub metrics_history: Vec<PerformanceMetrics>,
-    /// Current performance
-    pub current_performance: PerformanceMetrics,
-}
-
-/// Error mitigation strategies for quantum ML
-#[derive(Debug, Clone)]
-pub enum MitigationStrategy {
-    /// Zero Noise Extrapolation
-    ZNE {
-        scale_factors: Vec<f64>,
-        extrapolation_method: ExtrapolationMethod,
-        circuit_folding: CircuitFoldingMethod,
-    },
-    /// Readout Error Mitigation
-    ReadoutErrorMitigation {
-        calibration_matrix: Array2<f64>,
-        correction_method: ReadoutCorrectionMethod,
-        regularization: f64,
-    },
-    /// Clifford Data Regression
-    CDR {
-        training_circuits: Vec<CliffordCircuit>,
-        regression_model: CDRModel,
-        feature_extraction: FeatureExtractionMethod,
-    },
-    /// Symmetry Verification
-    SymmetryVerification {
-        symmetry_groups: Vec<SymmetryGroup>,
-        verification_circuits: Vec<VerificationCircuit>,
-        post_selection: bool,
-    },
-    /// Virtual Distillation
-    VirtualDistillation {
-        distillation_rounds: usize,
-        entanglement_protocol: EntanglementProtocol,
-        purification_threshold: f64,
-    },
-    /// Machine Learning-based Mitigation
-    MLMitigation {
-        noise_predictor: NoisePredictorModel,
-        correction_network: CorrectionNetwork,
-        training_data: TrainingDataSet,
-    },
-    /// Hybrid Classical-Quantum Error Correction
-    HybridErrorCorrection {
-        classical_preprocessing: ClassicalPreprocessor,
-        quantum_correction: QuantumErrorCorrector,
-        post_processing: ClassicalPostprocessor,
-    },
-    /// Adaptive Multi-Strategy
-    AdaptiveMultiStrategy {
-        strategies: Vec<MitigationStrategy>,
-        selection_policy: StrategySelectionPolicy,
-        performance_tracker: PerformanceTracker,
-    },
-}
-
-/// Noise models for quantum devices
-#[derive(Debug, Clone)]
-pub struct NoiseModel {
-    pub gate_errors: HashMap<String, GateErrorModel>,
-    pub measurement_errors: MeasurementErrorModel,
-    pub coherence_times: CoherenceTimeModel,
-    pub crosstalk_matrix: Array2<f64>,
-    pub temporal_correlations: TemporalCorrelationModel,
-}
-
-/// Gate error models
-#[derive(Debug, Clone)]
-pub struct GateErrorModel {
-    pub error_rate: f64,
-    pub error_type: ErrorType,
-    pub coherence_limited: bool,
-    pub gate_time: f64,
-    pub fidelity_model: FidelityModel,
-}
-
-/// Types of quantum errors
-#[derive(Debug, Clone)]
-pub enum ErrorType {
-    Depolarizing {
-        strength: f64,
-    },
-    Amplitude {
-        damping_rate: f64,
-    },
-    Phase {
-        dephasing_rate: f64,
-    },
-    Pauli {
-        px: f64,
-        py: f64,
-        pz: f64,
-    },
-    Coherent {
-        rotation_angle: f64,
-        rotation_axis: Array1<f64>,
-    },
-    Correlated {
-        correlation_matrix: Array2<f64>,
-    },
-}
-
-/// Measurement error model
-#[derive(Debug, Clone)]
-pub struct MeasurementErrorModel {
-    pub readout_fidelity: f64,
-    pub assignment_matrix: Array2<f64>,
-    pub state_preparation_errors: Array1<f64>,
-    pub measurement_crosstalk: Array2<f64>,
-}
-
-/// Coherence time parameters
-#[derive(Debug, Clone)]
-pub struct CoherenceTimeModel {
-    pub t1_times: Array1<f64>,      // Relaxation times
-    pub t2_times: Array1<f64>,      // Dephasing times
-    pub t2_echo_times: Array1<f64>, // Echo dephasing times
-    pub temporal_fluctuations: TemporalFluctuation,
-}
-
-/// Temporal correlation model for noise
-#[derive(Debug, Clone)]
-pub struct TemporalCorrelationModel {
-    pub correlation_function: CorrelationFunction,
-    pub correlation_time: f64,
-    pub noise_spectrum: NoiseSpectrum,
-}
-
-/// Calibration data for error mitigation
-#[derive(Debug, Clone)]
-pub struct CalibrationData {
-    pub process_tomography: HashMap<String, ProcessMatrix>,
-    pub state_tomography: HashMap<String, StateMatrix>,
-    pub randomized_benchmarking: RBData,
-    pub gate_set_tomography: GSTData,
-    pub noise_spectroscopy: SpectroscopyData,
-}
-
-/// Adaptive configuration for dynamic error mitigation
-#[derive(Debug, Clone)]
-pub struct AdaptiveConfig {
-    pub adaptation_frequency: usize,
-    pub performance_threshold: f64,
-    pub strategy_switching_policy: SwitchingPolicy,
-    pub online_calibration: bool,
-    pub feedback_mechanism: FeedbackMechanism,
-}
 
 impl QuantumMLErrorMitigator {
     /// Create a new error mitigation framework
@@ -1100,294 +935,6 @@ impl QuantumMLErrorMitigator {
 
 // Supporting structures and implementations...
 
-#[derive(Debug, Clone)]
-pub struct MitigatedTrainingData {
-    pub measurements: Array2<f64>,
-    pub gradients: Array1<f64>,
-    pub confidence_scores: Array1<f64>,
-    pub mitigation_overhead: f64,
-}
-
-#[derive(Debug, Clone)]
-pub struct MitigatedInferenceData {
-    pub measurements: Array2<f64>,
-    pub uncertainty: Array1<f64>,
-    pub reliability_score: f64,
-}
-
-#[derive(Debug, Clone)]
-pub enum ExtrapolationMethod {
-    Polynomial { degree: usize },
-    Exponential { exponential_form: ExponentialForm },
-    Richardson { orders: Vec<usize> },
-    Adaptive { method_selection: MethodSelection },
-}
-
-#[derive(Debug, Clone)]
-pub enum ReadoutCorrectionMethod {
-    MatrixInversion,
-    ConstrainedLeastSquares,
-    IterativeMaximumLikelihood,
-}
-
-#[derive(Debug, Clone)]
-pub enum CircuitFoldingMethod {
-    GlobalFolding,
-    LocalFolding { gate_priorities: Vec<String> },
-    ParametricFolding { scaling_function: ScalingFunction },
-}
-
-// Additional supporting types and implementations...
-
-#[derive(Debug, Clone)]
-pub struct QuantumCircuit {
-    pub gates: Vec<QuantumGate>,
-    pub qubits: usize,
-}
-
-impl QuantumCircuit {
-    pub fn num_qubits(&self) -> usize {
-        self.qubits
-    }
-
-    pub fn with_parameters(&self, params: &Array1<f64>) -> Result<Self> {
-        // Create circuit with new parameters
-        Ok(self.clone())
-    }
-
-    pub fn clone(&self) -> Self {
-        Self {
-            gates: self.gates.clone(),
-            qubits: self.qubits,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct QuantumGate {
-    pub name: String,
-    pub qubits: Vec<usize>,
-    pub parameters: Array1<f64>,
-}
-
-// Default implementations
-impl Default for CalibrationData {
-    fn default() -> Self {
-        Self {
-            process_tomography: HashMap::new(),
-            state_tomography: HashMap::new(),
-            randomized_benchmarking: RBData::default(),
-            gate_set_tomography: GSTData::default(),
-            noise_spectroscopy: SpectroscopyData::default(),
-        }
-    }
-}
-
-impl Default for AdaptiveConfig {
-    fn default() -> Self {
-        Self {
-            adaptation_frequency: 100,
-            performance_threshold: 0.8,
-            strategy_switching_policy: SwitchingPolicy::PerformanceBased,
-            online_calibration: true,
-            feedback_mechanism: FeedbackMechanism::default(),
-        }
-    }
-}
-
-impl Default for PerformanceTracker {
-    fn default() -> Self {
-        Self {
-            metrics_history: Vec::new(),
-            current_performance: PerformanceMetrics::new(),
-        }
-    }
-}
-
-// Additional placeholder structures for compilation
-#[derive(Debug, Clone, Default)]
-pub struct ProcessMatrix;
-
-#[derive(Debug, Clone, Default)]
-pub struct StateMatrix;
-
-#[derive(Debug, Clone, Default)]
-pub struct RBData;
-
-#[derive(Debug, Clone, Default)]
-pub struct GSTData;
-
-#[derive(Debug, Clone, Default)]
-pub struct SpectroscopyData;
-
-#[derive(Debug, Clone)]
-pub enum SwitchingPolicy {
-    PerformanceBased,
-    ResourceOptimized,
-    HybridAdaptive,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct FeedbackMechanism;
-
-#[derive(Debug, Clone, Default)]
-pub struct PerformanceMetrics {
-    pub mitigation_overhead: f64,
-}
-
-impl PerformanceMetrics {
-    pub fn new() -> Self {
-        Self {
-            mitigation_overhead: 0.1,
-        }
-    }
-
-    pub fn update(&mut self, _measurements: &Array2<f64>, _gradients: &Array1<f64>) -> Result<()> {
-        // Update performance metrics
-        Ok(())
-    }
-
-    pub fn current_performance(&self) -> f64 {
-        0.85 // Placeholder
-    }
-}
-
-// Additional placeholder types for full compilation
-#[derive(Debug, Clone)]
-pub struct CliffordCircuit;
-
-#[derive(Debug, Clone)]
-pub struct CDRModel;
-
-#[derive(Debug, Clone)]
-pub enum FeatureExtractionMethod {
-    CircuitDepth,
-    GateCount,
-    EntanglementStructure,
-}
-
-#[derive(Debug, Clone)]
-pub struct SymmetryGroup;
-
-#[derive(Debug, Clone)]
-pub struct VerificationCircuit;
-
-#[derive(Debug, Clone)]
-pub enum EntanglementProtocol {
-    Bell,
-    GHZ,
-    Cluster,
-}
-
-#[derive(Debug, Clone)]
-pub struct NoisePredictorModel;
-
-#[derive(Debug, Clone)]
-pub struct CorrectionNetwork;
-
-#[derive(Debug, Clone)]
-pub struct TrainingDataSet;
-
-#[derive(Debug, Clone)]
-pub struct ClassicalPreprocessor;
-
-#[derive(Debug, Clone)]
-pub struct QuantumErrorCorrector;
-
-#[derive(Debug, Clone)]
-pub struct ClassicalPostprocessor;
-
-#[derive(Debug, Clone)]
-pub struct StrategySelectionPolicy;
-
-#[derive(Debug, Clone)]
-pub enum ExponentialForm {
-    SingleExponential,
-    DoubleExponential,
-    Stretched,
-}
-
-#[derive(Debug, Clone)]
-pub enum MethodSelection {
-    CrossValidation,
-    BayesianOptimization,
-    AdaptiveGrid,
-}
-
-#[derive(Debug, Clone)]
-pub enum ScalingFunction {
-    Linear,
-    Polynomial,
-    Exponential,
-}
-
-#[derive(Debug, Clone)]
-pub struct FidelityModel;
-
-#[derive(Debug, Clone)]
-pub struct TemporalFluctuation;
-
-#[derive(Debug, Clone)]
-pub enum CorrelationFunction {
-    Exponential,
-    Gaussian,
-    PowerLaw,
-}
-
-#[derive(Debug, Clone)]
-pub struct NoiseSpectrum;
-
-/// Real (non-placeholder) noise statistics computed from measured data by
-/// [`QuantumMLErrorMitigator::analyze_noise_statistics`].
-#[derive(Debug, Clone, Default)]
-pub struct NoiseStatistics {
-    /// Mean of all measurement values.
-    pub mean: f64,
-    /// Variance of all measurement values.
-    pub variance: f64,
-    /// Empirical estimate, in `[0, 1]`, of the per-shot error rate, derived
-    /// from how far measured values land from the nearest ideal
-    /// computational-basis outcome (0 or 1).
-    pub estimated_error_rate: f64,
-}
-
-/// Exponential-moving-average blend factor used when updating calibration
-/// data from freshly observed statistics.
-const CALIBRATION_BLEND: f64 = 0.1;
-
-// Additional implementation methods for supporting types
-impl GateErrorModel {
-    /// Blend the calibrated `error_rate` toward the freshly observed
-    /// empirical error-rate estimate (an exponential moving average, so a
-    /// single noisy observation cannot swamp prior calibration).
-    pub fn update_from_statistics(&mut self, stats: &NoiseStatistics) -> Result<()> {
-        self.error_rate = ((1.0 - CALIBRATION_BLEND) * self.error_rate
-            + CALIBRATION_BLEND * stats.estimated_error_rate)
-            .clamp(0.0, 1.0);
-        Ok(())
-    }
-}
-
-impl MeasurementErrorModel {
-    /// Blend `readout_fidelity` toward the fraction of measured values that
-    /// land close to an ideal computational-basis outcome (0 or 1).
-    pub fn update_from_measurements(&mut self, measurements: &Array2<f64>) -> Result<()> {
-        let n = measurements.len();
-        if n == 0 {
-            return Ok(());
-        }
-        let assignment_confidence = measurements
-            .iter()
-            .map(|&v| 1.0 - (v - v.round()).abs().min(0.5) * 2.0)
-            .sum::<f64>()
-            / n as f64;
-        self.readout_fidelity = ((1.0 - CALIBRATION_BLEND) * self.readout_fidelity
-            + CALIBRATION_BLEND * assignment_confidence)
-            .clamp(0.0, 1.0);
-        Ok(())
-    }
-}
-
 impl QuantumMLErrorMitigator {
     /// Validate that `calibration_matrix` is square and matches the width of
     /// `measurements` (both readout-correction preconditions).
@@ -1652,83 +1199,95 @@ impl QuantumMLErrorMitigator {
         Ok(measurements.clone()) // Placeholder
     }
 
+    /// Real, in-place escalation of the currently selected strategy's
+    /// hyperparameters toward higher accuracy: for ZNE, adds a higher noise
+    /// scale factor (more extrapolation data points); for readout-error
+    /// mitigation, escalates the correction method toward the most accurate
+    /// (iterative maximum-likelihood) one. Strategies with no honestly
+    /// implemented computation (CDR, symmetry verification, virtual
+    /// distillation, ML mitigation, hybrid correction) have no real
+    /// hyperparameters to escalate and are left untouched.
     fn switch_to_best_performing_strategy(&mut self) -> Result<()> {
-        // Switch to best performing mitigation strategy
-        Ok(())
+        self.escalate_strategy_precision()
     }
 
+    /// Real, in-place relaxation of the currently selected strategy's
+    /// hyperparameters toward lower resource usage: for ZNE, drops the most
+    /// expensive (highest) noise scale factor; for readout-error
+    /// mitigation, falls back to the cheapest (exact matrix-inversion)
+    /// correction method.
     fn switch_to_resource_optimal_strategy(&mut self) -> Result<()> {
-        // Switch to most resource efficient strategy
-        Ok(())
+        self.relax_strategy_precision()
     }
 
+    /// Hybrid policy: escalate precision when the real, data-driven
+    /// performance score has dropped below the configured threshold,
+    /// otherwise relax back toward the cheaper configuration.
     fn switch_to_hybrid_adaptive_strategy(&mut self) -> Result<()> {
-        // Switch to hybrid adaptive strategy
+        if self.performance_metrics.current_performance()
+            < self.adaptive_config.performance_threshold
+        {
+            self.escalate_strategy_precision()
+        } else {
+            self.relax_strategy_precision()
+        }
+    }
+
+    fn escalate_strategy_precision(&mut self) -> Result<()> {
+        match &mut self.mitigation_strategy {
+            MitigationStrategy::ZNE { scale_factors, .. } => {
+                let max_existing = scale_factors.iter().cloned().fold(1.0_f64, f64::max);
+                let next_scale = max_existing + 2.0;
+                if !scale_factors.iter().any(|&s| (s - next_scale).abs() < 1e-9) {
+                    scale_factors.push(next_scale);
+                    scale_factors
+                        .sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                }
+            }
+            MitigationStrategy::ReadoutErrorMitigation {
+                correction_method, ..
+            } => {
+                *correction_method = match correction_method {
+                    ReadoutCorrectionMethod::MatrixInversion => {
+                        ReadoutCorrectionMethod::ConstrainedLeastSquares
+                    }
+                    ReadoutCorrectionMethod::ConstrainedLeastSquares
+                    | ReadoutCorrectionMethod::IterativeMaximumLikelihood => {
+                        ReadoutCorrectionMethod::IterativeMaximumLikelihood
+                    }
+                };
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn relax_strategy_precision(&mut self) -> Result<()> {
+        match &mut self.mitigation_strategy {
+            MitigationStrategy::ZNE { scale_factors, .. } => {
+                if scale_factors.len() > 2 {
+                    let max_idx = scale_factors
+                        .iter()
+                        .enumerate()
+                        .max_by(|(_, a), (_, b)| {
+                            a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
+                        })
+                        .map(|(idx, _)| idx);
+                    if let Some(idx) = max_idx {
+                        scale_factors.remove(idx);
+                    }
+                }
+            }
+            MitigationStrategy::ReadoutErrorMitigation {
+                correction_method, ..
+            } => {
+                *correction_method = ReadoutCorrectionMethod::MatrixInversion;
+            }
+            _ => {}
+        }
         Ok(())
     }
 }
 
-// Trait implementations for ML models
-impl CDRModel {
-    pub fn train(&self, features: &Array2<f64>, labels: &Array1<f64>) -> Result<TrainedCDRModel> {
-        // Train CDR regression model
-        Ok(TrainedCDRModel::default())
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct TrainedCDRModel;
-
-impl TrainedCDRModel {
-    pub fn predict(&self, features: &Array1<f64>) -> Result<Array1<f64>> {
-        // Predict using trained CDR model
-        Ok(Array1::zeros(features.len())) // Placeholder
-    }
-}
-
-impl NoisePredictorModel {
-    pub fn predict(&self, features: &Array1<f64>) -> Result<Array1<f64>> {
-        // Predict noise characteristics
-        Ok(Array1::zeros(features.len())) // Placeholder
-    }
-}
-
-impl CorrectionNetwork {
-    pub fn forward(&self, input: &Array2<f64>) -> Result<Array2<f64>> {
-        // Forward pass through correction network
-        Ok(Array2::zeros(input.dim())) // Placeholder
-    }
-}
-
-impl ClassicalPreprocessor {
-    pub fn process(&self, data: &Array2<f64>) -> Result<Array2<f64>> {
-        // Classical preprocessing
-        Ok(data.clone()) // Placeholder
-    }
-}
-
-impl QuantumErrorCorrector {
-    pub fn correct(&self, circuit: &QuantumCircuit, data: &Array2<f64>) -> Result<Array2<f64>> {
-        // Quantum error correction
-        Ok(data.clone()) // Placeholder
-    }
-}
-
-impl ClassicalPostprocessor {
-    pub fn process(&self, data: &Array2<f64>) -> Result<Array2<f64>> {
-        // Classical post-processing
-        Ok(data.clone()) // Placeholder
-    }
-}
-
-impl StrategySelectionPolicy {
-    pub fn select_strategy(
-        &self,
-        circuit: &QuantumCircuit,
-        metrics: &PerformanceMetrics,
-        strategies: &[MitigationStrategy],
-    ) -> Result<MitigationStrategy> {
-        // Select best strategy based on policy
-        Ok(strategies[0].clone()) // Placeholder
-    }
-}
+#[cfg(test)]
+mod tests;

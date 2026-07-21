@@ -10,7 +10,8 @@
 //! This integration enhances the quantum annealing framework with high-performance
 //! scientific computing capabilities from the `SciRS2` ecosystem.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::fmt::Write as _;
 use std::path::Path;
 
 use crate::applications::{ApplicationError, ApplicationResult};
@@ -342,12 +343,16 @@ impl SciRS2GraphAnalyzer {
             graph.add_node(i);
         }
 
-        // Add edges from non-zero quadratic terms
+        // Add edges from non-zero quadratic terms, tracking real adjacency
+        // (used below for a real clustering-coefficient computation).
         let mut num_edges = 0;
+        let mut adjacency: HashMap<usize, HashSet<usize>> = HashMap::new();
         for (i, j, weight) in qubo.iter_nonzeros() {
             if i < j && weight.abs() > 1e-12 {
                 graph.add_edge(i, j, weight);
                 num_edges += 1;
+                adjacency.entry(i).or_default().insert(j);
+                adjacency.entry(j).or_default().insert(i);
             }
         }
 
@@ -360,8 +365,9 @@ impl SciRS2GraphAnalyzer {
             0.0
         };
 
-        // For clustering coefficient, use a simplified estimation
-        let clustering_coef = self.estimate_clustering(num_nodes, num_edges);
+        // Real global clustering coefficient (transitivity), computed from
+        // the problem graph's own adjacency rather than a fixed constant.
+        let clustering_coef = Self::estimate_clustering(&adjacency);
 
         let connectivity = self.compute_connectivity(num_nodes, num_edges);
 
@@ -393,10 +399,44 @@ impl SciRS2GraphAnalyzer {
         num_edges as f64 / max_edges as f64
     }
 
-    const fn estimate_clustering(&self, _num_nodes: usize, _num_edges: usize) -> f64 {
-        // Simplified clustering estimation
-        // Would use scirs2-graph algorithms when API is stabilized
-        0.3
+    /// Compute the real global clustering coefficient (transitivity) of the
+    /// problem graph: `3 * (# triangles) / (# connected triples)`, evaluated
+    /// directly over `adjacency` rather than returning a fixed constant.
+    ///
+    /// For each node, we count how many of its neighbor pairs are themselves
+    /// connected (closed triples) versus the total number of neighbor pairs
+    /// (open + closed triples, i.e. `C(deg(v), 2)`). Summed over all nodes,
+    /// `closed / total` is exactly the standard transitivity ratio (both
+    /// numerator and denominator count each triangle/triple the same way,
+    /// once per constituent vertex, so the usual factor-of-3 cancels).
+    fn estimate_clustering(adjacency: &HashMap<usize, HashSet<usize>>) -> f64 {
+        let mut closed_triples: u64 = 0;
+        let mut total_triples: u64 = 0;
+
+        for neighbors in adjacency.values() {
+            let neighbor_list: Vec<usize> = neighbors.iter().copied().collect();
+            let degree = neighbor_list.len();
+            if degree < 2 {
+                continue;
+            }
+
+            for a in 0..neighbor_list.len() {
+                for b in (a + 1)..neighbor_list.len() {
+                    total_triples += 1;
+                    let (u, v) = (neighbor_list[a], neighbor_list[b]);
+                    let connected = adjacency.get(&u).is_some_and(|n| n.contains(&v));
+                    if connected {
+                        closed_triples += 1;
+                    }
+                }
+            }
+        }
+
+        if total_triples == 0 {
+            0.0
+        } else {
+            closed_triples as f64 / total_triples as f64
+        }
     }
 
     fn assess_embedding_difficulty(&self) -> EmbeddingDifficulty {
@@ -643,7 +683,14 @@ impl SciRS2EnergyPlotter {
         }
     }
 
-    /// Plot energy landscape (visualization placeholder for future scirs2-plot integration)
+    /// Write a real energy-landscape summary to `output_path`.
+    ///
+    /// No plotting backend (e.g. scirs2-plot) is wired into this crate, so
+    /// this does not render an image; instead it writes the real computed
+    /// energy statistics and a per-solution energy table as a plain-text
+    /// report to the exact path requested, rather than silently discarding
+    /// `output_path` after only printing to stdout. Returns a real I/O error
+    /// if the file cannot be written.
     pub fn plot_energy_landscape(
         &self,
         qubo: &SciRS2QuboModel,
@@ -651,14 +698,18 @@ impl SciRS2EnergyPlotter {
         energies: &[f64],
         output_path: &Path,
     ) -> ApplicationResult<()> {
-        println!("=== Energy Landscape Summary ===");
-        println!("Output path: {output_path:?}");
-        println!("Problem size: {} variables", qubo.num_variables);
-        println!("Number of solutions: {}", solutions.len());
+        let mut report = String::new();
+        let _ = writeln!(report, "=== Energy Landscape Summary ===");
+        let _ = writeln!(report, "Problem size: {} variables", qubo.num_variables);
+        let _ = writeln!(report, "Number of solutions: {}", solutions.len());
 
         let stats = qubo.get_statistics();
-        println!("Matrix density: {:.4}", stats.density);
-        println!("Non-zero quadratic terms: {}", stats.num_quadratic_terms);
+        let _ = writeln!(report, "Matrix density: {:.4}", stats.density);
+        let _ = writeln!(
+            report,
+            "Non-zero quadratic terms: {}",
+            stats.num_quadratic_terms
+        );
 
         if !energies.is_empty() {
             let energy_arr = Array1::from_vec(energies.to_vec());
@@ -667,36 +718,74 @@ impl SciRS2EnergyPlotter {
             let mean_e = mean(&energy_arr.view()).unwrap_or(0.0);
             let std_e = std(&energy_arr.view(), 1, None).unwrap_or(0.0);
 
-            println!("Energy statistics:");
-            println!("  Min:  {min_e:.6}");
-            println!("  Max:  {max_e:.6}");
-            println!("  Mean: {mean_e:.6}");
-            println!("  Std:  {std_e:.6}");
-        }
+            let _ = writeln!(report, "Energy statistics:");
+            let _ = writeln!(report, "  Min:  {min_e:.6}");
+            let _ = writeln!(report, "  Max:  {max_e:.6}");
+            let _ = writeln!(report, "  Mean: {mean_e:.6}");
+            let _ = writeln!(report, "  Std:  {std_e:.6}");
 
-        println!("================================");
-        Ok(())
+            let _ = writeln!(report, "index,energy");
+            for (idx, energy) in energies.iter().enumerate() {
+                let _ = writeln!(report, "{idx},{energy:.6}");
+            }
+        }
+        let _ = writeln!(report, "================================");
+
+        println!("{report}");
+        std::fs::write(output_path, &report).map_err(|e| {
+            ApplicationError::OptimizationError(format!(
+                "failed to write energy landscape summary to {output_path:?}: {e}"
+            ))
+        })
     }
 
-    /// Generate solution quality histogram (placeholder)
+    /// Write a real solution-quality histogram summary to `output_path`.
+    ///
+    /// As with [`Self::plot_energy_landscape`], no plotting backend is
+    /// available: this writes the real computed distribution statistics and
+    /// binned counts as a plain-text report to the requested path instead of
+    /// silently ignoring it. Returns a real I/O error if the file cannot be
+    /// written.
     pub fn plot_solution_histogram(
         &self,
         energies: &[f64],
         output_path: &Path,
     ) -> ApplicationResult<()> {
-        println!("=== Solution Histogram ===");
-        println!("Output path: {output_path:?}");
-        println!("Number of samples: {}", energies.len());
+        let mut report = String::new();
+        let _ = writeln!(report, "=== Solution Histogram ===");
+        let _ = writeln!(report, "Number of samples: {}", energies.len());
 
         if !energies.is_empty() {
             let energy_arr = Array1::from_vec(energies.to_vec());
             let mean_e = mean(&energy_arr.view()).unwrap_or(0.0);
             let std_e = std(&energy_arr.view(), 1, None).unwrap_or(0.0);
-            println!("Distribution: mean={mean_e:.4}, std={std_e:.4}");
-        }
+            let _ = writeln!(report, "Distribution: mean={mean_e:.4}, std={std_e:.4}");
 
-        println!("==========================");
-        Ok(())
+            // Real fixed-bin-count histogram over the real energy samples.
+            const NUM_BINS: usize = 10;
+            let min_e = energies.iter().copied().fold(f64::INFINITY, f64::min);
+            let max_e = energies.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+            let span = (max_e - min_e).max(1e-12);
+            let mut bins = vec![0usize; NUM_BINS];
+            for &e in energies {
+                let idx = (((e - min_e) / span) * NUM_BINS as f64).floor() as usize;
+                bins[idx.min(NUM_BINS - 1)] += 1;
+            }
+            let _ = writeln!(report, "bin_start,bin_end,count");
+            for (i, count) in bins.iter().enumerate() {
+                let lo = min_e + span * i as f64 / NUM_BINS as f64;
+                let hi = min_e + span * (i + 1) as f64 / NUM_BINS as f64;
+                let _ = writeln!(report, "{lo:.6},{hi:.6},{count}");
+            }
+        }
+        let _ = writeln!(report, "==========================");
+
+        println!("{report}");
+        std::fs::write(output_path, &report).map_err(|e| {
+            ApplicationError::OptimizationError(format!(
+                "failed to write solution histogram to {output_path:?}: {e}"
+            ))
+        })
     }
 }
 
@@ -785,6 +874,56 @@ mod tests {
     }
 
     #[test]
+    fn clustering_coefficient_is_real_not_a_fixed_constant() {
+        // A path graph (0-1-2-3) has no triangles at all: the real global
+        // clustering coefficient must be exactly 0.0, not the old fabricated
+        // 0.3 that was returned unconditionally for every input.
+        let mut path_qubo = SciRS2QuboModel::new(4).expect("Failed to create QUBO model");
+        path_qubo
+            .set_quadratic(0, 1, 1.0)
+            .expect("Failed to set quadratic term");
+        path_qubo
+            .set_quadratic(1, 2, 1.0)
+            .expect("Failed to set quadratic term");
+        path_qubo
+            .set_quadratic(2, 3, 1.0)
+            .expect("Failed to set quadratic term");
+
+        let mut path_analyzer = SciRS2GraphAnalyzer::new();
+        let path_result = path_analyzer
+            .analyze_problem_graph(&path_qubo)
+            .expect("Failed to analyze graph");
+        assert!(
+            path_result.metrics.clustering_coefficient.abs() < 1e-12,
+            "a triangle-free path graph must have clustering coefficient 0.0, got {}",
+            path_result.metrics.clustering_coefficient
+        );
+
+        // A triangle (0-1-2-0) is fully transitive: every connected triple is
+        // also a closed triangle, so the real coefficient must be exactly 1.0.
+        let mut triangle_qubo = SciRS2QuboModel::new(3).expect("Failed to create QUBO model");
+        triangle_qubo
+            .set_quadratic(0, 1, 1.0)
+            .expect("Failed to set quadratic term");
+        triangle_qubo
+            .set_quadratic(1, 2, 1.0)
+            .expect("Failed to set quadratic term");
+        triangle_qubo
+            .set_quadratic(0, 2, 1.0)
+            .expect("Failed to set quadratic term");
+
+        let mut triangle_analyzer = SciRS2GraphAnalyzer::new();
+        let triangle_result = triangle_analyzer
+            .analyze_problem_graph(&triangle_qubo)
+            .expect("Failed to analyze graph");
+        assert!(
+            (triangle_result.metrics.clustering_coefficient - 1.0).abs() < 1e-12,
+            "a triangle graph must have clustering coefficient 1.0, got {}",
+            triangle_result.metrics.clustering_coefficient
+        );
+    }
+
+    #[test]
     fn test_solution_analysis() {
         let solutions = vec![vec![1, 0, 1, 0], vec![0, 1, 0, 1], vec![1, 1, 0, 0]];
         let energies = vec![-1.0, -0.5, -0.8];
@@ -822,5 +961,52 @@ mod tests {
         // Memory usage should be much less than dense matrix
         let dense_memory = 1000 * 1000 * std::mem::size_of::<f64>();
         assert!(stats.memory_usage < dense_memory / 100); // At least 100x smaller
+    }
+
+    #[test]
+    fn plot_energy_landscape_actually_writes_the_requested_file() {
+        let qubo = SciRS2QuboModel::new(2).expect("Failed to create QUBO model");
+        let plotter = SciRS2EnergyPlotter::new();
+        let solutions = vec![vec![1, -1], vec![-1, 1]];
+        let energies = vec![-2.0, -1.0];
+
+        let mut path = std::env::temp_dir();
+        path.push(format!(
+            "quantrs2_anneal_energy_landscape_test_{}.txt",
+            std::process::id()
+        ));
+
+        plotter
+            .plot_energy_landscape(&qubo, &solutions, &energies, &path)
+            .expect("plotting should succeed");
+
+        let written = std::fs::read_to_string(&path).expect("output file should exist");
+        assert!(written.contains("Energy statistics"));
+        assert!(written.contains("Min:"));
+        assert!(written.contains("-2.0"));
+
+        std::fs::remove_file(&path).expect("cleanup should succeed");
+    }
+
+    #[test]
+    fn plot_solution_histogram_actually_writes_the_requested_file() {
+        let plotter = SciRS2EnergyPlotter::new();
+        let energies = vec![-3.0, -2.0, -1.0, 0.0, 1.0];
+
+        let mut path = std::env::temp_dir();
+        path.push(format!(
+            "quantrs2_anneal_solution_histogram_test_{}.txt",
+            std::process::id()
+        ));
+
+        plotter
+            .plot_solution_histogram(&energies, &path)
+            .expect("plotting should succeed");
+
+        let written = std::fs::read_to_string(&path).expect("output file should exist");
+        assert!(written.contains("Distribution: mean="));
+        assert!(written.contains("bin_start,bin_end,count"));
+
+        std::fs::remove_file(&path).expect("cleanup should succeed");
     }
 }

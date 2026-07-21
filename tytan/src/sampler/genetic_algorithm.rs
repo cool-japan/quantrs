@@ -117,6 +117,10 @@ pub struct GASampler {
     max_generations: usize,
     /// Population size
     population_size: usize,
+    /// Crossover strategy used by `run_qubo`/`run_hobo`
+    crossover_strategy: CrossoverStrategy,
+    /// Mutation strategy used by `run_qubo`/`run_hobo`
+    mutation_strategy: MutationStrategy,
 }
 
 /// Crossover strategy for genetic algorithm
@@ -155,6 +159,8 @@ impl GASampler {
             seed,
             max_generations: 1000,
             population_size: 100,
+            crossover_strategy: CrossoverStrategy::Adaptive,
+            mutation_strategy: MutationStrategy::Annealing(0.1, 0.01),
         }
     }
 
@@ -175,6 +181,8 @@ impl GASampler {
             seed,
             max_generations,
             population_size,
+            crossover_strategy: CrossoverStrategy::Adaptive,
+            mutation_strategy: MutationStrategy::Annealing(0.1, 0.01),
         }
     }
 
@@ -211,13 +219,15 @@ impl GASampler {
         seed: Option<u64>,
         max_generations: usize,
         population_size: usize,
-        _crossover: CrossoverStrategy, // Saved for future implementation
-        _mutation: MutationStrategy,   // Saved for future implementation
+        crossover: CrossoverStrategy,
+        mutation: MutationStrategy,
     ) -> Self {
         Self {
             seed,
             max_generations,
             population_size,
+            crossover_strategy: crossover,
+            mutation_strategy: mutation,
         }
     }
 
@@ -516,8 +526,12 @@ impl Sampler for GASampler {
         }
 
         // Genetic algorithm loop
-        for _ in 0..30 {
-            // Reduced number of generations for faster results
+        const HOBO_GENERATIONS: usize = 30; // Reduced number of generations for faster results
+        for generation in 0..HOBO_GENERATIONS {
+            // Diversity metric for the Adaptive mutation strategy, computed
+            // the same way as in `run_qubo`.
+            let diversity = self.calculate_diversity(&population);
+
             // Create next generation
             let mut next_population = Vec::with_capacity(pop_size);
 
@@ -530,13 +544,34 @@ impl Sampler for GASampler {
                 let parent1_idx = tournament_selection(&fitness, 3, &mut rng);
                 let parent2_idx = tournament_selection(&fitness, 3, &mut rng);
 
-                // Crossover
-                let (mut child1, mut child2) =
-                    simple_crossover(&population[parent1_idx], &population[parent2_idx], &mut rng);
+                // Crossover, respecting the configured strategy (this used
+                // to always use a hardcoded single-point crossover here,
+                // ignoring `with_advanced_params`).
+                let (mut child1, mut child2) = self.crossover(
+                    &population[parent1_idx],
+                    &population[parent2_idx],
+                    self.crossover_strategy,
+                    &mut rng,
+                );
 
-                // Mutation
-                mutate(&mut child1, 0.05, &mut rng);
-                mutate(&mut child2, 0.05, &mut rng);
+                // Mutation, respecting the configured strategy (this used
+                // to always use a hardcoded fixed 0.05 rate here).
+                self.mutate(
+                    &mut child1,
+                    self.mutation_strategy,
+                    generation,
+                    HOBO_GENERATIONS,
+                    Some(diversity),
+                    &mut rng,
+                );
+                self.mutate(
+                    &mut child2,
+                    self.mutation_strategy,
+                    generation,
+                    HOBO_GENERATIONS,
+                    Some(diversity),
+                    &mut rng,
+                );
 
                 // Add children
                 next_population.push(child1);
@@ -658,9 +693,11 @@ impl Sampler for GASampler {
             }]);
         }
 
-        // Use adaptive strategies by default
-        let crossover_strategy = CrossoverStrategy::Adaptive;
-        let mutation_strategy = MutationStrategy::Annealing(0.1, 0.01);
+        // Use the strategies configured via `with_advanced_params` (or the
+        // Adaptive/Annealing defaults from `new`/`with_params`), instead of
+        // silently ignoring whatever the caller configured.
+        let crossover_strategy = self.crossover_strategy;
+        let mutation_strategy = self.mutation_strategy;
         let selection_pressure = 3; // Tournament size
         let use_elitism = true;
 
@@ -857,45 +894,6 @@ fn calculate_energy(solution: &[bool], matrix: &Array<f64, Ix2>) -> f64 {
     energy
 }
 
-// Helper function for single-point crossover
-fn simple_crossover(
-    parent1: &[bool],
-    parent2: &[bool],
-    rng: &mut impl Rng,
-) -> (Vec<bool>, Vec<bool>) {
-    let n_vars = parent1.len();
-    let mut child1 = vec![false; n_vars];
-    let mut child2 = vec![false; n_vars];
-
-    // Use single-point crossover
-    let crossover_point = if n_vars > 1 {
-        rng.random_range(1..n_vars)
-    } else {
-        0 // Special case for one-variable problems
-    };
-
-    for i in 0..n_vars {
-        if i < crossover_point {
-            child1[i] = parent1[i];
-            child2[i] = parent2[i];
-        } else {
-            child1[i] = parent2[i];
-            child2[i] = parent1[i];
-        }
-    }
-
-    (child1, child2)
-}
-
-// Helper function for mutation
-fn mutate(individual: &mut [bool], rate: f64, rng: &mut impl Rng) {
-    for bit in individual.iter_mut() {
-        if rng.random_bool(rate) {
-            *bit = !*bit;
-        }
-    }
-}
-
 // Helper function for tournament selection
 fn tournament_selection(fitness: &[f64], tournament_size: usize, rng: &mut impl Rng) -> usize {
     // Handle edge cases
@@ -926,4 +924,81 @@ fn tournament_selection(fitness: &[f64], tournament_size: usize, rng: &mut impl 
     }
 
     best_idx
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sampler::Sampler;
+    use scirs2_core::ndarray::Array2;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_with_advanced_params_stores_configured_strategies() {
+        let sampler = GASampler::with_advanced_params(
+            Some(1),
+            50,
+            20,
+            CrossoverStrategy::TwoPoint,
+            MutationStrategy::Adaptive(0.01, 0.5),
+        );
+
+        // The old fabricated implementation silently discarded these two
+        // constructor arguments (the struct had no fields to store them in)
+        // and `run_qubo`/`run_hobo` always behaved as if
+        // CrossoverStrategy::Adaptive + MutationStrategy::Annealing(0.1,
+        // 0.01) had been requested, regardless of what was passed here.
+        assert!(matches!(
+            sampler.crossover_strategy,
+            CrossoverStrategy::TwoPoint
+        ));
+        match sampler.mutation_strategy {
+            MutationStrategy::Adaptive(min_rate, max_rate) => {
+                assert!((min_rate - 0.01).abs() < 1e-12);
+                assert!((max_rate - 0.5).abs() < 1e-12);
+            }
+            other => panic!("expected MutationStrategy::Adaptive, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_default_constructors_use_adaptive_annealing_defaults() {
+        let sampler = GASampler::new(Some(1));
+        assert!(matches!(
+            sampler.crossover_strategy,
+            CrossoverStrategy::Adaptive
+        ));
+        match sampler.mutation_strategy {
+            MutationStrategy::Annealing(initial, final_) => {
+                assert!((initial - 0.1).abs() < 1e-12);
+                assert!((final_ - 0.01).abs() < 1e-12);
+            }
+            other => panic!("expected MutationStrategy::Annealing, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_run_qubo_with_custom_strategy_produces_valid_results() {
+        let qubo = Array2::from_shape_fn((4, 4), |(i, j)| if i == j { -1.0 } else { 0.1 });
+        let mut var_map = HashMap::new();
+        for i in 0..4 {
+            var_map.insert(format!("x{i}"), i);
+        }
+
+        let sampler = GASampler::with_advanced_params(
+            Some(7),
+            30,
+            20,
+            CrossoverStrategy::SinglePoint,
+            MutationStrategy::FixedRate(0.2),
+        );
+
+        let results = sampler
+            .run_qubo(&(qubo, var_map), 5)
+            .expect("GA sampler should succeed with a configured strategy");
+        assert!(!results.is_empty());
+        for result in &results {
+            assert_eq!(result.assignments.len(), 4);
+        }
+    }
 }

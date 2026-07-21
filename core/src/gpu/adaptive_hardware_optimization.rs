@@ -445,7 +445,7 @@ impl AdaptiveHardwareOptimizer {
             let mut memory_bound_count = 0;
             let mut compute_bound_count = 0;
 
-            for (_key, profile) in profiles.iter() {
+            for profile in profiles.values() {
                 if profile.best_strategy == OptimizationStrategy::MemoryBound {
                     memory_bound_count += 1;
                 } else if profile.best_strategy == OptimizationStrategy::Throughput {
@@ -668,6 +668,42 @@ mod tests {
         let profile = optimizer.get_profile("test_workload");
         assert!(profile.is_some());
         assert_eq!(profile.expect("profile should exist").sample_count, 20);
+    }
+
+    #[test]
+    fn test_generate_recommendations_counts_memory_bound_profiles_via_values_iter() {
+        // Regression test for the `for profile in profiles.values()` refactor in
+        // `generate_recommendations` (previously `for (_key, profile) in profiles.iter()`).
+        // Verifies the value-only iteration still correctly tallies best-strategy
+        // counts across multiple distinct workload keys.
+        let config = AdaptiveOptimizationConfig::default();
+        let optimizer = AdaptiveHardwareOptimizer::new(config);
+
+        // Three memory-bound workloads and one throughput-bound workload: with a
+        // 3:1 ratio (> 2x), the memory-bound recommendation must be emitted.
+        for key in ["workload_a", "workload_b", "workload_c"] {
+            optimizer.record_execution(
+                key,
+                OptimizationStrategy::MemoryBound,
+                Duration::from_micros(50),
+            );
+        }
+        optimizer.record_execution(
+            "workload_d",
+            OptimizationStrategy::Throughput,
+            Duration::from_micros(50),
+        );
+
+        let report = optimizer.generate_report();
+        assert_eq!(report.workload_profiles.len(), 4);
+        assert!(
+            report
+                .recommendations
+                .iter()
+                .any(|rec| rec.contains("memory-bound")),
+            "expected a memory-bound recommendation, got: {:?}",
+            report.recommendations
+        );
     }
 
     #[test]

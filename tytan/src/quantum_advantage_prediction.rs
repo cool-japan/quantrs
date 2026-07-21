@@ -48,7 +48,7 @@
 //! }
 //! ```
 
-use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2, Axis};
 use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::fmt;
@@ -367,16 +367,28 @@ impl PredictionModel {
     }
 
     /// Train the model on problem data
+    ///
+    /// Performs real mini-batch gradient descent: each epoch runs a forward
+    /// pass through the ReLU MLP, backpropagates the MSE loss to obtain
+    /// `dL/dW` and `dL/db` for every layer, and updates
+    /// `self.weights`/`self.biases` in the direction that reduces the loss.
+    /// `self.trained` is only set once at least one such update has been
+    /// applied.
     pub fn train(
         &mut self,
         features: &[Array1<f64>],
         targets: &[Array1<f64>],
         epochs: usize,
-        _learning_rate: f64,
+        learning_rate: f64,
     ) -> PredictionResult<f64> {
         if features.is_empty() || targets.is_empty() {
             return Err(PredictionError::InsufficientData(
                 "No training data provided".to_string(),
+            ));
+        }
+        if features.len() != targets.len() {
+            return Err(PredictionError::InsufficientData(
+                "Number of feature vectors must match number of targets".to_string(),
             ));
         }
 
@@ -396,38 +408,84 @@ impl PredictionModel {
             / n as f64;
         self.input_std = variance.mapv(|v: f64| v.sqrt().max(1e-8));
 
-        // Simplified training (in practice, use proper optimization)
+        let num_layers = self.weights.len();
+        let n_f = n as f64;
         let mut final_loss = 0.0;
-        for _ in 0..epochs {
+
+        for _epoch in 0..epochs {
+            // Batch-accumulated gradients (summed over samples, averaged below).
+            let mut grad_w: Vec<Array2<f64>> = self
+                .weights
+                .iter()
+                .map(|w| Array2::zeros(w.dim()))
+                .collect();
+            let mut grad_b: Vec<Array1<f64>> =
+                self.biases.iter().map(|b| Array1::zeros(b.dim())).collect();
             let mut epoch_loss = 0.0;
+
             for (feat, target) in features.iter().zip(targets.iter()) {
-                // Normalize input
                 let normalized = (feat - &self.input_mean) / &self.input_std;
 
-                // Forward pass (simplified)
-                let mut x = normalized.clone();
-                for i in 0..self.weights.len() - 1 {
+                // Forward pass, keeping every layer's input activation and
+                // pre-activation so we can backpropagate afterward.
+                let mut activations: Vec<Array1<f64>> = Vec::with_capacity(num_layers + 1);
+                activations.push(normalized.clone());
+                let mut pre_activations: Vec<Array1<f64>> = Vec::with_capacity(num_layers);
+
+                let mut x = normalized;
+                for i in 0..num_layers {
                     let w = &self.weights[i];
                     let b = &self.biases[i];
-                    x = x.dot(w) + b;
-                    x.mapv_inplace(|v| v.max(0.0));
+                    let z = x.dot(w) + b;
+                    pre_activations.push(z.clone());
+                    x = if i < num_layers - 1 {
+                        z.mapv(|v| v.max(0.0)) // ReLU on hidden layers
+                    } else {
+                        z // linear output layer
+                    };
+                    activations.push(x.clone());
                 }
-                // Safe: weights and biases are always initialized with at least one layer in constructor
-                let w_last = self
-                    .weights
-                    .last()
-                    .expect("Model weights must have at least one layer");
-                let b_last = self
-                    .biases
-                    .last()
-                    .expect("Model biases must have at least one layer");
-                let prediction = x.dot(w_last) + b_last;
 
-                // Compute loss
+                let prediction = activations[num_layers].clone();
                 let error = &prediction - target;
                 epoch_loss += error.iter().map(|&e| e * e).sum::<f64>();
+
+                // Backpropagation of MSE loss: dL/dprediction = 2 * error.
+                let mut delta = error.mapv(|e| 2.0 * e);
+
+                for layer in (0..num_layers).rev() {
+                    // ReLU derivative gates hidden layers; the output layer
+                    // is linear (derivative 1).
+                    if layer < num_layers - 1 {
+                        let z = &pre_activations[layer];
+                        delta = &delta * &z.mapv(|v| if v > 0.0 { 1.0 } else { 0.0 });
+                    }
+
+                    let layer_input = &activations[layer];
+                    let outer = layer_input
+                        .view()
+                        .insert_axis(Axis(1))
+                        .dot(&delta.view().insert_axis(Axis(0)));
+                    grad_w[layer] = &grad_w[layer] + &outer;
+                    grad_b[layer] = &grad_b[layer] + &delta;
+
+                    if layer > 0 {
+                        // Propagate the gradient to this layer's input:
+                        // delta_prev = W_layer . delta
+                        delta = self.weights[layer].dot(&delta);
+                    }
+                }
             }
-            final_loss = epoch_loss / n as f64;
+
+            // Gradient descent update, averaged over the batch.
+            for layer in 0..num_layers {
+                let step_w = grad_w[layer].mapv(|g| learning_rate * g / n_f);
+                let step_b = grad_b[layer].mapv(|g| learning_rate * g / n_f);
+                self.weights[layer] = &self.weights[layer] - &step_w;
+                self.biases[layer] = &self.biases[layer] - &step_b;
+            }
+
+            final_loss = epoch_loss / n_f;
         }
 
         self.trained = true;
@@ -1111,5 +1169,55 @@ mod tests {
         let result = model.train(&features, &targets, 10, 0.001);
         assert!(result.is_ok());
         assert!(model.is_trained());
+    }
+
+    #[test]
+    fn test_prediction_model_training_actually_updates_weights_and_reduces_loss() {
+        // A simple linear regression problem (single input, single hidden
+        // layer, single output) that a real gradient-descent step must
+        // improve on: target = 2 * input.
+        let mut model = PredictionModel::new(1, &[4], 1);
+
+        let features: Vec<Array1<f64>> = (1..=20)
+            .map(|i| Array1::from_vec(vec![f64::from(i)]))
+            .collect();
+        let targets: Vec<Array1<f64>> = (1..=20)
+            .map(|i| Array1::from_vec(vec![2.0 * f64::from(i)]))
+            .collect();
+
+        let weights_before: Vec<Array2<f64>> = model.weights.clone();
+        let biases_before: Vec<Array1<f64>> = model.biases.clone();
+
+        let loss_after_one_epoch = model
+            .train(&features, &targets, 1, 0.05)
+            .expect("training should succeed");
+
+        // The old fabricated implementation never wrote back into
+        // self.weights/self.biases at all, so this must now actually change.
+        let weights_changed = model
+            .weights
+            .iter()
+            .zip(weights_before.iter())
+            .any(|(after, before)| after != before);
+        let biases_changed = model
+            .biases
+            .iter()
+            .zip(biases_before.iter())
+            .any(|(after, before)| after != before);
+        assert!(
+            weights_changed || biases_changed,
+            "train() must actually update model parameters, not just report loss"
+        );
+
+        // Continued training on this easy, noiseless linear relationship
+        // must genuinely reduce the loss (a fabricated "trained" flag with
+        // frozen random weights would not systematically do this).
+        let loss_after_more_epochs = model
+            .train(&features, &targets, 200, 0.05)
+            .expect("training should succeed");
+        assert!(
+            loss_after_more_epochs < loss_after_one_epoch,
+            "expected loss to decrease with more real gradient-descent epochs: {loss_after_one_epoch} -> {loss_after_more_epochs}"
+        );
     }
 }

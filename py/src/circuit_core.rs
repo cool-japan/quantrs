@@ -740,21 +740,19 @@ impl PyCircuit {
     /// Get a text-based visualization of the circuit
     #[allow(clippy::used_underscore_items)]
     pub(crate) fn draw(&self) -> PyResult<String> {
-        let Some(circuit) = &self.circuit else {
+        if self.circuit.is_none() {
             return Err(PyValueError::new_err("Circuit not initialized"));
-        };
-
-        // Create visualization directly
-        let mut visualizer = PyCircuitVisualizer::new(self.n_qubits);
-
-        // Add all gates from the circuit (simplified version)
-        let gate_names = circuit.get_gate_names();
-        for gate in &gate_names {
-            // For simplicity, assume they're all single-qubit gates on qubit 0
-            visualizer.add_gate(gate, vec![0], None)?;
         }
 
-        Ok(visualizer._repr_html_())
+        // Reuse `get_visualizer()`'s real per-gate qubit/parameter extraction
+        // (it walks the circuit's actual gate list via
+        // `get_single_qubit_for_gate`/`get_two_qubit_params_for_gate`/
+        // `get_three_qubit_params_for_gate`) instead of rebuilding a
+        // visualizer here from bare gate names with every qubit hardcoded to
+        // 0 -- that hardcoding drew every multi-qubit gate, and every gate on
+        // any qubit other than 0, at the wrong position.
+        let visualizer = self.get_visualizer()?;
+        Python::attach(|py| Ok(visualizer.borrow(py)._repr_html_()))
     }
 
     /// Get an HTML representation of the circuit for Jupyter notebooks

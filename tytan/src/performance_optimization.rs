@@ -251,6 +251,26 @@ impl OptimizedSA {
         let mut best = current.clone();
         let mut best_energy = current_energy;
 
+        // `Adaptive` cooling genuinely needs to observe realized acceptance
+        // decisions as the run progresses, which a precomputed temperature
+        // vector cannot do; it is handled with its own control loop here
+        // instead of going through `generate_schedule` (which used to
+        // return a flat, non-cooling `vec![t0; iterations]` for this
+        // variant despite being documented as "Adaptive cooling based on
+        // acceptance rate").
+        if let AnnealingSchedule::Adaptive { t0, target_rate } = &self.schedule {
+            return self.anneal_adaptive(
+                current,
+                current_energy,
+                best,
+                best_energy,
+                iterations,
+                *t0,
+                *target_rate,
+                rng,
+            );
+        }
+
         // Temperature schedule
         let temperatures = self.generate_schedule(iterations);
 
@@ -287,7 +307,74 @@ impl OptimizedSA {
         (best, best_energy)
     }
 
+    /// Real adaptive-cooling annealing loop: temperature starts at `t0` and
+    /// is adjusted multiplicatively every `n` moves (a "sliding window")
+    /// toward whatever value makes the realized acceptance rate match
+    /// `target_rate` — the standard adaptive-SA control scheme. This
+    /// replaces the old `generate_schedule` behavior for `Adaptive`, which
+    /// never read `target_rate` at all and held a completely flat
+    /// (non-cooling) temperature for the whole run.
+    #[allow(clippy::too_many_arguments)]
+    fn anneal_adaptive(
+        &self,
+        mut current: Array1<u8>,
+        mut current_energy: f64,
+        mut best: Array1<u8>,
+        mut best_energy: f64,
+        iterations: usize,
+        t0: f64,
+        target_rate: f64,
+        rng: &mut impl scirs2_core::random::Rng,
+    ) -> (Array1<u8>, f64) {
+        let n = current.len();
+        let window = n.max(10);
+        let mut temp = t0.max(1e-6);
+        let mut accepted_in_window = 0usize;
+        let mut moves_in_window = 0usize;
+
+        for _ in 0..iterations {
+            for _ in 0..n {
+                let bit = rng.random_range(0..n);
+                let delta = self.evaluator.delta_energy(&current.view(), bit);
+                let accept = delta < 0.0 || rng.random::<f64>() < (-delta / temp).exp();
+
+                moves_in_window += 1;
+                if accept {
+                    accepted_in_window += 1;
+                    current[bit] = 1 - current[bit];
+                    current_energy += delta;
+
+                    if current_energy < best_energy {
+                        best = current.clone();
+                        best_energy = current_energy;
+                    }
+                }
+            }
+
+            if moves_in_window >= window {
+                let acceptance_rate = accepted_in_window as f64 / moves_in_window as f64;
+                // Multiplicative control: raise T when accepting less than
+                // the target rate (too "cold"), lower T when accepting more
+                // than the target rate (too "hot").
+                let adjustment = (acceptance_rate - target_rate).mul_add(0.5, 1.0);
+                temp = (temp * adjustment).clamp(1e-6, t0.max(1e-6) * 10.0);
+                accepted_in_window = 0;
+                moves_in_window = 0;
+            }
+        }
+
+        (best, best_energy)
+    }
+
     /// Generate temperature schedule
+    ///
+    /// Note: [`AnnealingSchedule::Adaptive`] is *not* produced as a static
+    /// vector here — real adaptive cooling requires observing acceptance
+    /// decisions as the run progresses, which [`Self::anneal`] handles via
+    /// [`Self::anneal_adaptive`] instead of consulting this function. The
+    /// branch below is kept only so a caller previewing this schedule
+    /// variant sees a reasonable (monotonically cooling) approximation
+    /// rather than the previous flat, non-cooling `vec![t0; iterations]`.
     fn generate_schedule(&self, iterations: usize) -> Vec<f64> {
         match &self.schedule {
             AnnealingSchedule::Geometric { t0, alpha } => {
@@ -297,8 +384,10 @@ impl OptimizedSA {
                 .map(|k| t0 * (1.0 - k as f64 / *max_iter as f64).max(0.0))
                 .collect(),
             AnnealingSchedule::Adaptive { t0, .. } => {
-                // Simplified - would track acceptance rate in real implementation
-                vec![*t0; iterations]
+                // Fall back to a geometric preview; the real control loop
+                // lives in `anneal_adaptive`.
+                let alpha: f64 = 0.99;
+                (0..iterations).map(|k| t0 * alpha.powi(k as i32)).collect()
             }
             AnnealingSchedule::Custom(schedule) => schedule.clone(),
         }
@@ -499,6 +588,47 @@ mod tests {
         let (solution, energy) = sa.anneal(initial, 100, &mut rng);
 
         // Should find one of the optimal solutions
+        assert!(
+            (solution == array![0, 1] && (energy - 0.0).abs() < 1e-6)
+                || (solution == array![1, 0] && (energy - 0.0).abs() < 1e-6)
+                || (solution == array![1, 1] && (energy - (-2.0)).abs() < 1e-6)
+        );
+    }
+
+    #[test]
+    fn test_generate_schedule_adaptive_is_not_flat() {
+        let qubo = array![[0.0, -1.0], [-1.0, 0.0]];
+        let sa = OptimizedSA::new(qubo).with_schedule(AnnealingSchedule::Adaptive {
+            t0: 2.0,
+            target_rate: 0.4,
+        });
+
+        let schedule = sa.generate_schedule(50);
+        // The old fabricated implementation returned `vec![t0; iterations]`
+        // — a completely flat, non-cooling schedule that never read
+        // `target_rate` at all.
+        assert!(schedule[0] > schedule[schedule.len() - 1]);
+        assert!(schedule.windows(2).any(|w| (w[0] - w[1]).abs() > 1e-12));
+    }
+
+    #[test]
+    fn test_anneal_adaptive_schedule_finds_optimum() {
+        let qubo = array![[0.0, -1.0], [-1.0, 0.0]];
+
+        let sa = OptimizedSA::new(qubo).with_schedule(AnnealingSchedule::Adaptive {
+            t0: 1.0,
+            target_rate: 0.3,
+        });
+
+        let initial = array![0, 0];
+        let mut rng = thread_rng();
+
+        let (solution, energy) = sa.anneal(initial, 200, &mut rng);
+
+        // A real adaptive-cooling run must still converge on this trivial
+        // problem; a flat, non-cooling schedule would never reliably
+        // "settle" into the optimum the way a genuinely cooling schedule
+        // does.
         assert!(
             (solution == array![0, 1] && (energy - 0.0).abs() < 1e-6)
                 || (solution == array![1, 0] && (energy - 0.0).abs() < 1e-6)

@@ -350,7 +350,7 @@ impl From<scirs2_stats::StatsError> for DeviceError {
 }
 
 /// General representation of quantum hardware
-#[cfg(feature = "ibm")]
+#[cfg(feature = "_async_device")]
 #[async_trait::async_trait]
 pub trait QuantumDevice {
     /// Check if the device is available for use
@@ -366,7 +366,7 @@ pub trait QuantumDevice {
     async fn is_simulator(&self) -> DeviceResult<bool>;
 }
 
-#[cfg(not(feature = "ibm"))]
+#[cfg(not(feature = "_async_device"))]
 pub trait QuantumDevice {
     /// Check if the device is available for use
     fn is_available(&self) -> DeviceResult<bool>;
@@ -382,7 +382,7 @@ pub trait QuantumDevice {
 }
 
 /// Trait for devices that can execute quantum circuits
-#[cfg(feature = "ibm")]
+#[cfg(feature = "_async_device")]
 #[async_trait::async_trait]
 pub trait CircuitExecutor: QuantumDevice {
     /// Execute a quantum circuit on the device
@@ -410,7 +410,7 @@ pub trait CircuitExecutor: QuantumDevice {
     ) -> DeviceResult<std::time::Duration>;
 }
 
-#[cfg(not(feature = "ibm"))]
+#[cfg(not(feature = "_async_device"))]
 pub trait CircuitExecutor: QuantumDevice {
     /// Execute a quantum circuit on the device
     fn execute_circuit<const N: usize>(

@@ -4,7 +4,7 @@
 //! and a simulated quantum blockchain ledger using post-quantum and
 //! QKD-based cryptographic primitives from the `crypto` module.
 
-use crate::crypto::QuantumSignature;
+use crate::crypto::{sha256, QuantumSignatureVerifyingKey};
 use crate::error::{MLError, Result};
 use std::collections::HashMap;
 use std::fmt;
@@ -29,10 +29,13 @@ pub enum ConsensusType {
 /// Represents a transaction in a quantum blockchain
 #[derive(Debug, Clone)]
 pub struct Transaction {
-    /// Sender's public key hash
+    /// Sender's serialized [`QuantumSignatureVerifyingKey`]
+    /// (see [`QuantumSignatureVerifyingKey::to_bytes`]), used to verify
+    /// `signature` against this transaction's signing message. Not merely a
+    /// hash of the key: signature verification needs the actual public key.
     pub sender: Vec<u8>,
 
-    /// Recipient's public key hash
+    /// Recipient's public key bytes
     pub recipient: Vec<u8>,
 
     /// Amount to transfer
@@ -44,7 +47,8 @@ pub struct Transaction {
     /// Transaction timestamp
     timestamp: u64,
 
-    /// Transaction signature
+    /// Transaction signature (a Lamport one-time signature produced by
+    /// [`crate::crypto::QuantumSignature::sign`] over `signing_message()`)
     signature: Option<Vec<u8>>,
 }
 
@@ -66,45 +70,57 @@ impl Transaction {
         }
     }
 
-    /// Signs the transaction
+    /// Signs the transaction by attaching a pre-computed signature (produced
+    /// by, e.g., `QuantumSignature::sign(&transaction.signing_message())`).
     pub fn sign(&mut self, signature: Vec<u8>) -> Result<()> {
         self.signature = Some(signature);
         Ok(())
     }
 
-    /// Verifies the transaction signature
-    pub fn verify(&self) -> Result<bool> {
-        // This is a dummy implementation
-        // In a real system, this would verify the signature
-
-        Ok(self.signature.is_some())
+    /// The canonical byte sequence this transaction's signature is computed
+    /// (and verified) over: every field except the signature itself.
+    fn signing_message(&self) -> Vec<u8> {
+        let mut message = Vec::new();
+        message.extend_from_slice(&self.sender);
+        message.extend_from_slice(&self.recipient);
+        message.extend_from_slice(&self.amount.to_be_bytes());
+        message.extend_from_slice(&self.timestamp.to_be_bytes());
+        message.extend_from_slice(&self.data);
+        message
     }
 
-    /// Gets the transaction hash
+    /// Verifies the transaction signature against `sender`'s public key.
+    ///
+    /// Returns `Ok(false)` (rather than an error) both when there is no
+    /// signature to check and when `sender` cannot be parsed as a
+    /// [`QuantumSignatureVerifyingKey`] -- either way the transaction is not
+    /// validly signed.
+    pub fn verify(&self) -> Result<bool> {
+        let signature = match &self.signature {
+            Some(signature) => signature,
+            None => return Ok(false),
+        };
+        let verifying_key = match QuantumSignatureVerifyingKey::from_bytes(&self.sender) {
+            Ok(key) => key,
+            Err(_) => return Ok(false),
+        };
+        verifying_key.verify(&self.signing_message(), signature)
+    }
+
+    /// Gets the transaction hash: the real SHA-256 digest (see
+    /// [`crate::crypto::sha256`]) of every transaction field, replacing the
+    /// previous plain byte concatenation (which had no cryptographic
+    /// diffusion and was trivially invertible/collidable).
     pub fn hash(&self) -> Vec<u8> {
-        // This is a dummy implementation
-        // In a real system, this would compute a cryptographic hash
-
-        let mut hash = Vec::new();
-
-        // Add sender
-        hash.extend_from_slice(&self.sender);
-
-        // Add recipient
-        hash.extend_from_slice(&self.recipient);
-
-        // Add amount (convert to bytes)
-        let amount_bytes = self.amount.to_ne_bytes();
-        hash.extend_from_slice(&amount_bytes);
-
-        // Add timestamp (convert to bytes)
-        let timestamp_bytes = self.timestamp.to_ne_bytes();
-        hash.extend_from_slice(&timestamp_bytes);
-
-        // Add data
-        hash.extend_from_slice(&self.data);
-
-        hash
+        let mut preimage = self.signing_message();
+        // The signing message intentionally excludes the signature (it is
+        // what gets signed), but the transaction *hash* should still be
+        // sensitive to it so that a re-signed/re-attached signature changes
+        // the hash.
+        if let Some(signature) = &self.signature {
+            preimage.extend_from_slice(signature);
+        }
+        sha256::digest(&preimage).to_vec()
     }
 }
 
@@ -152,41 +168,39 @@ impl Block {
         block
     }
 
-    /// Calculates the block hash
+    /// Calculates the block hash: the real SHA-256 digest (see
+    /// [`crate::crypto::sha256`]) of the block's index, previous hash,
+    /// timestamp, transaction hashes, and nonce, replacing the previous
+    /// plain byte concatenation (which had no cryptographic diffusion, so
+    /// mining by nonce search or tampering with a transaction was not
+    /// meaningfully harder than editing the "hash" bytes directly).
     pub fn calculate_hash(&self) -> Vec<u8> {
-        // This is a dummy implementation
-        // In a real system, this would compute a cryptographic hash
+        let mut preimage = Vec::new();
 
-        let mut hash = Vec::new();
+        preimage.extend_from_slice(&(self.index as u64).to_be_bytes());
+        preimage.extend_from_slice(&self.previous_hash);
+        preimage.extend_from_slice(&self.timestamp.to_be_bytes());
 
-        // Add index (convert to bytes)
-        let index_bytes = self.index.to_ne_bytes();
-        hash.extend_from_slice(&index_bytes);
-
-        // Add previous hash
-        hash.extend_from_slice(&self.previous_hash);
-
-        // Add timestamp (convert to bytes)
-        let timestamp_bytes = self.timestamp.to_ne_bytes();
-        hash.extend_from_slice(&timestamp_bytes);
-
-        // Add transaction hashes
         for transaction in &self.transactions {
-            hash.extend_from_slice(&transaction.hash());
+            preimage.extend_from_slice(&transaction.hash());
         }
 
-        // Add nonce (convert to bytes)
-        let nonce_bytes = self.nonce.to_ne_bytes();
-        hash.extend_from_slice(&nonce_bytes);
+        preimage.extend_from_slice(&self.nonce.to_be_bytes());
 
-        hash
+        sha256::digest(&preimage).to_vec()
     }
 
     /// Mines the block with proof of work
     pub fn mine(&mut self, difficulty: usize) -> Result<()> {
-        let target = vec![0u8; difficulty / 8 + 1];
+        // `hash` is now always a fixed 32-byte SHA-256 digest (previously it
+        // was a variable-length, unhashed byte concatenation whose length
+        // happened to grow with the number of fields/transactions); clamp
+        // the number of leading zero bytes we demand so an overly large
+        // `difficulty` cannot slice past the end of the digest.
+        let target_len = (difficulty / 8 + 1).min(self.hash.len());
+        let target = vec![0u8; target_len];
 
-        while self.hash[0..difficulty / 8 + 1] != target {
+        while self.hash[0..target_len] != target[..] {
             self.nonce += 1;
             self.hash = self.calculate_hash();
 
@@ -505,5 +519,97 @@ impl fmt::Display for ConsensusType {
             ConsensusType::QuantumByzantineAgreement => write!(f, "Quantum Byzantine Agreement"),
             ConsensusType::QuantumFederated => write!(f, "Quantum Federated Consensus"),
         }
+    }
+}
+
+#[cfg(test)]
+mod integrity_regression_tests {
+    use super::*;
+    use crate::crypto::QuantumSignature;
+
+    fn signed_transaction(
+        signer: &QuantumSignature,
+        recipient: Vec<u8>,
+        amount: f64,
+    ) -> Transaction {
+        let mut tx = Transaction::new(signer.public_key_bytes(), recipient, amount, Vec::new());
+        let signature = signer.sign(&tx.signing_message()).expect("sign");
+        tx.sign(signature).expect("attach signature");
+        tx
+    }
+
+    /// Regression test for the "verify() only checks Option::is_some()" bug:
+    /// a properly signed transaction must verify true, and tampering with
+    /// any signed field afterward must make it verify false.
+    #[test]
+    fn transaction_verify_checks_the_real_signature() {
+        let signer = QuantumSignature::new(64, "lamport-test").expect("key generation");
+        let mut tx = signed_transaction(&signer, vec![9, 9, 9], 42.0);
+        assert!(tx.verify().expect("verify should not error"));
+
+        // Tampering with the amount after signing must invalidate it.
+        tx.amount = 999.0;
+        assert!(!tx.verify().expect("verify should not error"));
+    }
+
+    #[test]
+    fn transaction_without_signature_never_verifies() {
+        let tx = Transaction::new(vec![1, 2, 3], vec![4, 5, 6], 1.0, Vec::new());
+        assert!(!tx.verify().expect("verify should not error"));
+    }
+
+    /// Regression test for the "hash is plain byte concatenation" bug: the
+    /// transaction/block hash must behave like a real cryptographic hash --
+    /// fixed-size and radically different for even a tiny input change
+    /// (avalanche effect) -- rather than an easily-inspected concatenation.
+    #[test]
+    fn transaction_hash_is_fixed_size_and_diffuses_small_changes() {
+        let signer = QuantumSignature::new(64, "lamport-test").expect("key generation");
+        let tx_a = signed_transaction(&signer, vec![9, 9, 9], 42.0);
+        let mut tx_b = tx_a.clone();
+        tx_b.amount = 42.000001;
+
+        let hash_a = tx_a.hash();
+        let hash_b = tx_b.hash();
+        assert_eq!(hash_a.len(), 32, "expected a 32-byte SHA-256 digest");
+        assert_eq!(hash_b.len(), 32, "expected a 32-byte SHA-256 digest");
+        assert_ne!(hash_a, hash_b);
+
+        // Avalanche effect: roughly half the bits should differ for a
+        // one-bit-ish change in the input, not just a few trailing bytes as
+        // plain concatenation would produce.
+        let differing_bits: u32 = hash_a
+            .iter()
+            .zip(hash_b.iter())
+            .map(|(a, b)| (a ^ b).count_ones())
+            .sum();
+        assert!(
+            differing_bits > 32,
+            "expected substantial bit diffusion, got {differing_bits} differing bits"
+        );
+    }
+
+    /// End-to-end regression test: mining and verifying a small chain with
+    /// genuinely signed transactions.
+    #[test]
+    fn mined_chain_with_signed_transactions_verifies() {
+        let signer = QuantumSignature::new(48, "lamport-test").expect("key generation");
+        let mut blockchain = QuantumBlockchain::new(ConsensusType::QuantumProofOfWork, 8);
+
+        blockchain
+            .add_transaction(signed_transaction(&signer, vec![1, 2, 3], 5.0))
+            .expect("adding a validly signed transaction should succeed");
+        blockchain.mine_block().expect("mining should succeed");
+
+        assert!(blockchain.verify().expect("chain should verify"));
+    }
+
+    /// Adding a transaction with an invalid/missing signature must be
+    /// rejected up front, not silently accepted.
+    #[test]
+    fn add_transaction_rejects_unsigned_transaction() {
+        let mut blockchain = QuantumBlockchain::new(ConsensusType::QuantumProofOfWork, 8);
+        let unsigned = Transaction::new(vec![1, 2, 3], vec![4, 5, 6], 1.0, Vec::new());
+        assert!(blockchain.add_transaction(unsigned).is_err());
     }
 }

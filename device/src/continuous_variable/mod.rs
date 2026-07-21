@@ -502,7 +502,7 @@ pub struct CVDeviceDiagnostics {
     pub detection_efficiency: f64,
 }
 
-#[cfg(feature = "ibm")]
+#[cfg(feature = "_async_device")]
 #[async_trait::async_trait]
 impl QuantumDevice for CVQuantumDevice {
     async fn is_available(&self) -> DeviceResult<bool> {
@@ -539,7 +539,7 @@ impl QuantumDevice for CVQuantumDevice {
     }
 }
 
-#[cfg(not(feature = "ibm"))]
+#[cfg(not(feature = "_async_device"))]
 impl QuantumDevice for CVQuantumDevice {
     fn is_available(&self) -> DeviceResult<bool> {
         Ok(self.is_connected)

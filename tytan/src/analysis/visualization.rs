@@ -573,7 +573,14 @@ fn calculate_correlation_matrix(data: &Array2<f64>) -> VisualizationResult<Array
     Ok(corr_matrix)
 }
 
-/// Simple PCA implementation
+/// Principal Component Analysis via eigendecomposition of the covariance
+/// matrix (cyclic Jacobi eigenvalue algorithm, see [`jacobi_eigen_symmetric`]).
+///
+/// Returns `(components, explained_variance)` where `components[[i, k]]` is
+/// the `k`-th principal component score of sample `i` (the centered sample
+/// projected onto the `k`-th eigenvector, in descending eigenvalue order),
+/// and `explained_variance[k]` is the fraction of total variance captured by
+/// that component.
 fn simple_pca(
     data: &Array2<f64>,
     n_components: usize,
@@ -581,6 +588,11 @@ fn simple_pca(
     let n_samples = data.nrows();
     let n_features = data.ncols();
 
+    if n_components == 0 {
+        return Err(VisualizationError::InvalidParams(
+            "Number of components must be positive".to_string(),
+        ));
+    }
     if n_components > n_features.min(n_samples) {
         return Err(VisualizationError::InvalidParams(
             "Number of components exceeds data dimensions".to_string(),
@@ -593,15 +605,116 @@ fn simple_pca(
         .ok_or_else(|| VisualizationError::DataError("Failed to compute mean".to_string()))?;
     let centered = data - &mean;
 
-    // Compute covariance matrix
-    let _cov = centered.t().dot(&centered) / (n_samples - 1) as f64;
+    // Covariance matrix (n_features x n_features, symmetric PSD).
+    let denom = (n_samples.saturating_sub(1)).max(1) as f64;
+    let cov = centered.t().dot(&centered) / denom;
 
-    // For simplicity, we'll just return a placeholder
-    // In practice, you'd compute eigenvalues/eigenvectors
-    let components = Array2::<f64>::zeros((n_samples, n_components));
-    let explained_variance = vec![1.0 / n_components as f64; n_components];
+    // Real eigendecomposition (this used to be discarded and replaced with a
+    // hardcoded all-zero components matrix / uniform variance vector).
+    let (eigenvalues, eigenvectors) = jacobi_eigen_symmetric(&cov, 200, 1e-12);
+
+    // Order eigenpairs by eigenvalue, descending, so component 0 explains the
+    // most variance.
+    let mut order: Vec<usize> = (0..n_features).collect();
+    order.sort_by(|&a, &b| {
+        eigenvalues[b]
+            .partial_cmp(&eigenvalues[a])
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    let total_variance: f64 = eigenvalues.iter().map(|&v| v.max(0.0)).sum();
+
+    let mut components = Array2::<f64>::zeros((n_samples, n_components));
+    let mut explained_variance = Vec::with_capacity(n_components);
+
+    for (k, &feature_idx) in order.iter().take(n_components).enumerate() {
+        let axis = eigenvectors.column(feature_idx);
+
+        for sample in 0..n_samples {
+            let row = centered.row(sample);
+            let score: f64 = row.iter().zip(axis.iter()).map(|(&x, &a)| x * a).sum();
+            components[[sample, k]] = score;
+        }
+
+        let variance_ratio = if total_variance > 0.0 {
+            eigenvalues[feature_idx].max(0.0) / total_variance
+        } else {
+            0.0
+        };
+        explained_variance.push(variance_ratio);
+    }
 
     Ok((components, explained_variance))
+}
+
+/// Cyclic Jacobi eigenvalue algorithm for a real symmetric matrix.
+///
+/// Returns `(eigenvalues, eigenvectors)`: `eigenvalues[i]` is the eigenvalue
+/// associated with the (unit-norm, mutually orthogonal) eigenvector stored in
+/// column `i` of `eigenvectors`. The pairs are returned in the input matrix's
+/// index order (not sorted by magnitude); callers that need a specific order
+/// should sort afterward.
+fn jacobi_eigen_symmetric(
+    matrix: &Array2<f64>,
+    max_sweeps: usize,
+    tolerance: f64,
+) -> (Vec<f64>, Array2<f64>) {
+    let n = matrix.nrows();
+    let mut a = matrix.clone();
+    let mut v = Array2::<f64>::eye(n);
+
+    for _sweep in 0..max_sweeps {
+        let mut off_diagonal_norm = 0.0;
+        for p in 0..n {
+            for q in (p + 1)..n {
+                off_diagonal_norm += a[[p, q]] * a[[p, q]];
+            }
+        }
+        if off_diagonal_norm.sqrt() < tolerance {
+            break;
+        }
+
+        for p in 0..n {
+            for q in (p + 1)..n {
+                let a_pq = a[[p, q]];
+                if a_pq.abs() < 1e-300 {
+                    continue;
+                }
+
+                let theta = (a[[q, q]] - a[[p, p]]) / (2.0 * a_pq);
+                let sign = if theta >= 0.0 { 1.0 } else { -1.0 };
+                let t = sign / (theta.abs() + theta.mul_add(theta, 1.0).sqrt());
+                let c = 1.0 / t.mul_add(t, 1.0).sqrt();
+                let s = t * c;
+
+                a[[p, p]] -= t * a_pq;
+                a[[q, q]] += t * a_pq;
+                a[[p, q]] = 0.0;
+                a[[q, p]] = 0.0;
+
+                for k in 0..n {
+                    if k != p && k != q {
+                        let a_kp = a[[k, p]];
+                        let a_kq = a[[k, q]];
+                        a[[k, p]] = c.mul_add(a_kp, -(s * a_kq));
+                        a[[p, k]] = a[[k, p]];
+                        a[[k, q]] = s.mul_add(a_kp, c * a_kq);
+                        a[[q, k]] = a[[k, q]];
+                    }
+                }
+
+                for k in 0..n {
+                    let v_kp = v[[k, p]];
+                    let v_kq = v[[k, q]];
+                    v[[k, p]] = c.mul_add(v_kp, -(s * v_kq));
+                    v[[k, q]] = s.mul_add(v_kp, c * v_kq);
+                }
+            }
+        }
+    }
+
+    let eigenvalues: Vec<f64> = (0..n).map(|i| a[[i, i]]).collect();
+    (eigenvalues, v)
 }
 
 /// Calculate moving average
@@ -733,5 +846,51 @@ mod tests {
         let values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let bandwidth = estimate_bandwidth(&values);
         assert!(bandwidth > 0.0);
+    }
+
+    #[test]
+    fn test_jacobi_eigen_symmetric_recovers_known_eigenvalues() {
+        // Diagonal matrix: eigenvalues are exactly the diagonal entries.
+        let m = Array2::from_shape_vec((2, 2), vec![3.0, 0.0, 0.0, 1.0]).unwrap();
+        let (eigenvalues, eigenvectors) = jacobi_eigen_symmetric(&m, 50, 1e-12);
+
+        let mut sorted = eigenvalues.clone();
+        sorted.sort_by(|a, b| b.partial_cmp(a).unwrap());
+        assert!((sorted[0] - 3.0).abs() < 1e-9);
+        assert!((sorted[1] - 1.0).abs() < 1e-9);
+
+        // Eigenvectors must be orthonormal: V^T V = I.
+        let vtv = eigenvectors.t().dot(&eigenvectors);
+        for i in 0..2 {
+            for j in 0..2 {
+                let expected = if i == j { 1.0 } else { 0.0 };
+                assert!((vtv[[i, j]] - expected).abs() < 1e-9);
+            }
+        }
+    }
+
+    #[test]
+    fn test_simple_pca_recovers_dominant_direction() {
+        // x2 = 2 * x1 exactly => data lies on a 1D subspace, so PCA must
+        // report ~100% of variance on the first component and ~0% on the
+        // second, with a non-trivial (non-zero) component matrix. The old
+        // fabricated implementation always returned an all-zero components
+        // matrix and a uniform 1/n_components variance vector (i.e. 0.5/0.5
+        // here) regardless of the data.
+        let data =
+            Array2::from_shape_vec((4, 2), vec![0.0, 0.0, 1.0, 2.0, 2.0, 4.0, 3.0, 6.0]).unwrap();
+
+        let (components, explained_variance) = simple_pca(&data, 2).expect("PCA should succeed");
+
+        assert_eq!(explained_variance.len(), 2);
+        assert!(
+            explained_variance[0] > 0.999,
+            "expected dominant component to explain ~all variance, got {explained_variance:?}"
+        );
+        assert!(explained_variance[1] < 1e-6);
+
+        // The fabricated implementation always returned an all-zero matrix.
+        let any_nonzero = components.iter().any(|&v| v.abs() > 1e-9);
+        assert!(any_nonzero, "PCA components must not be fabricated zeros");
     }
 }

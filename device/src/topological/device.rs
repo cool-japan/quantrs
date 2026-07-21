@@ -331,7 +331,7 @@ pub struct TopologicalDeviceDiagnostics {
     pub error_rate: f64,
 }
 
-#[cfg(feature = "ibm")]
+#[cfg(feature = "_async_device")]
 #[async_trait::async_trait]
 impl QuantumDevice for EnhancedTopologicalDevice {
     async fn is_available(&self) -> DeviceResult<bool> {
@@ -377,7 +377,7 @@ impl QuantumDevice for EnhancedTopologicalDevice {
     }
 }
 
-#[cfg(not(feature = "ibm"))]
+#[cfg(not(feature = "_async_device"))]
 impl QuantumDevice for EnhancedTopologicalDevice {
     fn is_available(&self) -> DeviceResult<bool> {
         Ok(self.is_connected && self.config.topological_gap > 0.1)
@@ -422,7 +422,7 @@ impl QuantumDevice for EnhancedTopologicalDevice {
     }
 }
 
-#[cfg(feature = "ibm")]
+#[cfg(feature = "_async_device")]
 #[async_trait::async_trait]
 impl CircuitExecutor for EnhancedTopologicalDevice {
     async fn execute_circuit<const N: usize>(
@@ -490,7 +490,7 @@ impl CircuitExecutor for EnhancedTopologicalDevice {
     }
 }
 
-#[cfg(not(feature = "ibm"))]
+#[cfg(not(feature = "_async_device"))]
 impl CircuitExecutor for EnhancedTopologicalDevice {
     fn execute_circuit<const N: usize>(
         &self,
@@ -730,7 +730,7 @@ mod tests {
         assert!(diagnostics.average_braiding_fidelity > 0.0);
     }
 
-    #[cfg(feature = "ibm")]
+    #[cfg(feature = "_async_device")]
     #[tokio::test]
     async fn test_quantum_device_traits_async() {
         let device = create_ising_device(30, 3).expect("Failed to create Ising device");
@@ -759,7 +759,7 @@ mod tests {
         );
     }
 
-    #[cfg(not(feature = "ibm"))]
+    #[cfg(not(feature = "_async_device"))]
     #[test]
     fn test_quantum_device_traits() {
         let device = create_ising_device(30, 3).expect("Failed to create Ising device");

@@ -830,7 +830,106 @@ mod client {
             let chain_strength =
                 Self::calculate_chain_strength(model, &embedding_config.chain_strength_method);
             let embedded_problem = Self::embed_problem(model, &embedding, chain_strength)?;
-            self.submit_embedded_problem(&embedded_problem, solver, params)
+            let physical_solution =
+                self.submit_embedded_problem(&embedded_problem, solver, params)?;
+            Self::decode_embedded_solution(&physical_solution, &embedding, model)
+        }
+        /// Un-embed a physical-qubit [`Solution`] back into logical-variable
+        /// space.
+        ///
+        /// D-Wave's API returns samples indexed by physical qubit; each
+        /// logical variable's chain of physical qubits must agree in order to
+        /// represent that variable's true value. For every sample and every
+        /// logical variable, this takes the majority vote across the
+        /// variable's chain (ties broken by the sign of the variable's own
+        /// bias, favoring whichever spin value contributes the lower local
+        /// energy `bias * value`). A chain is counted as "broken" whenever it
+        /// contains both `+1` and `-1` physical qubits (i.e. did not fully
+        /// agree), and the fraction of broken chains across all samples and
+        /// variables is computed here directly from the decoded data (not
+        /// merely copied from whatever the remote API happens to report) and
+        /// recorded under `timing.decoded_chain_break_fraction`. The returned
+        /// [`Solution`]'s `solutions`/`energies` are re-indexed to
+        /// `model.num_qubits` logical variables, with energies recomputed
+        /// from the real [`IsingModel::energy`] of each decoded sample.
+        fn decode_embedded_solution(
+            physical_solution: &Solution,
+            embedding: &Embedding,
+            model: &IsingModel,
+        ) -> DWaveResult<Solution> {
+            let num_logical = model.num_qubits;
+            let mut decoded_solutions = Vec::with_capacity(physical_solution.solutions.len());
+            let mut decoded_energies = Vec::with_capacity(physical_solution.solutions.len());
+            let mut broken_chain_instances = 0usize;
+            let mut total_chain_instances = 0usize;
+
+            for physical_sample in &physical_solution.solutions {
+                let mut logical_sample = vec![1i8; num_logical];
+                for (var, slot) in logical_sample.iter_mut().enumerate().take(num_logical) {
+                    let Some(chain) = embedding.chains.get(&var) else {
+                        // No chain for this logical variable in the embedding;
+                        // leave the default (+1) rather than fabricating a
+                        // majority from data that doesn't exist.
+                        continue;
+                    };
+
+                    let mut plus = 0usize;
+                    let mut minus = 0usize;
+                    for &qubit in chain {
+                        match physical_sample.get(qubit).copied() {
+                            Some(v) if v > 0 => plus += 1,
+                            Some(_) => minus += 1,
+                            None => {}
+                        }
+                    }
+
+                    total_chain_instances += 1;
+                    if plus > 0 && minus > 0 {
+                        broken_chain_instances += 1;
+                    }
+
+                    *slot = match plus.cmp(&minus) {
+                        std::cmp::Ordering::Greater => 1,
+                        std::cmp::Ordering::Less => -1,
+                        std::cmp::Ordering::Equal => {
+                            let bias = model.get_bias(var).unwrap_or(0.0);
+                            if bias > 0.0 {
+                                -1
+                            } else {
+                                1
+                            }
+                        }
+                    };
+                }
+
+                let energy = model.energy(&logical_sample)?;
+                decoded_energies.push(energy);
+                decoded_solutions.push(logical_sample);
+            }
+
+            let chain_break_fraction = if total_chain_instances == 0 {
+                0.0
+            } else {
+                broken_chain_instances as f64 / total_chain_instances as f64
+            };
+
+            let mut timing = physical_solution.timing.clone();
+            if let serde_json::Value::Object(map) = &mut timing {
+                map.insert(
+                    "decoded_chain_break_fraction".to_string(),
+                    serde_json::json!(chain_break_fraction),
+                );
+            }
+
+            Ok(Solution {
+                energies: decoded_energies,
+                occurrences: physical_solution.occurrences.clone(),
+                solutions: decoded_solutions,
+                num_samples: physical_solution.num_samples,
+                problem_id: physical_solution.problem_id.clone(),
+                solver: physical_solution.solver.clone(),
+                timing,
+            })
         }
         /// Get solver topology information
         fn get_solver_topology(&self, solver_id: &str) -> DWaveResult<HardwareGraph> {
@@ -1257,6 +1356,103 @@ mod client {
                 let usage: serde_json::Value = response.json().await?;
                 Ok(usage)
             })
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn decode_embedded_solution_unembeds_chains_and_recomputes_real_energy() {
+            // Two logical variables: var0 has a unanimous 3-qubit chain,
+            // var1 has a 2-qubit chain that is deliberately split (a real
+            // chain break), which must be resolved via the bias tie-break
+            // rather than silently passed through in physical-qubit space.
+            let mut model = IsingModel::new(2);
+            model.set_bias(0, 0.3).expect("set_bias should succeed");
+            model.set_bias(1, -0.5).expect("set_bias should succeed");
+            model
+                .set_coupling(0, 1, -0.2)
+                .expect("set_coupling should succeed");
+
+            let mut embedding = Embedding::new();
+            embedding
+                .add_chain(0, vec![0, 1, 2])
+                .expect("add_chain should succeed");
+            embedding
+                .add_chain(1, vec![3, 4])
+                .expect("add_chain should succeed");
+
+            let physical_solution = Solution {
+                energies: vec![-999.0], // Deliberately wrong physical-space energy;
+                // the decode step must recompute the real logical energy
+                // rather than passing this through untouched.
+                occurrences: vec![1],
+                solutions: vec![vec![1, 1, 1, 1, -1]],
+                num_samples: 1,
+                problem_id: "test-problem".to_string(),
+                solver: "test-solver".to_string(),
+                timing: serde_json::json!({}),
+            };
+
+            let decoded =
+                DWaveClient::decode_embedded_solution(&physical_solution, &embedding, &model)
+                    .expect("decoding should succeed");
+
+            assert_eq!(decoded.solutions.len(), 1);
+            assert_eq!(
+                decoded.solutions[0].len(),
+                2,
+                "must be re-indexed to logical variables"
+            );
+            // var0's chain is unanimous +1; var1's chain is tied 1-vs-1 and
+            // must be resolved via the bias tie-break (bias=-0.5 < 0 => +1).
+            assert_eq!(decoded.solutions[0], vec![1, 1]);
+
+            // The energy must be the real logical-space energy
+            // (0.3*1 + -0.5*1 + -0.2*1*1 = -0.4), not the fabricated -999.0
+            // physical-space placeholder that was passed in.
+            assert!((decoded.energies[0] - (-0.4)).abs() < 1e-9);
+
+            // One of the two chains (var1) was genuinely split -> 50% break rate,
+            // computed locally rather than copied from the API's own timing.
+            let reported = decoded.timing["decoded_chain_break_fraction"]
+                .as_f64()
+                .expect("chain break fraction should be present");
+            assert!((reported - 0.5).abs() < 1e-9);
+        }
+
+        #[test]
+        fn decode_embedded_solution_reports_zero_breaks_for_fully_agreeing_chains() {
+            let mut model = IsingModel::new(1);
+            model.set_bias(0, 1.0).expect("set_bias should succeed");
+
+            let mut embedding = Embedding::new();
+            embedding
+                .add_chain(0, vec![0, 1, 2])
+                .expect("add_chain should succeed");
+
+            let physical_solution = Solution {
+                energies: vec![0.0],
+                occurrences: vec![1],
+                solutions: vec![vec![-1, -1, -1]],
+                num_samples: 1,
+                problem_id: "test-problem".to_string(),
+                solver: "test-solver".to_string(),
+                timing: serde_json::json!({}),
+            };
+
+            let decoded =
+                DWaveClient::decode_embedded_solution(&physical_solution, &embedding, &model)
+                    .expect("decoding should succeed");
+
+            assert_eq!(decoded.solutions[0], vec![-1]);
+            assert!((decoded.energies[0] - (-1.0)).abs() < 1e-9);
+            let reported = decoded.timing["decoded_chain_break_fraction"]
+                .as_f64()
+                .expect("chain break fraction should be present");
+            assert!(reported.abs() < 1e-9);
         }
     }
 }

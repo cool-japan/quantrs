@@ -24,7 +24,7 @@ impl MockQuantumDevice {
     }
 }
 
-#[cfg(feature = "ibm")]
+#[cfg(feature = "_async_device")]
 #[async_trait::async_trait]
 impl QuantumDevice for MockQuantumDevice {
     async fn is_available(&self) -> DeviceResult<bool> {
@@ -47,7 +47,7 @@ impl QuantumDevice for MockQuantumDevice {
     }
 }
 
-#[cfg(not(feature = "ibm"))]
+#[cfg(not(feature = "_async_device"))]
 impl QuantumDevice for MockQuantumDevice {
     fn is_available(&self) -> DeviceResult<bool> {
         Ok(self.is_available)
@@ -69,7 +69,7 @@ impl QuantumDevice for MockQuantumDevice {
     }
 }
 
-#[cfg(feature = "ibm")]
+#[cfg(feature = "_async_device")]
 #[async_trait]
 impl CircuitExecutor for MockQuantumDevice {
     async fn execute_circuit<const N: usize>(
@@ -119,7 +119,7 @@ impl CircuitExecutor for MockQuantumDevice {
     }
 }
 
-#[cfg(not(feature = "ibm"))]
+#[cfg(not(feature = "_async_device"))]
 impl CircuitExecutor for MockQuantumDevice {
     fn execute_circuit<const N: usize>(
         &self,
@@ -168,4 +168,70 @@ impl CircuitExecutor for MockQuantumDevice {
 /// Create a mock quantum device for testing
 pub fn create_mock_quantum_device() -> Arc<RwLock<dyn QuantumDevice + Send + Sync>> {
     Arc::new(RwLock::new(MockQuantumDevice::new(20)))
+}
+
+// Regression tests for the `_async_device` cfg unification (see
+// `device/Cargo.toml` and `device/src/lib.rs`): `QuantumDevice`/`CircuitExecutor`
+// must expose an `async_trait` variant whenever `_async_device` is enabled
+// (transitively, by any of the ibm/azure/aws/neutral_atom/photonic features)
+// and a plain sync variant otherwise. Whichever variant is active must round
+// trip correctly through `MockQuantumDevice`.
+#[cfg(all(test, feature = "_async_device"))]
+mod async_device_regression_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn mock_device_async_trait_round_trip() {
+        let device = MockQuantumDevice::new(5);
+
+        assert!(device
+            .is_available()
+            .await
+            .expect("is_available should succeed"));
+        assert_eq!(
+            device
+                .qubit_count()
+                .await
+                .expect("qubit_count should succeed"),
+            5
+        );
+
+        let props = device
+            .properties()
+            .await
+            .expect("properties should succeed");
+        assert_eq!(props.get("qubit_count").map(String::as_str), Some("5"));
+        assert!(device
+            .is_simulator()
+            .await
+            .expect("is_simulator should succeed"));
+
+        let results = device
+            .execute_circuits::<2>(Vec::new(), 100)
+            .await
+            .expect("execute_circuits should succeed");
+        assert!(results.is_empty());
+    }
+}
+
+#[cfg(all(test, not(feature = "_async_device")))]
+mod sync_device_regression_tests {
+    use super::*;
+
+    #[test]
+    fn mock_device_sync_trait_round_trip() {
+        let device = MockQuantumDevice::new(5);
+
+        assert!(device.is_available().expect("is_available should succeed"));
+        assert_eq!(device.qubit_count().expect("qubit_count should succeed"), 5);
+
+        let props = device.properties().expect("properties should succeed");
+        assert_eq!(props.get("qubit_count").map(String::as_str), Some("5"));
+        assert!(device.is_simulator().expect("is_simulator should succeed"));
+
+        let results = device
+            .execute_circuits::<2>(Vec::new(), 100)
+            .expect("execute_circuits should succeed");
+        assert!(results.is_empty());
+    }
 }

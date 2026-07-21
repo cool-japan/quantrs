@@ -237,6 +237,67 @@ impl ParametricGate for ParametricRY {
     }
 }
 
+/// Non-parametric CNOT gate, used for the entangling layers of ansätze such
+/// as [`ansatze::hardware_efficient`]. It has no free parameters (an empty
+/// [`ParametricGate::parameter_indices`]), so parameter-shift/finite-
+/// difference/SPSA gradient computation simply never varies it, and its own
+/// gradient with respect to any parameter is the zero matrix.
+pub struct ParametricCNOT {
+    pub control: usize,
+    pub target: usize,
+}
+
+impl ParametricGate for ParametricCNOT {
+    fn name(&self) -> &'static str {
+        "CNOT"
+    }
+
+    fn qubits(&self) -> Vec<usize> {
+        vec![self.control, self.target]
+    }
+
+    fn parameter_indices(&self) -> Vec<usize> {
+        Vec::new()
+    }
+
+    fn matrix(&self, _params: &[f64]) -> Result<Array2<Complex64>> {
+        // Basis ordering |control, target> with `control` the high local
+        // bit, matching `apply_two_qubit_matrix`'s bit-indexing convention.
+        Ok(scirs2_core::ndarray::array![
+            [
+                Complex64::new(1., 0.),
+                Complex64::new(0., 0.),
+                Complex64::new(0., 0.),
+                Complex64::new(0., 0.)
+            ],
+            [
+                Complex64::new(0., 0.),
+                Complex64::new(1., 0.),
+                Complex64::new(0., 0.),
+                Complex64::new(0., 0.)
+            ],
+            [
+                Complex64::new(0., 0.),
+                Complex64::new(0., 0.),
+                Complex64::new(0., 0.),
+                Complex64::new(1., 0.)
+            ],
+            [
+                Complex64::new(0., 0.),
+                Complex64::new(0., 0.),
+                Complex64::new(1., 0.),
+                Complex64::new(0., 0.)
+            ]
+        ])
+    }
+
+    fn gradient(&self, _params: &[f64], _param_idx: usize) -> Result<Array2<Complex64>> {
+        // CNOT has no parameters, so its gradient w.r.t. any parameter is
+        // identically zero.
+        Ok(Array2::zeros((4, 4)))
+    }
+}
+
 pub struct ParametricRZ {
     pub qubit: usize,
     pub param_idx: usize,
@@ -325,6 +386,11 @@ impl ParametricCircuit {
     /// Add RZ gate
     pub fn rz(&mut self, qubit: usize, param_idx: usize) {
         self.add_gate(Box::new(ParametricRZ { qubit, param_idx }));
+    }
+
+    /// Add a (non-parametric) CNOT gate, used to build entangling layers.
+    pub fn cnot(&mut self, control: usize, target: usize) {
+        self.add_gate(Box::new(ParametricCNOT { control, target }));
     }
 
     /// Evaluate the circuit for the given parameters and return the final state vector.
@@ -928,7 +994,14 @@ fn compute_pauli_expectation_from_state(
 pub mod ansatze {
     use super::ParametricCircuit;
 
-    /// Create a hardware-efficient ansatz
+    /// Create a hardware-efficient ansatz.
+    ///
+    /// Each layer applies a single-qubit `RY`/`RZ` rotation to every qubit
+    /// followed by a linear CNOT entangling ladder (`CNOT(q, q+1)` for
+    /// `q` in `0..num_qubits-1`). Without the entangling layer this ansatz
+    /// could only ever represent a product state; the CNOT ladder is what
+    /// lets it represent genuinely entangled states, as any real
+    /// hardware-efficient VQE ansatz requires.
     #[must_use]
     pub fn hardware_efficient(num_qubits: usize, num_layers: usize) -> ParametricCircuit {
         let mut circuit = ParametricCircuit::new(num_qubits);
@@ -943,8 +1016,14 @@ pub mod ansatze {
                 param_idx += 1;
             }
 
-            // Entangling layer (would need CNOT gates - simplified here)
-            // In practice, would add parametric CNOT gates
+            // Linear entangling layer: CNOT(q, q+1) for every adjacent pair.
+            // This is the standard hardware-efficient-ansatz entangling
+            // structure (e.g. Qiskit's `EfficientSU2` with linear
+            // entanglement) and is what makes the ansatz capable of
+            // representing entangled states at all.
+            for qubit in 0..num_qubits.saturating_sub(1) {
+                circuit.cnot(qubit, qubit + 1);
+            }
         }
 
         circuit
@@ -1034,6 +1113,55 @@ mod tests {
         let ansatz = ansatze::hardware_efficient(3, 2);
         assert_eq!(ansatz.num_qubits, 3);
         assert!(ansatz.num_parameters > 0);
+    }
+
+    /// Regression test for the P1 finding: `hardware_efficient` used to
+    /// omit the entangling layer entirely, so the ansatz could only ever
+    /// represent a product state. It must now include a CNOT ladder
+    /// (`num_qubits - 1` CNOTs per layer) and actually produce an entangled
+    /// state for generic rotation angles.
+    #[test]
+    fn test_hardware_efficient_ansatz_includes_entangling_layer() {
+        let num_qubits = 2;
+        let num_layers = 1;
+        let ansatz = ansatze::hardware_efficient(num_qubits, num_layers);
+
+        // 1 layer * (2 rotations/qubit * 2 qubits + 1 CNOT) = 5 gates.
+        assert_eq!(ansatz.gates.len(), 5);
+        let cnot_count = ansatz.gates.iter().filter(|g| g.name() == "CNOT").count();
+        assert_eq!(
+            cnot_count,
+            num_qubits - 1,
+            "hardware_efficient must add a linear CNOT entangling ladder"
+        );
+
+        // RY(pi/2) on qubit 0 (creating (|0>+|1>)/sqrt(2)), identity on
+        // qubit 1 (|0>), then CNOT(0, 1) produces the Bell state
+        // (|00>+|11>)/sqrt(2). Its reduced single-qubit density matrices
+        // must be maximally mixed (purity = 0.5), which is impossible for
+        // any product state built purely from local single-qubit
+        // rotations -- i.e. impossible without a real entangling layer.
+        let params = vec![PI / 2.0, 0.0, 0.0, 0.0];
+        let state = ansatz
+            .evaluate(&params)
+            .expect("ansatz evaluation should succeed");
+
+        // Reduced density matrix of qubit 0: rho_00 = sum_{b1} |amp(b0=0,b1)|^2 etc.
+        let mut rho00 = Complex64::new(0.0, 0.0);
+        let mut rho01 = Complex64::new(0.0, 0.0);
+        let mut rho11 = Complex64::new(0.0, 0.0);
+        for other_bit in 0..2usize {
+            let idx0 = other_bit << 1; // qubit0 = 0, qubit1 = other_bit
+            let idx1 = (1) | (other_bit << 1); // qubit0 = 1, qubit1 = other_bit
+            rho00 += state[idx0] * state[idx0].conj();
+            rho11 += state[idx1] * state[idx1].conj();
+            rho01 += state[idx0] * state[idx1].conj();
+        }
+        let purity = (rho00 * rho00 + rho11 * rho11 + rho01 * rho01.conj() * 2.0).re;
+        assert!(
+            purity < 0.999,
+            "expected an entangled (mixed reduced state) result, got purity {purity}"
+        );
     }
 
     /// Test-only parametric gate that returns a fixed (parameter-independent) matrix.

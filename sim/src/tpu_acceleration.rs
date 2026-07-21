@@ -431,6 +431,27 @@ impl TPUStats {
     }
 }
 
+/// Resolve the unitary matrix for a gate honestly.
+///
+/// `InterfaceGate::unitary_matrix` only recognizes the spelled-out gate names
+/// (`Hadamard`, `PauliX`, ...); it does not yet know that the short-form
+/// aliases `H`/`X` are the exact same gates. Rather than let a real,
+/// well-defined gate be silently rejected as "unsupported" on this honest CPU
+/// math path, canonicalize the alias to its spelled-out equivalent before
+/// asking for its matrix. This changes no math: `H` and `Hadamard`
+/// (respectively `X` and `PauliX`) have identical unitaries.
+fn resolve_gate_unitary(gate: &InterfaceGate) -> Result<Array2<Complex64>> {
+    let canonical_type = match &gate.gate_type {
+        InterfaceGateType::H => Some(InterfaceGateType::Hadamard),
+        InterfaceGateType::X => Some(InterfaceGateType::PauliX),
+        _ => None,
+    };
+    match canonical_type {
+        Some(gate_type) => InterfaceGate::new(gate_type, gate.qubits.clone()).unitary_matrix(),
+        None => gate.unitary_matrix(),
+    }
+}
+
 impl TPUQuantumSimulator {
     /// Create a new TPU quantum simulator.
     ///
@@ -838,7 +859,7 @@ impl TPUQuantumSimulator {
         gate: &InterfaceGate,
     ) -> Result<Array1<Complex64>> {
         let start_time = std::time::Instant::now();
-        let unitary = gate.unitary_matrix()?;
+        let unitary = resolve_gate_unitary(gate)?;
         let result = match gate.qubits.len() {
             1 => Self::apply_single_qubit_unitary(state, gate.qubits[0], &unitary)?,
             2 => Self::apply_two_qubit_unitary(state, gate.qubits[0], gate.qubits[1], &unitary)?,
@@ -1337,7 +1358,7 @@ mod tests {
         state[0] = Complex64::new(1.0, 0.0);
 
         let gate = InterfaceGate::new(InterfaceGateType::H, vec![0]);
-        let unitary = gate.unitary_matrix().expect("hadamard matrix");
+        let unitary = resolve_gate_unitary(&gate).expect("hadamard matrix");
         let result =
             TPUQuantumSimulator::apply_single_qubit_unitary(&state, 0, &unitary).expect("apply H");
 
@@ -1364,9 +1385,13 @@ mod tests {
 
     #[test]
     fn test_two_qubit_gate_application_real_math() {
-        // |10> with CNOT(control=0,target=1) -> |11>
+        // Standard little-endian convention (bit position == qubit index,
+        // matching `statevector.rs::apply_cnot`'s `(i >> control_idx) & 1`):
+        // global index 0b01 has qubit0(control)=1, qubit1(target)=0, i.e.
+        // |q0=1, q1=0>. With control=qubit0 asserted, CNOT(control=0,
+        // target=1) flips the target, giving |q0=1, q1=1> = index 0b11.
         let mut state = Array1::zeros(4);
-        state[0b10] = Complex64::new(1.0, 0.0);
+        state[0b01] = Complex64::new(1.0, 0.0);
 
         let gate = InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]);
         let unitary = gate.unitary_matrix().expect("cnot matrix");
@@ -1375,7 +1400,7 @@ mod tests {
 
         assert_eq!(result.len(), 4);
         assert_abs_diff_eq!(result[0b11].norm(), 1.0, epsilon = 1e-10);
-        assert_abs_diff_eq!(result[0b10].norm(), 0.0, epsilon = 1e-10);
+        assert_abs_diff_eq!(result[0b01].norm(), 0.0, epsilon = 1e-10);
     }
 
     #[test]

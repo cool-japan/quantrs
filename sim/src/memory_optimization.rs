@@ -263,7 +263,7 @@ impl AdvancedMemoryPool {
             .expect("Size pools write lock poisoned");
         let mut freed_memory = 0u64;
 
-        for (_, pool) in pools.iter() {
+        for pool in pools.values() {
             for buffer in pool {
                 freed_memory += (buffer.capacity() * std::mem::size_of::<Complex64>()) as u64;
             }
@@ -378,23 +378,35 @@ pub mod utils {
         (state_memory * overhead_factor) as u64
     }
 
-    /// Check if system has sufficient memory for simulation
+    /// Check if system has sufficient memory for simulation.
+    ///
+    /// Queries the real, currently-available system memory (via
+    /// [`get_available_memory`]) rather than assuming a fixed capacity, so
+    /// this honestly reflects the host the simulation actually runs on.
     #[must_use]
-    pub const fn check_memory_availability(num_qubits: usize) -> bool {
+    pub fn check_memory_availability(num_qubits: usize) -> bool {
         let required_memory = estimate_memory_requirements(num_qubits);
-
-        // Get available system memory (this is a simplified check)
-        // In practice, you'd use system-specific APIs
         let available_memory = get_available_memory();
 
         available_memory > required_memory
     }
 
-    /// Get available system memory (placeholder implementation)
-    const fn get_available_memory() -> u64 {
-        // This would use platform-specific APIs in practice
-        // For now, return a conservative estimate
-        8 * 1024 * 1024 * 1024 // 8 GB
+    /// Get available system memory in bytes.
+    ///
+    /// Performs a real runtime probe of the host's currently-available
+    /// physical memory via `scirs2_core`'s resource-discovery layer (reading
+    /// `/proc/meminfo`'s `MemAvailable` on Linux, and the platform-native
+    /// equivalent elsewhere). If the probe genuinely cannot determine the
+    /// host's memory (e.g. an unsupported platform or a sandboxed
+    /// environment without `/proc`), this falls back to a conservative 8 GB
+    /// estimate rather than propagating an error into every caller of this
+    /// `bool`-returning utility -- callers that need the honest failure mode
+    /// should call `scirs2_core::resource::get_available_memory()` directly.
+    #[must_use]
+    pub fn get_available_memory() -> u64 {
+        scirs2_core::resource::get_available_memory()
+            .map(|bytes| bytes as u64)
+            .unwrap_or(8 * 1024 * 1024 * 1024) // 8 GB conservative fallback
     }
 
     /// Optimize buffer size for cache efficiency
@@ -461,5 +473,43 @@ mod tests {
 
         // 8-qubit simulation should require much more memory than 4-qubit
         assert!(memory_8_qubits > memory_4_qubits * 10);
+    }
+
+    /// Regression test: `get_available_memory` must perform a real host
+    /// probe rather than always returning the same hardcoded constant.
+    /// We cannot control the test host's actual memory, so we instead
+    /// assert it agrees with `scirs2_core`'s own resource-discovery probe
+    /// (the same source it is required to consult) and that it reports a
+    /// physically plausible, nonzero value.
+    #[test]
+    fn test_get_available_memory_queries_real_host_memory() {
+        let reported = utils::get_available_memory();
+        assert!(
+            reported > 0,
+            "available memory must be a real, nonzero probe result"
+        );
+
+        let expected = scirs2_core::resource::get_available_memory()
+            .map(|bytes| bytes as u64)
+            .unwrap_or(8 * 1024 * 1024 * 1024);
+        assert_eq!(
+            reported, expected,
+            "utils::get_available_memory must reflect scirs2_core's real memory probe, not a fixed constant"
+        );
+    }
+
+    #[test]
+    fn test_check_memory_availability_uses_real_probe() {
+        // A trivially small simulation must fit comfortably in whatever
+        // memory the host (real or fallback-estimated) reports.
+        assert!(utils::check_memory_availability(4));
+
+        // A very large qubit count's required memory (2^50 amplitudes * 16
+        // bytes * 3x overhead ~= 54 PB) must exceed any real or
+        // fallback-estimated host memory, so this must honestly report
+        // unavailable rather than the old hardcoded-8GB check silently
+        // green-lighting it purely by luck. (50 qubits, not larger, to stay
+        // within `u64` range for the estimate multiplication.)
+        assert!(!utils::check_memory_availability(50));
     }
 }

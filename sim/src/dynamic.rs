@@ -749,3 +749,87 @@ impl DynamicResult {
         self.num_qubits
     }
 }
+
+#[cfg(all(test, feature = "python"))]
+mod python_introspection_tests {
+    use super::*;
+    use quantrs2_core::gate::multi::CRY;
+    use quantrs2_core::gate::single::RotationY;
+    use quantrs2_core::qubit::QubitId;
+
+    /// Regression test for the P1 finding: the Python-exposed introspection
+    /// getters used to return hardcoded placeholder tuples (e.g. `(0, 0.0)`)
+    /// for every `DynamicCircuit` variant other than `Q2`. A `Q3` circuit
+    /// (three qubits) must now report the gate's *real* qubit index and
+    /// angle, not the `Q2`-only placeholder.
+    #[test]
+    fn test_single_qubit_and_rotation_params_for_q3_circuit() {
+        let mut dc = DynamicCircuit::new(3).expect("3 qubits supported");
+        // Place the rotation on qubit 2, which the old hardcoded fallback
+        // (`_ => return Ok(0)` / `Ok((0, 0.0))`) could never report.
+        dc.apply_gate(RotationY {
+            target: QubitId::new(2),
+            theta: 1.2345,
+        })
+        .expect("RY gate applied");
+
+        let qubit = dc
+            .get_single_qubit_for_gate("RY", 0)
+            .expect("real qubit for RY gate");
+        assert_eq!(
+            qubit, 2,
+            "expected the gate's real target qubit (2), not a hardcoded 0"
+        );
+
+        let (qubit, theta) = dc
+            .get_rotation_params_for_gate("RY", 0)
+            .expect("real rotation params for RY gate");
+        assert_eq!(qubit, 2);
+        assert!(
+            (theta - 1.2345).abs() < 1e-12,
+            "expected the gate's real angle (1.2345), not a hardcoded 0.0, got {theta}"
+        );
+    }
+
+    /// Regression test: controlled-rotation params on a `Q4` circuit must
+    /// report the real (control, target, angle), not the hardcoded
+    /// `(0, 1, 0.0)` placeholder that every non-`Q2` variant used to return.
+    #[test]
+    fn test_controlled_rotation_params_for_q4_circuit() {
+        let mut dc = DynamicCircuit::new(4).expect("4 qubits supported");
+        dc.apply_gate(CRY {
+            control: QubitId::new(3),
+            target: QubitId::new(1),
+            theta: 0.4321,
+        })
+        .expect("CRY gate applied");
+
+        let (control, target, theta) = dc
+            .get_controlled_rotation_params_for_gate("CRY", 0)
+            .expect("real controlled-rotation params for CRY gate");
+        assert_eq!(
+            control, 3,
+            "expected the gate's real control qubit (3), not a hardcoded 0"
+        );
+        assert_eq!(
+            target, 1,
+            "expected the gate's real target qubit (1), not a hardcoded 1-by-coincidence"
+        );
+        assert!(
+            (theta - 0.4321).abs() < 1e-12,
+            "expected the gate's real angle (0.4321), not a hardcoded 0.0, got {theta}"
+        );
+    }
+
+    /// Regression test: a gate lookup that legitimately doesn't exist must
+    /// return an honest `PyErr`, not a fabricated placeholder success.
+    #[test]
+    fn test_missing_gate_returns_honest_error() {
+        let dc = DynamicCircuit::new(3).expect("3 qubits supported");
+        let result = dc.get_single_qubit_for_gate("RY", 0);
+        assert!(
+            result.is_err(),
+            "expected an honest error for a nonexistent gate"
+        );
+    }
+}

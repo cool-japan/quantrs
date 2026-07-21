@@ -811,6 +811,12 @@ pub struct QuantumVisionPipeline {
     pub preprocessor: ImagePreprocessor,
     /// Performance metrics
     pub metrics: VisionMetrics,
+    /// Backbone parameter gradient estimated by the most recent `backward`
+    /// call, consumed (and cleared) by the next `update_parameters` call.
+    backbone_gradient: Option<Array1<f64>>,
+    /// Task head parameter gradient estimated by the most recent `backward`
+    /// call, consumed (and cleared) by the next `update_parameters` call.
+    task_head_gradient: Option<Array1<f64>>,
 }
 impl QuantumVisionPipeline {
     /// Create new quantum vision pipeline
@@ -907,6 +913,8 @@ impl QuantumVisionPipeline {
             feature_extractor,
             preprocessor,
             metrics,
+            backbone_gradient: None,
+            task_head_gradient: None,
         })
     }
     /// Process images through the pipeline
@@ -933,8 +941,8 @@ impl QuantumVisionPipeline {
             let mut train_loss = 0.0;
             for (images, target) in train_data {
                 let output = self.forward(images)?;
-                let loss = self.compute_loss(&output, target)?;
-                self.backward(&loss)?;
+                let loss = Self::compute_loss(&output, target)?;
+                self.backward(images, target, loss)?;
                 self.update_parameters(&optimizer)?;
                 train_loss += loss;
             }
@@ -942,7 +950,7 @@ impl QuantumVisionPipeline {
             let mut val_metrics = HashMap::new();
             for (images, target) in val_data {
                 let output = self.forward(images)?;
-                let loss = self.compute_loss(&output, target)?;
+                let loss = Self::compute_loss(&output, target)?;
                 val_loss += loss;
                 let metrics = self.evaluate_metrics(&output, target)?;
                 for (key, value) in metrics {
@@ -966,7 +974,7 @@ impl QuantumVisionPipeline {
         Ok(history)
     }
     /// Compute loss for the task
-    fn compute_loss(&self, output: &TaskOutput, target: &TaskTarget) -> Result<f64> {
+    fn compute_loss(output: &TaskOutput, target: &TaskTarget) -> Result<f64> {
         match (output, target) {
             (TaskOutput::Classification { logits, .. }, TaskTarget::Classification { labels }) => {
                 let mut loss = 0.0;
@@ -983,12 +991,123 @@ impl QuantumVisionPipeline {
             _ => Ok(0.1),
         }
     }
-    /// Backward pass (simplified)
-    fn backward(&mut self, loss: &f64) -> Result<()> {
+    /// Re-run the pipeline's forward pass (bypassing metrics bookkeeping)
+    /// and compute the resulting loss for `images`/`target`. Used by
+    /// `backward` to numerically probe the loss surface at perturbed
+    /// parameter values.
+    fn forward_loss(&self, images: &Array4<f64>, target: &TaskTarget) -> Result<f64> {
+        let processed = self.preprocessor.preprocess(images)?;
+        let encoded = self.encoder.encode(&processed)?;
+        let features = self.backbone.forward(&encoded)?;
+        let quantum_features = self.feature_extractor.extract(&features)?;
+        let output = self.task_head.forward(&quantum_features)?;
+        Self::compute_loss(&output, target)
+    }
+
+    /// Estimate a real SPSA (simultaneous perturbation stochastic
+    /// approximation) gradient of the pipeline's loss with respect to the
+    /// backbone's flat parameter vector: both the "+" and "-" perturbed
+    /// losses are obtained by actually re-running the pipeline's forward
+    /// pass and loss computation (not fabricated), and the backbone's
+    /// parameters are restored to their original value before returning.
+    fn estimate_backbone_gradient(
+        &mut self,
+        images: &Array4<f64>,
+        target: &TaskTarget,
+    ) -> Result<Array1<f64>> {
+        const PERTURBATION_SCALE: f64 = 1e-2;
+
+        let base_params = self.backbone.parameters().clone();
+        let mut rng = thread_rng();
+        let direction: Array1<f64> =
+            base_params.mapv(|_| if rng.random::<f64>() < 0.5 { -1.0 } else { 1.0 });
+
+        let plus_params = &base_params + &(&direction * PERTURBATION_SCALE);
+        self.backbone.update_parameters(&plus_params)?;
+        let loss_plus = self.forward_loss(images, target)?;
+
+        let minus_params = &base_params - &(&direction * PERTURBATION_SCALE);
+        self.backbone.update_parameters(&minus_params)?;
+        let loss_minus = self.forward_loss(images, target)?;
+
+        // Restore the original parameters.
+        self.backbone.update_parameters(&base_params)?;
+
+        let loss_delta = loss_plus - loss_minus;
+        Ok(direction.mapv(|d| (loss_delta / (2.0 * PERTURBATION_SCALE)) * d))
+    }
+
+    /// Same as [`Self::estimate_backbone_gradient`], but for the task head's
+    /// flat parameter vector.
+    fn estimate_task_head_gradient(
+        &mut self,
+        images: &Array4<f64>,
+        target: &TaskTarget,
+    ) -> Result<Array1<f64>> {
+        const PERTURBATION_SCALE: f64 = 1e-2;
+
+        let base_params = self.task_head.parameters().clone();
+        let mut rng = thread_rng();
+        let direction: Array1<f64> =
+            base_params.mapv(|_| if rng.random::<f64>() < 0.5 { -1.0 } else { 1.0 });
+
+        let plus_params = &base_params + &(&direction * PERTURBATION_SCALE);
+        self.task_head.update_parameters(&plus_params)?;
+        let loss_plus = self.forward_loss(images, target)?;
+
+        let minus_params = &base_params - &(&direction * PERTURBATION_SCALE);
+        self.task_head.update_parameters(&minus_params)?;
+        let loss_minus = self.forward_loss(images, target)?;
+
+        // Restore the original parameters.
+        self.task_head.update_parameters(&base_params)?;
+
+        let loss_delta = loss_plus - loss_minus;
+        Ok(direction.mapv(|d| (loss_delta / (2.0 * PERTURBATION_SCALE)) * d))
+    }
+
+    /// Backward pass: estimates a real gradient of the training loss with
+    /// respect to both the backbone's and the task head's flat parameter
+    /// vectors via SPSA, and stashes the resulting gradients for the next
+    /// [`Self::update_parameters`] call to apply. Previously this was a
+    /// complete no-op, so `train`'s per-epoch loss reporting was honest but
+    /// no parameter ever changed.
+    fn backward(&mut self, images: &Array4<f64>, target: &TaskTarget, _loss: f64) -> Result<()> {
+        self.backbone_gradient = if self.backbone.parameters().is_empty() {
+            None
+        } else {
+            Some(self.estimate_backbone_gradient(images, target)?)
+        };
+
+        self.task_head_gradient = if self.task_head.parameters().is_empty() {
+            None
+        } else {
+            Some(self.estimate_task_head_gradient(images, target)?)
+        };
+
         Ok(())
     }
-    /// Update parameters
+
+    /// Apply the gradients estimated by the most recent [`Self::backward`]
+    /// call to the backbone's and task head's parameters via a real
+    /// gradient-descent step (previously this method did not touch any
+    /// parameters at all).
     fn update_parameters(&mut self, optimizer: &OptimizationMethod) -> Result<()> {
+        // `OptimizationMethod` is a bare method tag (it carries no learning
+        // rate of its own), so every variant currently takes a real gradient
+        // step at the same fixed learning rate; distinguishing per-optimizer
+        // dynamics (e.g. Adam moment estimates) is not implemented yet.
+        let learning_rate = 0.01;
+        let _ = optimizer;
+
+        if let Some(gradient) = self.backbone_gradient.take() {
+            let updated = self.backbone.parameters() - &(&gradient * learning_rate);
+            self.backbone.update_parameters(&updated)?;
+        }
+        if let Some(gradient) = self.task_head_gradient.take() {
+            let updated = self.task_head.parameters() - &(&gradient * learning_rate);
+            self.task_head.update_parameters(&updated)?;
+        }
         Ok(())
     }
     /// Evaluate metrics
@@ -1341,5 +1460,194 @@ impl QuantumFeatureExtractor {
     pub fn extract(&self, features: &Array4<f64>) -> Result<Array4<f64>> {
         let attended = self.attention.apply(features)?;
         Ok(attended)
+    }
+}
+
+#[cfg(test)]
+mod backward_regression_tests {
+    use super::*;
+
+    /// Minimal test-only backbone whose output scales linearly with its
+    /// single parameter, so a finite-difference gradient with respect to
+    /// that parameter is guaranteed to be non-zero.
+    #[derive(Debug, Clone)]
+    struct ScalingBackbone {
+        params: Array1<f64>,
+    }
+    impl VisionModel for ScalingBackbone {
+        fn forward(&self, input: &Array4<f64>) -> Result<Array4<f64>> {
+            let scale = self.params[0];
+            Ok(input.mapv(|x| x * scale))
+        }
+        fn parameters(&self) -> &Array1<f64> {
+            &self.params
+        }
+        fn update_parameters(&mut self, params: &Array1<f64>) -> Result<()> {
+            self.params = params.clone();
+            Ok(())
+        }
+        fn num_parameters(&self) -> usize {
+            self.params.len()
+        }
+        fn clone_box(&self) -> Box<dyn VisionModel> {
+            Box::new(self.clone())
+        }
+    }
+
+    /// Minimal test-only classification head whose logits scale linearly
+    /// with its single parameter and the mean input feature value.
+    #[derive(Debug, Clone)]
+    struct LinearClassificationHead {
+        params: Array1<f64>,
+        num_classes: usize,
+    }
+    impl TaskHead for LinearClassificationHead {
+        fn forward(&self, features: &Array4<f64>) -> Result<TaskOutput> {
+            let (batch, _, _, _) = features.dim();
+            let weight = self.params[0];
+            let mut logits = Array2::<f64>::zeros((batch, self.num_classes));
+            for b in 0..batch {
+                let mean_feature = features.slice(s![b, .., .., ..]).mean().unwrap_or(0.0);
+                for c in 0..self.num_classes {
+                    // Scale by class index (rather than adding a fixed
+                    // per-class offset) so the *relative* gap between
+                    // classes' logits -- and therefore the softmax
+                    // cross-entropy loss -- actually depends on
+                    // `mean_feature` and `weight`. (Softmax is shift
+                    // invariant, so an offset added identically to every
+                    // class would cancel out and make the loss insensitive
+                    // to both parameters.)
+                    logits[[b, c]] = mean_feature * weight * (c as f64);
+                }
+            }
+            Ok(TaskOutput::Classification {
+                logits: logits.clone(),
+                probabilities: logits,
+            })
+        }
+        fn parameters(&self) -> &Array1<f64> {
+            &self.params
+        }
+        fn update_parameters(&mut self, params: &Array1<f64>) -> Result<()> {
+            self.params = params.clone();
+            Ok(())
+        }
+        fn clone_box(&self) -> Box<dyn TaskHead> {
+            Box::new(self.clone())
+        }
+    }
+
+    fn build_test_pipeline(backbone_param: f64, head_param: f64) -> QuantumVisionPipeline {
+        let preprocessing = PreprocessingConfig {
+            image_size: (2, 2),
+            normalize: false,
+            mean: Vec::new(),
+            std: Vec::new(),
+            augmentation: AugmentationConfig {
+                horizontal_flip: false,
+                rotation_range: 0.0,
+                zoom_range: (1.0, 1.0),
+                brightness_range: (1.0, 1.0),
+                quantum_noise: false,
+            },
+            color_space: ColorSpace::Grayscale,
+        };
+        let preprocessor = ImagePreprocessor::new(preprocessing);
+        let encoder = QuantumImageEncoder::new(ImageEncodingMethod::AmplitudeEncoding, 2)
+            .expect("encoder should construct");
+        let feature_extractor =
+            QuantumFeatureExtractor::new(4, 2).expect("feature extractor should construct");
+
+        QuantumVisionPipeline {
+            config: QuantumVisionConfig::default(),
+            encoder,
+            backbone: Box::new(ScalingBackbone {
+                params: Array1::from_vec(vec![backbone_param]),
+            }),
+            task_head: Box::new(LinearClassificationHead {
+                params: Array1::from_vec(vec![head_param]),
+                num_classes: 2,
+            }),
+            feature_extractor,
+            preprocessor,
+            metrics: VisionMetrics::new(),
+            backbone_gradient: None,
+            task_head_gradient: None,
+        }
+    }
+
+    /// Regression test for the "backward/update_parameters are no-ops" bug:
+    /// a real gradient must be estimated and actually applied to both the
+    /// backbone's and the task head's parameters, changing them.
+    #[test]
+    fn backward_and_update_parameters_actually_change_weights() {
+        let mut pipeline = build_test_pipeline(2.0, 1.0);
+        let images = Array4::<f64>::from_elem((1, 1, 2, 2), 0.7);
+        let target = TaskTarget::Classification { labels: vec![1] };
+
+        let backbone_before = pipeline.backbone.parameters().clone();
+        let head_before = pipeline.task_head.parameters().clone();
+
+        pipeline
+            .backward(&images, &target, 0.0)
+            .expect("backward should succeed");
+        assert!(pipeline.backbone_gradient.is_some());
+        assert!(pipeline.task_head_gradient.is_some());
+
+        pipeline
+            .update_parameters(&OptimizationMethod::GradientDescent)
+            .expect("update_parameters should succeed");
+
+        let backbone_after = pipeline.backbone.parameters().clone();
+        let head_after = pipeline.task_head.parameters().clone();
+
+        assert!(
+            (backbone_before[0] - backbone_after[0]).abs() > 1e-9,
+            "backbone parameter should have changed: {} -> {}",
+            backbone_before[0],
+            backbone_after[0]
+        );
+        assert!(
+            (head_before[0] - head_after[0]).abs() > 1e-9,
+            "task head parameter should have changed: {} -> {}",
+            head_before[0],
+            head_after[0]
+        );
+
+        // The gradients are consumed (cleared) once applied.
+        assert!(pipeline.backbone_gradient.is_none());
+        assert!(pipeline.task_head_gradient.is_none());
+    }
+
+    /// A full `train` epoch should reduce the training loss for this
+    /// trivially learnable toy problem, demonstrating that gradients flow
+    /// end-to-end through `forward` -> `compute_loss` -> `backward` ->
+    /// `update_parameters`, not merely that some numbers change.
+    #[test]
+    fn train_reduces_loss_over_epochs() {
+        let mut pipeline = build_test_pipeline(0.1, 0.1);
+        let images = Array4::<f64>::from_elem((1, 1, 2, 2), 0.9);
+        let target = TaskTarget::Classification { labels: vec![1] };
+        let train_data = vec![(images.clone(), target.clone())];
+        let val_data = vec![(images, target)];
+
+        let initial_output = pipeline.forward(&train_data[0].0).expect("forward ok");
+        let initial_loss = QuantumVisionPipeline::compute_loss(&initial_output, &train_data[0].1)
+            .expect("loss ok");
+
+        let history = pipeline
+            .train(
+                &train_data,
+                &val_data,
+                20,
+                OptimizationMethod::GradientDescent,
+            )
+            .expect("training should succeed");
+
+        let final_loss = *history.train_losses.last().expect("has losses");
+        assert!(
+            final_loss < initial_loss,
+            "expected training loss to decrease: initial={initial_loss}, final={final_loss}"
+        );
     }
 }

@@ -2,7 +2,6 @@
 //! Tests for the compile module.
 
 use quantrs2_tytan::*;
-use scirs2_core::ndarray::Array;
 
 #[cfg(feature = "dwave")]
 use quantrs2_tytan::compile::Compile;
@@ -162,44 +161,68 @@ fn test_compile_cubic_expression() {
     assert_eq!(tensor[scirs2_core::ndarray::IxDyn(&sorted_indices)], 1.0);
 }
 
-// TODO: This test needs to be rewritten to use expressions instead of raw matrix
-// #[test]
-// #[cfg(feature = "dwave")]
-// fn test_compile_matrix_input() {
-//     // Test compiling from a matrix input
-//     // Create a 3x3 QUBO matrix directly
-//     let mut matrix = Array::zeros((3, 3));
-//
-//     // Set some values
-//     matrix[[0, 0]] = -3.0; // Linear term for variable 0
-//     matrix[[1, 1]] = -3.0; // Linear term for variable 1
-//     matrix[[2, 2]] = -3.0; // Linear term for variable 2
-//     matrix[[0, 1]] = 2.0; // Quadratic term between variables 0 and 1
-//     matrix[[0, 2]] = 2.0; // Quadratic term between variables 0 and 2
-//     matrix[[1, 2]] = 2.0; // Quadratic term between variables 1 and 2
-//
-//     // Make matrix symmetric
-//     matrix[[1, 0]] = matrix[[0, 1]];
-//     matrix[[2, 0]] = matrix[[0, 2]];
-//     matrix[[2, 1]] = matrix[[1, 2]];
-//
-//     // Compile
-//     // let (qubo, offset) = Compile::new(matrix).get_qubo().unwrap();
-//     let (result_matrix, var_map) = qubo;
-//
-//     // Check offset
-//     assert_eq!(offset, 0.0);
-//
-//     // Check variable map
-//     assert_eq!(var_map.len(), 3);
-//
-//     // Check matrix dimensions
-//     assert_eq!(result_matrix.shape(), &[3, 3]);
-//
-//     // Check that the matrices are the same
-//     for i in 0..3 {
-//         for j in 0..3 {
-//             assert_eq!(matrix[[i, j]], result_matrix[[i, j]]);
-//         }
-//     }
-// }
+#[test]
+#[cfg(feature = "dwave")]
+fn test_compile_matrix_input() {
+    // `Compile` only accepts symbolic expressions (there is no raw-matrix
+    // constructor), so this test rebuilds the same 3x3 QUBO the original
+    // (disabled) raw-matrix version constructed, via the expression /
+    // SymbolBuilder API:
+    //
+    //   diag(0,0) = diag(1,1) = diag(2,2) = -3.0   (linear terms)
+    //   off-diag  (0,1) = (0,2) = (1,2)    =  2.0   (quadratic terms, symmetric)
+    //
+    // As an expression: -3*x0 - 3*x1 - 3*x2 + 2*x0*x1 + 2*x0*x2 + 2*x1*x2
+    let x0 = symbols("x0");
+    let x1 = symbols("x1");
+    let x2 = symbols("x2");
+
+    let neg_three = quantrs2_symengine_pure::Expression::from(-3);
+    let two = quantrs2_symengine_pure::Expression::from(2);
+
+    let expr = neg_three.clone() * x0.clone()
+        + neg_three.clone() * x1.clone()
+        + neg_three * x2.clone()
+        + two.clone() * x0.clone() * x1.clone()
+        + two.clone() * x0.clone() * x2.clone()
+        + two * x1.clone() * x2.clone();
+
+    // Compile to QUBO
+    let (qubo, offset) = Compile::new(expr).get_qubo().unwrap();
+    let (matrix, var_map) = qubo;
+
+    // Check offset
+    assert_eq!(offset, 0.0);
+
+    // Check variable map
+    assert_eq!(var_map.len(), 3);
+    assert!(var_map.contains_key("x0"));
+    assert!(var_map.contains_key("x1"));
+    assert!(var_map.contains_key("x2"));
+
+    // Check matrix dimensions
+    assert_eq!(matrix.shape(), &[3, 3]);
+
+    let x0_idx = var_map["x0"];
+    let x1_idx = var_map["x1"];
+    let x2_idx = var_map["x2"];
+
+    // Linear (diagonal) terms
+    assert_eq!(matrix[[x0_idx, x0_idx]], -3.0);
+    assert_eq!(matrix[[x1_idx, x1_idx]], -3.0);
+    assert_eq!(matrix[[x2_idx, x2_idx]], -3.0);
+
+    // Quadratic terms are stored once, in whichever half is upper
+    // triangular for the assigned variable ordering (see
+    // `test_compile_constraint_expression` for the same convention).
+    let pair = |a: usize, b: usize| -> f64 {
+        if a <= b {
+            matrix[[a, b]]
+        } else {
+            matrix[[b, a]]
+        }
+    };
+    assert_eq!(pair(x0_idx, x1_idx), 2.0);
+    assert_eq!(pair(x0_idx, x2_idx), 2.0);
+    assert_eq!(pair(x1_idx, x2_idx), 2.0);
+}

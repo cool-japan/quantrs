@@ -1031,7 +1031,17 @@ impl AdvancedHardwareBenchmarkSuite {
                 *n_estimators,
                 *learning_rate,
             )?,
-            _ => (vec![0u8; 100], 0.8, 0.75),
+            // No real training routine is implemented for these model
+            // types yet; report that honestly instead of silently
+            // returning a fake "trained" model (100 zero bytes) with a
+            // fixed, plausible-looking 0.8/0.75 score pair unrelated to
+            // `x_train`/`y_train`.
+            other => {
+                return Err(DeviceError::NotImplemented(format!(
+                    "ML model type {other:?} is not yet implemented; supported types are \
+                     LinearRegression, RandomForest, and GradientBoosting"
+                )));
+            }
         };
         let cv_scores = self.cross_validate(&x_train, &y_train, model_type)?;
         let predictions = Self::predict_with_model(&model_data, &x_test)?;
