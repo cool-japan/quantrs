@@ -14,8 +14,9 @@ use scirs2_stats::{mean, median, std, var};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    CorrectionOperation, CorrectionType, ErrorCorrector, QECResult, QuantumErrorCode, ShorCode,
-    StabilizerGroup, SteaneCode, SurfaceCode, SyndromeDetector, SyndromePattern, ToricCode,
+    CorrectionOperation, CorrectionType, ErrorCorrector, PauliOperator, QECResult,
+    QuantumErrorCode, ShorCode, StabilizerGroup, SteaneCode, SurfaceCode, SyndromeDetector,
+    SyndromePattern, ToricCode,
 };
 use crate::{DeviceError, DeviceResult};
 use quantrs2_core::qubit::QubitId;
@@ -344,10 +345,18 @@ impl QECBenchmarkSuite {
         stabilizers
             .iter()
             .map(|stabilizer| {
+                // `qubits` lists every qubit the group is defined over; the actual support is
+                // where `operators` is non-identity. Counting `qubits` alone made each
+                // stabilizer overlap every error identically, so every single-qubit error
+                // produced the same syndrome and the decoder always answered qubit 0.
                 let overlap = stabilizer
                     .qubits
                     .iter()
-                    .filter(|q| error_qubits.contains(&(q.id() as usize)))
+                    .zip(stabilizer.operators.iter())
+                    .filter(|(qubit, operator)| {
+                        !matches!(operator, PauliOperator::I)
+                            && error_qubits.contains(&(qubit.id() as usize))
+                    })
                     .count();
                 overlap % 2 == 1
             })

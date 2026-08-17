@@ -740,9 +740,14 @@ impl EnhancedPhaseEstimation {
         }
         let resource_stats =
             Self::estimate_qpe_resources(phase_qubits, system_qubits, precision_iterations);
+        // One precision per reported eigenvalue: every eigenvalue is read out of the same
+        // phase register, so they share the 1/2^phase_qubits resolution. Emitting a single
+        // precision left `precisions` shorter than `eigenvalues` whenever the Maximum
+        // optimisation level reported secondary peaks.
+        let precisions = vec![best_precision; best_eigenvalues.len().max(1)];
         Ok(PhaseEstimationResult {
             eigenvalues: best_eigenvalues,
-            precisions: vec![best_precision],
+            precisions,
             eigenvectors: best_eigenvectors,
             phase_qubits,
             precision_iterations,
@@ -845,18 +850,22 @@ impl EnhancedPhaseEstimation {
             if self.config.optimization_level == OptimizationLevel::Maximum && iteration > 0 {}
         }
         Self::prepare_enhanced_eigenstate(&mut simulator, eigenstate, system_qubits)?;
-        for (i, control_qubit) in (system_qubits..(system_qubits + phase_qubits)).enumerate() {
-            let power = 1 << i;
-            for _ in 0..power {
-                for target_qubit in 0..system_qubits {
-                    self.apply_enhanced_controlled_unitary(
-                        &mut simulator,
-                        unitary_operator,
-                        control_qubit,
-                        target_qubit,
-                        iteration,
-                    )?;
-                }
+        // Controlled-U^(2^i) for each phase qubit. Squaring the system-register operator
+        // costs one matrix multiply per phase qubit, whereas applying U literally 2^i
+        // times costs 2^phase_qubits applications of the whole state vector (for the
+        // 18 phase qubits a 1e-3 target selects, that is 262_143 passes over a 19-qubit
+        // state — hours instead of milliseconds).
+        if system_qubits > 0 {
+            let mut operator_power = Self::dense_system_unitary(unitary_operator, system_qubits)?;
+            for control_qubit in system_qubits..(system_qubits + phase_qubits) {
+                Self::apply_controlled_system_unitary(
+                    &mut simulator,
+                    &operator_power,
+                    control_qubit,
+                    system_qubits,
+                )?;
+                let _ = (self.config.enable_error_mitigation, iteration);
+                operator_power = operator_power.dot(&operator_power);
             }
         }
         self.apply_enhanced_inverse_qft(&mut simulator, system_qubits, phase_qubits)?;
@@ -895,21 +904,82 @@ impl EnhancedPhaseEstimation {
         }
         Ok(())
     }
-    /// Apply enhanced controlled unitary with error mitigation
-    pub(super) fn apply_enhanced_controlled_unitary<U>(
-        &self,
-        simulator: &mut StateVectorSimulator,
+    /// Materialise the caller-supplied system-register operator as a dense
+    /// `2^system_qubits x 2^system_qubits` matrix.
+    ///
+    /// `unitary_operator` is an opaque closure, so its matrix is recovered by running it
+    /// on each computational basis state of the system register: the resulting state
+    /// vector is that basis state's column. Having the matrix is what allows `U^(2^i)` to
+    /// be formed by repeated squaring instead of by `2^i` repeated applications.
+    pub(super) fn dense_system_unitary<U>(
         unitary_operator: &U,
-        control_qubit: usize,
-        target_qubit: usize,
-        iteration: usize,
-    ) -> Result<()>
+        system_qubits: usize,
+    ) -> Result<Array2<Complex64>>
     where
         U: Fn(&mut StateVectorSimulator, usize) -> Result<()> + Send + Sync,
     {
-        unitary_operator(simulator, target_qubit)?;
-        // Error mitigation for subsequent iterations reserved for future implementation
-        let _ = (self.config.enable_error_mitigation, iteration);
+        let dimension = 1usize << system_qubits;
+        let mut matrix = Array2::zeros((dimension, dimension));
+        for column in 0..dimension {
+            let mut simulator = StateVectorSimulator::new();
+            simulator.initialize_state(system_qubits)?;
+            let mut basis_state = vec![Complex64::new(0.0, 0.0); dimension];
+            basis_state[column] = Complex64::new(1.0, 0.0);
+            simulator.set_state(basis_state)?;
+            for target_qubit in 0..system_qubits {
+                unitary_operator(&mut simulator, target_qubit)?;
+            }
+            let evolved = simulator.get_state();
+            if evolved.len() != dimension {
+                return Err(SimulatorError::DimensionMismatch(format!(
+                    "system operator produced a {}-amplitude state for {system_qubits} qubits, \
+                     expected {dimension}",
+                    evolved.len()
+                )));
+            }
+            for (row, amplitude) in evolved.iter().enumerate() {
+                matrix[[row, column]] = *amplitude;
+            }
+        }
+        Ok(matrix)
+    }
+
+    /// Apply `operator` to the system register, conditioned on `control_qubit`.
+    ///
+    /// The register layout places the `system_qubits` system qubits in the low bits and
+    /// the phase qubits above them, so each aligned run of `2^system_qubits` amplitudes
+    /// shares one phase value and is exactly the subspace the operator acts on.
+    pub(super) fn apply_controlled_system_unitary(
+        simulator: &mut StateVectorSimulator,
+        operator: &Array2<Complex64>,
+        control_qubit: usize,
+        system_qubits: usize,
+    ) -> Result<()> {
+        let dimension = 1usize << system_qubits;
+        let control_mask = 1usize << control_qubit;
+        let mut state = simulator.get_state();
+        if state.len() % dimension != 0 {
+            return Err(SimulatorError::DimensionMismatch(format!(
+                "state of {} amplitudes is not a multiple of the {dimension}-dimensional \
+                 system register",
+                state.len()
+            )));
+        }
+        let mut block = vec![Complex64::new(0.0, 0.0); dimension];
+        for base in (0..state.len()).step_by(dimension) {
+            if base & control_mask == 0 {
+                continue;
+            }
+            for (row, slot) in block.iter_mut().enumerate() {
+                let mut sum = Complex64::new(0.0, 0.0);
+                for column in 0..dimension {
+                    sum += operator[[row, column]] * state[base + column];
+                }
+                *slot = sum;
+            }
+            state[base..base + dimension].copy_from_slice(&block);
+        }
+        simulator.set_state(state)?;
         Ok(())
     }
     /// Apply enhanced inverse QFT with error correction

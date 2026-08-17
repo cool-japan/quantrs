@@ -222,7 +222,12 @@ futures = "0.3"
 async-trait = "0.1"
 
 # Python bindings and FFI
-pyo3 = { version = "0.29.0", default-features = false, features = ["extension-module"] }
+# NOTE: `extension-module` must NEVER be enabled here (nor in any member manifest).
+# `--all-features` would then activate it for every workspace member, pyo3 would stop
+# linking libpython, and every `cargo test` binary would fail to link (undefined
+# _PyExc_*/_Py_* symbols). Maturin enables it for the wheel build instead, via
+# `[tool.maturin] features = ["pyo3/extension-module"]` in py/pyproject.toml.
+pyo3 = { version = "0.29.0", default-features = false }
 scirs2-numpy = { version = "0.6.5", default-features = false }  # SciRS2-compatible numpy bindings
 
 # Utility libraries

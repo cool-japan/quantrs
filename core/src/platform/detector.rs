@@ -256,7 +256,9 @@ fn detect_cuda_gpu_devices() -> Option<Vec<GpuDevice>> {
 fn detect_memory_capabilities() -> MemoryCapabilities {
     use sysinfo::System;
 
-    let mut sys = System::new_all();
+    // `System::new()`, not `new_all()`: only memory is read here, and `new_all` additionally
+    // enumerates every process on the host.
+    let mut sys = System::new();
     sys.refresh_memory();
 
     MemoryCapabilities {
@@ -442,7 +444,9 @@ fn detect_platform_type() -> PlatformType {
     let physical_cores = num_cpus::get_physical();
 
     use sysinfo::System;
-    let mut sys = System::new_all();
+    // `System::new()`, not `new_all()`: only memory is read here, and `new_all` additionally
+    // enumerates every process on the host.
+    let mut sys = System::new();
     sys.refresh_memory();
     let total_memory_gb = sys.total_memory() / (1024 * 1024 * 1024);
 
@@ -451,12 +455,14 @@ fn detect_platform_type() -> PlatformType {
     // - Large memory (>64 GB)
     // - NUMA nodes > 1
     // - Specific CPU model indicators
+    // The model string is read once; each `detect_cpu_model()` call refreshes every CPU.
+    let cpu_model = detect_cpu_model();
     let is_server = logical_cores > 16
         || total_memory_gb > 64
         || detect_numa_nodes() > 1
-        || detect_cpu_model().contains("Xeon")
-        || detect_cpu_model().contains("EPYC")
-        || detect_cpu_model().contains("Threadripper");
+        || cpu_model.contains("Xeon")
+        || cpu_model.contains("EPYC")
+        || cpu_model.contains("Threadripper");
 
     if is_server {
         PlatformType::Server

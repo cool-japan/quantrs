@@ -175,8 +175,18 @@ impl PlatformCapabilities {
     ///
     /// This is the main entry point for platform detection as required by SciRS2 policy.
     /// All modules should use this instead of direct platform detection.
+    ///
+    /// Detection is performed once per process and cached: probing the host walks every
+    /// running process and refreshes every CPU (several `sysinfo::System` scans, ~0.4s a
+    /// call). Callers such as `SimdGateEngine::new` construct an engine per circuit
+    /// evaluation, so an uncached probe here dominated the runtime of anything that
+    /// simulates in a loop — a 30-step parameter-shift training loop spent over an hour
+    /// in process enumeration rather than in simulation.
+    ///
+    /// Use [`crate::platform::get_platform_capabilities`] to borrow the cached value
+    /// instead of cloning it.
     pub fn detect() -> Self {
-        crate::platform::detector::detect_platform_capabilities()
+        crate::platform::get_platform_capabilities().clone()
     }
 
     /// Check if the platform supports SIMD operations

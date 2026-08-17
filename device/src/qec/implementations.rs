@@ -36,142 +36,47 @@ impl Default for SteaneCode {
 
 impl QuantumErrorCode for SteaneCode {
     fn get_stabilizers(&self) -> Vec<StabilizerGroup> {
-        vec![
-            // X-stabilizers for Steane [[7,1,3]] code
-            StabilizerGroup {
-                operators: vec![
-                    PauliOperator::X,
-                    PauliOperator::X,
-                    PauliOperator::X,
-                    PauliOperator::X,
-                    PauliOperator::I,
-                    PauliOperator::I,
-                    PauliOperator::I,
-                ],
-                qubits: vec![
-                    QubitId::new(0),
-                    QubitId::new(1),
-                    QubitId::new(2),
-                    QubitId::new(3),
-                    QubitId::new(4),
-                    QubitId::new(5),
-                    QubitId::new(6),
-                ],
-                stabilizer_type: StabilizerType::XStabilizer,
-                weight: 4,
-            },
-            StabilizerGroup {
-                operators: vec![
-                    PauliOperator::I,
-                    PauliOperator::X,
-                    PauliOperator::X,
-                    PauliOperator::I,
-                    PauliOperator::X,
-                    PauliOperator::X,
-                    PauliOperator::I,
-                ],
-                qubits: vec![
-                    QubitId::new(0),
-                    QubitId::new(1),
-                    QubitId::new(2),
-                    QubitId::new(3),
-                    QubitId::new(4),
-                    QubitId::new(5),
-                    QubitId::new(6),
-                ],
-                stabilizer_type: StabilizerType::XStabilizer,
-                weight: 4,
-            },
-            StabilizerGroup {
-                operators: vec![
-                    PauliOperator::I,
-                    PauliOperator::I,
-                    PauliOperator::I,
-                    PauliOperator::X,
-                    PauliOperator::X,
-                    PauliOperator::X,
-                    PauliOperator::X,
-                ],
-                qubits: vec![
-                    QubitId::new(0),
-                    QubitId::new(1),
-                    QubitId::new(2),
-                    QubitId::new(3),
-                    QubitId::new(4),
-                    QubitId::new(5),
-                    QubitId::new(6),
-                ],
-                stabilizer_type: StabilizerType::XStabilizer,
-                weight: 4,
-            },
-            // Z-stabilizers for Steane [[7,1,3]] code
-            StabilizerGroup {
-                operators: vec![
-                    PauliOperator::Z,
-                    PauliOperator::Z,
-                    PauliOperator::Z,
-                    PauliOperator::Z,
-                    PauliOperator::I,
-                    PauliOperator::I,
-                    PauliOperator::I,
-                ],
-                qubits: vec![
-                    QubitId::new(0),
-                    QubitId::new(1),
-                    QubitId::new(2),
-                    QubitId::new(3),
-                    QubitId::new(4),
-                    QubitId::new(5),
-                    QubitId::new(6),
-                ],
-                stabilizer_type: StabilizerType::ZStabilizer,
-                weight: 4,
-            },
-            StabilizerGroup {
-                operators: vec![
-                    PauliOperator::I,
-                    PauliOperator::Z,
-                    PauliOperator::Z,
-                    PauliOperator::I,
-                    PauliOperator::Z,
-                    PauliOperator::Z,
-                    PauliOperator::I,
-                ],
-                qubits: vec![
-                    QubitId::new(0),
-                    QubitId::new(1),
-                    QubitId::new(2),
-                    QubitId::new(3),
-                    QubitId::new(4),
-                    QubitId::new(5),
-                    QubitId::new(6),
-                ],
-                stabilizer_type: StabilizerType::ZStabilizer,
-                weight: 4,
-            },
-            StabilizerGroup {
-                operators: vec![
-                    PauliOperator::I,
-                    PauliOperator::I,
-                    PauliOperator::I,
-                    PauliOperator::Z,
-                    PauliOperator::Z,
-                    PauliOperator::Z,
-                    PauliOperator::Z,
-                ],
-                qubits: vec![
-                    QubitId::new(0),
-                    QubitId::new(1),
-                    QubitId::new(2),
-                    QubitId::new(3),
-                    QubitId::new(4),
-                    QubitId::new(5),
-                    QubitId::new(6),
-                ],
-                stabilizer_type: StabilizerType::ZStabilizer,
-                weight: 4,
-            },
-        ]
+        /// Number of data qubits in the Steane `[[7,1,3]]` code.
+        const DATA_QUBITS: usize = 7;
+        /// Parity checks of the classical `[7,4,3]` Hamming code that Steane is built from.
+        ///
+        /// Check `k` covers the qubits whose 1-based index has bit `k` set, so the seven
+        /// single-qubit error syndromes are the seven distinct non-zero 3-bit patterns —
+        /// that distinctness is exactly what makes a single error locatable, and it also
+        /// makes every X/Z support intersection even, as CSS commutation requires.
+        ///
+        /// The previous supports (`{0,1,2,3}`, `{1,2,4,5}`, `{3,4,5,6}`) gave qubits 1 and 2
+        /// — and 4 and 5 — identical syndromes, and `X₁`/`Z₃` overlapped in one qubit, so
+        /// the generators did not even commute.
+        const PARITY_CHECKS: [[usize; 4]; 3] = [[0, 2, 4, 6], [1, 2, 5, 6], [3, 4, 5, 6]];
+
+        let group =
+            |support: &[usize; 4], pauli: &PauliOperator, kind: StabilizerType| StabilizerGroup {
+                operators: (0..DATA_QUBITS)
+                    .map(|qubit| {
+                        if support.contains(&qubit) {
+                            pauli.clone()
+                        } else {
+                            PauliOperator::I
+                        }
+                    })
+                    .collect(),
+                qubits: (0..DATA_QUBITS)
+                    .map(|qubit| QubitId::new(qubit as u32))
+                    .collect(),
+                stabilizer_type: kind,
+                weight: support.len(),
+            };
+
+        PARITY_CHECKS
+            .iter()
+            .map(|support| group(support, &PauliOperator::X, StabilizerType::XStabilizer))
+            .chain(
+                PARITY_CHECKS
+                    .iter()
+                    .map(|support| group(support, &PauliOperator::Z, StabilizerType::ZStabilizer)),
+            )
+            .collect()
     }
 
     fn get_logical_operators(&self) -> Vec<LogicalOperator> {

@@ -314,10 +314,14 @@ impl PenaltyOptimizer {
         let upper_bounds = Array1::from_elem(constraint_names.len(), self.config.max_weight);
         let bounds = Bounds::new(lower_bounds, upper_bounds);
 
-        // Optimize
+        // Optimize. The outer loop counter is not an iteration budget for the inner solve:
+        // passing it meant the very first weight update ran the optimizer for zero
+        // iterations and returned the starting weights unchanged.
+        let inner_max_iterations = self.config.max_iterations.max(1);
+        let _ = iteration;
         if let Some(ref mut optimizer) = self.optimizer {
             let mut result =
-                optimizer.minimize(&objective, &current_weights, &bounds, iteration)?;
+                optimizer.minimize(&objective, &current_weights, &bounds, inner_max_iterations)?;
 
             // Update weights
             for (i, name) in constraint_names.iter().enumerate() {
@@ -427,21 +431,44 @@ struct WeightOptimizationObjective {
 }
 
 #[cfg(feature = "scirs")]
+impl WeightOptimizationObjective {
+    /// Floor applied to a weight before dividing by it, so a probe at or below zero cannot
+    /// produce a non-finite residual. The optimizer's own bounds keep weights at or above
+    /// `PenaltyConfig::min_weight` in practice.
+    const MIN_SAFE_WEIGHT: f64 = 1e-12;
+}
+
+#[cfg(feature = "scirs")]
 impl crate::scirs_stub::scirs2_optimization::ObjectiveFunction for WeightOptimizationObjective {
     fn evaluate(&self, weights: &Array1<f64>) -> f64 {
-        // Weighted sum of violations
-        let weighted_violations = weights * &self.violations;
-        let total_violation = weighted_violations.sum();
+        // Residual violation left by each penalty weight, plus L2 regularisation.
+        //
+        // The residual has to *decrease* as a weight grows. The previous form summed
+        // `weight * violation`, which increases with the weight, so minimising it drove
+        // every weight down to `min_weight` precisely when a constraint was still
+        // violated — the opposite of what an adaptive penalty method must do, and why a
+        // persistently violated constraint never had its weight raised. Balancing
+        // `v / w` against `lambda * w^2` puts the optimum at `w = (v / (2*lambda))^(1/3)`,
+        // which grows with the violation and stays finite.
+        let residual: f64 = self
+            .violations
+            .iter()
+            .zip(weights.iter())
+            .map(|(&violation, &weight)| violation / weight.max(Self::MIN_SAFE_WEIGHT))
+            .sum();
 
-        // Add regularization term
-        let regularization = self.regularization * weights.dot(weights);
-
-        total_violation + regularization
+        residual + self.regularization * weights.dot(weights)
     }
 
     fn gradient(&self, weights: &Array1<f64>) -> Array1<f64> {
-        // Gradient of weighted violations plus regularization
-        &self.violations + 2.0 * self.regularization * weights
+        let mut gradient = Array1::zeros(weights.len());
+        for (index, (&violation, &weight)) in self.violations.iter().zip(weights.iter()).enumerate()
+        {
+            let safe_weight = weight.max(Self::MIN_SAFE_WEIGHT);
+            gradient[index] =
+                2.0 * self.regularization * weight - violation / (safe_weight * safe_weight);
+        }
+        gradient
     }
 }
 

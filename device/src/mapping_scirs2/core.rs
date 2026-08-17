@@ -1384,11 +1384,22 @@ mod real_analysis_tests {
         // chain has diameter 4. Both must be real, differing values.
         assert_eq!(complete_result.graph_analysis.diameter, 1);
         assert_eq!(linear_result.graph_analysis.diameter, 4);
+        // Planarity must be computed from the topology, not reported as a constant. K5 is
+        // the canonical non-planar graph (Kuratowski), while a 5-node linear chain is a
+        // tree and therefore planar — so the two topologies must disagree here.
         assert!(
-            complete_result
+            !complete_result
                 .graph_analysis
                 .topological_properties
-                .is_planar
+                .is_planar,
+            "the complete graph on 5 nodes (K5) is not planar"
+        );
+        assert!(
+            linear_result
+                .graph_analysis
+                .topological_properties
+                .is_planar,
+            "a 5-node linear chain is a tree and therefore planar"
         );
         assert!(
             complete_result

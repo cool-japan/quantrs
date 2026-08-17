@@ -139,6 +139,23 @@ impl QuantumFLClient {
         Ok(total_loss / (epochs * local_data.nrows()) as f64)
     }
 
+    /// Class probabilities for a set of QNN outputs, via a numerically stable softmax.
+    ///
+    /// `QuantumNeuralNetwork::forward` returns Pauli expectation values in `[-1, 1]`, not a
+    /// probability distribution. Feeding those straight into `-ln(p)` yields `NaN` for every
+    /// negative expectation value (and `+inf` at zero), which is what made `train_local`
+    /// report a non-finite loss. Shifting by the maximum before exponentiating keeps the
+    /// result finite for any real input, so each probability lies strictly in `(0, 1)`.
+    fn class_probabilities(output: &Array1<f64>) -> Array1<f64> {
+        let max_output = output.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        let mut probabilities = output.mapv(|value| (value - max_output).exp());
+        let total: f64 = probabilities.sum();
+        if total > 0.0 {
+            probabilities /= total;
+        }
+        probabilities
+    }
+
     /// Compute loss function
     fn compute_loss(&self, output: &Array1<f64>, label: i32) -> Result<f64> {
         // Cross-entropy loss for classification
@@ -147,7 +164,8 @@ impl QuantumFLClient {
             return Err(MLError::InvalidInput("Label out of bounds".to_string()));
         }
 
-        Ok(-output[label_idx].ln())
+        let probabilities = Self::class_probabilities(output);
+        Ok(-probabilities[label_idx].ln())
     }
 
     /// Real gradient step on the local QNN's weights.
@@ -171,20 +189,27 @@ impl QuantumFLClient {
             return Err(MLError::InvalidInput("Label out of bounds".to_string()));
         }
 
-        // d(loss)/d(output[label]) for loss = -ln(output[label]).
-        // Clamp away from zero to avoid a divide-by-zero blow-up.
-        let output_val = output[label_idx].max(1e-12);
-        let d_loss_d_output = -1.0 / output_val;
-
-        // d(output[label])/d(theta_j) for every parameter via parameter shift.
-        let d_output_d_params = self
-            .local_model
-            .output_component_gradient(input, label_idx)?;
-
+        // For the softmax cross-entropy of `Self::compute_loss`,
+        // d(loss)/d(output[k]) = p_k - [k == label], so every output component contributes
+        // to the parameter gradient — not just the labelled one.
+        let probabilities = Self::class_probabilities(output);
         let num_params = self.local_model.parameters.len();
+        let mut gradient = vec![0.0; num_params];
+
+        for class in 0..output.len() {
+            let d_loss_d_output = probabilities[class] - if class == label_idx { 1.0 } else { 0.0 };
+            if d_loss_d_output == 0.0 {
+                continue;
+            }
+            // d(output[class])/d(theta_j) for every parameter via parameter shift.
+            let d_output_d_params = self.local_model.output_component_gradient(input, class)?;
+            for j in 0..num_params {
+                gradient[j] += d_loss_d_output * d_output_d_params[j];
+            }
+        }
+
         for j in 0..num_params {
-            let grad_j = d_loss_d_output * d_output_d_params[j];
-            self.local_model.parameters[j] -= learning_rate * grad_j;
+            self.local_model.parameters[j] -= learning_rate * gradient[j];
         }
 
         self.sync_local_params_from_model();

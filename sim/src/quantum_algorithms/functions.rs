@@ -51,6 +51,83 @@ pub fn benchmark_quantum_algorithms() -> Result<HashMap<String, f64>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `dense_system_unitary` must recover the operator's actual matrix from the opaque
+    /// closure, since raising it to the `2^i` powers a phase estimation needs depends on
+    /// having the matrix rather than on re-applying the closure.
+    #[test]
+    fn dense_system_unitary_recovers_the_operator_matrix() {
+        let z_operator = |sim: &mut StateVectorSimulator, target: usize| -> Result<()> {
+            sim.apply_z_public(target)?;
+            Ok(())
+        };
+        let matrix = EnhancedPhaseEstimation::dense_system_unitary(&z_operator, 1)
+            .expect("dense unitary should be constructible");
+
+        assert_eq!(matrix.dim(), (2, 2));
+        let expected = [
+            ((0, 0), Complex64::new(1.0, 0.0)),
+            ((0, 1), Complex64::new(0.0, 0.0)),
+            ((1, 0), Complex64::new(0.0, 0.0)),
+            ((1, 1), Complex64::new(-1.0, 0.0)),
+        ];
+        for ((row, column), value) in expected {
+            assert!(
+                (matrix[[row, column]] - value).norm() < 1e-12,
+                "Z matrix entry ({row},{column}) was {}, expected {value}",
+                matrix[[row, column]]
+            );
+        }
+
+        // Z^2 = I, so squaring (the operation used to build U^(2^i)) must return identity.
+        let squared = matrix.dot(&matrix);
+        assert!((squared[[0, 0]] - Complex64::new(1.0, 0.0)).norm() < 1e-12);
+        assert!((squared[[1, 1]] - Complex64::new(1.0, 0.0)).norm() < 1e-12);
+    }
+
+    /// The controlled application must touch only the amplitudes whose control bit is set,
+    /// and must apply the operator to the low-order system register within each block.
+    #[test]
+    fn apply_controlled_system_unitary_respects_the_control_qubit() {
+        let z_operator = |sim: &mut StateVectorSimulator, target: usize| -> Result<()> {
+            sim.apply_z_public(target)?;
+            Ok(())
+        };
+        let z_matrix = EnhancedPhaseEstimation::dense_system_unitary(&z_operator, 1)
+            .expect("dense unitary should be constructible");
+
+        // Layout: system qubit is bit 0, control qubit is bit 1, so index = control<<1 | system.
+        // |control=1, system=1> must pick up Z's -1 phase.
+        let mut simulator = StateVectorSimulator::new();
+        simulator
+            .set_state(vec![
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+            ])
+            .expect("state should be settable");
+        EnhancedPhaseEstimation::apply_controlled_system_unitary(&mut simulator, &z_matrix, 1, 1)
+            .expect("controlled application should succeed");
+        let state = simulator.get_state();
+        assert!((state[3] - Complex64::new(-1.0, 0.0)).norm() < 1e-12);
+
+        // |control=0, system=1> must be left untouched.
+        let mut simulator = StateVectorSimulator::new();
+        simulator
+            .set_state(vec![
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+            ])
+            .expect("state should be settable");
+        EnhancedPhaseEstimation::apply_controlled_system_unitary(&mut simulator, &z_matrix, 1, 1)
+            .expect("controlled application should succeed");
+        let state = simulator.get_state();
+        assert!((state[1] - Complex64::new(1.0, 0.0)).norm() < 1e-12);
+    }
+
     #[test]
     fn test_shor_algorithm_creation() {
         let config = QuantumAlgorithmConfig::default();
