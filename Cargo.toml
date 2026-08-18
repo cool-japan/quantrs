@@ -173,7 +173,7 @@ scirs2-cluster = { version = "0.6.5", default-features = false }
 scirs2-graph = { version = "0.6.5", default-features = false }
 
 # OptiRS integration for advanced optimization (VQE, QAOA) 
-optirs-core = { version = "0.3.1", default-features = false }
+optirs-core = { version = "0.3.2", default-features = false }
 
 # Performance and parallel computing
 # rayon = "1.10.0"               # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
