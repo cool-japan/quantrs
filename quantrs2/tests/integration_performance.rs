@@ -14,34 +14,62 @@ mod zero_cost_abstractions {
     use super::*;
 
     /// Verify that re-exports don't add measurable overhead
+    ///
+    /// The facade re-exports `quantrs2_core::qubit::QubitId` verbatim, so the two
+    /// paths below compile to the same code and any difference is measurement
+    /// noise. Timing that reliably requires care: this suite runs thousands of
+    /// tests in parallel, so a single sample of either loop can absorb an
+    /// arbitrary scheduling delay. Both loops are therefore run interleaved for
+    /// several rounds and compared on their *minimum* observed time -- the
+    /// standard robust estimator here, since scheduler interference only ever
+    /// adds time and never subtracts it.
     #[test]
     fn test_reexport_no_overhead() {
-        // Type re-exports should be zero-cost at runtime
-        // This test verifies that the facade layer adds no indirection
-        let start = Instant::now();
-
-        // Access core types through facade
         use quantrs2::core::qubit::QubitId;
-        for i in 0..10_000 {
-            let q = QubitId::new(i);
-            std::hint::black_box(q);
-        }
-
-        let facade_time = start.elapsed();
-
-        // Direct access should have same performance
-        let start = Instant::now();
         use quantrs2_core::qubit::QubitId as DirectQubitId;
-        for i in 0..10_000 {
-            let q = DirectQubitId::new(i);
-            std::hint::black_box(q);
+
+        const ITERATIONS: u32 = 10_000;
+        const ROUNDS: usize = 16;
+
+        fn time_facade() -> Duration {
+            let start = Instant::now();
+            for i in 0..ITERATIONS {
+                std::hint::black_box(QubitId::new(i));
+            }
+            start.elapsed()
         }
 
-        let direct_time = start.elapsed();
+        fn time_direct() -> Duration {
+            let start = Instant::now();
+            for i in 0..ITERATIONS {
+                std::hint::black_box(DirectQubitId::new(i));
+            }
+            start.elapsed()
+        }
 
-        // Allow 3x variance for timing noise in debug mode
-        // In release mode, these should be identical due to inlining
-        // Note: facade path runs first so it may not benefit from CPU/cache warmup
+        // Warm up caches, branch predictors and the CPU frequency governor so the
+        // first measured round is not systematically penalised.
+        std::hint::black_box((time_facade(), time_direct()));
+
+        let mut facade_time = Duration::MAX;
+        let mut direct_time = Duration::MAX;
+
+        // Interleave and alternate the order so neither path consistently pays the
+        // cost of going first.
+        for round in 0..ROUNDS {
+            let (facade_round, direct_round) = if round % 2 == 0 {
+                let facade_round = time_facade();
+                (facade_round, time_direct())
+            } else {
+                let direct_round = time_direct();
+                (time_facade(), direct_round)
+            };
+            facade_time = facade_time.min(facade_round);
+            direct_time = direct_time.min(direct_round);
+        }
+
+        // Allow 3x variance for residual timing noise in debug mode.
+        // In release mode these should be identical due to inlining.
         let ratio = facade_time.as_nanos() as f64 / direct_time.as_nanos().max(1) as f64;
         assert!(
             ratio < 3.0,

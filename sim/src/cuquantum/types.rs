@@ -360,21 +360,22 @@ impl CuStateVecSimulator {
             self.initialize(N)?;
         }
         let start_time = std::time::Instant::now();
-        #[cfg(target_os = "macos")]
-        {
-            self.simulate_mock(circuit, start_time)
-        }
+
+        // Enabling the `cuquantum` feature expresses intent to use cuStateVec; it
+        // does not conjure the runtime. Probe for a genuine cuStateVec context and
+        // only hand the circuit to the GPU path when one exists -- otherwise run the
+        // real CPU state-vector path below, which returns the true result of the
+        // circuit rather than an error or a placeholder.
         #[cfg(all(feature = "cuquantum", not(target_os = "macos")))]
-        {
-            self.simulate_with_custatevec(circuit)
+        if Self::check_cuquantum_available() {
+            return self.simulate_with_custatevec(circuit);
         }
-        #[cfg(all(not(feature = "cuquantum"), not(target_os = "macos")))]
-        {
-            self.simulate_mock(circuit, start_time)
-        }
+
+        self.simulate_mock(circuit, start_time)
     }
-    /// CPU fallback simulation for non-CUDA platforms (macOS always, or any
-    /// platform when the `cuquantum` feature is disabled).
+    /// CPU fallback simulation, used whenever no real cuStateVec context is
+    /// available -- on macOS, when the `cuquantum` feature is disabled, and when
+    /// the feature is enabled but the runtime probe finds no cuQuantum library.
     ///
     /// This actually runs the circuit: every gate's real matrix
     /// (`GateOp::matrix()`) is applied to the state vector via a genuine
@@ -382,7 +383,6 @@ impl CuStateVecSimulator {
     /// It is *not* GPU-accelerated -- there is no real cuStateVec handle in
     /// this build -- but the returned state is the true result of running
     /// the circuit, not a placeholder `|0...0>`.
-    #[cfg(any(target_os = "macos", not(feature = "cuquantum")))]
     fn simulate_mock<const N: usize>(
         &mut self,
         circuit: &Circuit<N>,
@@ -415,7 +415,6 @@ impl CuStateVecSimulator {
     /// qubits via `qubits`. Used by the CPU fallback path so that
     /// [`Self::simulate_mock`] runs a real simulation instead of returning
     /// an unmodified `|0...0>` state.
-    #[cfg(any(target_os = "macos", not(feature = "cuquantum")))]
     fn apply_gate_matrix(
         state: &mut Array1<Complex64>,
         num_qubits: usize,
@@ -528,13 +527,22 @@ impl CuStateVecSimulator {
     fn initialize_custatevec(&mut self, num_qubits: usize) -> Result<()> {
         Ok(())
     }
+    /// Run the circuit through a real cuStateVec context.
+    ///
+    /// Only reachable when [`Self::check_cuquantum_available`] reports a usable
+    /// runtime. This build carries no cuStateVec bindings, so the probe always
+    /// reports `false` and callers take the CPU state-vector path instead; the
+    /// error below states plainly that the bindings are missing rather than
+    /// fabricating a result that pretends the GPU ran.
     #[cfg(feature = "cuquantum")]
     fn simulate_with_custatevec<const N: usize>(
         &mut self,
-        circuit: &Circuit<N>,
+        _circuit: &Circuit<N>,
     ) -> Result<CuQuantumResult> {
         Err(SimulatorError::GpuError(
-            "cuStateVec simulation not yet implemented".to_string(),
+            "cuStateVec bindings are not linked into this build; \
+             rebuild against the cuQuantum SDK to use the GPU path"
+                .to_string(),
         ))
     }
 }

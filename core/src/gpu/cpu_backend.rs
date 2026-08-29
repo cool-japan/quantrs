@@ -151,40 +151,52 @@ impl GpuKernel for CpuKernel {
         let control_idx = control.0 as usize;
         let target_idx = target.0 as usize;
 
-        // Determine bit positions
+        if control_idx >= n_qubits || target_idx >= n_qubits {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Qubit index out of range: control={control_idx}, target={target_idx}, \
+                 n_qubits={n_qubits}"
+            )));
+        }
+        if control_idx == target_idx {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Control and target must differ, both are qubit {control_idx}"
+            )));
+        }
+
+        // Basis convention: qubit `q` occupies bit `q` of the state-vector index,
+        // while the 4x4 gate matrix is ordered |control target> with the *control*
+        // as the high bit of the local index (row/col 2 and 3 have control = 1).
+        // The two orderings are independent -- mapping the local index by numeric
+        // qubit order instead of by the control/target roles silently exchanges the
+        // two operands whenever `control < target`.
+        let control_stride = 1usize << control_idx;
+        let target_stride = 1usize << target_idx;
+
         let (high_idx, low_idx) = if control_idx > target_idx {
             (control_idx, target_idx)
         } else {
             (target_idx, control_idx)
         };
 
-        let high_stride = 1 << high_idx;
-        let low_stride = 1 << low_idx;
+        // Expand a dense counter over the `n_qubits - 2` spectator qubits into a
+        // state-vector index with bit `low_idx` and bit `high_idx` cleared.
+        let low_mask = (1usize << low_idx) - 1;
+        let mid_mask = ((1usize << (high_idx - 1)) - 1) ^ low_mask;
+        let groups = 1usize << (n_qubits - 2);
 
-        let state_size = 1 << n_qubits;
-        let block_size = 1 << (high_idx + 1);
-        let num_blocks = state_size / block_size;
+        for group in 0..groups {
+            let base = (group & low_mask)
+                | ((group & mid_mask) << 1)
+                | ((group >> (high_idx - 1)) << (high_idx + 1));
 
-        // Apply gate to each block
-        for block in 0..num_blocks {
-            let block_start = block * block_size;
+            let indices = [
+                base,
+                base | target_stride,
+                base | control_stride,
+                base | control_stride | target_stride,
+            ];
 
-            for i in 0..(block_size / 4) {
-                // Calculate indices for the 4 basis states
-                let base = block_start
-                    + (i & ((1 << low_idx) - 1))
-                    + ((i >> low_idx) << (low_idx + 1))
-                    + ((i >> (high_idx - 1)) << (high_idx + 1));
-
-                let indices = [
-                    base,
-                    base + low_stride,
-                    base + high_stride,
-                    base + low_stride + high_stride,
-                ];
-
-                Self::apply_gate_to_indices(&mut data, gate_matrix, &indices);
-            }
+            Self::apply_gate_to_indices(&mut data, gate_matrix, &indices);
         }
 
         Ok(())
@@ -215,30 +227,47 @@ impl GpuKernel for CpuKernel {
             )));
         }
 
+        // Operand order carries meaning: `qubits[0]` is the most significant bit of
+        // the gate's local basis index, `qubits[gate_qubits - 1]` the least. Sorting
+        // the list before mapping local index bits onto state-vector bits would
+        // permute the gate's operands, so the caller-supplied order is kept here and
+        // a sorted copy is used only to work out which bits are spectators.
+        let operand_indices: Vec<usize> = qubits.iter().map(|q| q.0 as usize).collect();
+
+        if let Some(&bad) = operand_indices.iter().find(|&&q| q >= n_qubits) {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Qubit index {bad} out of range for a {n_qubits}-qubit state"
+            )));
+        }
+
+        let mut sorted_indices = operand_indices.clone();
+        sorted_indices.sort_unstable();
+        if sorted_indices.windows(2).any(|w| w[0] == w[1]) {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Gate operands must be distinct qubits, got {operand_indices:?}"
+            )));
+        }
+
         // Convert gate matrix to flat array for easier indexing
         let gate_flat: Vec<Complex64> = gate_matrix.iter().copied().collect();
 
         // Calculate indices for all affected basis states
-        // let _total_states = 1 << n_qubits;
-        let affected_states = 1 << gate_qubits;
+        let affected_states = 1usize << gate_qubits;
         let unaffected_qubits = n_qubits - gate_qubits;
-        let iterations = 1 << unaffected_qubits;
+        let iterations = 1usize << unaffected_qubits;
 
-        // Sort qubit indices for consistent ordering
-        let mut qubit_indices: Vec<usize> = qubits.iter().map(|q| q.0 as usize).collect();
-        qubit_indices.sort_unstable();
+        let mut indices = vec![0usize; affected_states];
 
         // Apply gate to each group of affected states
         for i in 0..iterations {
-            let mut indices = vec![0; affected_states];
-
-            // Calculate base index
-            let mut base = 0;
+            // Scatter the spectator counter across the bit positions the gate
+            // does not touch, leaving every operand bit clear.
+            let mut base = 0usize;
             let mut remaining = i;
             let mut qubit_pos = 0;
 
             for bit in 0..n_qubits {
-                if qubit_pos < gate_qubits && bit == qubit_indices[qubit_pos] {
+                if qubit_pos < gate_qubits && bit == sorted_indices[qubit_pos] {
                     qubit_pos += 1;
                 } else {
                     if remaining & 1 == 1 {
@@ -248,14 +277,17 @@ impl GpuKernel for CpuKernel {
                 }
             }
 
-            // Generate all indices for this gate application
-            for j in 0..affected_states {
-                indices[j] = base;
-                for (k, &qubit_idx) in qubit_indices.iter().enumerate() {
-                    if (j >> k) & 1 == 1 {
-                        indices[j] |= 1 << qubit_idx;
+            // Generate all indices for this gate application, MSB-first over the
+            // operand list so local basis state |q0 q1 ... qk> lines up with the
+            // row/column ordering of `gate_matrix`.
+            for (j, slot) in indices.iter_mut().enumerate() {
+                let mut idx = base;
+                for (position, &qubit_idx) in operand_indices.iter().enumerate() {
+                    if (j >> (gate_qubits - 1 - position)) & 1 == 1 {
+                        idx |= 1 << qubit_idx;
                     }
                 }
+                *slot = idx;
             }
 
             Self::apply_gate_to_indices(&mut data, &gate_flat, &indices);
@@ -427,5 +459,199 @@ mod tests {
             .allocate_state_vector(3)
             .expect("Failed to allocate state vector");
         assert_eq!(buffer.size(), 8 * std::mem::size_of::<Complex64>());
+    }
+
+    /// Flat, row-major CNOT in the |control target> basis, i.e. the same layout
+    /// `gate::multi::CNOT::matrix()` produces.
+    fn cnot_matrix() -> [Complex64; 16] {
+        let one = Complex64::new(1.0, 0.0);
+        let zero = Complex64::new(0.0, 0.0);
+        [
+            one, zero, zero, zero, //
+            zero, one, zero, zero, //
+            zero, zero, zero, one, //
+            zero, zero, one, zero,
+        ]
+    }
+
+    fn state_after_cnot(
+        n_qubits: usize,
+        control: u32,
+        target: u32,
+        initial: &[Complex64],
+    ) -> Vec<Complex64> {
+        let backend = CpuBackend::new();
+        let mut buffer = backend
+            .allocate_state_vector(n_qubits)
+            .expect("Failed to allocate state vector");
+        buffer.upload(initial).expect("Failed to upload state");
+
+        backend
+            .kernel()
+            .apply_two_qubit_gate(
+                buffer.as_mut(),
+                &cnot_matrix(),
+                QubitId(control),
+                QubitId(target),
+                n_qubits,
+            )
+            .expect("Failed to apply CNOT");
+
+        let mut out = vec![Complex64::new(0.0, 0.0); initial.len()];
+        buffer.download(&mut out).expect("Failed to download state");
+        out
+    }
+
+    /// A two-qubit gate's operands are identified by role, not by numeric qubit
+    /// index. Deriving the local basis ordering from `min`/`max` silently swaps
+    /// control and target whenever `control < target`, which turns the Bell
+    /// circuit H(q0)·CNOT(q0→q1) into an unentangled state.
+    #[test]
+    fn test_cnot_respects_control_target_order() {
+        let zero = Complex64::new(0.0, 0.0);
+        let one = Complex64::new(1.0, 0.0);
+
+        // |01> in bit order (q0 = 1, q1 = 0) is index 1.
+        let mut basis_q0_set = vec![zero; 4];
+        basis_q0_set[1] = one;
+
+        // CNOT(control = q0, target = q1) must flip q1 -> index 3.
+        let flipped = state_after_cnot(2, 0, 1, &basis_q0_set);
+        assert_eq!(flipped[3], one, "CNOT(q0->q1) must flip the target qubit");
+        assert_eq!(flipped[1], zero);
+
+        // The reversed CNOT sees control q1 = 0, so it must leave the state alone.
+        let unchanged = state_after_cnot(2, 1, 0, &basis_q0_set);
+        assert_eq!(
+            unchanged[1], one,
+            "CNOT(q1->q0) must be the identity when q1 = 0"
+        );
+    }
+
+    #[test]
+    fn test_cnot_builds_bell_state() {
+        let backend = CpuBackend::new();
+        let mut buffer = backend
+            .allocate_state_vector(2)
+            .expect("Failed to allocate state vector");
+
+        let inv_sqrt2 = std::f64::consts::FRAC_1_SQRT_2;
+        let h = [
+            Complex64::new(inv_sqrt2, 0.0),
+            Complex64::new(inv_sqrt2, 0.0),
+            Complex64::new(inv_sqrt2, 0.0),
+            Complex64::new(-inv_sqrt2, 0.0),
+        ];
+
+        let mut initial = vec![Complex64::new(0.0, 0.0); 4];
+        initial[0] = Complex64::new(1.0, 0.0);
+        buffer.upload(&initial).expect("Failed to upload state");
+
+        backend
+            .kernel()
+            .apply_single_qubit_gate(buffer.as_mut(), &h, QubitId(0), 2)
+            .expect("Failed to apply H");
+        backend
+            .kernel()
+            .apply_two_qubit_gate(buffer.as_mut(), &cnot_matrix(), QubitId(0), QubitId(1), 2)
+            .expect("Failed to apply CNOT");
+
+        let mut out = vec![Complex64::new(0.0, 0.0); 4];
+        buffer.download(&mut out).expect("Failed to download state");
+
+        let probs: Vec<f64> = out.iter().map(|c| c.norm_sqr()).collect();
+        assert!((probs[0] - 0.5).abs() < 1e-12, "probs = {probs:?}");
+        assert!(probs[1].abs() < 1e-12, "probs = {probs:?}");
+        assert!(probs[2].abs() < 1e-12, "probs = {probs:?}");
+        assert!((probs[3] - 0.5).abs() < 1e-12, "probs = {probs:?}");
+    }
+
+    /// Spectator qubits must be preserved exactly, including when the operands
+    /// straddle them and are not adjacent.
+    #[test]
+    fn test_cnot_on_non_adjacent_qubits_preserves_spectators() {
+        let zero = Complex64::new(0.0, 0.0);
+        let one = Complex64::new(1.0, 0.0);
+
+        // 5 qubits, control = q1, target = q4, spectators q0/q2/q3 all set.
+        let n_qubits = 5;
+        let spectators = (1 << 0) | (1 << 2) | (1 << 3);
+        let start_index = spectators | (1 << 1); // control q1 = 1, target q4 = 0
+
+        let mut initial = vec![zero; 1 << n_qubits];
+        initial[start_index] = one;
+
+        let out = state_after_cnot(n_qubits, 1, 4, &initial);
+
+        let expected_index = start_index | (1 << 4);
+        assert_eq!(out[expected_index], one, "target q4 should have flipped");
+        assert_eq!(out[start_index], zero);
+        assert_eq!(
+            out.iter().filter(|c| c.norm_sqr() > 1e-24).count(),
+            1,
+            "exactly one basis state should carry amplitude"
+        );
+    }
+
+    /// The multi-qubit path shares the same convention: `qubits[0]` is the most
+    /// significant bit of the gate's local basis index.
+    #[test]
+    fn test_multi_qubit_gate_respects_operand_order() {
+        use scirs2_core::ndarray::Array2;
+
+        let zero = Complex64::new(0.0, 0.0);
+        let one = Complex64::new(1.0, 0.0);
+
+        // Toffoli: flips the last operand when the first two are both |1>.
+        let mut toffoli = Array2::from_elem((8, 8), zero);
+        for i in 0..6 {
+            toffoli[(i, i)] = one;
+        }
+        toffoli[(6, 7)] = one;
+        toffoli[(7, 6)] = one;
+
+        let backend = CpuBackend::new();
+
+        // Controls q2 and q0 set, target q1 clear: index = 1 + 4 = 5.
+        let mut initial = vec![zero; 8];
+        initial[5] = one;
+
+        let mut buffer = backend
+            .allocate_state_vector(3)
+            .expect("Failed to allocate state vector");
+        buffer.upload(&initial).expect("Failed to upload state");
+
+        backend
+            .kernel()
+            .apply_multi_qubit_gate(
+                buffer.as_mut(),
+                &toffoli,
+                &[QubitId(2), QubitId(0), QubitId(1)],
+                3,
+            )
+            .expect("Failed to apply Toffoli");
+
+        let mut out = vec![zero; 8];
+        buffer.download(&mut out).expect("Failed to download state");
+
+        assert_eq!(out[7], one, "target q1 should have flipped, got {out:?}");
+        assert_eq!(out[5], zero);
+    }
+
+    #[test]
+    fn test_two_qubit_gate_rejects_invalid_operands() {
+        let backend = CpuBackend::new();
+        let mut buffer = backend
+            .allocate_state_vector(2)
+            .expect("Failed to allocate state vector");
+
+        assert!(backend
+            .kernel()
+            .apply_two_qubit_gate(buffer.as_mut(), &cnot_matrix(), QubitId(0), QubitId(0), 2)
+            .is_err());
+        assert!(backend
+            .kernel()
+            .apply_two_qubit_gate(buffer.as_mut(), &cnot_matrix(), QubitId(0), QubitId(5), 2)
+            .is_err());
     }
 }
