@@ -44,8 +44,6 @@
 - [x] **Cache-optimized two-qubit gate** (`sim/src/cache_optimized_layouts.rs`) — implemented `apply_two_qubit_gate_cache_optimized`: iterates over |00⟩ corner states, applies logical↔physical qubit permutation, extracts and updates 4 amplitudes `[|00⟩, |01⟩, |10⟩, |11⟩]` using the 4×4 gate matrix. Cache-friendly access pattern exploiting layout metadata.
 - [x] **BBM92 and SARG04 QKD protocols** (`ml/src/crypto.rs`) — implemented `bbm92_protocol` (entanglement-based, ~50% key retention via basis sifting on maximally entangled Bell pairs) and `sarg04_protocol` (BB84 variant with unambiguous state discrimination, ~25% key retention via USD conclusive-measurement filter). Dispatch wired in `run_qkd`.
 
-## Current Version: 0.1.3
-
 ## Completed in v0.1.3 (2026-03-27)
 
 - [x] ZYZ decomposition fix (`core/src/synthesis.rs`)

@@ -17,9 +17,9 @@
 
 QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing framework that provides a modular, high-performance toolkit for quantum simulation, algorithm development, and hardware interaction.
 
-**Current Version**: v0.2.1 (in development)
+**Current Version**: v0.2.1 (released 2026-08-29)
 
-**Project Stats**: 994,386 total LoC | 804,894 Rust LoC across 2,744 files | 5,237 tests passing (0 failures, 74 skipped)
+**Project Stats**: 1,025,832 total LoC | 836,324 Rust LoC across 2,759 files | 5,762 tests passing (0 failures, 74 skipped)
 
 ### Crate Survey
 

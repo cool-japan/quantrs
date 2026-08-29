@@ -621,7 +621,7 @@ mod tests {
         // that is about -0.1987, so with lr=0.5 the step should move theta by
         // about +0.0993.
         assert!(
-            (updated[0] - (0.2 + 0.5 * 0.2_f64.sin())).abs() < 1e-4,
+            (updated[0] - 0.5f64.mul_add(0.2_f64.sin(), 0.2)).abs() < 1e-4,
             "got {}",
             updated[0]
         );

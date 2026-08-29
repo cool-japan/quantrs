@@ -196,7 +196,7 @@ impl MultiGpuManager {
             if backend == scirs2_core::gpu::GpuBackend::Cpu || !backend.is_available() {
                 return Vec::new();
             }
-            return vec![GpuDeviceInfo {
+            vec![GpuDeviceInfo {
                 device_id: 0,
                 name: format!("{backend:?}"),
                 total_memory: 0,
@@ -205,7 +205,7 @@ impl MultiGpuManager {
                 multiprocessor_count: 0,
                 max_threads_per_block: 0,
                 is_available: true,
-            }];
+            }]
         }
 
         #[cfg(not(feature = "gpu"))]

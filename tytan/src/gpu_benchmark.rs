@@ -777,10 +777,12 @@ mod tests {
     fn test_run_comparison_actually_benchmarks_each_sampler() {
         use crate::sampler::SASampler;
 
-        let mut bench_config = BenchmarkConfig::default();
-        bench_config.problem_sizes = vec![8];
-        bench_config.samples_per_problem = 5;
-        bench_config.repetitions = 2;
+        let bench_config = BenchmarkConfig {
+            problem_sizes: vec![8],
+            samples_per_problem: 5,
+            repetitions: 2,
+            ..Default::default()
+        };
 
         let mut comparison = GpuComparison::new(bench_config);
         comparison.add_implementation("sa-1", Box::new(SASampler::new(Some(1))));
@@ -810,12 +812,14 @@ mod tests {
     fn test_benchmark_energy_efficiency_is_honest_error_not_fabrication() {
         use crate::sampler::SASampler;
 
-        let mut config = BenchmarkConfig::default();
-        config.problem_sizes = vec![8];
-        config.samples_per_problem = 5;
-        config.repetitions = 1;
-        config.measure_energy = true;
-        config.verbose = false;
+        let config = BenchmarkConfig {
+            problem_sizes: vec![8],
+            samples_per_problem: 5,
+            repetitions: 1,
+            measure_energy: true,
+            verbose: false,
+            ..Default::default()
+        };
 
         let mut benchmark = GpuBenchmark::new(SASampler::new(Some(1)), config);
         let mut results = BenchmarkResults {
@@ -841,9 +845,11 @@ mod tests {
         use crate::sampler::SASampler;
         use quantrs2_anneal::simulator::AnnealingParams;
 
-        let mut config = BenchmarkConfig::default();
-        config.batch_sizes = vec![4, 8];
-        config.verbose = false;
+        let config = BenchmarkConfig {
+            batch_sizes: vec![4, 8],
+            verbose: false,
+            ..Default::default()
+        };
 
         // `benchmark_batch_sizes` uses a fixed 100-variable test problem
         // internally; keep the annealer's own workload tiny so this test

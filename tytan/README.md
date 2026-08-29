@@ -6,6 +6,13 @@
 
 QuantRS2-Tytan is a comprehensive, high-performance quantum annealing library for the QuantRS2 framework. Inspired by the Python [Tytan](https://github.com/tytansdk/tytan) library, it provides powerful tools for formulating and solving quantum optimization problems with state-of-the-art performance.
 
+## Version 0.2.1
+
+Released: 2026-08-29
+
+- **GPU benchmark honesty**: removed fabricated GPU specs (`8192 MB`/`64 CU`/`1500 MHz`) and a fake `1 ms` latency figure; benchmarking now reports the stub backend's real (zeroed) `DeviceInfo` and real measured kernel latency.
+- SciRS2 upgraded to v0.6.5.
+
 ## Version 0.2.0
 
 Released: 2026-06-06

@@ -900,6 +900,19 @@ fn invert_matrix(matrix: &ArrayView2<f64>) -> PyResult<Array2<f64>> {
     Ok(inverse)
 }
 
+/// Register the measurement module
+pub fn register_measurement_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    let submodule = PyModule::new(m.py(), "measurement")?;
+
+    submodule.add_class::<PyMeasurementResult>()?;
+    submodule.add_class::<PyStateTomography>()?;
+    submodule.add_class::<PyProcessTomography>()?;
+    submodule.add_class::<PyMeasurementSampler>()?;
+
+    m.add_submodule(&submodule)?;
+    Ok(())
+}
+
 // Pure-Rust regression tests for the free functions above (no `PyErr`
 // involved, hence directly unit-testable without a Python interpreter --
 // this crate builds `pyo3` with the `extension-module` feature, so a
@@ -1007,17 +1020,4 @@ mod tests {
         let empty: HashMap<String, Array2<Complex64>> = HashMap::new();
         assert!(reconstruct_choi_matrix(1, &empty).is_err());
     }
-}
-
-/// Register the measurement module
-pub fn register_measurement_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    let submodule = PyModule::new(m.py(), "measurement")?;
-
-    submodule.add_class::<PyMeasurementResult>()?;
-    submodule.add_class::<PyStateTomography>()?;
-    submodule.add_class::<PyProcessTomography>()?;
-    submodule.add_class::<PyMeasurementSampler>()?;
-
-    m.add_submodule(&submodule)?;
-    Ok(())
 }

@@ -870,7 +870,7 @@ impl SciRS2QubitMapper {
         });
 
         let mut mapping = HashMap::new();
-        for (logical, physical) in logical_qubits.into_iter().zip(physical_qubits.into_iter()) {
+        for (logical, physical) in logical_qubits.into_iter().zip(physical_qubits) {
             mapping.insert(logical, physical);
         }
         Ok(mapping)
@@ -1160,8 +1160,8 @@ impl SciRS2QubitMapper {
                 let neighbors = graph.neighbors(&u).unwrap_or_default();
                 let dist_u = dist[&u];
                 for v in neighbors {
-                    if !dist.contains_key(&v) {
-                        dist.insert(v, dist_u + 1);
+                    if let std::collections::hash_map::Entry::Vacant(e) = dist.entry(v) {
+                        e.insert(dist_u + 1);
                         parent.insert(v, u);
                         queue.push_back(v);
                     } else if parent.get(&u) != Some(&v) {

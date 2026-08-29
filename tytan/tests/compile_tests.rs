@@ -184,8 +184,8 @@ fn test_compile_matrix_input() {
         + neg_three.clone() * x1.clone()
         + neg_three * x2.clone()
         + two.clone() * x0.clone() * x1.clone()
-        + two.clone() * x0.clone() * x2.clone()
-        + two * x1.clone() * x2.clone();
+        + two.clone() * x0 * x2.clone()
+        + two * x1 * x2;
 
     // Compile to QUBO
     let (qubo, offset) = Compile::new(expr).get_qubo().unwrap();

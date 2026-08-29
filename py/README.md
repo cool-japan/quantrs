@@ -6,6 +6,13 @@
 
 QuantRS2-Py provides Python bindings for the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, allowing Python users to access the high-performance Rust implementation with a user-friendly Python API.
 
+## Version 0.2.1
+
+Released: 2026-08-29
+
+- **`PyStateTomography` `PyDict` conversion fix**: corrected an incorrect `downcast` to `cast` in `measurement.rs`.
+- pyo3 upgraded to v0.29.0; SciRS2 upgraded to v0.6.5.
+
 ## Version 0.2.0
 
 Released: 2026-06-06

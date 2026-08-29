@@ -6,6 +6,14 @@
 
 QuantRS2-Core is the foundational library of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing a comprehensive suite of quantum computing primitives, algorithms, and optimizations that power the entire ecosystem.
 
+## Version 0.2.1 (2026-08-29)
+
+- **Rz / CRZ / ParametricRotationZ sign convention fixed** (behaviour change): now follows the IBM/Qiskit/OpenQASM-3 standard `Rz(λ) = diag(e^{-iλ/2}, e^{+iλ/2})`, correcting `decompose_u_gate` / ZYZ reconstruction and internal-simulator vs OpenQASM-export disagreement.
+- **Platform capability detection**: `detect_platform_capabilities`/`detect_simd_capabilities` now wire in `scirs2_core::simd_ops::PlatformCapabilities::detect()`, with runtime AVX2/AVX512/NEON probing.
+- **Batch gate execution performance**: `apply_gate_sequence_batch` caches compiled matrices for fixed (non-parameterized) gates per-sequence.
+- **wgpu 30 compatibility fix** in `gpu/specialized_kernels.rs`.
+- SciRS2 upgraded to v0.6.5.
+
 ## Version 0.2.0 PRODUCTION READY (2026-06-06)
 
 **Core Module - Algorithm Correctness & QML Enhancement Release**

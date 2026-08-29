@@ -27,7 +27,7 @@ impl AdvancedQuantumScheduler {
     pub(super) async fn collect_job_metrics(&self) -> DeviceResult<Vec<JobMetrics>> {
         let analytics = self.core_scheduler.get_queue_analytics().await?;
         let mut metrics = Vec::with_capacity(analytics.queue_by_backend.len());
-        for (backend, _queue_len) in &analytics.queue_by_backend {
+        for backend in analytics.queue_by_backend.keys() {
             let execution_time = analytics
                 .predicted_queue_times
                 .get(backend)

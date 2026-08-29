@@ -28,7 +28,7 @@ use std::collections::HashMap;
 
 const TOL: f64 = 1e-9;
 
-fn c(re: f64, im: f64) -> Complex64 {
+const fn c(re: f64, im: f64) -> Complex64 {
     Complex64::new(re, im)
 }
 
@@ -190,13 +190,12 @@ fn test_contract_network_along_path_matrix_multiply() {
 
     assert_eq!(result.dimensions, vec![2, 2], "result should be 2x2");
     let expected = [[19.0, 22.0], [43.0, 50.0]];
-    for i in 0..2 {
-        for j in 0..2 {
+    for (i, row) in expected.iter().enumerate() {
+        for (j, expected_val) in row.iter().enumerate() {
             let got = result.data[IxDyn(&[i, j])];
             assert!(
-                (got - c(expected[i][j], 0.0)).norm() < TOL,
-                "product[{i},{j}]: got {got:?}, want {}",
-                expected[i][j]
+                (got - c(*expected_val, 0.0)).norm() < TOL,
+                "product[{i},{j}]: got {got:?}, want {expected_val}"
             );
         }
     }
@@ -254,8 +253,8 @@ fn test_sparse_lanczos_returns_real_eigenpairs() {
         .expect("eigenvalue problem");
 
     // Analytic smallest eigenvalues: 2 - 2cos(kπ/5) for k = 1, 2.
-    let lambda1 = 2.0 - 2.0 * (std::f64::consts::PI / 5.0).cos();
-    let lambda2 = 2.0 - 2.0 * (2.0 * std::f64::consts::PI / 5.0).cos();
+    let lambda1 = 2.0f64.mul_add(-(std::f64::consts::PI / 5.0).cos(), 2.0);
+    let lambda2 = 2.0f64.mul_add(-(2.0 * std::f64::consts::PI / 5.0).cos(), 2.0);
 
     assert_eq!(result.eigenvalues.len(), 2, "should return two eigenvalues");
     assert!(
@@ -436,7 +435,7 @@ fn test_entanglement_spectrum_nondiagonal_unequal_weights() {
         "Schmidt spectrum should be {{0.7, 0.3}}, got {evs:?}"
     );
 
-    let expected_entropy = -(0.7 * 0.7_f64.ln() + 0.3 * 0.3_f64.ln());
+    let expected_entropy = -(0.7f64.mul_add(0.7_f64.ln(), 0.3 * 0.3_f64.ln()));
     assert!(
         (result.entropy - expected_entropy).abs() < 1e-6,
         "entropy should be {expected_entropy}, got {}",

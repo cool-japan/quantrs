@@ -880,8 +880,8 @@ at your option.
 
 ### Roadmap
 
-- **v0.2.0**: Current stable release with full API stability
-- **v0.2.0**: Advanced quantum ML models, quantum chemistry extensions
+- **v0.2.1**: Current stable release with full API stability
+- **v0.2.0**: Advanced quantum ML models, quantum chemistry extensions (released 2026-06-06)
 
 ---
 

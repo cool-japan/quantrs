@@ -154,7 +154,7 @@ fn hep_evaluate_metrics_are_real() {
         let positive = probs[1];
         let target = if y_test[i] > 0.5 { 1.0 } else { 0.0 };
         expected_loss += (positive - target) * (positive - target);
-        let pred_idx = if probs[1] > probs[0] { 1 } else { 0 };
+        let pred_idx = i32::from(probs[1] > probs[0]);
         if (pred_idx == 1) == (y_test[i] > 0.5) {
             correct += 1;
         }
@@ -313,7 +313,7 @@ fn gan_generate_is_input_dependent_and_bounded() {
     let samples = gen.generate(8).expect("generate");
     assert_eq!(samples.nrows(), 8);
     assert_eq!(samples.ncols(), 2);
-    for value in samples.iter() {
+    for value in &samples {
         assert!(
             (0.0..=1.0).contains(value),
             "generated features must be in [0, 1]"
@@ -381,7 +381,7 @@ fn qcnn_forward_depends_on_parameters_and_input() {
 
     // Changing the parameters must change the output (old dummy ignored them).
     let mut params = qcnn.get_parameters();
-    for p in params.iter_mut() {
+    for p in &mut params {
         *p += 0.7;
     }
     qcnn.set_parameters(&params).expect("set params");
@@ -394,7 +394,7 @@ fn qcnn_forward_depends_on_parameters_and_input() {
     );
 
     // Changing the input state must change the output.
-    let mut input2 = input.clone();
+    let mut input2 = input;
     input2[0] = Complex64::new(5.0, 0.0);
     let out3 = qcnn.forward(&input2).expect("forward");
     assert!(

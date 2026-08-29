@@ -1059,7 +1059,7 @@ mod tests {
     #[test]
     fn bfgs_minimizes_a_quadratic_bowl_to_its_analytic_minimum() {
         // f(x, y) = (x - 3)^2 + (y + 2)^2, minimized at (3, -2).
-        let objective = |x: &Array1<f64>| (x[0] - 3.0).powi(2) + (x[1] + 2.0).powi(2);
+        let objective = |x: &Array1<f64>| (x[0] - 3.0).mul_add(x[0] - 3.0, (x[1] + 2.0).powi(2));
         let gradient: Box<dyn Fn(&Array1<f64>) -> Array1<f64>> = Box::new(|x: &Array1<f64>| {
             Array1::from_vec(vec![2.0 * (x[0] - 3.0), 2.0 * (x[1] + 2.0)])
         });
@@ -1084,7 +1084,7 @@ mod tests {
         // f(x, y) = (x - 1)^2 + (y - 1)^2, minimized at (1, 1); Adam here uses
         // the built-in central-difference numerical gradient (no analytic
         // gradient supplied), exercising the fallback path.
-        let objective = |x: &Array1<f64>| (x[0] - 1.0).powi(2) + (x[1] - 1.0).powi(2);
+        let objective = |x: &Array1<f64>| (x[0] - 1.0).mul_add(x[0] - 1.0, (x[1] - 1.0).powi(2));
         let x0 = Array1::from_vec(vec![0.0, 0.0]);
         let result = SciRS2Optimizer::minimize_adam(objective, &x0, None, 0.1, 2000);
 
