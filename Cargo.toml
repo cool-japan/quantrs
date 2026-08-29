@@ -274,7 +274,7 @@ criterion = { version = "0.8", default-features = false, features = ["async_toki
 tempfile = "3.27"
 
 # NumRS2 ecosystem dependencies
-numrs2 = "0.4.0"
+numrs2 = "0.4.1"
 pandrs = "0.4.1"  # Latest available on crates.io
 
 [profile.dev]
