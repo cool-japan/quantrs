@@ -443,8 +443,134 @@ enum SymbolType {
     QuantumRegister(usize),
     ClassicalRegister(usize),
     Gate(Vec<String>, Vec<String>), // params, qubits
-    Constant,
+    /// A `const` declaration carrying its evaluated numeric value, so later
+    /// references (e.g. `qubit[n] q;`) can resolve the size.
+    Constant(f64),
     Variable,
+}
+
+/// Evaluate a binary operator over two `f64` constant operands.
+///
+/// Comparison and logical operators return `1.0`/`0.0`; bitwise and shift
+/// operators coerce their operands to `i64`.
+fn eval_const_binary(op: BinaryOp, l: f64, r: f64) -> f64 {
+    let bool_to_f64 = |b: bool| if b { 1.0 } else { 0.0 };
+    match op {
+        BinaryOp::Add => l + r,
+        BinaryOp::Sub => l - r,
+        BinaryOp::Mul => l * r,
+        BinaryOp::Div => l / r,
+        BinaryOp::Mod => l % r,
+        BinaryOp::Pow => l.powf(r),
+        BinaryOp::Eq => bool_to_f64((l - r).abs() < f64::EPSILON),
+        BinaryOp::Ne => bool_to_f64((l - r).abs() >= f64::EPSILON),
+        BinaryOp::Lt => bool_to_f64(l < r),
+        BinaryOp::Le => bool_to_f64(l <= r),
+        BinaryOp::Gt => bool_to_f64(l > r),
+        BinaryOp::Ge => bool_to_f64(l >= r),
+        BinaryOp::And => bool_to_f64(l != 0.0 && r != 0.0),
+        BinaryOp::Or => bool_to_f64(l != 0.0 || r != 0.0),
+        BinaryOp::Xor => bool_to_f64((l != 0.0) ^ (r != 0.0)),
+        BinaryOp::BitAnd => ((l as i64) & (r as i64)) as f64,
+        BinaryOp::BitOr => ((l as i64) | (r as i64)) as f64,
+        BinaryOp::BitXor => ((l as i64) ^ (r as i64)) as f64,
+        BinaryOp::Shl => ((l as i64) << (r as i64)) as f64,
+        BinaryOp::Shr => ((l as i64) >> (r as i64)) as f64,
+    }
+}
+
+/// Evaluate a unary operator over an `f64` constant operand.
+fn eval_const_unary(op: UnaryOp, v: f64) -> f64 {
+    match op {
+        UnaryOp::Neg => -v,
+        UnaryOp::Not => {
+            if v == 0.0 {
+                1.0
+            } else {
+                0.0
+            }
+        }
+        UnaryOp::BitNot => (!(v as i64)) as f64,
+        UnaryOp::Sin => v.sin(),
+        UnaryOp::Cos => v.cos(),
+        UnaryOp::Tan => v.tan(),
+        UnaryOp::Asin => v.asin(),
+        UnaryOp::Acos => v.acos(),
+        UnaryOp::Atan => v.atan(),
+        UnaryOp::Exp => v.exp(),
+        UnaryOp::Ln => v.ln(),
+        UnaryOp::Sqrt => v.sqrt(),
+    }
+}
+
+/// `true` if `expr` calls a function or indexes a value anywhere in its tree.
+///
+/// Used to decide whether a `const` declaration that failed to fold to a
+/// numeric value at parse time is deferrable to the validator's semantic
+/// checks (function arity / existence, non-array indexing) rather than a
+/// hard parse error.
+fn expr_contains_function_or_index(expr: &Expression) -> bool {
+    match expr {
+        Expression::Literal(_) | Expression::Variable(_) => false,
+        Expression::Binary(_, lhs, rhs) => {
+            expr_contains_function_or_index(lhs) || expr_contains_function_or_index(rhs)
+        }
+        Expression::Unary(_, inner) => expr_contains_function_or_index(inner),
+        Expression::Function(_, _) | Expression::Index(_, _) => true,
+    }
+}
+
+/// Evaluate a math function call in a constant expression.
+fn eval_const_function(name: &str, args: &[f64]) -> Result<f64, ParseError> {
+    let arity_err = |expected: usize| {
+        ParseError::InvalidSyntax(format!(
+            "function '{name}' expects {expected} argument(s), got {}",
+            args.len()
+        ))
+    };
+    match name {
+        "sin" | "cos" | "tan" | "asin" | "acos" | "atan" | "exp" | "ln" | "log2" | "log10"
+        | "sqrt" | "abs" | "floor" | "ceil" | "round" => {
+            if args.len() != 1 {
+                return Err(arity_err(1));
+            }
+            let v = args[0];
+            Ok(match name {
+                "sin" => v.sin(),
+                "cos" => v.cos(),
+                "tan" => v.tan(),
+                "asin" => v.asin(),
+                "acos" => v.acos(),
+                "atan" => v.atan(),
+                "exp" => v.exp(),
+                "ln" => v.ln(),
+                "log2" => v.log2(),
+                "log10" => v.log10(),
+                "sqrt" => v.sqrt(),
+                "abs" => v.abs(),
+                "floor" => v.floor(),
+                "ceil" => v.ceil(),
+                "round" => v.round(),
+                _ => unreachable!(),
+            })
+        }
+        "pow" | "atan2" | "min" | "max" => {
+            if args.len() != 2 {
+                return Err(arity_err(2));
+            }
+            let (a, b) = (args[0], args[1]);
+            Ok(match name {
+                "pow" => a.powf(b),
+                "atan2" => a.atan2(b),
+                "min" => a.min(b),
+                "max" => a.max(b),
+                _ => unreachable!(),
+            })
+        }
+        _ => Err(ParseError::InvalidSyntax(format!(
+            "unknown function '{name}' in constant expression"
+        ))),
+    }
 }
 
 impl<'a> QasmParser<'a> {
@@ -578,11 +704,11 @@ impl<'a> QasmParser<'a> {
                     self.advance()?;
                     size
                 }
-                Token::Identifier(_) => {
-                    // For constants like 'n', we'll use a default size of 4
-                    // In a full implementation, we'd evaluate the constant
+                Token::Identifier(const_name) => {
+                    // Register size given as a named `const`; resolve it.
+                    let const_name = const_name.clone();
                     self.advance()?;
-                    4 // placeholder
+                    self.resolve_register_size(&const_name)?
                 }
                 _ => {
                     return Err(ParseError::ExpectedToken {
@@ -644,11 +770,11 @@ impl<'a> QasmParser<'a> {
                     self.advance()?;
                     size
                 }
-                Token::Identifier(_) => {
-                    // For constants like 'n', we'll use a default size of 4
-                    // In a full implementation, we'd evaluate the constant
+                Token::Identifier(const_name) => {
+                    // Register size given as a named `const`; resolve it.
+                    let const_name = const_name.clone();
                     self.advance()?;
-                    4 // placeholder
+                    self.resolve_register_size(&const_name)?
                 }
                 _ => {
                     return Err(ParseError::ExpectedToken {
@@ -803,10 +929,108 @@ impl<'a> QasmParser<'a> {
 
         self.expect_token(&Token::Semicolon)?;
 
-        // Add to symbol table
-        self.symbols.insert(name.clone(), SymbolType::Constant);
+        // Evaluate the constant now so later references (e.g. register sizes)
+        // can resolve it. Constants must be expressible from previously-defined
+        // constants and literals only.
+        //
+        // Division of labor with the validator: the parser's job is to accept
+        // every *syntactically* valid program and build an AST; deeper
+        // semantic checks that require a full symbol/type table -- function
+        // arity, unknown function names, indexing a non-array value -- belong
+        // to `QasmValidator` (see `validate_expression` /
+        // `builtin_function_return_type` in validator.rs), which already
+        // implements them faithfully. So when evaluation fails specifically
+        // because the expression calls a function or indexes something, we
+        // don't hard-fail the parse: we record the constant as non-numeric
+        // (deferring the semantic error to `validate_qasm3`) instead of
+        // duplicating (and risking disagreeing with) the validator's checks.
+        // A constant that is malformed in a way the validator does *not*
+        // re-check (e.g. referencing a genuinely undefined identifier) is
+        // still a hard parse error.
+        match self.eval_const_expr(&expr) {
+            Ok(value) => {
+                self.symbols
+                    .insert(name.clone(), SymbolType::Constant(value));
+            }
+            Err(err) => {
+                if expr_contains_function_or_index(&expr) {
+                    self.symbols.insert(name.clone(), SymbolType::Variable);
+                } else {
+                    return Err(err);
+                }
+            }
+        }
 
         Ok(Declaration::Constant(name, expr))
+    }
+
+    /// Resolve a named constant to a register size (a non-negative integer).
+    ///
+    /// Returns [`ParseError::UndefinedIdentifier`] if `name` was never declared
+    /// (or is not a `const`), and [`ParseError::TypeMismatch`] if its value is
+    /// not a finite non-negative integer.
+    fn resolve_register_size(&self, name: &str) -> Result<usize, ParseError> {
+        match self.symbols.get(name) {
+            Some(SymbolType::Constant(value)) => {
+                let value = *value;
+                if !value.is_finite() || value < 0.0 || value.fract() != 0.0 {
+                    return Err(ParseError::TypeMismatch(format!(
+                        "constant '{name}' = {value} is not a valid register size (expected a non-negative integer)"
+                    )));
+                }
+                Ok(value as usize)
+            }
+            Some(_) => Err(ParseError::TypeMismatch(format!(
+                "'{name}' is not a constant and cannot be used as a register size"
+            ))),
+            None => Err(ParseError::UndefinedIdentifier(name.to_string())),
+        }
+    }
+
+    /// Evaluate a constant expression to an `f64`.
+    ///
+    /// Supports numeric literals (including `pi`/`tau`/`euler`), references to
+    /// previously-declared `const`s, and the standard binary/unary operators and
+    /// math functions. Non-constant constructs (array indexing, unknown
+    /// identifiers/functions, string literals) yield a [`ParseError`].
+    fn eval_const_expr(&self, expr: &Expression) -> Result<f64, ParseError> {
+        match expr {
+            Expression::Literal(lit) => match lit {
+                Literal::Integer(n) => Ok(*n as f64),
+                Literal::Float(x) => Ok(*x),
+                Literal::Bool(b) => Ok(if *b { 1.0 } else { 0.0 }),
+                Literal::Pi => Ok(std::f64::consts::PI),
+                Literal::Tau => Ok(std::f64::consts::TAU),
+                Literal::Euler => Ok(std::f64::consts::E),
+                Literal::String(s) => Err(ParseError::TypeMismatch(format!(
+                    "string literal \"{s}\" is not a numeric constant"
+                ))),
+            },
+            Expression::Variable(name) => match self.symbols.get(name) {
+                Some(SymbolType::Constant(value)) => Ok(*value),
+                Some(_) => Err(ParseError::TypeMismatch(format!(
+                    "'{name}' is not a constant and cannot appear in a constant expression"
+                ))),
+                None => Err(ParseError::UndefinedIdentifier(name.clone())),
+            },
+            Expression::Binary(op, lhs, rhs) => {
+                let l = self.eval_const_expr(lhs)?;
+                let r = self.eval_const_expr(rhs)?;
+                Ok(eval_const_binary(*op, l, r))
+            }
+            Expression::Unary(op, inner) => {
+                let v = self.eval_const_expr(inner)?;
+                Ok(eval_const_unary(*op, v))
+            }
+            Expression::Function(name, args) => {
+                let values: Result<Vec<f64>, ParseError> =
+                    args.iter().map(|a| self.eval_const_expr(a)).collect();
+                eval_const_function(name, &values?)
+            }
+            Expression::Index(name, _) => Err(ParseError::TypeMismatch(format!(
+                "array index into '{name}' is not a constant expression"
+            ))),
+        }
     }
 
     fn parse_statement(&mut self) -> Result<QasmStatement, ParseError> {
@@ -1592,5 +1816,58 @@ mygate(pi/4) q;
 
         let result = parse_qasm3(input);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_const_register_size() {
+        use super::super::ast::Declaration;
+
+        let input = r#"
+OPENQASM 3.0;
+const n = 5;
+qubit[n] q;
+bit[n] c;
+"#;
+        let program = parse_qasm3(input).expect("parse_qasm3 should succeed");
+
+        let mut q_size = None;
+        let mut c_size = None;
+        for decl in &program.declarations {
+            match decl {
+                Declaration::QuantumRegister(reg) => q_size = Some(reg.size),
+                Declaration::ClassicalRegister(reg) => c_size = Some(reg.size),
+                _ => {}
+            }
+        }
+        // The named constant `n` must resolve to 5 — not the old hardcoded 4.
+        assert_eq!(q_size, Some(5));
+        assert_eq!(c_size, Some(5));
+    }
+
+    #[test]
+    fn test_const_register_size_arithmetic() {
+        use super::super::ast::Declaration;
+
+        let input = r#"
+OPENQASM 3.0;
+const n = 2 + 3;
+qubit[n] q;
+"#;
+        let program = parse_qasm3(input).expect("parse_qasm3 should succeed");
+        let size = program.declarations.iter().find_map(|d| match d {
+            Declaration::QuantumRegister(reg) => Some(reg.size),
+            _ => None,
+        });
+        assert_eq!(size, Some(5));
+    }
+
+    #[test]
+    fn test_undefined_const_register_size_errors() {
+        let input = r#"
+OPENQASM 3.0;
+qubit[undefined_n] q;
+"#;
+        // An unresolved constant must be a hard error, not a silent default.
+        assert!(parse_qasm3(input).is_err());
     }
 }

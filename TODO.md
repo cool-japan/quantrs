@@ -1,6 +1,26 @@
 # QuantRS2 Roadmap
 
-## Current Version: 0.2.0
+## Current Version: 0.2.1
+
+## v0.2.1 (in progress, branch: 0.2.1)
+
+### Stub-resolution cycle (2026-06-21)
+
+- [x] **A. SciRS2 platform detection** (`core/src/platform/detector.rs`) — wired `scirs2_core::simd_ops::PlatformCapabilities::detect()` into `detect_platform_capabilities`/`detect_simd_capabilities`. Kept superior runtime `is_x86_feature_detected!` probing; OR-in SciRS2's build-time AVX2/AVX512/NEON flags as fallback, upgraded AVX512 from compile-time `cfg!` to runtime detection; unknown-arch branch now uses SciRS2's summary. Both TODOs removed. Verified: `core` lib builds clean.
+- [x] **B. Batch-optimized gate detection** (`core/src/batch/operations.rs`) — `apply_gate_sequence_batch` now detects fixed (non-parameterized) gates by `GateOp::name()` and caches their compiled matrices per-sequence (CNOT chains / Hadamard layers compile once); parameterized gates recompile per call. Added `is_fixed_single_qubit_gate`/`is_fixed_two_qubit_gate`/`compile_single_qubit_matrix`/`compile_two_qubit_matrix`. Verified: `test_apply_gate_sequence_batch_matches_manual` (optimized vs naive equivalence over H/CNOT-chain/RZ) passes.
+- [x] **C. QASM constant register sizes** (`circuit/src/qasm/parser.rs`) — `SymbolType::Constant(f64)` now carries the evaluated value; added `eval_const_expr` (literals incl. pi/tau/euler, `Variable` lookup, full `Binary`/`Unary`/`Function` arithmetic) + `resolve_register_size`. `qubit[n]`/`bit[n]` resolve `n` from prior `const`; undefined → `UndefinedIdentifier`, non-integer → `TypeMismatch`. Verified: 3 new tests pass (`const n = 5` → 5-qubit reg; `2+3` arithmetic; undefined errors).
+- [x] **D. CV gate-sequence optimization** (`device/src/photonic/cv_gates.rs`) — `optimize()` now coalesces adjacent same-mode `PhaseRotation` (sum θ mod 2π) and `Displacement` (sum α) in a forward pass, with identity removal before and after (extracted to `remove_identities`). Verified with `--features "photonic,ibm"`: 4 new tests pass (π/2+π/2→π; D(α)·D(−α) cancels; D(1)·D(2)=D(3); different modes stay separate).
+- [x] **E. Scheduling public-API test refactor** (`device/tests/advanced_scheduling_tests.rs`) — replaced the 6 commented-out internal-access TODOs with assertions through `register_backend`/`get_available_backends_debug`. Accounts for `create_test_scheduler` pre-registering 3 backends. Verified: all 6 scheduling tests pass.
+- [x] **F. tytan GPU stub-backend honesty** (`tytan/src/gpu_kernels.rs`, `gpu_memory_pool.rs`, `gpu_benchmark.rs`, `benchmark/hardware.rs`) — removed **fabricated** GPU specs (`8192 MB`/`64 CU`/`1500 MHz`) and fake `1 ms` latency. `benchmark/hardware.rs` now reports the backend's *actual* `DeviceInfo` (zeros for the stub) and propagates the real `measure_kernel_latency`. `gpu_benchmark.rs` uses a separate minimal local `GpuContext` whose `new(0)` always succeeds — so the old code *always* returned the fabricated string under `feature=scirs`; now honestly reports specs unavailable. `compile_kernel`/`free_raw` placeholders replaced with honest stub-contract docs. Verified: `tytan --features scirs` builds + clippy clean.
+- [x] **G. Metal backend honest detection** (`sim/src/gpu_metal.rs`, `gpu_linalg_metal.rs`) — `is_available`/`is_mps_available`/`get_device_info` now report truth via `scirs2_core::simd_ops::PlatformCapabilities::detect().metal_available` instead of bare `false`. Module/method TODO markers converted to honest "scaffolding — not implemented" docs; compute paths still return honest errors. Verified: `sim` lib builds + clippy clean.
+
+**Verification status (2026-06-21):** all 7 tasks built, tested, and clippy-clean. core+circuit (`--all-targets`), device (`--features photonic,ibm --all-targets`), sim (`--all-targets`), tytan (`--features scirs`) all green. Full workspace `cargo build` green. Targeted tests: B (1), C (3), D (4), E (6) all pass.
+
+- [x] **Bonus: fixed pre-existing `sim` test-target breakage** (from the CUDA commit, blocked `cargo nextest run -p quantrs2-sim` and clippy `--all-targets`): missing `FPGAStats` import in `fpga_acceleration/functions.rs` tests; `opencl_amd_backend.rs`/`tpu_acceleration.rs` tests matched on `Result` requiring the simulator `Ok` type to be `Debug` — switched to matching `result.err()`. Verified: 9 sim tests pass, `sim --all-targets` clippy clean.
+
+### Discovered follow-ups (2026-06-21)
+
+- [ ] **Photonic feature cannot compile standalone** — `device/src/photonic/device.rs` (and 8 other backend modules: aws/azure/ibm/neutral_atom/topological/honeywell/rigetti/continuous_variable) impl the **async** `QuantumDevice`/`CircuitExecutor` trait, but that trait variant is gated `#[cfg(feature = "ibm")]` in `device/src/lib.rs:353,385` (sync variant otherwise). So `--features photonic` (or aws/azure/etc.) alone fails with E0195/E0277; only works combined with `ibm`. Fix: gate the async traits on the union of all async-backend features (or an internal `_async_device` feature each enables). Out of scope for the stub cycle — needs testing across every backend feature combination.
 
 ## v0.2.0 (released 2026-06-06, branch: 0.2.0)
 
@@ -23,8 +43,6 @@
 - [x] **STIM REPEAT block parser** (`sim/src/stim_parser/types.rs`, `functions.rs`) — rewrote `StimCircuit::from_str` to handle multi-line `REPEAT N { … }` blocks via peekable line iterator with brace-terminated body accumulation. Recursive `from_str` call on the body; `parse_repeat` now returns `Repeat { count, instructions: body }` for single-line forms instead of `NotImplemented`.
 - [x] **Cache-optimized two-qubit gate** (`sim/src/cache_optimized_layouts.rs`) — implemented `apply_two_qubit_gate_cache_optimized`: iterates over |00⟩ corner states, applies logical↔physical qubit permutation, extracts and updates 4 amplitudes `[|00⟩, |01⟩, |10⟩, |11⟩]` using the 4×4 gate matrix. Cache-friendly access pattern exploiting layout metadata.
 - [x] **BBM92 and SARG04 QKD protocols** (`ml/src/crypto.rs`) — implemented `bbm92_protocol` (entanglement-based, ~50% key retention via basis sifting on maximally entangled Bell pairs) and `sarg04_protocol` (BB84 variant with unambiguous state discrimination, ~25% key retention via USD conclusive-measurement filter). Dispatch wired in `run_qkd`.
-
-## Current Version: 0.1.3
 
 ## Completed in v0.1.3 (2026-03-27)
 
@@ -87,3 +105,46 @@
 
 - [quantrs2-tytan](tytan/TODO.md)
 - [quantrs2-py](py/TODO.md)
+
+## Stubs to implement (added 2026-06-12 by /cooljapan-stub-check)
+
+Resolved 2026-06-21 in the [Stub-resolution cycle](#stub-resolution-cycle-2026-06-21) above (8 of 10):
+
+- [x] `quantrs-sim`: `gpu_metal.rs` → **Task G** (honest scirs2-backed Metal detection; compute path stays honest-error, not fabricated)
+- [x] `quantrs-sim`: `gpu_linalg_metal.rs` → **Task G**
+- [x] `quantrs-tytan`: `gpu_kernels.rs`/`gpu_memory_pool.rs`/`gpu_benchmark.rs`/`benchmark/hardware.rs` → **Task F** (removed fabricated GPU specs; honest stub-contract)
+- [x] `quantrs-device`: `photonic/cv_gates.rs:613` → **Task D** (phase-rotation/displacement coalescing)
+- [x] `quantrs-device`: `tests/advanced_scheduling_tests.rs` → **Task E** (public-API refactor; source API already existed)
+- [x] `quantrs-core`: `batch/operations.rs:365` → **Task B** (name-based fixed-gate detection + matrix cache)
+- [x] `quantrs-core`: `platform/detector.rs:9,52` → **Task A** (scirs2 `PlatformCapabilities` integration)
+- [x] `quantrs-circuit`: `qasm/parser.rs:585,651` → **Task C** (constant register-size resolution)
+
+Remaining (2 of 10) — genuinely blocked on external GPU APIs; current code is **honest** (returns errors / caches), not fabricated:
+
+- [ ] `quantrs-ml`: `gpu_backend_impl.rs:147` — Re-implement parameter application when GPU API is updated. **Blocked:** the entire GPU simulation path is intentionally disabled in beta.1 (`execute_circuit_typed` returns `MLError::NotSupported` before reaching the parameter code). Honest today; re-enable once the scirs2-core GPU sim/write-back API stabilizes — the parameter-application TODO is downstream of that.
+- [ ] `quantrs-core`: `gpu/scirs2_adapter.rs:293` — Use SciRS2 kernel compilation when its API is available. **Blocked:** `compile_kernel` honestly caches kernel source and returns `Ok`; `register_compiled_kernel` (line 737) is already a real in-process registry. No SciRS2 GPU-kernel *compiler* API exists yet to delegate to. Honest today; no action until SciRS2 exposes one.
+
+---
+
+## Stubs to implement (added 2026-06-22 by /cooljapan-stub-check)
+
+- [ ] **quantrs** `quantrs-py`: `py/src/circuit_core.rs:652` — `TODO`: `Implement GPU-based noise simulation`
+  - **Priority:** P2  **Scope:** medium  **Cross-project:** none
+  - **Approach:** In `simulate_with_noise`, when `use_gpu` and a GPU is present, route the advanced noise model through the existing GPU statevector backend (apply noise channels as Kraus-op statevector updates on-device) instead of the current `println!` + CPU fallback.
+  - **Risk:** GPU statevector path is intentionally disabled in beta.1 elsewhere (see `ml/gpu_backend_impl.rs`); this is only fully realizable once the on-device statevector write-back API stabilizes, so it may stay CPU-fallback until then.
+- [ ] **quantrs** `quantrs-tytan`: `tytan/tests/compile_tests.rs:165` — `TODO`: `This test needs to be rewritten to use expressions instead of raw matrix`
+  - **Priority:** P2  **Scope:** small  **Cross-project:** none
+  - **Approach:** Re-enable the commented-out `test_compile_matrix_input` by constructing the 3x3 QUBO via the expression/`SymbolBuilder` API rather than a raw `Array2`, then assert the compiled model matches the expected linear/quadratic terms.
+  - **Risk:** Gated behind `#[cfg(feature = "dwave")]`; verify the expression API exposes equivalent symmetric quadratic-term construction.
+- [ ] **quantrs** `quantrs-core`: `core/src/quantum_counting.rs:7` — `TODO`: `current implementations are simplified versions; full implementations` (module-level)
+  - **Priority:** P2  **Scope:** large  **Cross-project:** OxiFFT
+  - **Approach:** Replace the simplified quantum-counting/amplitude-estimation routines with full QPE-backed implementations (proper inverse-QFT phase register, eigenphase extraction) so counts derive from estimated amplitudes rather than the approximation.
+  - **Risk:** Large algorithmic surface; needs careful QPE/iQFT correctness and may lean on OxiFFT for the transform. Low confidence this is a single-pass change — likely multi-step.
+
+### Known external-blocked placeholders (not actionable)
+
+- `ml/src/gpu_backend_impl.rs:147` — re-implement parameter application when GPU API updated. The whole GPU sim path returns `MLError::NotSupported` (disabled in beta.1) before reaching this code; blocked on scirs2-core GPU sim/write-back API. (Already tracked in the 2026-06-21 cycle.)
+- `core/src/gpu/scirs2_adapter.rs:293` — `compile_kernel` honestly caches source; no SciRS2 GPU-kernel compiler API to delegate to yet.
+- `core/src/gpu/scirs2_adapter.rs:722` — `register_quantum_kernel` already keeps a real in-process `OnceLock` registry; the TODO only concerns delegating to a not-yet-existing SciRS2 kernel-registry API.
+- `core/src/optimization/compression.rs:266` — Tucker decomposition splits real/imag because `scirs2-linalg` Tucker is Float-only; blocked on an upstream `scirs2-linalg` Complex-Tucker request (cross-project, upstream).
+- `device/src/crosstalk.rs:25` — `scirs2_signal` not yet available; honest pending-dependency note.

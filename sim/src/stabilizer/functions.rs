@@ -88,7 +88,10 @@ pub(super) fn gate_to_stabilizer(gate: &Arc<dyn GateOp + Send + Sync>) -> Option
         }
         "CZ" => {
             if qubits.len() == 2 {
-                None
+                Some(StabilizerGate::CZ(
+                    qubits[0].0 as usize,
+                    qubits[1].0 as usize,
+                ))
             } else {
                 None
             }
@@ -428,5 +431,77 @@ mod tests {
         tableau.apply_sqrt_y(0).unwrap();
         let stabs = tableau.get_stabilizers();
         assert_eq!(stabs[0], "-X");
+    }
+    #[test]
+    fn test_cz_gate_to_stabilizer_conversion() {
+        // Regression: the "CZ" arm previously returned None unconditionally,
+        // silently dropping every CZ gate during stabilizer simulation.
+        let mut circuit = Circuit::<2>::new();
+        circuit.cz(0, 1).expect("cz gate should be added");
+        let gates = circuit.gates();
+        assert_eq!(gates.len(), 1);
+        let converted = gate_to_stabilizer(&gates[0]);
+        assert!(
+            matches!(converted, Some(StabilizerGate::CZ(0, 1))),
+            "CZ must convert to StabilizerGate::CZ, got {converted:?}"
+        );
+    }
+    #[test]
+    fn test_stabilizer_run_applies_cz() {
+        // Full path through the Simulator trait: a Clifford circuit that
+        // contains a CZ must simulate successfully. Before the fix the CZ
+        // converted to None; with the stricter caller that None would now be
+        // reported as an unsupported-gate error, so `run` returning Ok proves
+        // the CZ is genuinely recognised and applied.
+        use crate::simulator::Simulator;
+        let mut circuit = Circuit::<2>::new();
+        circuit
+            .h(0)
+            .expect("h(0)")
+            .h(1)
+            .expect("h(1)")
+            .cz(0, 1)
+            .expect("cz(0,1)");
+        let mut sim = StabilizerSimulator::new(2);
+        assert!(
+            sim.run(&circuit).is_ok(),
+            "Clifford circuit containing a CZ must simulate successfully"
+        );
+
+        // At the tableau level the CZ must actually entangle the two qubits:
+        // H(0) H(1) CZ(0,1) prepares a cluster state with stabilizers XZ and ZX.
+        let mut tableau_sim = StabilizerSimulator::new(2);
+        tableau_sim
+            .apply_gate(StabilizerGate::H(0))
+            .expect("h(0) on tableau");
+        tableau_sim
+            .apply_gate(StabilizerGate::H(1))
+            .expect("h(1) on tableau");
+        tableau_sim
+            .apply_gate(StabilizerGate::CZ(0, 1))
+            .expect("cz(0,1) on tableau");
+        let stabs = tableau_sim.get_stabilizers();
+        assert!(
+            stabs.contains(&"+XZ".to_string()),
+            "cluster-state stabilizer +XZ missing, got {stabs:?}"
+        );
+        assert!(
+            stabs.contains(&"+ZX".to_string()),
+            "cluster-state stabilizer +ZX missing, got {stabs:?}"
+        );
+    }
+    #[test]
+    fn test_stabilizer_run_rejects_non_clifford() {
+        // Non-Clifford gates must surface an honest error rather than being
+        // silently skipped.
+        use crate::simulator::Simulator;
+        let mut circuit = Circuit::<1>::new();
+        circuit.t(0).expect("t gate should be added");
+        let mut sim = StabilizerSimulator::new(1);
+        let result = sim.run(&circuit);
+        assert!(
+            result.is_err(),
+            "running a non-Clifford T gate through the stabilizer simulator must error"
+        );
     }
 }

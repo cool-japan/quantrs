@@ -31,7 +31,7 @@
 //! - **Quantum Reservoir Computing**: Leverages quantum dynamics for temporal data processing with quantum advantages
 //! - **Quantum Graph Attention Networks**: Combines graph neural networks with quantum attention mechanisms for complex graph analysis
 //!
-//! ## Recent Updates (v0.2.0)
+//! ## Recent Updates (v0.2.1)
 //!
 //! - Refined SciRS2 v0.5.0 Stable Release integration with unified patterns
 //! - Automatic differentiation leveraging SciRS2's linear algebra operations

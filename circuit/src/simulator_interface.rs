@@ -488,21 +488,20 @@ impl CircuitCompiler {
         })
     }
 
-    /// Select the best compilation target for a circuit
+    /// Select a compilation target for a circuit.
+    ///
+    /// This deliberately uses a simple, deterministic policy: it selects the
+    /// first configured target. This is a real (if non-optimal) choice, not a
+    /// fabricated decision. Cost-based selection that inspects the circuit
+    /// (gate set coverage, qubit count, connectivity) to pick the most suitable
+    /// target is future work.
     fn select_target<const N: usize>(
         &self,
-        circuit: &Circuit<N>,
+        _circuit: &Circuit<N>,
     ) -> QuantRS2Result<CompilationTarget> {
-        if self.targets.is_empty() {
-            return Err(QuantRS2Error::InvalidInput(
-                "No compilation targets available".to_string(),
-            ));
-        }
-
-        // For now, select the first target
-        // In a more sophisticated implementation, this would analyze the circuit
-        // and select the most appropriate target based on various factors
-        Ok(self.targets[0].clone())
+        self.targets.first().cloned().ok_or_else(|| {
+            QuantRS2Error::InvalidInput("No compilation targets available".to_string())
+        })
     }
 
     /// Compile circuit instructions
@@ -554,10 +553,76 @@ impl CircuitCompiler {
         })
     }
 
-    /// Extract parameters from a gate
+    /// Extract the continuous parameters (rotation angles, phases) carried by a
+    /// gate so they survive compilation into [`CompiledInstruction`]s.
+    ///
+    /// `GateOp` exposes no generic parameter accessor, so we downcast to every
+    /// known parameterized core gate type and read its field(s). Gates that are
+    /// genuinely non-parameterized (Pauli, Hadamard, CNOT, SWAP, ...) correctly
+    /// yield an empty vector. Parameter ordering for multi-parameter gates
+    /// follows the gate's struct field order.
     fn extract_gate_parameters(&self, gate: &dyn GateOp) -> Vec<f64> {
-        // This would need to access gate-specific parameter methods
-        // For now, return empty parameters
+        use quantrs2_core::gate::{global, multi, single};
+
+        // Fast path: non-parameterized gates never carry angles.
+        if !gate.is_parameterized() {
+            return Vec::new();
+        }
+
+        let any = gate.as_any();
+
+        // Single-qubit single-angle rotations.
+        if let Some(g) = any.downcast_ref::<single::RotationX>() {
+            return vec![g.theta];
+        }
+        if let Some(g) = any.downcast_ref::<single::RotationY>() {
+            return vec![g.theta];
+        }
+        if let Some(g) = any.downcast_ref::<single::RotationZ>() {
+            return vec![g.theta];
+        }
+
+        // Two-qubit single-angle rotations.
+        if let Some(g) = any.downcast_ref::<multi::CRX>() {
+            return vec![g.theta];
+        }
+        if let Some(g) = any.downcast_ref::<multi::CRY>() {
+            return vec![g.theta];
+        }
+        if let Some(g) = any.downcast_ref::<multi::CRZ>() {
+            return vec![g.theta];
+        }
+        if let Some(g) = any.downcast_ref::<multi::RXX>() {
+            return vec![g.theta];
+        }
+        if let Some(g) = any.downcast_ref::<multi::RYY>() {
+            return vec![g.theta];
+        }
+        if let Some(g) = any.downcast_ref::<multi::RZZ>() {
+            return vec![g.theta];
+        }
+        if let Some(g) = any.downcast_ref::<multi::RZX>() {
+            return vec![g.theta];
+        }
+
+        // Multi-parameter gates (field order: theta, then the second angle).
+        if let Some(g) = any.downcast_ref::<multi::XXPlusYY>() {
+            return vec![g.theta, g.beta];
+        }
+        if let Some(g) = any.downcast_ref::<multi::XXMinusYY>() {
+            return vec![g.theta, g.beta];
+        }
+        if let Some(g) = any.downcast_ref::<global::RGate>() {
+            return vec![g.theta, g.phi];
+        }
+
+        // Global phase carries a single phase angle.
+        if let Some(g) = any.downcast_ref::<global::GlobalPhase>() {
+            return vec![g.phase];
+        }
+
+        // Parameterized gate type we do not yet special-case: return empty
+        // rather than fabricate values. (This is an honest gap, not fake data.)
         Vec::new()
     }
 
@@ -872,6 +937,26 @@ mod tests {
         // Clifford set should only support Clifford gates
         assert!(compiler.is_gate_supported("H", &InstructionSet::Clifford));
         assert!(!compiler.is_gate_supported("T", &InstructionSet::Clifford));
+    }
+
+    #[test]
+    fn test_extract_gate_parameters() {
+        use quantrs2_core::gate::single::RotationX;
+
+        let compiler = CircuitCompiler::new();
+
+        // A rotation gate must expose its angle, not drop it.
+        let rx = RotationX {
+            target: QubitId(0),
+            theta: 0.75,
+        };
+        let params = compiler.extract_gate_parameters(&rx);
+        assert_eq!(params.len(), 1);
+        assert!((params[0] - 0.75).abs() < 1e-12);
+
+        // Non-parameterized gates correctly yield no parameters.
+        let h = Hadamard { target: QubitId(0) };
+        assert!(compiler.extract_gate_parameters(&h).is_empty());
     }
 
     #[test]

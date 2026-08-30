@@ -108,10 +108,14 @@ pub struct SizeResults {
 pub struct BatchResults {
     /// Execution time
     pub exec_time: Duration,
-    /// GPU utilization
-    pub gpu_utilization: f64,
-    /// Memory bandwidth utilization
-    pub bandwidth_util: f64,
+    /// GPU utilization, when real hardware telemetry is available.
+    /// `None` (rather than a fabricated constant) when running on the
+    /// CPU-fallback `scirs2_core::gpu` backend, which exposes no real
+    /// utilization counters.
+    pub gpu_utilization: Option<f64>,
+    /// Memory bandwidth utilization; see [`Self::gpu_utilization`] for the
+    /// same "no fabricated values" contract.
+    pub bandwidth_util: Option<f64>,
 }
 
 #[derive(Clone)]
@@ -120,8 +124,11 @@ pub struct TempResults {
     pub convergence_time: Duration,
     /// Final solution quality
     pub final_quality: f64,
-    /// Number of iterations to convergence
-    pub iterations: usize,
+    /// Number of internal solver iterations to convergence, when the
+    /// `Sampler` implementation reports it. The generic `Sampler` trait
+    /// does not expose an iteration count, so this is honestly `None`
+    /// rather than a fabricated constant.
+    pub iterations: Option<usize>,
 }
 
 #[derive(Clone)]
@@ -293,16 +300,21 @@ impl<S: Sampler> GpuBenchmark<S> {
 
             let elapsed = start.elapsed();
 
-            // Get GPU metrics from profiler
-            let gpu_util = 0.75; // Placeholder - would get from profiler
-            let bandwidth_util = 0.60; // Placeholder
+            // Record real timing/throughput with the profiler. GPU
+            // utilization and memory-bandwidth utilization genuinely
+            // require hardware performance counters that the CPU-fallback
+            // `scirs2_core::gpu` backend used here does not provide, so
+            // those two metrics are honestly reported as unavailable
+            // (`None`) instead of fabricated constants.
+            self.profiler.record_kernel_time("run_qubo", elapsed);
+            self.profiler.update_throughput(batch_size, elapsed);
 
             results.batch_results.insert(
                 batch_size,
                 BatchResults {
                     exec_time: elapsed,
-                    gpu_utilization: gpu_util,
-                    bandwidth_util,
+                    gpu_utilization: None,
+                    bandwidth_util: None,
                 },
             );
         }
@@ -350,7 +362,10 @@ impl<S: Sampler> GpuBenchmark<S> {
                 TempResults {
                     convergence_time: elapsed,
                     final_quality,
-                    iterations: 1000, // Placeholder
+                    // The generic `Sampler` trait does not report its
+                    // internal iteration count, so this is honestly `None`
+                    // rather than a fabricated constant.
+                    iterations: None,
                 },
             );
         }
@@ -359,43 +374,42 @@ impl<S: Sampler> GpuBenchmark<S> {
     }
 
     /// Benchmark energy efficiency
+    ///
+    /// Real power-draw measurement requires genuine GPU/board power-monitor
+    /// hardware (e.g. NVML/`rocm-smi`), which is not available through the
+    /// CPU-fallback `scirs2_core::gpu` backend used by this benchmark
+    /// runner. Rather than fabricate a plausible-looking wattage (as the
+    /// previous implementation did with a hardcoded `150.0 W`), this
+    /// honestly reports that energy metrics are unavailable. Callers that
+    /// explicitly opt in via `BenchmarkConfig::measure_energy` therefore see
+    /// a clear error instead of invented numbers.
     fn benchmark_energy_efficiency(
         &mut self,
-        results: &mut BenchmarkResults,
+        _results: &mut BenchmarkResults,
     ) -> Result<(), String> {
         if self.config.verbose {
             println!("\nMeasuring energy efficiency...");
         }
 
-        // This would require GPU power monitoring capabilities
-        // Using placeholder values for demonstration
-
-        let avg_power = 150.0; // Watts
-        let total_samples = self.config.problem_sizes.len()
-            * self.config.samples_per_problem
-            * self.config.repetitions;
-        let total_time: Duration = results.size_results.values().map(|r| r.avg_time).sum();
-
-        let total_energy = avg_power * total_time.as_secs_f64();
-        let energy_per_sample = total_energy / total_samples as f64;
-        let perf_per_watt = total_samples as f64 / total_energy;
-
-        results.energy_metrics = Some(EnergyMetrics {
-            avg_power,
-            energy_per_sample,
-            perf_per_watt,
-        });
-
-        Ok(())
+        Err(
+            "Energy efficiency measurement requires real GPU/board power-monitor hardware \
+             (e.g. NVML or rocm-smi), which is not available through this benchmark's \
+             CPU-fallback backend; set BenchmarkConfig::measure_energy = false to skip this step."
+                .to_string(),
+        )
     }
 
     /// Get device information
     fn get_device_info(&self) -> String {
         #[cfg(feature = "scirs")]
         {
-            if let Ok(ctx) = GpuContext::new(0) {
-                // TODO: Implement get_device_info in GPU stub
-                return format!("GPU: {} MB, {} compute units @ {} MHz", 8192, 64, 1500);
+            // The `scirs` stub backend exposes a GpuContext but no physical device,
+            // so honestly report that detailed specs are unavailable rather than
+            // fabricating them (the previous code returned hardcoded 8192 MB / 64
+            // CU / 1500 MHz). A real backend would query genuine device specs here.
+            if GpuContext::new(0).is_ok() {
+                return "GPU device info unavailable (scirs stub backend has no physical device)"
+                    .to_string();
             }
         }
 
@@ -512,12 +526,10 @@ impl<S: Sampler> GpuBenchmark<S> {
 
             let mut batch_sizes = Vec::new();
             let mut exec_times = Vec::new();
-            let mut gpu_utils = Vec::new();
 
             for (batch, res) in &results.batch_results {
                 batch_sizes.push(*batch as f64);
                 exec_times.push(res.exec_time.as_secs_f64() * 1000.0);
-                gpu_utils.push(res.gpu_utilization * 100.0);
             }
 
             let time_bar = Bar::new(
@@ -526,14 +538,10 @@ impl<S: Sampler> GpuBenchmark<S> {
             )
             .name("Execution Time (ms)");
 
-            let util_bar = Bar::new(
-                batch_sizes.iter().map(|&b| b.to_string()).collect(),
-                gpu_utils,
-            )
-            .name("GPU Utilization (%)");
-
             plot.add_trace(time_bar);
-            plot.add_trace(util_bar);
+            // GPU utilization is honestly `None` on this benchmark's
+            // CPU-fallback backend (see `BatchResults::gpu_utilization`), so
+            // there is no real utilization series to plot here.
             plot.set_title("Batch Size Optimization");
             plot.set_xlabel("Batch Size");
 
@@ -645,25 +653,69 @@ impl GpuComparison {
     }
 
     /// Run comparison
+    ///
+    /// Actually runs each registered implementation's sampler on the same
+    /// random QUBO problem and measures its real wall-clock throughput and
+    /// best solution energy. `configs` already stores samplers as
+    /// `Box<dyn Sampler>`, so no additional trait-object plumbing is needed
+    /// (the previous implementation's "would need trait object support"
+    /// comment was stale: it inserted the exact same hardcoded
+    /// `ImplementationResult` for every registered implementation without
+    /// ever invoking `config.sampler`).
     pub fn run_comparison(&mut self) -> Result<ComparisonResults, String> {
         let mut results = ComparisonResults {
             implementations: HashMap::new(),
             best_performer: String::new(),
         };
 
+        let test_size = self
+            .benchmark_config
+            .problem_sizes
+            .first()
+            .copied()
+            .unwrap_or(50);
+        let (qubo, var_map) = generate_random_qubo(test_size);
+        let shots = self.benchmark_config.samples_per_problem.max(1);
+        let repetitions = self.benchmark_config.repetitions.max(1);
+
         for config in &mut self.configs {
             println!("\nBenchmarking {}...", config.name);
 
-            // Run benchmark for this implementation
-            // Would need trait object support for benchmark
+            let mut times = Vec::with_capacity(repetitions);
+            let mut best_quality = f64::INFINITY;
 
-            // Placeholder results
+            for _ in 0..repetitions {
+                let start = Instant::now();
+                let solutions = config
+                    .sampler
+                    .run_qubo(&(qubo.clone(), var_map.clone()), shots)
+                    .map_err(|e| e.to_string())?;
+                times.push(start.elapsed());
+
+                if let Some(best) = solutions.first() {
+                    best_quality = best_quality.min(best.energy);
+                }
+            }
+
+            let avg_time = times.iter().sum::<Duration>() / times.len() as u32;
+            let avg_performance = if avg_time.as_secs_f64() > 0.0 {
+                shots as f64 / avg_time.as_secs_f64()
+            } else {
+                0.0
+            };
+
+            // A real (data-dependent), if simplified, memory-efficiency
+            // proxy: how much smaller the actual estimated working set is
+            // relative to a generous 1 GB budget, bounded to [0, 1].
+            let estimated_mb = estimate_memory_usage(test_size, shots);
+            let memory_efficiency = (1.0 - (estimated_mb / 1024.0).min(1.0)).max(0.0);
+
             results.implementations.insert(
                 config.name.clone(),
                 ImplementationResult {
-                    avg_performance: 1000.0,
-                    best_quality: -100.0,
-                    memory_efficiency: 0.8,
+                    avg_performance,
+                    best_quality,
+                    memory_efficiency,
                 },
             );
         }
@@ -719,5 +771,114 @@ mod tests {
         let mem = estimate_memory_usage(100, 1000);
         assert!(mem > 0.0);
         assert!(mem < 1000.0); // Should be reasonable
+    }
+
+    #[test]
+    fn test_run_comparison_actually_benchmarks_each_sampler() {
+        use crate::sampler::SASampler;
+
+        let bench_config = BenchmarkConfig {
+            problem_sizes: vec![8],
+            samples_per_problem: 5,
+            repetitions: 2,
+            ..Default::default()
+        };
+
+        let mut comparison = GpuComparison::new(bench_config);
+        comparison.add_implementation("sa-1", Box::new(SASampler::new(Some(1))));
+        comparison.add_implementation("sa-2", Box::new(SASampler::new(Some(2))));
+
+        let results = comparison
+            .run_comparison()
+            .expect("comparison should succeed");
+
+        // The old fabricated implementation inserted the exact same
+        // ImplementationResult{avg_performance: 1000.0, best_quality: -100.0,
+        // memory_efficiency: 0.8} for every registered implementation
+        // without ever calling the sampler. Now every implementation must
+        // have actually run and produced a real (non-placeholder) energy.
+        assert_eq!(results.implementations.len(), 2);
+        for (name, result) in &results.implementations {
+            assert!(
+                result.best_quality.is_finite(),
+                "{name} should have produced a real, finite best energy"
+            );
+            assert!(result.avg_performance > 0.0);
+        }
+        assert!(!results.best_performer.is_empty());
+    }
+
+    #[test]
+    fn test_benchmark_energy_efficiency_is_honest_error_not_fabrication() {
+        use crate::sampler::SASampler;
+
+        let config = BenchmarkConfig {
+            problem_sizes: vec![8],
+            samples_per_problem: 5,
+            repetitions: 1,
+            measure_energy: true,
+            verbose: false,
+            ..Default::default()
+        };
+
+        let mut benchmark = GpuBenchmark::new(SASampler::new(Some(1)), config);
+        let mut results = BenchmarkResults {
+            size_results: HashMap::new(),
+            batch_results: HashMap::new(),
+            temp_results: HashMap::new(),
+            energy_metrics: None,
+            device_info: String::new(),
+            timestamp: chrono::Utc::now(),
+        };
+
+        // The old fabricated implementation always returned
+        // Ok(EnergyMetrics { avg_power: 150.0, .. }) regardless of hardware;
+        // real power-monitoring hardware is not available here, so this
+        // must now be an honest error instead of invented wattage.
+        let outcome = benchmark.benchmark_energy_efficiency(&mut results);
+        assert!(outcome.is_err());
+        assert!(results.energy_metrics.is_none());
+    }
+
+    #[test]
+    fn test_batch_results_do_not_fabricate_gpu_utilization() {
+        use crate::sampler::SASampler;
+        use quantrs2_anneal::simulator::AnnealingParams;
+
+        let config = BenchmarkConfig {
+            batch_sizes: vec![4, 8],
+            verbose: false,
+            ..Default::default()
+        };
+
+        // `benchmark_batch_sizes` uses a fixed 100-variable test problem
+        // internally; keep the annealer's own workload tiny so this test
+        // runs quickly regardless.
+        let params = AnnealingParams {
+            num_sweeps: 10,
+            num_repetitions: 1,
+            ..AnnealingParams::new()
+        };
+        let mut benchmark = GpuBenchmark::new(SASampler::with_params(Some(1), params), config);
+        let mut results = BenchmarkResults {
+            size_results: HashMap::new(),
+            batch_results: HashMap::new(),
+            temp_results: HashMap::new(),
+            energy_metrics: None,
+            device_info: String::new(),
+            timestamp: chrono::Utc::now(),
+        };
+
+        benchmark
+            .benchmark_batch_sizes(&mut results)
+            .expect("batch benchmarking should succeed");
+
+        // The old fabricated implementation always reported
+        // gpu_utilization=0.75 / bandwidth_util=0.60 regardless of hardware.
+        assert!(!results.batch_results.is_empty());
+        for res in results.batch_results.values() {
+            assert!(res.gpu_utilization.is_none());
+            assert!(res.bandwidth_util.is_none());
+        }
     }
 }

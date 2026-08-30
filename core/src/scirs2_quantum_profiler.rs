@@ -530,11 +530,38 @@ impl SciRS2QuantumProfiler {
         gate_counts
     }
 
-    /// Get current memory usage
-    const fn get_current_memory_usage(&self) -> usize {
-        // In a real implementation, this would query system memory
-        // For now, return a placeholder
-        1024 * 1024 // 1MB placeholder
+    /// Get the current resident-set-size (RSS) of this process, in bytes.
+    ///
+    /// On Linux this reads `VmRSS` from `/proc/self/status`. If the value cannot be
+    /// measured (non-Linux platform, or `/proc` unavailable) this returns `0`, which the
+    /// caller should treat as "not measured" rather than a fabricated constant.
+    fn get_current_memory_usage(&self) -> usize {
+        Self::read_resident_set_size_bytes().unwrap_or(0)
+    }
+
+    /// Parse the resident set size in bytes from `/proc/self/status` (Linux only).
+    ///
+    /// Returns `None` when the platform is not Linux or the field cannot be read/parsed.
+    #[cfg(target_os = "linux")]
+    fn read_resident_set_size_bytes() -> Option<usize> {
+        let status = std::fs::read_to_string("/proc/self/status").ok()?;
+        for line in status.lines() {
+            if let Some(rest) = line.strip_prefix("VmRSS:") {
+                // Format: "VmRSS:\t   12345 kB"
+                let kb: usize = rest
+                    .split_whitespace()
+                    .next()
+                    .and_then(|v| v.parse().ok())?;
+                return Some(kb * 1024);
+            }
+        }
+        None
+    }
+
+    /// Non-Linux fallback: resident set size is not measured here.
+    #[cfg(not(target_os = "linux"))]
+    fn read_resident_set_size_bytes() -> Option<usize> {
+        None
     }
 
     /// Generate session ID
@@ -1345,5 +1372,31 @@ mod tests {
             .expect("Failed to generate optimization recommendations");
         assert!(!recommendations.is_empty());
         assert!(recommendations.iter().any(|r| r.category.contains("SIMD")));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_current_memory_usage_is_real() {
+        let profiler = SciRS2QuantumProfiler::new();
+
+        // Allocate a sizeable buffer and touch it so it is resident.
+        let mut big: Vec<u8> = vec![7u8; 8 * 1024 * 1024];
+        let last = big.len() - 1;
+        big[0] = 1;
+        big[last] = 1;
+
+        let usage = profiler.get_current_memory_usage();
+
+        // Must reflect reality: a running test process has non-zero RSS, comfortably
+        // above 1 MiB, and must NOT be the old hardcoded 1 MiB placeholder.
+        assert!(usage > 1024 * 1024, "RSS should exceed 1 MiB, got {usage}");
+        assert_ne!(
+            usage,
+            1024 * 1024,
+            "RSS must not be the old hardcoded 1 MiB constant"
+        );
+
+        // Keep `big` alive until after the measurement.
+        assert_eq!(big[0], 1);
     }
 }

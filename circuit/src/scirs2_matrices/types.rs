@@ -49,9 +49,22 @@ impl BLAS {
         }
         true
     }
+    /// 2-norm condition number `σ_max / σ_min` from the singular values.
+    /// Returns `f64::INFINITY` for a singular (or empty) matrix.
     #[must_use]
-    pub const fn condition_number(_matrix: &SciRSSparseMatrix<Complex64>) -> f64 {
-        1.0
+    pub fn condition_number(matrix: &SciRSSparseMatrix<Complex64>) -> f64 {
+        let (dense, rows, cols) = densify(matrix);
+        if rows == 0 || cols == 0 {
+            return f64::INFINITY;
+        }
+        let sv = singular_values_dense(&dense, rows, cols);
+        let smax = sv.first().copied().unwrap_or(0.0);
+        let smin = sv.last().copied().unwrap_or(0.0);
+        if smax == 0.0 || smin <= smax * 1e-15 {
+            f64::INFINITY
+        } else {
+            smax / smin
+        }
     }
     #[must_use]
     pub fn is_symmetric(matrix: &SciRSSparseMatrix<Complex64>, tol: f64) -> bool {
@@ -103,61 +116,205 @@ impl BLAS {
         }
         true
     }
+    /// A matrix is positive definite iff it is Hermitian and every eigenvalue is
+    /// strictly positive.
     #[must_use]
-    pub const fn is_positive_definite(_matrix: &SciRSSparseMatrix<Complex64>) -> bool {
-        false
+    pub fn is_positive_definite(matrix: &SciRSSparseMatrix<Complex64>) -> bool {
+        if !Self::is_hermitian(matrix, 1e-12) {
+            return false;
+        }
+        let (dense, rows, cols) = densify(matrix);
+        if rows == 0 || rows != cols {
+            return false;
+        }
+        hermitian_eigenvalues_dense(&dense, rows)
+            .iter()
+            .all(|&e| e > 1e-12)
     }
+    /// Matrix norm computed from the actual entries.  Supported `norm_type`
+    /// values: `"1"`/`"one"` (max column sum), `"inf"`/`"infinity"` (max row
+    /// sum), `"max"` (largest magnitude entry), `"2"`/`"spectral"` (largest
+    /// singular value); any other value yields the Frobenius norm.
     #[must_use]
-    pub const fn matrix_norm(_matrix: &SciRSSparseMatrix<Complex64>, _norm_type: &str) -> f64 {
-        1.0
-    }
-    #[must_use]
-    pub const fn numerical_rank(_matrix: &SciRSSparseMatrix<Complex64>, _tol: f64) -> usize {
-        1
-    }
-    #[must_use]
-    pub const fn spectral_analysis(_matrix: &SciRSSparseMatrix<Complex64>) -> SpectralAnalysis {
-        SpectralAnalysis {
-            spectral_radius: 1.0,
-            eigenvalue_spread: 0.0,
+    pub fn matrix_norm(matrix: &SciRSSparseMatrix<Complex64>, norm_type: &str) -> f64 {
+        match norm_type {
+            "1" | "one" | "L1" => {
+                let mut col_sums: HashMap<usize, f64> = HashMap::new();
+                for &(_, c, v) in &matrix.data {
+                    *col_sums.entry(c).or_insert(0.0) += v.norm();
+                }
+                col_sums.values().copied().fold(0.0, f64::max)
+            }
+            "inf" | "infinity" | "Linf" => {
+                let mut row_sums: HashMap<usize, f64> = HashMap::new();
+                for &(r, _, v) in &matrix.data {
+                    *row_sums.entry(r).or_insert(0.0) += v.norm();
+                }
+                row_sums.values().copied().fold(0.0, f64::max)
+            }
+            "max" => matrix
+                .data
+                .iter()
+                .map(|(_, _, v)| v.norm())
+                .fold(0.0, f64::max),
+            "2" | "spectral" => {
+                let (dense, rows, cols) = densify(matrix);
+                singular_values_dense(&dense, rows, cols)
+                    .first()
+                    .copied()
+                    .unwrap_or(0.0)
+            }
+            _ => matrix
+                .data
+                .iter()
+                .map(|(_, _, v)| v.norm_sqr())
+                .sum::<f64>()
+                .sqrt(),
         }
     }
+    /// Numerical rank: the number of singular values above `tol` (with a relative
+    /// safety floor scaled by the largest singular value and machine epsilon).
     #[must_use]
-    pub const fn gate_fidelity(
-        _a: &SciRSSparseMatrix<Complex64>,
-        _b: &SciRSSparseMatrix<Complex64>,
-    ) -> f64 {
-        0.99
+    pub fn numerical_rank(matrix: &SciRSSparseMatrix<Complex64>, tol: f64) -> usize {
+        let (dense, rows, cols) = densify(matrix);
+        if rows == 0 || cols == 0 {
+            return 0;
+        }
+        let sv = singular_values_dense(&dense, rows, cols);
+        let smax = sv.first().copied().unwrap_or(0.0);
+        let threshold = tol.max(smax * (rows.max(cols) as f64) * f64::EPSILON);
+        sv.iter().filter(|&&s| s > threshold).count()
     }
+    /// Spectral radius (largest eigenvalue magnitude, via power iteration) and the
+    /// eigenvalue-magnitude spread `max|λ| − min|λ|` (min via inverse iteration).
     #[must_use]
-    pub const fn trace_distance(
-        _a: &SciRSSparseMatrix<Complex64>,
-        _b: &SciRSSparseMatrix<Complex64>,
-    ) -> f64 {
-        0.001
+    pub fn spectral_analysis(matrix: &SciRSSparseMatrix<Complex64>) -> SpectralAnalysis {
+        let (dense, rows, cols) = densify(matrix);
+        if rows == 0 || rows != cols {
+            return SpectralAnalysis {
+                spectral_radius: 0.0,
+                eigenvalue_spread: 0.0,
+            };
+        }
+        let radius = spectral_radius_dense(&dense, rows);
+        let min_mag = min_eig_magnitude_dense(&dense, rows);
+        SpectralAnalysis {
+            spectral_radius: radius,
+            eigenvalue_spread: (radius - min_mag).max(0.0),
+        }
     }
+    /// Average gate fidelity between two gates, `F_avg = (d·F_pro + 1)/(d + 1)`
+    /// with process fidelity `F_pro = |Tr(A† B)|² / d²`.  Equals `1` for
+    /// identical unitaries.
     #[must_use]
-    pub const fn diamond_distance(
-        _a: &SciRSSparseMatrix<Complex64>,
-        _b: &SciRSSparseMatrix<Complex64>,
+    pub fn gate_fidelity(
+        a: &SciRSSparseMatrix<Complex64>,
+        b: &SciRSSparseMatrix<Complex64>,
     ) -> f64 {
-        0.001
+        let d = a.shape.0;
+        if d == 0 || a.shape != b.shape {
+            return 0.0;
+        }
+        let f_pro = frobenius_inner(a, b).norm_sqr() / (d as f64 * d as f64);
+        let dd = d as f64;
+        (dd * f_pro + 1.0) / (dd + 1.0)
     }
+    /// Trace-norm distance `½‖A − B‖₁ = ½ Σ σ_i(A − B)` (half the sum of the
+    /// singular values of the difference).  Zero for identical operands.
     #[must_use]
-    pub const fn process_fidelity(
-        _a: &SciRSSparseMatrix<Complex64>,
-        _b: &SciRSSparseMatrix<Complex64>,
+    pub fn trace_distance(
+        a: &SciRSSparseMatrix<Complex64>,
+        b: &SciRSSparseMatrix<Complex64>,
     ) -> f64 {
-        0.99
+        if a.shape != b.shape {
+            return f64::INFINITY;
+        }
+        let (da, rows, cols) = densify(a);
+        let (db, _, _) = densify(b);
+        let diff: Vec<Complex64> = da.iter().zip(db.iter()).map(|(x, y)| x - y).collect();
+        0.5 * singular_values_dense(&diff, rows, cols).iter().sum::<f64>()
     }
+    /// Diamond-norm distance between the unitary channels defined by `A` and `B`
+    /// (exact for unitary operands), from the eigenvalues of `W = A† B`.
     #[must_use]
-    pub const fn error_decomposition(
-        _a: &SciRSSparseMatrix<Complex64>,
-        _b: &SciRSSparseMatrix<Complex64>,
+    pub fn diamond_distance(
+        a: &SciRSSparseMatrix<Complex64>,
+        b: &SciRSSparseMatrix<Complex64>,
+    ) -> f64 {
+        if a.shape != b.shape || a.shape.0 == 0 {
+            return 0.0;
+        }
+        let n = a.shape.0;
+        let (da, _, _) = densify(a);
+        let (db, _, _) = densify(b);
+        // W = A† B
+        let mut w = vec![Complex64::new(0.0, 0.0); n * n];
+        for i in 0..n {
+            for j in 0..n {
+                let mut acc = Complex64::new(0.0, 0.0);
+                for k in 0..n {
+                    acc += da[k * n + i].conj() * db[k * n + j];
+                }
+                w[i * n + j] = acc;
+            }
+        }
+        hull_diamond_distance(&normal_eigenvalues_dense(&w, n))
+    }
+    /// Process (entanglement) fidelity `F_pro = |Tr(A† B)|² / d²`.  Equals `1` for
+    /// identical unitaries.
+    #[must_use]
+    pub fn process_fidelity(
+        a: &SciRSSparseMatrix<Complex64>,
+        b: &SciRSSparseMatrix<Complex64>,
+    ) -> f64 {
+        let d = a.shape.0;
+        if d == 0 || a.shape != b.shape {
+            return 0.0;
+        }
+        frobenius_inner(a, b).norm_sqr() / (d as f64 * d as f64)
+    }
+    /// Leading-order coherent/incoherent split of the average-gate infidelity
+    /// between actual `A` and ideal `B`.  From the eigenphases `{θ_k}` of the
+    /// error unitary `W = B† A`, the coherent part scales with the squared mean
+    /// phase `⟨θ⟩²` (a systematic over-rotation) and the incoherent part with the
+    /// phase variance `Var(θ)`; both vanish when `A == B`.
+    #[must_use]
+    pub fn error_decomposition(
+        a: &SciRSSparseMatrix<Complex64>,
+        b: &SciRSSparseMatrix<Complex64>,
     ) -> ErrorDecomposition {
+        let n = a.shape.0;
+        if n == 0 || a.shape != b.shape {
+            return ErrorDecomposition {
+                coherent_component: 0.0,
+                incoherent_component: 0.0,
+            };
+        }
+        let (da, _, _) = densify(a);
+        let (db, _, _) = densify(b);
+        // W = B† A
+        let mut w = vec![Complex64::new(0.0, 0.0); n * n];
+        for i in 0..n {
+            for j in 0..n {
+                let mut acc = Complex64::new(0.0, 0.0);
+                for k in 0..n {
+                    acc += db[k * n + i].conj() * da[k * n + j];
+                }
+                w[i * n + j] = acc;
+            }
+        }
+        let phases: Vec<f64> = normal_eigenvalues_dense(&w, n)
+            .iter()
+            .map(|z| z.arg())
+            .collect();
+        let d = n as f64;
+        let mean = phases.iter().sum::<f64>() / d;
+        let mean_sq = phases.iter().map(|p| p * p).sum::<f64>() / d;
+        let var = (mean_sq - mean * mean).max(0.0);
+        let pref = d / (d + 1.0);
         ErrorDecomposition {
-            coherent_component: 0.001,
-            incoherent_component: 0.001,
+            coherent_component: pref * mean * mean,
+            incoherent_component: pref * var,
         }
     }
     pub const fn sparse_matvec(
@@ -166,11 +323,29 @@ impl BLAS {
     ) -> QuantRS2Result<VectorizedOps> {
         Ok(VectorizedOps)
     }
+    /// Matrix exponential `exp(scale · matrix)` via dense scaling-and-squaring.
     pub fn matrix_exp(
         matrix: &SciRSSparseMatrix<Complex64>,
-        _scale: f64,
+        scale: f64,
     ) -> QuantRS2Result<SciRSSparseMatrix<Complex64>> {
-        Ok(matrix.clone())
+        let (rows, cols) = matrix.shape;
+        if rows != cols {
+            return Err(QuantRS2Error::InvalidInput(
+                "Matrix exponentiation requires a square matrix".to_string(),
+            ));
+        }
+        let (dense, _, _) = densify(matrix);
+        let expm = expm_dense(&dense, rows, scale);
+        let mut result = SciRSSparseMatrix::new(rows, cols);
+        for i in 0..rows {
+            for j in 0..cols {
+                let value = expm[i * cols + j];
+                if value.norm() > 1e-15 {
+                    result.insert(i, j, value);
+                }
+            }
+        }
+        Ok(result)
     }
 }
 pub struct SparsityPattern;
@@ -280,6 +455,11 @@ impl<T: Clone> SciRSSparseMatrix<T> {
     #[must_use]
     pub fn nnz(&self) -> usize {
         self.data.len()
+    }
+    /// Read-only view of the stored `(row, col, value)` triplets (COO format).
+    #[must_use]
+    pub fn triplets(&self) -> &[(usize, usize, T)] {
+        &self.data
     }
 }
 impl SciRSSparseMatrix<Complex64> {
@@ -516,33 +696,53 @@ impl SimdOperations {
         matrix.clone()
     }
     #[must_use]
-    pub const fn matrices_approx_equal(
+    pub fn matrices_approx_equal(
         &self,
-        _a: &SciRSSparseMatrix<Complex64>,
-        _b: &SciRSSparseMatrix<Complex64>,
-        _tol: f64,
+        a: &SciRSSparseMatrix<Complex64>,
+        b: &SciRSSparseMatrix<Complex64>,
+        tol: f64,
     ) -> bool {
-        true
+        BLAS::matrix_approx_equal(a, b, tol)
     }
+    /// Drop entries whose magnitude is below `threshold`.
     #[must_use]
     pub fn threshold_filter(
         &self,
         matrix: &SciRSSparseMatrix<Complex64>,
-        _threshold: f64,
+        threshold: f64,
     ) -> SciRSSparseMatrix<Complex64> {
-        matrix.clone()
+        let mut result = SciRSSparseMatrix::new(matrix.shape.0, matrix.shape.1);
+        for &(r, c, v) in &matrix.data {
+            if v.norm() >= threshold {
+                result.insert(r, c, v);
+            }
+        }
+        result
+    }
+    /// Check unitarity via the real `U† U ≈ I` test (same computation as the
+    /// non-SIMD path); a matrix is unitary iff its adjoint times itself is the
+    /// identity to within `tol`.
+    #[must_use]
+    pub fn is_unitary(&self, matrix: &SciRSSparseMatrix<Complex64>, tol: f64) -> bool {
+        if matrix.shape.0 != matrix.shape.1 {
+            return false;
+        }
+        let dagger = matrix.hermitian_conjugate();
+        match dagger.matmul(matrix) {
+            Ok(product) => {
+                let identity = SciRSSparseMatrix::identity(matrix.shape.0);
+                BLAS::matrix_approx_equal(&product, &identity, tol)
+            }
+            Err(_) => false,
+        }
     }
     #[must_use]
-    pub const fn is_unitary(&self, _matrix: &SciRSSparseMatrix<Complex64>, _tol: f64) -> bool {
-        true
-    }
-    #[must_use]
-    pub const fn gate_fidelity_simd(
+    pub fn gate_fidelity_simd(
         &self,
-        _a: &SciRSSparseMatrix<Complex64>,
-        _b: &SciRSSparseMatrix<Complex64>,
+        a: &SciRSSparseMatrix<Complex64>,
+        b: &SciRSSparseMatrix<Complex64>,
     ) -> f64 {
-        0.99
+        BLAS::gate_fidelity(a, b)
     }
     pub const fn sparse_matvec_simd(
         &self,
@@ -558,12 +758,14 @@ impl SimdOperations {
     ) -> QuantRS2Result<Vec<VectorizedOps>> {
         Ok(vec![])
     }
+    /// Matrix exponential `exp(scale · matrix)` (shares the dense
+    /// scaling-and-squaring implementation with the non-SIMD path).
     pub fn matrix_exp_simd(
         &self,
         matrix: &SciRSSparseMatrix<Complex64>,
-        _scale: f64,
+        scale: f64,
     ) -> QuantRS2Result<SciRSSparseMatrix<Complex64>> {
-        Ok(matrix.clone())
+        BLAS::matrix_exp(matrix, scale)
     }
     #[must_use]
     pub const fn has_advanced_simd(&self) -> bool {
@@ -761,6 +963,14 @@ impl SparseMatrix {
     #[must_use]
     pub fn nnz(&self) -> usize {
         self.inner.nnz()
+    }
+    /// Read-only view of the stored `(row, col, value)` triplets (COO format).
+    ///
+    /// Used by expectation-value evaluators to compute `⟨ψ|H|ψ⟩` directly from
+    /// the sparse entries without materializing a dense matrix.
+    #[must_use]
+    pub fn triplets(&self) -> &[(usize, usize, Complex64)] {
+        self.inner.triplets()
     }
     /// Convert to different sparse format with `SciRS2` optimization
     #[must_use]
@@ -1162,7 +1372,12 @@ impl SparseGateLibrary {
         }
         Ok(result)
     }
-    /// Embed two-qubit gate in multi-qubit space
+    /// Embed a CNOT gate into the `2^total_qubits`-dimensional space.
+    ///
+    /// Builds the exact permutation unitary that flips the target-qubit bit of
+    /// every computational basis state whose control-qubit bit is set, leaving
+    /// all other qubits untouched.  Qubit `0` is the most significant bit, matching
+    /// [`Self::embed_single_qubit_gate`]'s tensor-product ordering.
     pub fn embed_two_qubit_gate(
         &self,
         gate_name: &str,
@@ -1180,8 +1395,23 @@ impl SparseGateLibrary {
                 "Only CNOT supported for two-qubit embedding".to_string(),
             ));
         }
+        if control_qubit >= total_qubits || target_qubit >= total_qubits {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Qubit index out of range: control={control_qubit}, target={target_qubit}, total={total_qubits}"
+            )));
+        }
         let matrix_size = 1usize << total_qubits;
-        let mut result = SparseMatrix::identity(matrix_size);
+        let control_shift = total_qubits - 1 - control_qubit;
+        let target_shift = total_qubits - 1 - target_qubit;
+        let mut result = SparseMatrix::new(matrix_size, matrix_size, SparseFormat::COO);
+        for col in 0..matrix_size {
+            let row = if (col >> control_shift) & 1 == 1 {
+                col ^ (1usize << target_shift)
+            } else {
+                col
+            };
+            result.insert(row, col, Complex64::new(1.0, 0.0));
+        }
         Ok(result)
     }
 }
@@ -1241,4 +1471,533 @@ pub struct GateProperties {
     pub numerical_rank: usize,
     pub eigenvalue_spread: f64,
     pub structure_analysis: MatrixStructureAnalysis,
+}
+
+// Honest dense numerical routines for quantum-gate-matrix analysis. Gate matrices
+// are small, so they are materialized densely from their COO triplets and analysed
+// exactly. Implemented self-contained on `scirs2_core::Complex64` (SciRS2 policy):
+// scirs2-linalg's norm/cond/eigvalsh are real-valued (`F: Float`) and do not accept
+// complex matrices without a real block embedding, so complex routines (power /
+// inverse iteration, Jacobi eigenvalues, LU solve) are provided here.
+const JACOBI_MAX_SWEEPS: usize = 128;
+const JACOBI_OFFDIAG_EPS: f64 = 1e-15;
+
+/// Materialize into dense row-major storage `(dense, rows, cols)`, accumulating
+/// duplicate triplets for the same `(row, col)`.
+fn densify(matrix: &SciRSSparseMatrix<Complex64>) -> (Vec<Complex64>, usize, usize) {
+    let (rows, cols) = matrix.shape;
+    let mut dense = vec![Complex64::new(0.0, 0.0); rows.saturating_mul(cols)];
+    for &(r, c, v) in &matrix.data {
+        if r < rows && c < cols {
+            dense[r * cols + c] += v;
+        }
+    }
+    (dense, rows, cols)
+}
+
+/// Frobenius inner product `Tr(A† B) = Σ conj(a_ij) · b_ij` from the triplets.
+fn frobenius_inner(
+    a: &SciRSSparseMatrix<Complex64>,
+    b: &SciRSSparseMatrix<Complex64>,
+) -> Complex64 {
+    let mut a_map: HashMap<(usize, usize), Complex64> = HashMap::with_capacity(a.data.len());
+    for &(r, c, v) in &a.data {
+        *a_map.entry((r, c)).or_insert(Complex64::new(0.0, 0.0)) += v;
+    }
+    let mut b_map: HashMap<(usize, usize), Complex64> = HashMap::with_capacity(b.data.len());
+    for &(r, c, v) in &b.data {
+        *b_map.entry((r, c)).or_insert(Complex64::new(0.0, 0.0)) += v;
+    }
+    let mut acc = Complex64::new(0.0, 0.0);
+    for (key, av) in &a_map {
+        if let Some(bv) = b_map.get(key) {
+            acc += av.conj() * bv;
+        }
+    }
+    acc
+}
+
+/// Cyclic Jacobi eigenvalue iteration for a real symmetric `n x n` matrix stored
+/// row-major.  Returns the eigenvalues (diagonal after convergence) and, when
+/// `want_vectors` is set, the orthogonal matrix whose columns are eigenvectors.
+/// Jacobi is unconditionally convergent for symmetric input.
+fn jacobi_symmetric(mut a: Vec<f64>, n: usize, want_vectors: bool) -> (Vec<f64>, Vec<f64>) {
+    if n == 0 {
+        return (Vec::new(), Vec::new());
+    }
+    let mut v = if want_vectors {
+        let mut m = vec![0.0f64; n * n];
+        for i in 0..n {
+            m[i * n + i] = 1.0;
+        }
+        m
+    } else {
+        Vec::new()
+    };
+    for _ in 0..JACOBI_MAX_SWEEPS {
+        let mut off = 0.0;
+        for p in 0..n {
+            for q in (p + 1)..n {
+                off += a[p * n + q] * a[p * n + q];
+            }
+        }
+        if off.sqrt() <= JACOBI_OFFDIAG_EPS {
+            break;
+        }
+        for p in 0..n {
+            for q in (p + 1)..n {
+                let apq = a[p * n + q];
+                if apq.abs() <= f64::MIN_POSITIVE {
+                    continue;
+                }
+                let app = a[p * n + p];
+                let aqq = a[q * n + q];
+                let theta = (aqq - app) / (2.0 * apq);
+                let t = if theta == 0.0 {
+                    1.0
+                } else {
+                    let sign = if theta >= 0.0 { 1.0 } else { -1.0 };
+                    sign / (theta.abs() + (theta * theta + 1.0).sqrt())
+                };
+                let c = 1.0 / (t * t + 1.0).sqrt();
+                let s = t * c;
+                for k in 0..n {
+                    let akp = a[k * n + p];
+                    let akq = a[k * n + q];
+                    a[k * n + p] = c * akp - s * akq;
+                    a[k * n + q] = s * akp + c * akq;
+                }
+                for k in 0..n {
+                    let apk = a[p * n + k];
+                    let aqk = a[q * n + k];
+                    a[p * n + k] = c * apk - s * aqk;
+                    a[q * n + k] = s * apk + c * aqk;
+                }
+                if want_vectors {
+                    for k in 0..n {
+                        let vkp = v[k * n + p];
+                        let vkq = v[k * n + q];
+                        v[k * n + p] = c * vkp - s * vkq;
+                        v[k * n + q] = s * vkp + c * vkq;
+                    }
+                }
+            }
+        }
+    }
+    let eig = (0..n).map(|i| a[i * n + i]).collect();
+    (eig, v)
+}
+
+/// Real symmetric `2n x 2n` embedding `R = [[A, -B], [B, A]]` of a Hermitian
+/// complex matrix `G = A + iB`. Eigenvalues of `R` equal those of `G` (doubled);
+/// a real eigenvector `[p; q]` of `R` maps to the complex eigenvector `p + i·q`.
+fn hermitian_real_embed(g: &[Complex64], n: usize) -> Vec<f64> {
+    let m = 2 * n;
+    let mut r = vec![0.0f64; m * m];
+    for i in 0..n {
+        for j in 0..n {
+            let gij = g[i * n + j];
+            r[i * m + j] = gij.re;
+            r[i * m + (j + n)] = -gij.im;
+            r[(i + n) * m + j] = gij.im;
+            r[(i + n) * m + (j + n)] = gij.re;
+        }
+    }
+    r
+}
+
+/// Eigenvalues (descending) of a Hermitian complex matrix, via the real
+/// symmetric embedding and Jacobi iteration.
+fn hermitian_eigenvalues_dense(g: &[Complex64], n: usize) -> Vec<f64> {
+    if n == 0 {
+        return Vec::new();
+    }
+    let r = hermitian_real_embed(g, n);
+    let (mut eig2, _) = jacobi_symmetric(r, 2 * n, false);
+    eig2.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+    // Each true eigenvalue appears twice; take one representative per pair.
+    (0..n).map(|k| eig2[2 * k]).collect()
+}
+
+/// Singular values (descending) of a dense complex `rows x cols` matrix, from the
+/// eigenvalues of the smaller Gram matrix (`M† M` or `M M†`).
+fn singular_values_dense(dense: &[Complex64], rows: usize, cols: usize) -> Vec<f64> {
+    if rows == 0 || cols == 0 {
+        return Vec::new();
+    }
+    let (gram, dim) = if cols <= rows {
+        // M† M : cols x cols,  g[i][j] = Σ_k conj(M[k][i]) M[k][j]
+        let mut g = vec![Complex64::new(0.0, 0.0); cols * cols];
+        for k in 0..rows {
+            let base = k * cols;
+            for i in 0..cols {
+                let mki = dense[base + i].conj();
+                for j in 0..cols {
+                    g[i * cols + j] += mki * dense[base + j];
+                }
+            }
+        }
+        (g, cols)
+    } else {
+        // M M† : rows x rows,  g[i][j] = Σ_k M[i][k] conj(M[j][k])
+        let mut g = vec![Complex64::new(0.0, 0.0); rows * rows];
+        for i in 0..rows {
+            for j in 0..rows {
+                let mut acc = Complex64::new(0.0, 0.0);
+                for k in 0..cols {
+                    acc += dense[i * cols + k] * dense[j * cols + k].conj();
+                }
+                g[i * rows + j] = acc;
+            }
+        }
+        (g, rows)
+    };
+    hermitian_eigenvalues_dense(&gram, dim)
+        .into_iter()
+        .map(|e| e.max(0.0).sqrt())
+        .collect()
+}
+
+/// Dense matrix-vector product `y = M x` for an `n x n` row-major matrix.
+fn dense_matvec(m: &[Complex64], n: usize, x: &[Complex64]) -> Vec<Complex64> {
+    let mut y = vec![Complex64::new(0.0, 0.0); n];
+    for i in 0..n {
+        let base = i * n;
+        let mut acc = Complex64::new(0.0, 0.0);
+        for j in 0..n {
+            acc += m[base + j] * x[j];
+        }
+        y[i] = acc;
+    }
+    y
+}
+
+/// Euclidean norm of a complex vector.
+fn cvec_norm(x: &[Complex64]) -> f64 {
+    x.iter().map(|v| v.norm_sqr()).sum::<f64>().sqrt()
+}
+
+/// Deterministic non-degenerate starting vector for iterative eigen methods.
+fn seed_vector(n: usize) -> Vec<Complex64> {
+    (0..n)
+        .map(|i| Complex64::new(1.0 + (i as f64) * 0.137, 0.31 - (i as f64) * 0.057))
+        .collect()
+}
+
+/// Spectral radius `ρ(M) = max|λ_i|` via power iteration, using the geometric mean
+/// of the per-step growth `‖M x_k‖` (Gelfand's formula) so it converges for any
+/// matrix, including unitary/degenerate spectra (`ρ = 1`).
+fn spectral_radius_dense(m: &[Complex64], n: usize) -> f64 {
+    if n == 0 {
+        return 0.0;
+    }
+    let mut x = seed_vector(n);
+    let norm0 = cvec_norm(&x);
+    if norm0 == 0.0 {
+        return 0.0;
+    }
+    for v in &mut x {
+        *v /= norm0;
+    }
+    let burn_in = 40usize;
+    let iters = 400usize;
+    let mut log_sum = 0.0;
+    let mut count = 0usize;
+    for iter in 0..iters {
+        let y = dense_matvec(m, n, &x);
+        let ny = cvec_norm(&y);
+        if ny <= 1e-300 {
+            return 0.0;
+        }
+        if iter >= burn_in {
+            log_sum += ny.ln();
+            count += 1;
+        }
+        for i in 0..n {
+            x[i] = y[i] / ny;
+        }
+    }
+    if count == 0 {
+        0.0
+    } else {
+        (log_sum / count as f64).exp()
+    }
+}
+
+/// LU factorization with partial pivoting of a dense `n x n` complex matrix.
+/// Returns the combined `LU` storage and the pivot permutation, or `None` when a
+/// (near-)singular column is encountered.
+fn lu_factor(dense: &[Complex64], n: usize) -> Option<(Vec<Complex64>, Vec<usize>)> {
+    let mut a = dense.to_vec();
+    let mut piv: Vec<usize> = (0..n).collect();
+    for k in 0..n {
+        let mut p = k;
+        let mut maxv = a[k * n + k].norm();
+        for i in (k + 1)..n {
+            let v = a[i * n + k].norm();
+            if v > maxv {
+                maxv = v;
+                p = i;
+            }
+        }
+        if maxv <= 1e-300 {
+            return None;
+        }
+        if p != k {
+            for j in 0..n {
+                a.swap(k * n + j, p * n + j);
+            }
+            piv.swap(k, p);
+        }
+        let pivot = a[k * n + k];
+        for i in (k + 1)..n {
+            let factor = a[i * n + k] / pivot;
+            a[i * n + k] = factor;
+            for j in (k + 1)..n {
+                let ajk = a[k * n + j];
+                a[i * n + j] -= factor * ajk;
+            }
+        }
+    }
+    Some((a, piv))
+}
+
+/// Solve `M x = b` given an LU factorization from [`lu_factor`].
+fn lu_solve(lu: &(Vec<Complex64>, Vec<usize>), n: usize, b: &[Complex64]) -> Vec<Complex64> {
+    let (a, piv) = lu;
+    let mut x = vec![Complex64::new(0.0, 0.0); n];
+    for i in 0..n {
+        x[i] = b[piv[i]];
+    }
+    for i in 0..n {
+        let mut sum = x[i];
+        for j in 0..i {
+            sum -= a[i * n + j] * x[j];
+        }
+        x[i] = sum;
+    }
+    for i in (0..n).rev() {
+        let mut sum = x[i];
+        for j in (i + 1)..n {
+            sum -= a[i * n + j] * x[j];
+        }
+        x[i] = sum / a[i * n + i];
+    }
+    x
+}
+
+/// Smallest eigenvalue magnitude `min|λ_i|` via inverse power iteration; returns
+/// `0` when the LU factorization detects (near-)singularity (a zero eigenvalue).
+fn min_eig_magnitude_dense(m: &[Complex64], n: usize) -> f64 {
+    if n == 0 {
+        return 0.0;
+    }
+    let Some(lu) = lu_factor(m, n) else {
+        return 0.0;
+    };
+    let mut x = seed_vector(n);
+    let norm0 = cvec_norm(&x);
+    if norm0 == 0.0 {
+        return 0.0;
+    }
+    for v in &mut x {
+        *v /= norm0;
+    }
+    let burn_in = 40usize;
+    let iters = 400usize;
+    let mut log_sum = 0.0;
+    let mut count = 0usize;
+    for iter in 0..iters {
+        let y = lu_solve(&lu, n, &x);
+        let ny = cvec_norm(&y);
+        if ny <= 1e-300 {
+            return 0.0;
+        }
+        if iter >= burn_in {
+            log_sum += ny.ln();
+            count += 1;
+        }
+        for i in 0..n {
+            x[i] = y[i] / ny;
+        }
+    }
+    // The growth of ‖M⁻¹ x‖ converges to 1/min|λ|.
+    let inv_growth = if count == 0 {
+        0.0
+    } else {
+        (log_sum / count as f64).exp()
+    };
+    if inv_growth <= 1e-300 {
+        0.0
+    } else {
+        1.0 / inv_growth
+    }
+}
+
+/// Complex eigenvalues of a normal (e.g. unitary/Hermitian) matrix `W`. The
+/// Hermitian and anti-Hermitian parts commute, so the generic Hermitian
+/// combination `H = (W+W†)/2 + γ·(W−W†)/(2i)` shares `W`'s eigenvectors and is
+/// non-degenerate even for conjugate eigenvalue pairs; eigenvectors are recovered
+/// via the real embedding and each eigenvalue read off with a Rayleigh quotient.
+fn normal_eigenvalues_dense(w: &[Complex64], n: usize) -> Vec<Complex64> {
+    if n == 0 {
+        return Vec::new();
+    }
+    let gamma = 0.786_151_377_757_423_f64;
+    let mut h = vec![Complex64::new(0.0, 0.0); n * n];
+    for i in 0..n {
+        for j in 0..n {
+            let wij = w[i * n + j];
+            let wji = w[j * n + i].conj();
+            let hermitian = (wij + wji) * Complex64::new(0.5, 0.0);
+            let anti = (wij - wji) / Complex64::new(0.0, 2.0);
+            h[i * n + j] = hermitian + anti * Complex64::new(gamma, 0.0);
+        }
+    }
+    let r = hermitian_real_embed(&h, n);
+    let (eig2, vecs) = jacobi_symmetric(r, 2 * n, true);
+    let mut idx: Vec<usize> = (0..2 * n).collect();
+    idx.sort_by(|&x, &y| {
+        eig2[y]
+            .partial_cmp(&eig2[x])
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    let m = 2 * n;
+    let mut out = Vec::with_capacity(n);
+    let mut k = 0usize;
+    while k < 2 * n && out.len() < n {
+        let col = idx[k];
+        let mut u = vec![Complex64::new(0.0, 0.0); n];
+        for (row_i, u_val) in u.iter_mut().enumerate() {
+            let p = vecs[row_i * m + col];
+            let q = vecs[(row_i + n) * m + col];
+            *u_val = Complex64::new(p, q);
+        }
+        let wu = dense_matvec(w, n, &u);
+        let mut num = Complex64::new(0.0, 0.0);
+        let mut den = 0.0;
+        for i in 0..n {
+            num += u[i].conj() * wu[i];
+            den += u[i].norm_sqr();
+        }
+        out.push(if den > 1e-300 {
+            num / Complex64::new(den, 0.0)
+        } else {
+            Complex64::new(0.0, 0.0)
+        });
+        k += 2;
+    }
+    out
+}
+
+/// Diamond-norm distance of two unitary channels from the eigenvalues of `W = A† B`:
+/// `2` when `0` is inside the convex hull of the eigenvalues, else `2√(1−δ²)` with
+/// `δ` the distance from the origin to the hull.
+fn hull_diamond_distance(eig: &[Complex64]) -> f64 {
+    let mut angles: Vec<f64> = eig
+        .iter()
+        .filter(|z| z.norm() > 1e-12)
+        .map(|z| z.arg())
+        .collect();
+    if angles.is_empty() {
+        return 0.0;
+    }
+    angles.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let m = angles.len();
+    let mut max_gap = angles[0] + std::f64::consts::TAU - angles[m - 1];
+    for k in 1..m {
+        let gap = angles[k] - angles[k - 1];
+        if gap > max_gap {
+            max_gap = gap;
+        }
+    }
+    if max_gap <= std::f64::consts::PI {
+        2.0
+    } else {
+        let spanned = std::f64::consts::TAU - max_gap;
+        let delta = (spanned / 2.0).cos();
+        2.0 * (1.0 - delta * delta).max(0.0).sqrt()
+    }
+}
+
+/// `1 / k!` for small `k` (used by the matrix-exponential Taylor series).
+fn recip_factorial(k: u32) -> f64 {
+    let mut f = 1.0_f64;
+    for i in 1..=k {
+        f *= f64::from(i);
+    }
+    1.0 / f
+}
+
+/// Dense `n x n` identity.
+fn dense_identity(n: usize) -> Vec<Complex64> {
+    let mut m = vec![Complex64::new(0.0, 0.0); n * n];
+    for i in 0..n {
+        m[i * n + i] = Complex64::new(1.0, 0.0);
+    }
+    m
+}
+
+/// Dense `n x n` complex matrix product `C = A · B`.
+fn dense_matmul(a: &[Complex64], b: &[Complex64], n: usize) -> Vec<Complex64> {
+    let mut c = vec![Complex64::new(0.0, 0.0); n * n];
+    for i in 0..n {
+        for k in 0..n {
+            let a_ik = a[i * n + k];
+            if a_ik.norm_sqr() == 0.0 {
+                continue;
+            }
+            let brow = k * n;
+            let crow = i * n;
+            for j in 0..n {
+                c[crow + j] += a_ik * b[brow + j];
+            }
+        }
+    }
+    c
+}
+
+/// Max absolute row sum (∞-norm) of a dense `n x n` complex matrix.
+fn dense_inf_norm(a: &[Complex64], n: usize) -> f64 {
+    let mut max_row = 0.0_f64;
+    for i in 0..n {
+        let base = i * n;
+        let row_sum: f64 = (0..n).map(|j| a[base + j].norm()).sum();
+        if row_sum > max_row {
+            max_row = row_sum;
+        }
+    }
+    max_row
+}
+
+/// Dense matrix exponential `exp(scale · M)` via scaling-and-squaring with a
+/// truncated Taylor series — the standard `expm` algorithm, exact to machine
+/// precision for the small matrices analysed here.
+fn expm_dense(m: &[Complex64], n: usize, scale: f64) -> Vec<Complex64> {
+    if n == 0 {
+        return Vec::new();
+    }
+    let scale_c = Complex64::new(scale, 0.0);
+    let a: Vec<Complex64> = m.iter().map(|&v| v * scale_c).collect();
+    let norm = dense_inf_norm(&a, n);
+    let s = if norm <= 0.5 {
+        0u32
+    } else {
+        ((norm.log2().ceil().max(0.0) as u32) + 1).min(60)
+    };
+    let scaling = Complex64::new(2.0_f64.powi(-(s as i32)), 0.0);
+    let a_scaled: Vec<Complex64> = a.iter().map(|&v| v * scaling).collect();
+    let mut result = dense_identity(n);
+    let mut term = dense_identity(n);
+    for k in 1..=18u32 {
+        term = dense_matmul(&term, &a_scaled, n);
+        let inv_fact = Complex64::new(recip_factorial(k), 0.0);
+        for (r, t) in result.iter_mut().zip(term.iter()) {
+            *r += *t * inv_fact;
+        }
+    }
+    for _ in 0..s {
+        result = dense_matmul(&result, &result, n);
+    }
+    result
 }

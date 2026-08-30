@@ -15,7 +15,7 @@ use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::{multi::*, single::*, GateOp},
     qubit::QubitId,
-    synthesis::{decompose_single_qubit_zyz, decompose_two_qubit_kak},
+    synthesis::{decompose_single_qubit_zyz, decompose_two_qubit_kak, kak_to_gates},
 };
 
 /// Hardware backend types
@@ -826,6 +826,64 @@ impl GateTranslator {
         gates
     }
 
+    /// Convert a concrete native gate produced by the core decomposition
+    /// routines into a [`DecomposedGate`] using its native name and parameters.
+    fn native_gate_to_decomposed(gate: &dyn GateOp) -> QuantRS2Result<DecomposedGate> {
+        let any = gate.as_any();
+        let qubits = gate.qubits();
+
+        // Parameterized single-qubit rotations.
+        if let Some(g) = any.downcast_ref::<RotationX>() {
+            return Ok(DecomposedGate {
+                native_gate: "rx".to_string(),
+                qubits,
+                parameters: vec![g.theta],
+                global_phase: None,
+            });
+        }
+        if let Some(g) = any.downcast_ref::<RotationY>() {
+            return Ok(DecomposedGate {
+                native_gate: "ry".to_string(),
+                qubits,
+                parameters: vec![g.theta],
+                global_phase: None,
+            });
+        }
+        if let Some(g) = any.downcast_ref::<RotationZ>() {
+            return Ok(DecomposedGate {
+                native_gate: "rz".to_string(),
+                qubits,
+                parameters: vec![g.theta],
+                global_phase: None,
+            });
+        }
+
+        // Non-parameterized gates that the KAK lowering may emit.
+        let native_gate = match gate.name() {
+            "CNOT" => "cx",
+            "CZ" => "cz",
+            "H" => "h",
+            "X" => "x",
+            "Y" => "y",
+            "Z" => "z",
+            "S" => "s",
+            "T" => "t",
+            "SWAP" => "swap",
+            other => {
+                return Err(QuantRS2Error::InvalidInput(format!(
+                    "KAK decomposition produced an unsupported native gate: {other}"
+                )));
+            }
+        };
+
+        Ok(DecomposedGate {
+            native_gate: native_gate.to_string(),
+            qubits,
+            parameters: Vec::new(),
+            global_phase: None,
+        })
+    }
+
     /// Synthesize a gate using specified method
     fn synthesize_gate(
         &self,
@@ -869,16 +927,48 @@ impl GateTranslator {
                 ])
             }
             SynthesisMethod::KAKDecomposition => {
-                // Use KAK decomposition for two-qubit gates
+                // Use KAK (Cartan) decomposition for two-qubit gates.
                 if gate.num_qubits() != 2 {
                     return Err(QuantRS2Error::InvalidInput(
                         "KAK decomposition only works for two-qubit gates".into(),
                     ));
                 }
 
-                // This would use the KAK decomposition from core
-                // For now, return a placeholder
-                Ok(vec![])
+                let qubits = gate.qubits();
+                if qubits.len() != 2 {
+                    return Err(QuantRS2Error::InvalidInput(
+                        "KAK decomposition requires a gate acting on exactly two qubits".into(),
+                    ));
+                }
+
+                // Obtain the 4x4 unitary of the gate and reshape into a matrix.
+                let matrix_vec = gate.matrix()?;
+                let matrix = Array2::from_shape_vec((4, 4), matrix_vec).map_err(|_| {
+                    QuantRS2Error::InvalidInput(
+                        "Two-qubit gate matrix must be 4x4 for KAK decomposition".into(),
+                    )
+                })?;
+
+                // Run the Cartan (KAK) decomposition and lower it to a native
+                // gate sequence (rz/ry/rx single-qubit rotations + CNOTs).
+                let kak = decompose_two_qubit_kak(&matrix.view())?;
+                let native_gates = kak_to_gates(&kak, qubits[0], qubits[1])?;
+
+                // The first single-qubit layer carries the decomposition's
+                // global phase so that callers can track it.
+                let global_phase = kak.global_phase;
+                let mut decomposed = Vec::with_capacity(native_gates.len());
+                let mut phase_emitted = false;
+                for native in &native_gates {
+                    let mut dg = Self::native_gate_to_decomposed(native.as_ref())?;
+                    if !phase_emitted && global_phase.abs() > 1e-12 {
+                        dg.global_phase = Some(global_phase);
+                        phase_emitted = true;
+                    }
+                    decomposed.push(dg);
+                }
+
+                Ok(decomposed)
             }
             _ => Err(QuantRS2Error::InvalidInput(format!(
                 "Synthesis method {method:?} not yet implemented"
@@ -1146,5 +1236,67 @@ mod tests {
         // Original: H, CNOT
         // Translated: RZ, SX, RZ, CX
         assert!(translated.gates().len() >= 4);
+    }
+
+    #[test]
+    fn test_kak_decomposition_produces_real_gates() {
+        let translator = GateTranslator::new();
+
+        // A real, non-trivial two-qubit entangling gate (RXX) must decompose to
+        // a non-empty native sequence that is fed from the genuine core Cartan
+        // decomposer — NOT a silently-dropped empty (identity) vector, which was
+        // the previous fabricated behavior.
+        let rxx = RXX {
+            qubit1: QubitId(0),
+            qubit2: QubitId(1),
+            theta: std::f64::consts::FRAC_PI_2,
+        };
+
+        let decomposed = translator
+            .synthesize_gate(
+                &rxx,
+                SynthesisMethod::KAKDecomposition,
+                HardwareBackend::IBMQuantum,
+            )
+            .expect("KAK decomposition should succeed for a 2-qubit gate");
+
+        assert!(
+            !decomposed.is_empty(),
+            "KAK decomposition must not return an empty (identity) sequence for an \
+             entangling gate"
+        );
+
+        // Every emitted gate must be a real native gate produced by the core
+        // Cartan lowering (rz/ry/rx single-qubit rotations and cx entanglers).
+        // NOTE: the exact CNOT count depends on the core Cartan decomposer's
+        // `cnot_count`; this test asserts the device-side wiring is real and
+        // honest, not the numerical optimality of the core decomposition.
+        for g in &decomposed {
+            assert!(
+                matches!(
+                    g.native_gate.as_str(),
+                    "rx" | "ry" | "rz" | "cx" | "cz" | "h" | "x" | "y" | "z" | "s" | "t" | "swap"
+                ),
+                "unexpected native gate from KAK: {}",
+                g.native_gate
+            );
+        }
+    }
+
+    #[test]
+    fn test_kak_decomposition_rejects_non_two_qubit_gate() {
+        let translator = GateTranslator::new();
+        let h = Hadamard { target: QubitId(0) };
+
+        // A single-qubit gate must produce an honest error, never Ok(vec![]).
+        let result = translator.synthesize_gate(
+            &h,
+            SynthesisMethod::KAKDecomposition,
+            HardwareBackend::IBMQuantum,
+        );
+        assert!(
+            matches!(result, Err(QuantRS2Error::InvalidInput(_))),
+            "expected InvalidInput error for single-qubit gate, got {result:?}"
+        );
     }
 }

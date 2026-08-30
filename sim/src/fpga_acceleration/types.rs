@@ -109,7 +109,15 @@ pub struct FPGADeviceInfo {
     pub supported_precision: Vec<ArithmeticPrecision>,
 }
 impl FPGADeviceInfo {
-    /// Create device info for specific FPGA platform
+    /// Return the published reference specifications for an FPGA platform.
+    ///
+    /// IMPORTANT: this is a static *reference spec table* (datasheet figures
+    /// such as logic-element / DSP-block counts), NOT a hardware-detection
+    /// result. It does not probe a `PCIe` bus or assert that any board is
+    /// present. Only [`FPGAPlatform::Simulation`] corresponds to something this
+    /// build can run: a CPU-side numerical simulation of the gate math (see
+    /// [`FPGAQuantumSimulator::new`]). The real-board rows exist purely as
+    /// reference data for callers that have such hardware elsewhere.
     #[must_use]
     pub fn for_platform(platform: FPGAPlatform) -> Self {
         match platform {
@@ -363,7 +371,16 @@ pub struct FPGAQuantumSimulator {
     pub bitstream_manager: BitstreamManager,
 }
 impl FPGAQuantumSimulator {
-    /// Create new FPGA quantum simulator
+    /// Create a new FPGA quantum simulator.
+    ///
+    /// HONEST BEHAVIOR: this build links no FPGA runtime / board driver, so NO
+    /// physical FPGA is ever programmed or used - regardless of the `platform`
+    /// requested. This constructor always builds a CPU-side *numerical
+    /// simulation* of the FPGA gate math: the gate applications compute the exact
+    /// state-vector linear algebra on the CPU. The `platform` field only selects
+    /// which datasheet reference-spec table to model (see
+    /// [`FPGADeviceInfo::for_platform`]); it does not detect or claim real
+    /// silicon. [`Self::is_fpga_available`] therefore always returns `false`.
     pub fn new(config: FPGAConfig) -> Result<Self> {
         let device_info = FPGADeviceInfo::for_platform(config.platform);
         let processing_units = Self::create_processing_units(&config, &device_info)?;
@@ -581,14 +598,21 @@ impl FPGAQuantumSimulator {
         self.generate_arithmetic_unit_module()?;
         Ok(())
     }
-    /// Generate single qubit gate HDL module
+    /// Generate single qubit gate HDL module.
+    ///
+    /// Only `SystemVerilog` and `OpenCL` have a complete generator. Other HDL
+    /// targets are not implemented and return an honest error rather than a stub
+    /// string masquerading as synthesizable HDL.
     fn generate_single_qubit_module(&mut self) -> Result<()> {
         let hdl_code = match self.config.hdl_target {
             HDLTarget::SystemVerilog => self.generate_single_qubit_systemverilog(),
-            HDLTarget::Verilog => self.generate_single_qubit_verilog(),
-            HDLTarget::VHDL => self.generate_single_qubit_vhdl(),
             HDLTarget::OpenCL => self.generate_single_qubit_opencl(),
-            _ => self.generate_single_qubit_systemverilog(),
+            other => {
+                return Err(SimulatorError::UnsupportedOperation(format!(
+                    "FPGA HDL generation: target {other:?} is not implemented \
+                     for single_qubit_gate (only SystemVerilog and OpenCL are)"
+                )));
+            }
         };
         let module = HDLModule {
             name: "single_qubit_gate".to_string(),
@@ -722,15 +746,6 @@ endmodule
             self.config.pipeline_depth
         )
     }
-    /// Generate Verilog code for single qubit gates
-    fn generate_single_qubit_verilog(&self) -> String {
-        "// Verilog single qubit gate module (simplified)\nmodule single_qubit_gate(...);"
-            .to_string()
-    }
-    /// Generate VHDL code for single qubit gates
-    fn generate_single_qubit_vhdl(&self) -> String {
-        "-- VHDL single qubit gate entity (simplified)\nentity single_qubit_gate is...".to_string()
-    }
     /// Generate `OpenCL` code for single qubit gates
     fn generate_single_qubit_opencl(&self) -> String {
         r"
@@ -773,9 +788,14 @@ __kernel void single_qubit_gate(
 "
         .to_string()
     }
-    /// Generate two qubit gate module (placeholder)
+    /// Register the two-qubit-gate module metadata.
+    ///
+    /// No HDL generator is implemented for this module yet, so `hdl_code` is
+    /// left empty (rather than a stub comment pretending to be synthesizable).
+    /// The resource/timing figures are datasheet-style reference estimates.
+    /// [`Self::export_hdl`] returns an honest error for modules with no code.
     fn generate_two_qubit_module(&mut self) -> Result<()> {
-        let hdl_code = "// Two qubit gate module (placeholder)".to_string();
+        let hdl_code = String::new();
         let module = HDLModule {
             name: "two_qubit_gate".to_string(),
             hdl_code,
@@ -798,9 +818,11 @@ __kernel void single_qubit_gate(
             .insert("two_qubit_gate".to_string(), module);
         Ok(())
     }
-    /// Generate control unit module (placeholder)
+    /// Register the control-unit module metadata (no HDL generator implemented).
+    ///
+    /// See [`Self::generate_two_qubit_module`] for why `hdl_code` is empty.
     fn generate_control_unit_module(&mut self) -> Result<()> {
-        let hdl_code = "// Control unit module (placeholder)".to_string();
+        let hdl_code = String::new();
         let module = HDLModule {
             name: "control_unit".to_string(),
             hdl_code,
@@ -822,9 +844,11 @@ __kernel void single_qubit_gate(
         self.hdl_modules.insert("control_unit".to_string(), module);
         Ok(())
     }
-    /// Generate memory controller module (placeholder)
+    /// Register the memory-controller module metadata (no HDL generator).
+    ///
+    /// See [`Self::generate_two_qubit_module`] for why `hdl_code` is empty.
     fn generate_memory_controller_module(&mut self) -> Result<()> {
-        let hdl_code = "// Memory controller module (placeholder)".to_string();
+        let hdl_code = String::new();
         let module = HDLModule {
             name: "memory_controller".to_string(),
             hdl_code,
@@ -847,9 +871,11 @@ __kernel void single_qubit_gate(
             .insert("memory_controller".to_string(), module);
         Ok(())
     }
-    /// Generate arithmetic unit module (placeholder)
+    /// Register the arithmetic-unit module metadata (no HDL generator).
+    ///
+    /// See [`Self::generate_two_qubit_module`] for why `hdl_code` is empty.
     fn generate_arithmetic_unit_module(&mut self) -> Result<()> {
-        let hdl_code = "// Arithmetic unit module (placeholder)".to_string();
+        let hdl_code = String::new();
         let module = HDLModule {
             name: "arithmetic_unit".to_string(),
             hdl_code,
@@ -872,17 +898,16 @@ __kernel void single_qubit_gate(
             .insert("arithmetic_unit".to_string(), module);
         Ok(())
     }
-    /// Load default bitstream
+    /// Load default bitstream (model bookkeeping only; no real device program).
+    ///
+    /// In the CPU simulation there is no board to program, so this only records
+    /// the selected configuration. No fabricated configuration latency is added.
     fn load_default_bitstream(&mut self) -> Result<()> {
-        let start_time = std::time::Instant::now();
-        std::thread::sleep(std::time::Duration::from_millis(50));
         self.bitstream_manager.current_config = Some("quantum_basic".to_string());
-        let config_time = start_time.elapsed().as_secs_f64() * 1000.0;
         self.stats.reconfigurations += 1;
-        self.stats.total_reconfig_time += config_time;
         Ok(())
     }
-    /// Execute quantum circuit on FPGA
+    /// Execute a quantum circuit (CPU numerical simulation of the FPGA gate math).
     pub fn execute_circuit(&mut self, circuit: &InterfaceCircuit) -> Result<Array1<Complex64>> {
         let start_time = std::time::Instant::now();
         let mut state = Array1::zeros(1 << circuit.num_qubits);
@@ -891,19 +916,22 @@ __kernel void single_qubit_gate(
             state = self.apply_gate_fpga(&state, gate)?;
         }
         let execution_time = start_time.elapsed().as_secs_f64() * 1000.0;
-        let clock_cycles = (execution_time * self.config.clock_frequency * 1000.0) as u64;
-        self.stats.update_operation(execution_time, clock_cycles);
+        // Honest: in a CPU simulation we cannot measure FPGA clock cycles. We
+        // record the real measured wall-time and count gates applied; we do not
+        // synthesize a clock-cycle figure from CPU time.
+        self.stats
+            .update_operation(execution_time, circuit.gates.len() as u64);
         self.update_utilization();
         Ok(state)
     }
-    /// Apply quantum gate using FPGA hardware
+    /// Apply a quantum gate (CPU numerical simulation of the FPGA gate math).
     fn apply_gate_fpga(
         &mut self,
         state: &Array1<Complex64>,
         gate: &InterfaceGate,
     ) -> Result<Array1<Complex64>> {
         let unit_id = self.select_processing_unit(gate)?;
-        let result = match gate.gate_type {
+        let result = match &gate.gate_type {
             InterfaceGateType::Hadamard
             | InterfaceGateType::PauliX
             | InterfaceGateType::PauliY
@@ -914,9 +942,13 @@ __kernel void single_qubit_gate(
             InterfaceGateType::RX(_) | InterfaceGateType::RY(_) | InterfaceGateType::RZ(_) => {
                 self.apply_rotation_gate_fpga(state, gate, unit_id)
             }
-            _ => Ok(state.clone()),
+            other => {
+                return Err(SimulatorError::UnsupportedOperation(format!(
+                    "FPGA simulation: gate {other:?} is not implemented"
+                )));
+            }
         };
-        if let Ok(_) = result {
+        if result.is_ok() {
             self.processing_units[unit_id].utilization += 1.0;
         }
         result
@@ -934,7 +966,11 @@ __kernel void single_qubit_gate(
         }
         Ok(best_unit)
     }
-    /// Apply single qubit gate using FPGA
+    /// Apply a single-qubit gate (CPU numerical simulation of the gate math).
+    ///
+    /// Uses the gate's canonical 2x2 unitary, so it correctly handles every
+    /// single-qubit gate including rotations `RX/RY/RZ` (the previous version
+    /// silently no-op'd rotations). No fabricated pipeline latency is injected.
     pub fn apply_single_qubit_gate_fpga(
         &self,
         state: &Array1<Complex64>,
@@ -942,46 +978,38 @@ __kernel void single_qubit_gate(
         _unit_id: usize,
     ) -> Result<Array1<Complex64>> {
         if gate.qubits.is_empty() {
-            return Ok(state.clone());
+            return Err(SimulatorError::InvalidInput(
+                "single-qubit gate has no target qubit".to_string(),
+            ));
         }
         let target_qubit = gate.qubits[0];
+        let num_qubits = state.len().trailing_zeros() as usize;
+        if state.len() != 1usize << num_qubits {
+            return Err(SimulatorError::DimensionMismatch(format!(
+                "State length {} is not a power of two",
+                state.len()
+            )));
+        }
+        if target_qubit >= num_qubits {
+            return Err(SimulatorError::IndexOutOfBounds(target_qubit));
+        }
+        let unitary = gate.unitary_matrix()?;
         let mut result = state.clone();
-        let pipeline_latency =
-            self.config.pipeline_depth as f64 / self.config.clock_frequency * 1000.0;
-        std::thread::sleep(std::time::Duration::from_micros(
-            (pipeline_latency * 10.0) as u64,
-        ));
+        let target_mask = 1usize << target_qubit;
         for i in 0..state.len() {
-            if (i >> target_qubit) & 1 == 0 {
-                let j = i | (1 << target_qubit);
-                if j < state.len() {
-                    let state_0 = result[i];
-                    let state_1 = result[j];
-                    match gate.gate_type {
-                        InterfaceGateType::Hadamard => {
-                            let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
-                            result[i] = Complex64::new(inv_sqrt2, 0.0) * (state_0 + state_1);
-                            result[j] = Complex64::new(inv_sqrt2, 0.0) * (state_0 - state_1);
-                        }
-                        InterfaceGateType::PauliX => {
-                            result[i] = state_1;
-                            result[j] = state_0;
-                        }
-                        InterfaceGateType::PauliY => {
-                            result[i] = Complex64::new(0.0, -1.0) * state_1;
-                            result[j] = Complex64::new(0.0, 1.0) * state_0;
-                        }
-                        InterfaceGateType::PauliZ => {
-                            result[j] = -state_1;
-                        }
-                        _ => {}
-                    }
-                }
+            if i & target_mask == 0 {
+                let j = i | target_mask;
+                let amp_0 = state[i];
+                let amp_1 = state[j];
+                result[i] = unitary[[0, 0]] * amp_0 + unitary[[0, 1]] * amp_1;
+                result[j] = unitary[[1, 0]] * amp_0 + unitary[[1, 1]] * amp_1;
             }
         }
         Ok(result)
     }
-    /// Apply two qubit gate using FPGA
+    /// Apply a two-qubit gate (CPU numerical simulation of the FPGA gate math).
+    ///
+    /// No fabricated pipeline latency is injected.
     fn apply_two_qubit_gate_fpga(
         &self,
         state: &Array1<Complex64>,
@@ -989,16 +1017,13 @@ __kernel void single_qubit_gate(
         _unit_id: usize,
     ) -> Result<Array1<Complex64>> {
         if gate.qubits.len() < 2 {
-            return Ok(state.clone());
+            return Err(SimulatorError::InvalidInput(
+                "two-qubit gate requires two qubits".to_string(),
+            ));
         }
         let control = gate.qubits[0];
         let target = gate.qubits[1];
         let mut result = state.clone();
-        let pipeline_latency =
-            self.config.pipeline_depth as f64 * 1.5 / self.config.clock_frequency * 1000.0;
-        std::thread::sleep(std::time::Duration::from_micros(
-            (pipeline_latency * 15.0) as u64,
-        ));
         match gate.gate_type {
             InterfaceGateType::CNOT => {
                 for i in 0..state.len() {
@@ -1032,18 +1057,16 @@ __kernel void single_qubit_gate(
     ) -> Result<Array1<Complex64>> {
         self.apply_single_qubit_gate_fpga(state, gate, unit_id)
     }
-    /// Update FPGA utilization metrics
+    /// Update FPGA utilization metrics from the model's own bookkeeping.
+    ///
+    /// Only `fpga_utilization` (derived from the per-unit operation counts the
+    /// model actually tracks) is set here. `pipeline_efficiency` and
+    /// `memory_bandwidth_utilization` are intentionally left untouched: there is
+    /// no real pipeline or memory bus to measure in a CPU simulation, so we do
+    /// NOT fabricate fixed efficiency numbers for them.
     fn update_utilization(&mut self) {
         let total_utilization: f64 = self.processing_units.iter().map(|u| u.utilization).sum();
         self.stats.fpga_utilization = total_utilization / self.processing_units.len() as f64;
-        self.stats.pipeline_efficiency = if self.config.enable_pipelining {
-            0.85
-        } else {
-            0.6
-        };
-        self.stats.memory_bandwidth_utilization = 0.7;
-        self.stats.power_consumption =
-            self.device_info.power_consumption * self.stats.fpga_utilization;
     }
     /// Get device information
     #[must_use]
@@ -1060,7 +1083,10 @@ __kernel void single_qubit_gate(
     pub const fn get_hdl_modules(&self) -> &HashMap<String, HDLModule> {
         &self.hdl_modules
     }
-    /// Reconfigure FPGA with new bitstream
+    /// Select a different bitstream configuration (model bookkeeping only).
+    ///
+    /// In the CPU simulation there is no board to reprogram, so this validates
+    /// and records the selection without fabricating a reconfiguration latency.
     pub fn reconfigure(&mut self, bitstream_name: &str) -> Result<()> {
         if !self
             .bitstream_manager
@@ -1071,28 +1097,35 @@ __kernel void single_qubit_gate(
                 "Bitstream {bitstream_name} not found"
             )));
         }
-        let start_time = std::time::Instant::now();
-        let bitstream = &self.bitstream_manager.bitstreams[bitstream_name];
-        std::thread::sleep(std::time::Duration::from_millis(
-            (bitstream.config_time_ms / 10.0) as u64,
-        ));
         self.bitstream_manager.current_config = Some(bitstream_name.to_string());
-        let reconfig_time = start_time.elapsed().as_secs_f64() * 1000.0;
         self.stats.reconfigurations += 1;
-        self.stats.total_reconfig_time += reconfig_time;
         Ok(())
     }
-    /// Check if FPGA is available
+    /// Whether a *real* FPGA board is available.
+    ///
+    /// HONEST: this build links no FPGA runtime, so a physical board is never
+    /// available. This returns `false` even when the CPU `Simulation` device is
+    /// in use - that is a numerical model, not a programmed FPGA.
     #[must_use]
-    pub fn is_fpga_available(&self) -> bool {
-        !self.hdl_modules.is_empty()
+    pub const fn is_fpga_available(&self) -> bool {
+        false
     }
-    /// Export HDL code for synthesis
+    /// Export HDL code for synthesis.
+    ///
+    /// Returns an honest error for unknown modules and for modules that have no
+    /// HDL generator implemented yet (empty `hdl_code`) - we never hand back a
+    /// stub comment dressed up as synthesizable HDL.
     pub fn export_hdl(&self, module_name: &str) -> Result<String> {
-        self.hdl_modules
-            .get(module_name)
-            .map(|module| module.hdl_code.clone())
-            .ok_or_else(|| SimulatorError::InvalidInput(format!("Module {module_name} not found")))
+        let module = self.hdl_modules.get(module_name).ok_or_else(|| {
+            SimulatorError::InvalidInput(format!("Module {module_name} not found"))
+        })?;
+        if module.hdl_code.is_empty() {
+            return Err(SimulatorError::UnsupportedOperation(format!(
+                "FPGA HDL export: no HDL generator implemented for module \
+                 '{module_name}' (only single_qubit_gate is generated)"
+            )));
+        }
+        Ok(module.hdl_code.clone())
     }
 }
 /// FPGA bitstream
@@ -1257,11 +1290,13 @@ impl FPGAStats {
             "memory_bandwidth_utilization".to_string(),
             self.memory_bandwidth_utilization,
         );
-        metrics.insert(
-            "power_efficiency".to_string(),
-            self.total_gate_operations as f64
-                / (self.power_consumption * self.total_execution_time / 1000.0),
-        );
+        if self.power_consumption > 0.0 && self.total_execution_time > 0.0 {
+            metrics.insert(
+                "power_efficiency".to_string(),
+                self.total_gate_operations as f64
+                    / (self.power_consumption * self.total_execution_time / 1000.0),
+            );
+        }
         metrics
     }
 }

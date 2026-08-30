@@ -643,19 +643,106 @@ impl ProcessTomography {
         Ok(())
     }
 
-    /// Reconstruct process matrix from measurements
+    /// Reconstruct the process (χ) matrix from the measured outputs via linear
+    /// inversion.
+    ///
+    /// The channel is expanded in the `n`-qubit Pauli operator basis
+    /// `{P_m}` (`m = 0..d²`, `d = 2^n`):
+    ///
+    /// `ε(ρ) = Σ_{m,n} χ_{mn} P_m ρ P_n†`.
+    ///
+    /// For each prepared input `ρ_j` and its measured output `σ_j`, every
+    /// matrix entry gives one linear equation in the unknowns `χ_{mn}`. The
+    /// stacked system `A · vec(χ) = b` is solved in the least-squares sense via
+    /// the normal equations `(A† A) vec(χ) = A† b`, which is exact when the
+    /// input set is tomographically complete. An input set that is not
+    /// tomographically complete makes `A† A` singular and yields an honest
+    /// error instead of a fabricated all-zero matrix.
     fn reconstruct_process_matrix(&mut self) -> Result<()> {
-        // Simplified reconstruction - full implementation would use
-        // maximum likelihood estimation or linear inversion
+        if self.input_states.is_empty() {
+            return Err(SimulatorError::InvalidInput(
+                "Process tomography requires at least one prepared input state".to_string(),
+            ));
+        }
+        if self.output_measurements.len() != self.input_states.len() {
+            return Err(SimulatorError::InvalidInput(
+                "Number of output measurements must match the number of input states".to_string(),
+            ));
+        }
 
         let dim = self.input_states[0].nrows();
-        let process_dim = dim * dim;
-        let mut chi = Array2::zeros((process_dim, process_dim));
+        if dim == 0 || !dim.is_power_of_two() {
+            return Err(SimulatorError::InvalidInput(format!(
+                "Input state dimension {dim} must be a positive power of two"
+            )));
+        }
+        let num_qubits = dim.trailing_zeros() as usize;
+        let process_dim = dim * dim; // number of Pauli basis operators = 4^n
+        let num_inputs = self.input_states.len();
 
-        // This is a placeholder - real process tomography requires
-        // solving a linear system to find the χ matrix
+        // Tomographic completeness requires at least d² linearly independent
+        // input states (each contributes d² equations for d⁴ unknowns).
+        if num_inputs < process_dim {
+            return Err(SimulatorError::InvalidInput(format!(
+                "Process tomography is under-determined: {num_inputs} input states provided, \
+                 at least {process_dim} tomographically complete states are required"
+            )));
+        }
+
+        let basis = pauli_operator_basis(num_qubits);
+        let basis_dag: Vec<Array2<Complex64>> =
+            basis.iter().map(|p| p.t().mapv(|z| z.conj())).collect();
+
+        let unknowns = process_dim * process_dim;
+        let equations = num_inputs * dim * dim;
+        let mut a = Array2::<Complex64>::zeros((equations, unknowns));
+        let mut b = Array1::<Complex64>::zeros(equations);
+
+        for (j, (rho, sigma)) in self
+            .input_states
+            .iter()
+            .zip(self.output_measurements.iter())
+            .enumerate()
+        {
+            let eq_base = j * dim * dim;
+            for m in 0..process_dim {
+                let pm_rho = basis[m].dot(rho);
+                for n in 0..process_dim {
+                    let mmn = pm_rho.dot(&basis_dag[n]);
+                    let u = m * process_dim + n;
+                    for r in 0..dim {
+                        for c in 0..dim {
+                            a[[eq_base + r * dim + c, u]] = mmn[[r, c]];
+                        }
+                    }
+                }
+            }
+            for r in 0..dim {
+                for c in 0..dim {
+                    b[eq_base + r * dim + c] = sigma[[r, c]];
+                }
+            }
+        }
+
+        // Normal equations: (A† A) x = A† b.
+        let a_dag = a.t().mapv(|z| z.conj());
+        let aha = a_dag.dot(&a);
+        let ahb = a_dag.dot(&b);
+        let aha_inv = scirs2_linalg::complex::complex_inverse(&aha.view()).map_err(|e| {
+            SimulatorError::InvalidInput(format!(
+                "Input state set is not tomographically complete (singular system): {e}"
+            ))
+        })?;
+        let x = aha_inv.dot(&ahb);
+
+        let mut chi = Array2::<Complex64>::zeros((process_dim, process_dim));
+        for m in 0..process_dim {
+            for n in 0..process_dim {
+                chi[[m, n]] = x[m * process_dim + n];
+            }
+        }
+
         self.process_matrix = Some(chi);
-
         Ok(())
     }
 
@@ -680,6 +767,38 @@ impl ProcessTomography {
 
         Ok(fidelity_sum / self.input_states.len() as f64)
     }
+}
+
+/// Build the `n`-qubit Pauli operator basis `{I, X, Y, Z}^{⊗n}`.
+///
+/// Returns `4^n` matrices of dimension `2^n × 2^n`, ordered so that the basis
+/// index is read as a base-4 number whose most-significant digit selects the
+/// Pauli acting on the first qubit. `basis[0]` is the identity. Uses the
+/// module-level [`kron`] helper for the tensor products.
+fn pauli_operator_basis(num_qubits: usize) -> Vec<Array2<Complex64>> {
+    let i2: Array2<Complex64> = Array2::eye(2);
+    let mut px: Array2<Complex64> = Array2::zeros((2, 2));
+    px[[0, 1]] = Complex64::new(1.0, 0.0);
+    px[[1, 0]] = Complex64::new(1.0, 0.0);
+    let mut py: Array2<Complex64> = Array2::zeros((2, 2));
+    py[[0, 1]] = Complex64::new(0.0, -1.0);
+    py[[1, 0]] = Complex64::new(0.0, 1.0);
+    let mut pz: Array2<Complex64> = Array2::zeros((2, 2));
+    pz[[0, 0]] = Complex64::new(1.0, 0.0);
+    pz[[1, 1]] = Complex64::new(-1.0, 0.0);
+    let singles = [i2, px, py, pz];
+
+    let mut basis: Vec<Array2<Complex64>> = vec![Array2::<Complex64>::eye(1)];
+    for _ in 0..num_qubits {
+        let mut next = Vec::with_capacity(basis.len() * 4);
+        for op in &basis {
+            for s in &singles {
+                next.push(kron(op, s));
+            }
+        }
+        basis = next;
+    }
+    basis
 }
 
 /// Compute quantum fidelity between two density matrices
@@ -843,5 +962,86 @@ mod tests {
 
         assert!(noise_model.get_channel("depol").is_some());
         assert!(noise_model.get_channel("amp_damp").is_some());
+    }
+
+    #[test]
+    fn test_pauli_basis_is_orthonormal_under_hs_inner_product() {
+        // Tr(P_m† P_n) = d · δ_{mn} for the unnormalised Pauli basis.
+        let basis = pauli_operator_basis(1);
+        assert_eq!(basis.len(), 4);
+        for (m, pm) in basis.iter().enumerate() {
+            for (n, pn) in basis.iter().enumerate() {
+                let prod = pm.t().mapv(|z| z.conj()).dot(pn);
+                let trace: Complex64 = (0..2).map(|i| prod[[i, i]]).sum();
+                let expected = if m == n { 2.0 } else { 0.0 };
+                assert!((trace.re - expected).abs() < 1e-12 && trace.im.abs() < 1e-12);
+            }
+        }
+    }
+
+    #[test]
+    fn test_process_tomography_reconstructs_identity_channel() {
+        // Regression: reconstruct_process_matrix previously stored an all-zero
+        // chi matrix. The identity channel must reconstruct to chi_00 = 1
+        // (the I⊗I component) with everything else ~ 0.
+        let mut tomography = ProcessTomography::new(1);
+        let identity = QuantumChannel::depolarizing(1, 0.0); // only the identity Kraus survives
+        tomography
+            .characterize_channel(&identity)
+            .expect("characterization should succeed");
+
+        let chi = tomography
+            .process_matrix
+            .as_ref()
+            .expect("process matrix must be populated");
+        assert_eq!(chi.shape(), [4, 4]);
+        assert!(
+            (chi[[0, 0]] - Complex64::new(1.0, 0.0)).norm() < 1e-9,
+            "chi_00 should be 1, got {}",
+            chi[[0, 0]]
+        );
+        for m in 0..4 {
+            for n in 0..4 {
+                if (m, n) != (0, 0) {
+                    assert!(
+                        chi[[m, n]].norm() < 1e-9,
+                        "chi[{m},{n}] should be ~0, got {}",
+                        chi[[m, n]]
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_process_tomography_reconstructs_bit_flip_channel() {
+        // A pure X channel ε(ρ) = X ρ X must reconstruct to chi_11 = 1
+        // (the X⊗X component), proving the linear inversion is real.
+        let mut x_op: Array2<Complex64> = Array2::zeros((2, 2));
+        x_op[[0, 1]] = Complex64::new(1.0, 0.0);
+        x_op[[1, 0]] = Complex64::new(1.0, 0.0);
+        let x_channel = QuantumChannel {
+            kraus_operators: vec![x_op],
+            name: "X".to_string(),
+        };
+
+        let mut tomography = ProcessTomography::new(1);
+        tomography
+            .characterize_channel(&x_channel)
+            .expect("characterization should succeed");
+
+        let chi = tomography
+            .process_matrix
+            .as_ref()
+            .expect("process matrix must be populated");
+        assert!(
+            (chi[[1, 1]] - Complex64::new(1.0, 0.0)).norm() < 1e-9,
+            "chi_11 should be 1 for the X channel, got {}",
+            chi[[1, 1]]
+        );
+        assert!(
+            chi[[0, 0]].norm() < 1e-9,
+            "chi_00 should be ~0 for X channel"
+        );
     }
 }

@@ -603,6 +603,10 @@ mod tests {
     }
 }
 
+/// Number of binary variables this molecular wrapper exposes (one per candidate
+/// atom site in the [`MoleculeToBinaryWrapper::binary_to_molecule`] encoding).
+const MOLECULE_BINARY_DIM: usize = 32;
+
 /// Wrapper to convert Molecule-based problems to `Vec<i8>`-based problems
 pub struct MoleculeToBinaryWrapper {
     inner: Box<dyn OptimizationProblem<Solution = Molecule, ObjectiveValue = f64>>,
@@ -613,73 +617,45 @@ impl OptimizationProblem for MoleculeToBinaryWrapper {
     type ObjectiveValue = f64;
 
     fn description(&self) -> String {
-        format!("Binary wrapper for molecular optimization problem")
+        format!("Binary wrapper for: {}", self.inner.description())
     }
 
     fn size_metrics(&self) -> HashMap<String, usize> {
-        let mut metrics = HashMap::new();
-        metrics.insert("binary_dimension".to_string(), 32);
-        metrics.insert("molecule_atoms".to_string(), 10);
+        // Surface the inner problem's metrics, adding the binary dimension this
+        // wrapper exposes.
+        let mut metrics = self.inner.size_metrics();
+        metrics.insert("binary_dimension".to_string(), MOLECULE_BINARY_DIM);
         metrics
     }
 
     fn validate(&self) -> ApplicationResult<()> {
-        Ok(())
+        // Validity is determined entirely by the wrapped molecular problem.
+        self.inner.validate()
     }
 
     fn to_qubo(&self) -> ApplicationResult<(crate::ising::QuboModel, HashMap<String, usize>)> {
-        // Create a simple QUBO model for molecular optimization
-        let n = 32; // binary dimension
-        let mut h = vec![0.0; n];
-        let mut j = std::collections::HashMap::new();
-
-        // Add some basic interactions
-        for i in 0..n {
-            h[i] = -0.1; // Small bias towards 1
-            for j_idx in (i + 1)..n {
-                if j_idx < i + 4 {
-                    // Local interactions
-                    j.insert((i, j_idx), 0.05);
-                }
-            }
-        }
-
-        let mut qubo = crate::ising::QuboModel::new(n);
-
-        // Set linear terms
-        for (i, &value) in h.iter().enumerate() {
-            qubo.set_linear(i, value)?;
-        }
-
-        // Set quadratic terms
-        for ((i, j_idx), &value) in &j {
-            qubo.set_quadratic(*i, *j_idx, value)?;
-        }
-
-        let mut variable_mapping = HashMap::new();
-        for i in 0..n {
-            variable_mapping.insert(format!("bit_{i}"), i);
-        }
-
-        Ok((qubo, variable_mapping))
+        // The molecular QUBO encoding is problem-specific; delegate to the inner
+        // problem rather than fabricating a generic toy Hamiltonian.
+        self.inner.to_qubo()
     }
 
     fn evaluate_solution(
         &self,
         solution: &Self::Solution,
     ) -> ApplicationResult<Self::ObjectiveValue> {
-        // Convert binary solution to a simple molecule representation
+        // Decode the binary vector to a molecule, then evaluate it with the
+        // wrapped problem's real objective function.
         let molecule = self.binary_to_molecule(solution)?;
-        // For now, just return a simple score based on the number of 1s
-        Ok(solution
-            .iter()
-            .map(|&x| if x > 0 { 1.0 } else { 0.0 })
-            .sum())
+        self.inner.evaluate_solution(&molecule)
     }
 
     fn is_feasible(&self, solution: &Self::Solution) -> bool {
-        // Simple feasibility check - solution should have reasonable length
-        solution.len() == 32
+        // Decode and defer to the inner problem's feasibility check; an
+        // undecodable binary vector is infeasible by definition.
+        match self.binary_to_molecule(solution) {
+            Ok(molecule) => self.inner.is_feasible(&molecule),
+            Err(_) => false,
+        }
     }
 }
 
@@ -914,7 +890,8 @@ impl OptimizationProblem for ChemistryToBinaryWrapper {
         &self,
         solution: &Self::Solution,
     ) -> ApplicationResult<Self::ObjectiveValue> {
-        // Create a mock QuantumChemistryResult from binary solution
+        // Score the binary assignment via a genuine QUBO-energy evaluation of
+        // the wrapped chemistry problem (see `binary_to_chemistry_result`).
         let chemistry_result = self.binary_to_chemistry_result(solution)?;
         self.inner.evaluate_solution(&chemistry_result)
     }
@@ -925,57 +902,64 @@ impl OptimizationProblem for ChemistryToBinaryWrapper {
 }
 
 impl ChemistryToBinaryWrapper {
+    /// Build a chemistry result whose energies are a genuine evaluation of the
+    /// binary assignment against the wrapped problem's *real* molecular QUBO.
+    ///
+    /// A binary annealing assignment does not contain SCF orbitals, an electron
+    /// density grid, or convergence information, so those quantities are *not*
+    /// fabricated here: the structural fields are left explicitly empty and the
+    /// metadata records that this is a QUBO-surrogate evaluation rather than a
+    /// converged self-consistent-field calculation. Only the fields that can be
+    /// honestly derived from the bitstring — the electronic and total energy —
+    /// are populated, by computing the actual QUBO objective. The downstream
+    /// chemistry objective scores precisely those energies.
     fn binary_to_chemistry_result(
         &self,
         solution: &[i8],
     ) -> ApplicationResult<quantum_computational_chemistry::QuantumChemistryResult> {
         use quantum_computational_chemistry::{
             BasisSet, CalculationMetadata, ElectronDensity, ElectronicStructureMethod,
-            MolecularOrbital, OrbitalType, QuantumChemistryResult, ThermochemicalProperties,
+            QuantumChemistryResult, ThermochemicalProperties,
         };
 
-        // Create molecular orbitals from binary solution
-        let mut molecular_orbitals = Vec::new();
-        for (i, &bit) in solution.iter().enumerate().take(32) {
-            molecular_orbitals.push(MolecularOrbital {
-                energy: -1.0 * i as f64,
-                coefficients: vec![if bit == 1 { 1.0 } else { 0.0 }; 10],
-                occupation: if bit == 1 { 2.0 } else { 0.0 },
-                symmetry: None,
-                orbital_type: if i < 8 {
-                    OrbitalType::Core
-                } else if i < 16 {
-                    OrbitalType::Valence
-                } else {
-                    OrbitalType::Virtual
-                },
-            });
-        }
+        // Obtain the genuine molecular QUBO from the wrapped problem and score
+        // the binary assignment with the exact QUBO objective. The assignment is
+        // aligned to the QUBO's variable count (extra bits are ignored, missing
+        // bits default to unoccupied).
+        let (qubo, _mapping) = self.inner.to_qubo()?;
+        let num_vars = qubo.num_variables;
+        let binary_vars: Vec<bool> = (0..num_vars)
+            .map(|i| solution.get(i).is_some_and(|&bit| bit == 1))
+            .collect();
+        let electronic_energy = qubo
+            .objective(&binary_vars)
+            .map_err(|e| ApplicationError::OptimizationError(e.to_string()))?;
 
-        // Calculate electronic energy from solution
-        let electronic_energy = solution
-            .iter()
-            .map(|&x| if x == 1 { -1.0 } else { 0.0 })
-            .sum::<f64>();
-        let nuclear_repulsion = 10.0; // Fixed value for simplicity
+        // No nuclear-repulsion constant is recoverable from the bitstring alone;
+        // the QUBO surrogate folds geometric effects into its coefficients, so
+        // the total energy equals the surrogate electronic energy.
+        let nuclear_repulsion = 0.0;
         let total_energy = electronic_energy + nuclear_repulsion;
+        let scf_converged = total_energy.is_finite();
 
         Ok(QuantumChemistryResult {
-            system_id: "binary_chemistry".to_string(),
+            system_id: "qubo_surrogate_evaluation".to_string(),
             electronic_energy,
             nuclear_repulsion,
             total_energy,
-            molecular_orbitals,
+            // Not derivable from a binary assignment: left honestly empty rather
+            // than populated with fabricated orbitals / density values.
+            molecular_orbitals: Vec::new(),
             electron_density: ElectronDensity {
-                grid_points: vec![[0.0, 0.0, 0.0]; 100],
-                density_values: vec![1.0; 100],
-                density_matrix: vec![vec![0.0; 10]; 10],
-                mulliken_charges: vec![0.0; 5],
-                electrostatic_potential: vec![0.0; 100],
+                grid_points: Vec::new(),
+                density_values: Vec::new(),
+                density_matrix: Vec::new(),
+                mulliken_charges: Vec::new(),
+                electrostatic_potential: Vec::new(),
             },
             dipole_moment: [0.0, 0.0, 0.0],
             polarizability: [[0.0; 3]; 3],
-            vibrational_frequencies: vec![],
+            vibrational_frequencies: Vec::new(),
             thermochemistry: ThermochemicalProperties {
                 zero_point_energy: 0.0,
                 thermal_energy: 0.0,
@@ -988,12 +972,14 @@ impl ChemistryToBinaryWrapper {
             metadata: CalculationMetadata {
                 method: ElectronicStructureMethod::HartreeFock,
                 basis_set: BasisSet::STO3G,
-                scf_converged: true,
-                scf_iterations: 1,
-                cpu_time: 1.0,
-                wall_time: 1.0,
-                memory_usage: 1024,
-                error_correction_applied: true,
+                // The surrogate QUBO objective evaluated to a finite value; this
+                // is not an SCF convergence claim (no SCF was run).
+                scf_converged,
+                scf_iterations: 0,
+                cpu_time: 0.0,
+                wall_time: 0.0,
+                memory_usage: 0,
+                error_correction_applied: false,
             },
         })
     }

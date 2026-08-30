@@ -612,15 +612,15 @@ impl IndustryExampleManager {
         // Step 3: Create classical baseline
         let mut classical_model = self.create_classical_credit_model()?;
         println!("Training classical baseline...");
-        // classical_model.train(&X_train, &y_train)?; // Placeholder
+        classical_model.train(&X_train, &y_train)?;
 
         // Step 4: Evaluate both models
         let quantum_predictions = quantum_model.predict(&X_test)?;
-        // let classical_predictions = classical_model.predict(&X_test)?; // Placeholder
+        let classical_predictions = classical_model.predict(&X_test)?;
 
         // Step 5: Calculate metrics
         let quantum_accuracy = self.calculate_accuracy(&quantum_predictions, &y_test)?;
-        let classical_accuracy = 0.87; // Placeholder baseline
+        let classical_accuracy = self.calculate_accuracy(&classical_predictions, &y_test)?;
 
         // Step 6: Generate benchmark results
         let benchmark_result = BenchmarkResult {
@@ -662,9 +662,16 @@ impl IndustryExampleManager {
 
         Ok(ExampleResult {
             use_case_name: "Quantum Credit Scoring".to_string(),
-            implementation_summary:
-                "Successfully implemented quantum credit scoring with 92% accuracy".to_string(),
+            implementation_summary: format!(
+                "Successfully implemented quantum credit scoring with {:.1}% accuracy \
+                 (classical logistic-regression baseline: {:.1}%)",
+                quantum_accuracy * 100.0,
+                classical_accuracy * 100.0
+            ),
             benchmark_result,
+            // NOTE: the figures below are illustrative business-impact
+            // estimates for this demo, not measurements derived from
+            // `quantum_accuracy`/`classical_accuracy` or any real deployment.
             business_impact: BusinessImpact {
                 cost_savings: 2500000.0,
                 revenue_increase: 500000.0,
@@ -1029,17 +1036,69 @@ pub struct BusinessImpact {
     pub risk_reduction: f64,
 }
 
-/// Placeholder classical model for comparison
-struct ClassicalCreditModel;
+/// Classical baseline for comparison against the quantum credit model: a
+/// real logistic regression trained via full-batch gradient descent on
+/// binary cross-entropy loss (previously an untrained stub that always
+/// predicted zeros, with `train` never even called).
+struct ClassicalCreditModel {
+    weights: Array1<f64>,
+    bias: f64,
+}
 
 impl ClassicalCreditModel {
     fn new() -> Self {
-        Self
+        Self {
+            weights: Array1::zeros(0),
+            bias: 0.0,
+        }
     }
 
-    fn predict(&self, _input: &ArrayD<f64>) -> Result<ArrayD<f64>> {
-        // Placeholder implementation
-        Ok(ArrayD::zeros(IxDyn(&[1])))
+    /// Train the logistic regression via full-batch gradient descent.
+    fn train(&mut self, x: &ArrayD<f64>, y: &ArrayD<f64>) -> Result<()> {
+        let features = x
+            .view()
+            .into_dimensionality::<scirs2_core::ndarray::Ix2>()
+            .map_err(|e| MLError::DataError(format!("Expected 2D input features: {e}")))?;
+        let labels = Array1::from_iter(y.iter().cloned());
+        if labels.len() != features.nrows() {
+            return Err(MLError::DataError(
+                "Number of labels does not match number of samples".to_string(),
+            ));
+        }
+
+        let n_samples = features.nrows() as f64;
+        self.weights = Array1::zeros(features.ncols());
+        self.bias = 0.0;
+
+        const LEARNING_RATE: f64 = 0.1;
+        const EPOCHS: usize = 200;
+        for _ in 0..EPOCHS {
+            let logits = features.dot(&self.weights) + self.bias;
+            let predictions = logits.mapv(|z| 1.0 / (1.0 + (-z).exp()));
+            let errors = &predictions - &labels;
+
+            let weight_gradient = features.t().dot(&errors) / n_samples;
+            let bias_gradient = errors.sum() / n_samples;
+
+            self.weights = &self.weights - &(weight_gradient * LEARNING_RATE);
+            self.bias -= bias_gradient * LEARNING_RATE;
+        }
+
+        Ok(())
+    }
+
+    /// Predict default probabilities via the trained sigmoid(w.x + b).
+    fn predict(&self, input: &ArrayD<f64>) -> Result<ArrayD<f64>> {
+        let features = input
+            .view()
+            .into_dimensionality::<scirs2_core::ndarray::Ix2>()
+            .map_err(|e| MLError::DataError(format!("Expected 2D input features: {e}")))?;
+        let logits = features.dot(&self.weights) + self.bias;
+        let predictions = logits.mapv(|z| 1.0 / (1.0 + (-z).exp()));
+        let n_samples = predictions.len();
+        predictions
+            .into_shape(IxDyn(&[n_samples, 1]))
+            .map_err(|e| MLError::DataError(format!("Failed to reshape predictions: {e}")))
     }
 }
 
@@ -1285,5 +1344,65 @@ mod tests {
         assert_eq!(X_train.shape()[1], X_test.shape()[1]); // Same number of features
         assert_eq!(y_train.shape()[1], 1); // Binary classification
         assert!(X_train.shape()[0] > X_test.shape()[0]); // Train set is larger
+    }
+
+    /// Regression test for the "classical baseline is untrained / hardcoded
+    /// 0.87" bug: `ClassicalCreditModel` must actually learn from data
+    /// (via real gradient descent) rather than always predicting zeros.
+    #[test]
+    fn classical_credit_model_trains_and_predicts_real_values() {
+        let x = ArrayD::from_shape_vec(
+            IxDyn(&[4, 2]),
+            vec![1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0],
+        )
+        .expect("valid shape");
+        let y =
+            ArrayD::from_shape_vec(IxDyn(&[4, 1]), vec![1.0, 1.0, 0.0, 0.0]).expect("valid shape");
+
+        let mut model = ClassicalCreditModel::new();
+        model.train(&x, &y).expect("training should succeed");
+        let predictions = model.predict(&x).expect("prediction should succeed");
+
+        // An untrained (all-zero-weight) model would predict a constant
+        // 0.5 for every sample; after real gradient descent on this
+        // trivially separable data, predictions must differ from that
+        // constant and from each other in a way that reflects the labels.
+        let values: Vec<f64> = predictions.iter().cloned().collect();
+        assert!(
+            values.iter().any(|&v| (v - 0.5).abs() > 1e-3),
+            "expected training to move predictions away from the untrained 0.5 constant"
+        );
+        assert!(
+            values[0] > values[2],
+            "a sample with label 1 should score higher than one with label 0 after training"
+        );
+    }
+
+    /// Regression test for the "implementation_summary hardcodes 92%" bug:
+    /// the reported summary must reflect the actually computed accuracy
+    /// values, and the classical baseline must no longer be the hardcoded
+    /// hardcoded 0.87 constant (chosen against real, randomly generated data
+    /// where any fixed 87% claim would be a coincidence at best).
+    #[test]
+    fn credit_scoring_summary_reflects_computed_accuracy_not_hardcoded_92_percent() {
+        let mut manager = IndustryExampleManager::new();
+        let result = manager
+            .run_use_case_example("Quantum Credit Scoring")
+            .expect("example execution should succeed");
+
+        assert!(
+            !result.implementation_summary.contains("with 92% accuracy"),
+            "summary should no longer hardcode 92%, got: {}",
+            result.implementation_summary
+        );
+
+        let quantum_accuracy = result.benchmark_result.quantum_performance.primary_metric;
+        let expected_fragment = format!("{:.1}%", quantum_accuracy * 100.0);
+        assert!(
+            result.implementation_summary.contains(&expected_fragment),
+            "summary '{}' should contain the actual computed quantum accuracy {}",
+            result.implementation_summary,
+            expected_fragment
+        );
     }
 }

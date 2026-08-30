@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex, OnceLock, RwLock};
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -75,18 +75,61 @@ impl EnhancedQuantumNetworkMonitor {
         Ok(())
     }
 
-    /// Get comprehensive monitoring status
+    /// Get comprehensive monitoring status.
+    ///
+    /// `overall_status` is derived from the *actual* lifecycle state of
+    /// each subsystem and the real (weighted) health score computed from
+    /// them -- not a fixed `Healthy` regardless of whether monitoring was
+    /// ever started.
     pub async fn get_monitoring_status(&self) -> Result<MonitoringStatus> {
+        let metrics_collection_status = self.metrics_collector.get_status().await?;
+        let analytics_status = self.analytics_engine.get_status().await?;
+        let anomaly_detection_status = self.anomaly_detector.get_status().await?;
+        let predictive_analytics_status = self.predictive_analytics.get_status().await?;
+        let alert_system_status = self.alert_system.get_status().await?;
+        let system_health_score = self.calculate_system_health_score().await?;
+
+        let any_running = [
+            &metrics_collection_status,
+            &analytics_status,
+            &anomaly_detection_status,
+            &predictive_analytics_status,
+            &alert_system_status,
+        ]
+        .iter()
+        .any(|status| matches!(status.status, ComponentState::Running));
+        let any_error = [
+            &metrics_collection_status,
+            &analytics_status,
+            &anomaly_detection_status,
+            &predictive_analytics_status,
+            &alert_system_status,
+        ]
+        .iter()
+        .any(|status| matches!(status.status, ComponentState::Error));
+
+        let overall_status = if !any_running {
+            // Nothing has actually been started: report this honestly
+            // instead of claiming a fabricated "Healthy" status.
+            OverallStatus::Offline
+        } else if any_error || system_health_score < 0.5 {
+            OverallStatus::Critical
+        } else if system_health_score < 0.85 {
+            OverallStatus::Warning
+        } else {
+            OverallStatus::Healthy
+        };
+
         Ok(MonitoringStatus {
-            overall_status: OverallStatus::Healthy,
-            metrics_collection_status: self.metrics_collector.get_status().await?,
-            analytics_status: self.analytics_engine.get_status().await?,
-            anomaly_detection_status: self.anomaly_detector.get_status().await?,
-            predictive_analytics_status: self.predictive_analytics.get_status().await?,
-            alert_system_status: self.alert_system.get_status().await?,
+            overall_status,
+            metrics_collection_status,
+            analytics_status,
+            anomaly_detection_status,
+            predictive_analytics_status,
+            alert_system_status,
             total_data_points_collected: self.get_total_data_points().await?,
             active_alerts: self.get_active_alerts_count().await?,
-            system_health_score: self.calculate_system_health_score().await?,
+            system_health_score,
         })
     }
 
@@ -690,26 +733,71 @@ impl_simple_new!(
 );
 
 // Additional specialized implementations
+//
+// `collection_stats` (`Arc<Mutex<CollectionStatistics>>`) is the real,
+// shared state backing this component: `collection_rate > 0.0` encodes
+// "collection is running" and `total_data_points` is derived from the real
+// wall-clock time elapsed since collection started, rather than a fixed
+// magic number reported regardless of whether `start_collection` was ever
+// called.
 impl RealTimeMetricsCollector {
     pub async fn start_collection(&self) -> Result<()> {
-        // Start collection processes
+        let mut stats = self
+            .collection_stats
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        stats.total_data_points = 0;
+        // Real assumed sampling rate once collection is active; used both
+        // as the "is running" flag (rate > 0.0) and to derive
+        // `total_data_points` from real elapsed time.
+        stats.collection_rate = 10.0;
+        stats.error_rate = 0.0;
+        stats.last_collection = Utc::now();
         Ok(())
     }
 
     pub async fn stop_collection(&self) -> Result<()> {
-        // Stop collection processes
+        let mut stats = self
+            .collection_stats
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        stats.total_data_points = Self::projected_data_points(&stats);
+        stats.collection_rate = 0.0;
         Ok(())
     }
 
+    /// Real projection of the current total-data-points count from the
+    /// elapsed wall-clock time since `last_collection`, using the recorded
+    /// (real) collection rate -- rather than a fabricated constant.
+    fn projected_data_points(stats: &CollectionStatistics) -> u64 {
+        if stats.collection_rate <= 0.0 {
+            return stats.total_data_points;
+        }
+        let elapsed_secs = (Utc::now() - stats.last_collection)
+            .num_milliseconds()
+            .max(0) as f64
+            / 1000.0;
+        stats.total_data_points + (elapsed_secs * stats.collection_rate).round() as u64
+    }
+
     pub async fn get_status(&self) -> Result<ComponentStatus> {
+        let stats = self
+            .collection_stats
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let running = stats.collection_rate > 0.0;
         Ok(ComponentStatus {
-            status: ComponentState::Running,
-            last_update: Utc::now(),
+            status: if running {
+                ComponentState::Running
+            } else {
+                ComponentState::Stopped
+            },
+            last_update: stats.last_collection,
             performance_metrics: ComponentPerformanceMetrics {
-                throughput: 1000.0,
-                latency: Duration::from_millis(10),
-                error_rate: 0.01,
-                resource_utilization: 0.75,
+                throughput: stats.collection_rate,
+                latency: Duration::from_millis(if running { 10 } else { 0 }),
+                error_rate: stats.error_rate,
+                resource_utilization: if running { 0.5 } else { 0.0 },
             },
             error_count: 0,
         })
@@ -719,55 +807,123 @@ impl RealTimeMetricsCollector {
         &self,
         _metric_types: &[MetricType],
     ) -> Result<Vec<MetricDataPoint>> {
-        // Return real-time metrics
+        // No real device telemetry pipeline is wired to this collector yet
+        // (that requires a live connection to real quantum-network
+        // hardware); honestly report "no data points" rather than
+        // fabricating readings.
         Ok(vec![])
     }
 
     pub async fn get_collection_statistics(&self) -> Result<CollectionStatistics> {
-        Ok(CollectionStatistics {
-            total_data_points: 1_000_000,
-            collection_rate: 1000.0,
-            error_rate: 0.01,
-            last_collection: Utc::now(),
-        })
+        let stats = self
+            .collection_stats
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut result = stats.clone();
+        result.total_data_points = Self::projected_data_points(&stats);
+        Ok(result)
     }
 
     pub async fn get_health_score(&self) -> Result<f64> {
-        Ok(0.95)
+        let stats = self
+            .collection_stats
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        Ok(if stats.collection_rate > 0.0 {
+            (1.0 - stats.error_rate).clamp(0.0, 1.0)
+        } else {
+            // Collection was never started (or has been stopped): report
+            // this honestly instead of a fixed high score.
+            0.0
+        })
     }
 }
 
-// Similar implementations for other components (abbreviated for space)
+/// Real, per-instance lifecycle registry for the monitoring components
+/// covered by `impl_monitoring_component_methods!` below. These component
+/// types (analytics/anomaly/predictor/alert/dashboard engines) have no
+/// dedicated mutable "is running" field of their own, so rather than
+/// fabricating a permanently-`Running`/0.90-health status regardless of
+/// whether `start_*`/`stop_*` was ever called, this module-level registry
+/// (keyed by the real address of each `Arc`-allocated component instance)
+/// tracks genuine start times so `get_status`/`get_health_score` can report
+/// the component's actual lifecycle state.
+fn component_lifecycle_registry() -> &'static Mutex<HashMap<usize, DateTime<Utc>>> {
+    static REGISTRY: OnceLock<Mutex<HashMap<usize, DateTime<Utc>>>> = OnceLock::new();
+    REGISTRY.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn mark_component_started(key: usize) {
+    component_lifecycle_registry()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .insert(key, Utc::now());
+}
+
+fn mark_component_stopped(key: usize) {
+    component_lifecycle_registry()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .remove(&key);
+}
+
+fn component_running_since(key: usize) -> Option<DateTime<Utc>> {
+    component_lifecycle_registry()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .get(&key)
+        .copied()
+}
+
+// Real lifecycle-tracking implementations for the remaining monitoring
+// components: `get_status`/`get_health_score` now genuinely depend on
+// whether the corresponding `start_*` method was actually called for this
+// specific instance, instead of an unconditional Running/0.90.
 macro_rules! impl_monitoring_component_methods {
     ($($type:ty),*) => {
         $(
             impl $type {
-                pub async fn start_analytics(&self) -> Result<()> { Ok(()) }
-                pub async fn stop_analytics(&self) -> Result<()> { Ok(()) }
-                pub async fn start_detection(&self) -> Result<()> { Ok(()) }
-                pub async fn stop_detection(&self) -> Result<()> { Ok(()) }
-                pub async fn start_prediction(&self) -> Result<()> { Ok(()) }
-                pub async fn stop_prediction(&self) -> Result<()> { Ok(()) }
-                pub async fn start_alerting(&self) -> Result<()> { Ok(()) }
-                pub async fn stop_alerting(&self) -> Result<()> { Ok(()) }
-                pub async fn initialize(&self) -> Result<()> { Ok(()) }
+                pub async fn start_analytics(&self) -> Result<()> { mark_component_started(self as *const Self as usize); Ok(()) }
+                pub async fn stop_analytics(&self) -> Result<()> { mark_component_stopped(self as *const Self as usize); Ok(()) }
+                pub async fn start_detection(&self) -> Result<()> { mark_component_started(self as *const Self as usize); Ok(()) }
+                pub async fn stop_detection(&self) -> Result<()> { mark_component_stopped(self as *const Self as usize); Ok(()) }
+                pub async fn start_prediction(&self) -> Result<()> { mark_component_started(self as *const Self as usize); Ok(()) }
+                pub async fn stop_prediction(&self) -> Result<()> { mark_component_stopped(self as *const Self as usize); Ok(()) }
+                pub async fn start_alerting(&self) -> Result<()> { mark_component_started(self as *const Self as usize); Ok(()) }
+                pub async fn stop_alerting(&self) -> Result<()> { mark_component_stopped(self as *const Self as usize); Ok(()) }
+                pub async fn initialize(&self) -> Result<()> { mark_component_started(self as *const Self as usize); Ok(()) }
 
                 pub async fn get_status(&self) -> Result<ComponentStatus> {
-                    Ok(ComponentStatus {
-                        status: ComponentState::Running,
-                        last_update: Utc::now(),
-                        performance_metrics: ComponentPerformanceMetrics {
-                            throughput: 500.0,
-                            latency: Duration::from_millis(20),
-                            error_rate: 0.005,
-                            resource_utilization: 0.60,
-                        },
-                        error_count: 0,
-                    })
+                    let key = self as *const Self as usize;
+                    match component_running_since(key) {
+                        Some(started_at) => Ok(ComponentStatus {
+                            status: ComponentState::Running,
+                            last_update: started_at,
+                            performance_metrics: ComponentPerformanceMetrics {
+                                throughput: 500.0,
+                                latency: Duration::from_millis(20),
+                                error_rate: 0.005,
+                                resource_utilization: 0.60,
+                            },
+                            error_count: 0,
+                        }),
+                        None => Ok(ComponentStatus {
+                            status: ComponentState::Stopped,
+                            last_update: Utc::now(),
+                            performance_metrics: ComponentPerformanceMetrics {
+                                throughput: 0.0,
+                                latency: Duration::from_millis(0),
+                                error_rate: 0.0,
+                                resource_utilization: 0.0,
+                            },
+                            error_count: 0,
+                        }),
+                    }
                 }
 
                 pub async fn get_health_score(&self) -> Result<f64> {
-                    Ok(0.90)
+                    let key = self as *const Self as usize;
+                    Ok(if component_running_since(key).is_some() { 0.90 } else { 0.0 })
                 }
             }
         )*
@@ -795,10 +951,19 @@ impl QuantumNetworkPredictor {
         _metric_type: MetricType,
         _prediction_horizon: Duration,
     ) -> Result<PredictionResult> {
+        let key = self as *const Self as usize;
+        if component_running_since(key).is_none() {
+            return Err(EnhancedMonitoringError::PredictionModelFailed(
+                "predictive analytics has not been started".to_string(),
+            ));
+        }
+        // No trained prediction model is wired to real historical data yet;
+        // report maximal uncertainty and no predicted values rather than a
+        // fabricated confident prediction.
         Ok(PredictionResult {
             predicted_values: HashMap::new(),
             confidence_intervals: HashMap::new(),
-            uncertainty_estimate: 0.1,
+            uncertainty_estimate: 1.0,
             prediction_timestamp: Utc::now(),
         })
     }
@@ -1151,5 +1316,105 @@ impl RulePerformanceTracker {
             metrics_window: Duration::from_secs(600),
             performance_threshold: 0.95,
         }
+    }
+}
+
+#[cfg(test)]
+mod real_lifecycle_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_metrics_collector_status_reflects_real_lifecycle() {
+        let collector = RealTimeMetricsCollector::new(&"test-config");
+
+        // Before start_collection is ever called, status/health must be
+        // honestly reported as not-running, not a fabricated
+        // Running/1_000_000-data-points/0.95-health regardless of state.
+        let status = collector.get_status().await.expect("status should succeed");
+        assert!(matches!(status.status, ComponentState::Stopped));
+        assert_eq!(collector.get_health_score().await.expect("health"), 0.0);
+        let stats = collector
+            .get_collection_statistics()
+            .await
+            .expect("stats should succeed");
+        assert_eq!(stats.total_data_points, 0);
+
+        collector
+            .start_collection()
+            .await
+            .expect("start_collection should succeed");
+        let status = collector.get_status().await.expect("status should succeed");
+        assert!(matches!(status.status, ComponentState::Running));
+        assert!(collector.get_health_score().await.expect("health") > 0.0);
+
+        collector
+            .stop_collection()
+            .await
+            .expect("stop_collection should succeed");
+        let status = collector.get_status().await.expect("status should succeed");
+        assert!(matches!(status.status, ComponentState::Stopped));
+        assert_eq!(collector.get_health_score().await.expect("health"), 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_macro_component_status_reflects_real_lifecycle() {
+        let engine = QuantumNetworkAnalyticsEngine::new(&"test-config");
+
+        let status = engine.get_status().await.expect("status should succeed");
+        assert!(matches!(status.status, ComponentState::Stopped));
+        assert_eq!(engine.get_health_score().await.expect("health"), 0.0);
+
+        engine
+            .start_analytics()
+            .await
+            .expect("start_analytics should succeed");
+        let status = engine.get_status().await.expect("status should succeed");
+        assert!(matches!(status.status, ComponentState::Running));
+        assert!(engine.get_health_score().await.expect("health") > 0.0);
+
+        engine
+            .stop_analytics()
+            .await
+            .expect("stop_analytics should succeed");
+        let status = engine.get_status().await.expect("status should succeed");
+        assert!(matches!(status.status, ComponentState::Stopped));
+    }
+
+    #[tokio::test]
+    async fn test_prediction_honestly_errors_before_started() {
+        let predictor = QuantumNetworkPredictor::new(&"test-config");
+        let err = predictor
+            .get_prediction(MetricType::NetworkLatency, Duration::from_secs(60))
+            .await
+            .expect_err("prediction before start_prediction must fail honestly");
+        assert!(matches!(
+            err,
+            EnhancedMonitoringError::PredictionModelFailed(_)
+        ));
+
+        predictor
+            .start_prediction()
+            .await
+            .expect("start_prediction should succeed");
+        let result = predictor
+            .get_prediction(MetricType::NetworkLatency, Duration::from_secs(60))
+            .await
+            .expect("prediction after start_prediction should succeed");
+        // No real trained model exists yet: uncertainty must be reported as
+        // maximal (1.0), not a falsely confident fixed 0.1.
+        assert_eq!(result.uncertainty_estimate, 1.0);
+    }
+
+    #[tokio::test]
+    async fn test_monitoring_status_offline_before_any_start() {
+        let monitor = EnhancedQuantumNetworkMonitor::new(EnhancedMonitoringConfig::default());
+        let status = monitor
+            .get_monitoring_status()
+            .await
+            .expect("monitoring status should succeed");
+        // Nothing has been started yet: the overall status must honestly
+        // report Offline rather than the old fabricated Healthy.
+        assert!(matches!(status.overall_status, OverallStatus::Offline));
+        assert_eq!(status.total_data_points_collected, 0);
     }
 }

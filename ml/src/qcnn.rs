@@ -5,6 +5,7 @@
 
 use crate::error::MLError;
 use quantrs2_circuit::prelude::*;
+use quantrs2_sim::optimized_simple::OptimizedStateVector;
 use scirs2_core::Complex64 as Complex;
 use std::f64::consts::PI;
 
@@ -137,7 +138,7 @@ impl QuantumPooling {
                     if end_idx > start_idx + 1 {
                         // Apply entangling gates between qubits in pool
                         for j in start_idx..end_idx - 1 {
-                            circuit.cnot(active_qubits[j], active_qubits[j + 1]);
+                            circuit.cnot(active_qubits[j], active_qubits[j + 1])?;
                         }
                     }
                 }
@@ -205,10 +206,7 @@ impl QCNN {
         let mut circuit = Circuit::<MAX_QUBITS>::new();
         let mut active_qubits: Vec<usize> = (0..self.num_qubits).collect();
 
-        // Initialize with input state (simplified)
-        // In practice, we'd use amplitude encoding
-
-        // Apply convolutional and pooling layers
+        // Build the convolutional and pooling layers as a real gate sequence.
         for (conv_filter, pooling) in &self.conv_layers {
             // Apply convolution with sliding window
             let mut pos = 0;
@@ -229,16 +227,96 @@ impl QCNN {
             }
         }
 
-        // For now, return a dummy output state
-        // In a real implementation, we would simulate the circuit
-        let output_size = 1 << active_qubits.len();
-        let mut output = vec![Complex::new(0.0, 0.0); output_size];
+        // --- Real simulation of U(params)|input_state⟩ ---------------------
+        // The circuit is applied to the supplied `input_state` (amplitude
+        // encoding) using a state-vector sized to `num_qubits`.
+        let num_qubits = self.num_qubits;
+        let dim = 1usize << num_qubits;
+        let mut simulator = OptimizedStateVector::new(num_qubits);
 
-        // Simple normalization
-        let norm = 1.0 / (output_size as f64).sqrt();
-        for i in 0..output_size {
-            output[i] = Complex::new(norm, 0.0);
+        // Load the (normalized) input state into the simulator.
+        {
+            let state = simulator.state_mut();
+            for value in state.iter_mut() {
+                *value = Complex::new(0.0, 0.0);
+            }
+            let mut norm_sq = 0.0;
+            for i in 0..dim.min(input_state.len()) {
+                state[i] = input_state[i];
+                norm_sq += input_state[i].norm_sqr();
+            }
+            if norm_sq > 1e-12 {
+                let inv_norm = 1.0 / norm_sq.sqrt();
+                for value in state.iter_mut() {
+                    *value *= inv_norm;
+                }
+            } else {
+                // Empty / zero input: fall back to |0...0⟩.
+                state[0] = Complex::new(1.0, 0.0);
+            }
         }
+
+        // Apply every gate of the circuit to the state vector.
+        for gate in circuit.gates() {
+            let qubits = gate.qubits();
+            match qubits.len() {
+                1 => {
+                    let target = qubits[0].id() as usize;
+                    if target >= num_qubits {
+                        return Err(MLError::InvalidParameter(format!(
+                            "gate targets qubit {target} outside the {num_qubits}-qubit register"
+                        )));
+                    }
+                    let matrix = gate.matrix()?;
+                    simulator.apply_single_qubit_gate(&matrix, target);
+                }
+                2 => {
+                    let control = qubits[0].id() as usize;
+                    let target = qubits[1].id() as usize;
+                    if control >= num_qubits || target >= num_qubits {
+                        return Err(MLError::InvalidParameter(format!(
+                            "two-qubit gate on ({control}, {target}) outside the \
+                             {num_qubits}-qubit register"
+                        )));
+                    }
+                    match gate.name() {
+                        "CNOT" | "CX" => simulator.apply_cnot(control, target),
+                        other => {
+                            return Err(MLError::InvalidParameter(format!(
+                                "QCNN forward pass does not support two-qubit gate '{other}'"
+                            )))
+                        }
+                    }
+                }
+                other => {
+                    return Err(MLError::InvalidParameter(format!(
+                        "QCNN forward pass does not support {other}-qubit gates"
+                    )))
+                }
+            }
+        }
+
+        // Read out the reduced state on the surviving (active) qubits by
+        // marginalising over the pooled-out qubits.  The returned amplitudes are
+        // √(marginal probability) per active-qubit basis state — the diagonal of
+        // the reduced density matrix expressed as a normalized real state vector.
+        let output_size = 1usize << active_qubits.len();
+        let mut probabilities = vec![0.0_f64; output_size];
+        let full_state = simulator.state();
+        for (full_idx, amplitude) in full_state.iter().enumerate() {
+            let mut active_index = 0usize;
+            for (bit, &qubit) in active_qubits.iter().enumerate() {
+                if (full_idx >> qubit) & 1 == 1 {
+                    active_index |= 1 << bit;
+                }
+            }
+            probabilities[active_index] += amplitude.norm_sqr();
+        }
+
+        let output = probabilities
+            .into_iter()
+            .map(|p| Complex::new(p.sqrt(), 0.0))
+            .collect();
 
         Ok(output)
     }

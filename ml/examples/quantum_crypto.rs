@@ -75,7 +75,7 @@ fn run_bb84_example() -> Result<()> {
         );
         let encrypted = quantrs2_ml::crypto::encrypt_with_qkd(message, key);
 
-        println!("Encrypted data: {:?}", &encrypted);
+        println!("Encrypted data: {:?}", encrypted);
 
         // Decrypt with Bob's key
         if let Some(bob_key) = qkd.get_bob_key() {

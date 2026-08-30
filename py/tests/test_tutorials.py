@@ -11,11 +11,22 @@ excluded from the default parametrize to keep CI fast.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from typing import List
 
 import pytest
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+
+# Directory containing the importable ``quantrs2`` package, resolved relative
+# to this test file (``py/tests`` -> ``py/python``) so the suite is portable
+# across machines and checkouts.
+_TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
+_PACKAGE_DIR = os.path.normpath(os.path.join(_TESTS_DIR, os.pardir, "python"))
 
 # ---------------------------------------------------------------------------
 # Tutorial names (module stem only)
@@ -49,7 +60,7 @@ def _run_tutorial(tutorial: str, timeout: int) -> subprocess.CompletedProcess:
         capture_output=True,
         text=True,
         timeout=timeout,
-        cwd="/Users/kitasan/work/quantrs/py/python",
+        cwd=_PACKAGE_DIR,
     )
 
 

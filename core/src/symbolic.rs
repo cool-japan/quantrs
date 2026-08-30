@@ -604,19 +604,21 @@ pub mod calculus {
         }
     }
 
-    /// Integrate an expression with respect to a variable
-    /// Note: The pure Rust implementation currently has limited integration support.
-    /// This function substitutes the value and attempts a simple antiderivative.
+    /// Indefinite integration of an expression with respect to `var`.
+    ///
+    /// Implements the tractable cases supported by the pure-Rust SymEngine backend, which
+    /// has no native `integrate`: the power rule (`∫x^n dx = x^(n+1)/(n+1)` for `n != -1`),
+    /// integration of constants (`∫c dx = c·x`), the linear variable (`∫x dx = x^2/2`),
+    /// linearity over sums (`∫(f+g) = ∫f + ∫g`), and pulling out constant factors
+    /// (`∫c·f = c·∫f`). The constant of integration is omitted (indefinite integral up to
+    /// a constant). Cases the backend cannot integrate symbolically (e.g. `1/x`,
+    /// transcendental functions) return an honest [`QuantRS2Error::UnsupportedOperation`]
+    /// rather than the unchanged input.
     pub fn integrate(expr: &SymbolicExpression, var: &str) -> QuantRS2Result<SymbolicExpression> {
         match expr {
             SymbolicExpression::SymEngine(sym_expr) => {
-                // The pure Rust implementation doesn't have full symbolic integration yet
-                // Return the original expression with a placeholder variable
-                let var_expr = SymEngine::symbol(var);
-                // Simple integration: for polynomials, we can compute it manually
-                // For now, just return the expression as-is with a note
-                let _ = var_expr; // Acknowledge the variable
-                Ok(SymbolicExpression::SymEngine(sym_expr.clone()))
+                let integrated = integrate_symengine(sym_expr, var)?;
+                Ok(SymbolicExpression::SymEngine(integrated.expand()))
             }
             _ => Err(QuantRS2Error::UnsupportedOperation(
                 "Integration requires SymEngine expressions".to_string(),
@@ -624,8 +626,11 @@ pub mod calculus {
         }
     }
 
-    /// Compute the limit of an expression
-    /// This is approximated by numerical evaluation near the limit point.
+    /// Compute the limit of an expression as `var` approaches `value`.
+    ///
+    /// This evaluates the limit by direct substitution, which is exact for functions that
+    /// are continuous at `value`. It does NOT resolve indeterminate forms (e.g. `0/0`,
+    /// `∞/∞`); for a continuous expression the substituted result is the true limit.
     pub fn limit(
         expr: &SymbolicExpression,
         var: &str,
@@ -633,7 +638,7 @@ pub mod calculus {
     ) -> QuantRS2Result<SymbolicExpression> {
         match expr {
             SymbolicExpression::SymEngine(sym_expr) => {
-                // Approximate limit by substitution
+                // Limit by substitution (exact for functions continuous at `value`).
                 let var_expr = SymEngine::symbol(var);
                 let value_expr = SymEngine::from(value);
                 let result = sym_expr.substitute(&var_expr, &value_expr);
@@ -664,6 +669,112 @@ pub mod calculus {
             }
             _ => Ok(expr.clone()),
         }
+    }
+
+    /// Recursive symbolic integration over the pure-Rust SymEngine expression tree.
+    ///
+    /// Implements the power rule, constant rule, sum linearity, and constant-factor
+    /// extraction. Returns an honest error for forms the backend cannot integrate.
+    fn integrate_symengine(expr: &SymEngine, var: &str) -> QuantRS2Result<SymEngine> {
+        let var_expr = SymEngine::symbol(var);
+
+        // Case 1: expression is constant with respect to `var` (does not contain it).
+        // ∫c dx = c·x
+        if !expr.free_symbols().contains(var) {
+            return Ok(expr.mul(&var_expr));
+        }
+
+        // Case 2: expression is exactly the integration variable. ∫x dx = x^2 / 2
+        if expr.as_symbol() == Some(var) {
+            let two = SymEngine::int(2);
+            return Ok(var_expr.pow(&two).div(&two));
+        }
+
+        // Case 3: sum — integrate term-by-term (linearity). ∫(f+g) = ∫f + ∫g
+        if let Some(terms) = expr.as_add() {
+            let mut acc: Option<SymEngine> = None;
+            for term in &terms {
+                let integrated = integrate_symengine(term, var)?;
+                acc = Some(match acc {
+                    Some(prev) => prev.add(&integrated),
+                    None => integrated,
+                });
+            }
+            return acc.ok_or_else(|| {
+                QuantRS2Error::UnsupportedOperation(
+                    "empty sum encountered during integration".to_string(),
+                )
+            });
+        }
+
+        // Case 4: product — pull out factors that are constant w.r.t. `var`.
+        // ∫(c·f) = c·∫f. Only one variable-dependent factor is supported.
+        if let Some(factors) = expr.as_mul() {
+            let mut constant_part: Option<SymEngine> = None;
+            let mut variable_part: Option<SymEngine> = None;
+            for factor in &factors {
+                if factor.free_symbols().contains(var) {
+                    if variable_part.is_some() {
+                        // Two variable-dependent factors (e.g. x·sin(x)) need integration
+                        // by parts, which the backend does not support.
+                        return Err(QuantRS2Error::UnsupportedOperation(format!(
+                            "symbolic integration of the product '{expr}' is not supported by the pure-Rust backend"
+                        )));
+                    }
+                    variable_part = Some(factor.clone());
+                } else {
+                    constant_part = Some(match constant_part {
+                        Some(prev) => prev.mul(factor),
+                        None => factor.clone(),
+                    });
+                }
+            }
+            let variable_part = variable_part.ok_or_else(|| {
+                QuantRS2Error::UnsupportedOperation(format!(
+                    "could not isolate a variable factor in product '{expr}'"
+                ))
+            })?;
+            let integrated_variable = integrate_symengine(&variable_part, var)?;
+            return Ok(match constant_part {
+                Some(c) => c.mul(&integrated_variable),
+                None => integrated_variable,
+            });
+        }
+
+        // Case 5: power — power rule for x^n with constant exponent n != -1.
+        // ∫x^n dx = x^(n+1)/(n+1)
+        if let Some((base, exponent)) = expr.as_pow() {
+            let base_is_var = base.as_symbol() == Some(var);
+            let exponent_const = !exponent.free_symbols().contains(var);
+            if base_is_var && exponent_const {
+                if let Some(n) = exponent.to_f64() {
+                    if (n + 1.0).abs() < 1e-12 {
+                        // ∫x^(-1) dx = ln|x|, which the backend cannot represent.
+                        return Err(QuantRS2Error::UnsupportedOperation(
+                            "integration of x^(-1) (yields ln|x|) is not supported by the pure-Rust backend"
+                                .to_string(),
+                        ));
+                    }
+                    // Build the new exponent exactly when integral, else as a float.
+                    let new_exponent = if (n - n.round()).abs() < 1e-12 {
+                        SymEngine::int(n.round() as i64 + 1)
+                    } else {
+                        SymEngine::float(n + 1.0).map_err(|e| {
+                            QuantRS2Error::ComputationError(format!(
+                                "failed to build exponent during integration: {e:?}"
+                            ))
+                        })?
+                    };
+                    let divisor = new_exponent.clone();
+                    return Ok(base.pow(&new_exponent).div(&divisor));
+                }
+            }
+        }
+
+        // No supported antiderivative form matched — be honest.
+        Err(QuantRS2Error::UnsupportedOperation(format!(
+            "symbolic integration of '{expr}' with respect to '{var}' is not supported by the pure-Rust backend"
+        )))
     }
 }
 
@@ -953,6 +1064,91 @@ mod tests {
         assert!(
             (result - 3.0).abs() < 1e-10,
             "expected 3.0 after substituting x=2 in x+1, got {result}"
+        );
+    }
+
+    #[cfg(feature = "symbolic")]
+    #[test]
+    fn test_calculus_integrate_power_rule() {
+        // ∫ 2x dx == x^2 (+C). Verify by differentiating the result back to 2x and by
+        // evaluating the antiderivative: at x=3 it must equal 9.
+        let expr = SymbolicExpression::from_symengine_str("2*x");
+        let integrated = calculus::integrate(&expr, "x").expect("integrating 2x should succeed");
+
+        // Evaluate the antiderivative at x = 3 -> expect 9 (x^2 with C=0).
+        let mut vars = HashMap::new();
+        vars.insert("x".to_string(), 3.0);
+        let value = integrated
+            .evaluate(&vars)
+            .expect("evaluating the integral should succeed");
+        assert!(
+            (value - 9.0).abs() < 1e-9,
+            "∫2x dx at x=3 should be 9 (x^2), got {value}"
+        );
+
+        // Differentiating the antiderivative must recover the integrand 2x.
+        let derivative =
+            calculus::diff(&integrated, "x").expect("differentiating the integral should succeed");
+        let d_value = derivative
+            .evaluate(&vars)
+            .expect("evaluating the derivative should succeed");
+        assert!(
+            (d_value - 6.0).abs() < 1e-9,
+            "d/dx of ∫2x dx at x=3 should be 6 (=2x), got {d_value}"
+        );
+
+        // It must NOT be the unchanged input (the old fabrication): the input 2x
+        // evaluated at x=3 is 6, the integral is 9 — they differ.
+        let input_value = expr
+            .evaluate(&vars)
+            .expect("evaluating the input should succeed");
+        assert!(
+            (value - input_value).abs() > 1e-6,
+            "integral must differ from the unchanged input"
+        );
+    }
+
+    #[cfg(feature = "symbolic")]
+    #[test]
+    fn test_calculus_integrate_constant_and_power() {
+        // ∫ x^2 dx -> x^3/3; evaluated at x=3 -> 9.
+        let expr = SymbolicExpression::from_symengine_str("x^2");
+        let integrated = calculus::integrate(&expr, "x").expect("integrating x^2 should succeed");
+        let mut vars = HashMap::new();
+        vars.insert("x".to_string(), 3.0);
+        let value = integrated
+            .evaluate(&vars)
+            .expect("evaluating x^3/3 should succeed");
+        assert!(
+            (value - 9.0).abs() < 1e-9,
+            "∫x^2 dx at x=3 should be 9 (x^3/3), got {value}"
+        );
+
+        // ∫ 5 dx -> 5x; at x=4 -> 20.
+        let c_expr = SymbolicExpression::from_symengine_str("5");
+        let c_int =
+            calculus::integrate(&c_expr, "x").expect("integrating a constant should succeed");
+        let mut vars4 = HashMap::new();
+        vars4.insert("x".to_string(), 4.0);
+        let c_val = c_int
+            .evaluate(&vars4)
+            .expect("evaluating 5x should succeed");
+        assert!(
+            (c_val - 20.0).abs() < 1e-9,
+            "∫5 dx at x=4 should be 20 (5x), got {c_val}"
+        );
+    }
+
+    #[cfg(feature = "symbolic")]
+    #[test]
+    fn test_calculus_integrate_unsupported_returns_error() {
+        // ∫ 1/x dx = ln|x|, which the pure-Rust backend cannot represent. It must return
+        // an HONEST error, not the unchanged input.
+        let expr = SymbolicExpression::from_symengine_str("x^(-1)");
+        let result = calculus::integrate(&expr, "x");
+        assert!(
+            result.is_err(),
+            "integrating x^(-1) must return an honest error, got {result:?}"
         );
     }
 }

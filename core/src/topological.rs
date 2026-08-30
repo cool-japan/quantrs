@@ -478,7 +478,14 @@ impl TopologicalQC {
         })
     }
 
-    /// Generate all valid fusion trees for given anyons
+    /// Generate all valid fusion trees for the given anyons.
+    ///
+    /// For two anyons every allowed fusion channel `c` (with `N^c_{ab} > 0`) yields one
+    /// basis state. For `n > 2` anyons we enumerate the standard left-linear fusion-tree
+    /// basis: intermediate charges `e₁ ∈ a₀×a₁`, `e₂ ∈ e₁×a₂`, …, `e_{n-1} ∈ e_{n-2}×a_{n-1}`,
+    /// keeping every consistent assignment. Each assignment becomes a [`FusionTree`]
+    /// whose `internal` vector holds `(e₁, …, e_{n-1})` (the last entry is the total
+    /// charge / root).
     fn generate_fusion_trees(
         model: &dyn AnyonModel,
         anyons: Vec<AnyonType>,
@@ -489,12 +496,10 @@ impl TopologicalQC {
 
         let mut trees = Vec::new();
 
-        // For two anyons, enumerate all possible fusion channels
         if anyons.len() == 2 {
+            // Two anyons: enumerate all possible fusion channels (preserved exactly).
             let a = anyons[0];
             let b = anyons[1];
-
-            // Find all possible fusion outcomes
             for c in model.anyon_types() {
                 if model.can_fuse(a, b, *c) {
                     let mut tree = FusionTree::new(anyons.clone());
@@ -503,12 +508,56 @@ impl TopologicalQC {
                 }
             }
         } else {
-            // For simplicity, just create one tree for more than 2 anyons
-            trees.push(FusionTree::new(anyons.clone()));
+            // n > 2: enumerate the left-linear fusion-tree basis by sequentially
+            // fusing in each anyon and branching over every allowed intermediate
+            // charge. `partial` accumulates the chain of intermediate charges.
+            fn enumerate(
+                model: &dyn AnyonModel,
+                anyons: &[AnyonType],
+                running: AnyonType,
+                next: usize,
+                partial: &mut Vec<AnyonType>,
+                out: &mut Vec<Vec<AnyonType>>,
+            ) {
+                if next == anyons.len() {
+                    out.push(partial.clone());
+                    return;
+                }
+                let b = anyons[next];
+                for c in model.anyon_types() {
+                    if model.can_fuse(running, b, *c) {
+                        partial.push(*c);
+                        enumerate(model, anyons, *c, next + 1, partial, out);
+                        partial.pop();
+                    }
+                }
+            }
+
+            let mut internals: Vec<Vec<AnyonType>> = Vec::new();
+            let mut partial = Vec::new();
+            // The first fusion is a₀ × a₁; branch over its outcomes, then recurse.
+            for c in model.anyon_types() {
+                if model.can_fuse(anyons[0], anyons[1], *c) {
+                    partial.push(*c);
+                    enumerate(model, &anyons, *c, 2, &mut partial, &mut internals);
+                    partial.pop();
+                }
+            }
+
+            for internal in internals {
+                let n = anyons.len();
+                let structure = (0..n - 1).map(|i| (i, i + 1)).collect();
+                trees.push(FusionTree {
+                    external: anyons.clone(),
+                    internal,
+                    structure,
+                });
+            }
         }
 
         if trees.is_empty() {
-            // If no valid fusion trees, create default
+            // No allowed fusion outcome: fall back to a single default tree so callers
+            // always have a basis to work with.
             trees.push(FusionTree::new(anyons));
         }
 
@@ -632,11 +681,125 @@ impl TopologicalGate {
         Self::new(braids, 4)
     }
 
-    /// Get the unitary matrix representation
-    pub fn to_matrix(&self, _model: &dyn AnyonModel) -> QuantRS2Result<Array2<Complex64>> {
-        // This would compute the full braiding matrix
-        // For now, return identity
-        Ok(Array2::eye(self.comp_dim))
+    /// Compute the unitary matrix representation of this braiding sequence in the
+    /// fusion-tree basis of `model`.
+    ///
+    /// Each [`BraidingOperation`] is a generator `σ_i` (or its inverse when
+    /// `over == false`) of the braid group. Its matrix in the fusion-tree basis is the
+    /// diagonal action of the model's R-symbols `R^{ab}_c` on the fusion channel `c`
+    /// of the braided pair `(a, b)`. The full sequence is the ordered product
+    /// `B = B(braid_{k-1}) ··· B(braid_0)` (later braids act last, i.e. on the left).
+    ///
+    /// The anyons are materialised as `n = (max index used) + 1` copies of the model's
+    /// primary non-vacuum anyon (the smallest-id anyon with quantum dimension `> 1`,
+    /// falling back to the first non-vacuum type), which is the standard setting for
+    /// braiding-based gates (e.g. σ anyons for the Ising model).
+    ///
+    /// Returns an [`QuantRS2Error::UnsupportedOperation`] if the model exposes no
+    /// non-vacuum anyon to braid (so no generator matrices can be built) — never a
+    /// silent identity.
+    pub fn to_matrix(&self, model: &dyn AnyonModel) -> QuantRS2Result<Array2<Complex64>> {
+        // Determine how many anyons the braid indices reference.
+        let n_anyons = self
+            .braids
+            .iter()
+            .map(|b| b.anyon1.max(b.anyon2) + 1)
+            .max()
+            .unwrap_or(0)
+            .max(2);
+
+        // Pick the anyon species to braid: prefer a non-Abelian anyon (d > 1),
+        // otherwise the first non-vacuum type.
+        let species = model
+            .anyon_types()
+            .iter()
+            .filter(|a| a.id != AnyonType::VACUUM.id)
+            .min_by(|a, b| {
+                let da = model.quantum_dimension(**a);
+                let db = model.quantum_dimension(**b);
+                // Prefer larger quantum dimension (non-Abelian), then smaller id.
+                db.partial_cmp(&da)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then(a.id.cmp(&b.id))
+            })
+            .copied()
+            .ok_or_else(|| {
+                QuantRS2Error::UnsupportedOperation(
+                    "anyon model exposes no non-vacuum anyon; cannot build braiding matrix"
+                        .to_string(),
+                )
+            })?;
+
+        let anyons = vec![species; n_anyons];
+
+        // Build the fusion-tree basis for these anyons.
+        let trees = TopologicalQC::generate_fusion_trees(model, anyons)?;
+        let dim = trees.len();
+        if dim == 0 {
+            return Err(QuantRS2Error::UnsupportedOperation(
+                "no valid fusion trees for the requested anyons; cannot build braiding matrix"
+                    .to_string(),
+            ));
+        }
+
+        // Start from the identity in the fusion-tree basis and apply each braid.
+        let mut result = Array2::<Complex64>::eye(dim);
+        for braid in &self.braids {
+            let b_mat = Self::braiding_generator_matrix(model, &trees, braid);
+            // Later braids act last (on the left of the accumulated product).
+            result = b_mat.dot(&result);
+        }
+
+        Ok(result)
+    }
+
+    /// Build the matrix of a single braid generator in the given fusion-tree basis.
+    ///
+    /// The action is diagonal in this basis: braiding anyons `(a, b)` that fuse to
+    /// channel `c` multiplies the amplitude by `R^{ab}_c` (or its conjugate for an
+    /// under-crossing). Trees whose indices fall outside the braided pair are left
+    /// invariant (diagonal entry `1`).
+    fn braiding_generator_matrix(
+        model: &dyn AnyonModel,
+        trees: &[FusionTree],
+        op: &BraidingOperation,
+    ) -> Array2<Complex64> {
+        let dim = trees.len();
+        let mut matrix = Array2::<Complex64>::zeros((dim, dim));
+
+        for (i, tree) in trees.iter().enumerate() {
+            if op.anyon1 < tree.external.len() && op.anyon2 < tree.external.len() {
+                let a = tree.external[op.anyon1];
+                let b = tree.external[op.anyon2];
+
+                let c = if let Some(charge) = tree.get_fusion_outcome() {
+                    charge
+                } else if tree.internal.is_empty() {
+                    tree.total_charge()
+                } else {
+                    tree.internal[0]
+                };
+
+                let r_symbol = if op.over {
+                    model.r_symbol(a, b, c)
+                } else {
+                    model.r_symbol(a, b, c).conj()
+                };
+
+                // If this pair cannot fuse to c the R-symbol is zero; fall back to a
+                // trivial (identity) action so the generator stays unitary on the
+                // physical subspace rather than annihilating the amplitude.
+                matrix[(i, i)] = if r_symbol.norm() > 1e-12 {
+                    r_symbol
+                } else {
+                    Complex64::new(1.0, 0.0)
+                };
+            } else {
+                matrix[(i, i)] = Complex64::new(1.0, 0.0);
+            }
+        }
+
+        matrix
     }
 }
 
@@ -806,6 +969,83 @@ mod tests {
         // Test anyon creation
         let anyons = toric.create_anyons(&[0, 1], &[2]);
         assert_eq!(anyons.len(), 3);
+    }
+
+    #[test]
+    fn test_topological_gate_to_matrix_is_real() {
+        // Site-5 proof: the braiding matrix of the cnot() sequence must be a genuine
+        // unitary that is NOT the identity (the old implementation returned eye()).
+        let model = IsingModel::new();
+        let gate = TopologicalGate::cnot();
+
+        let m = gate
+            .to_matrix(&model)
+            .expect("braiding matrix should be computable for the Ising model");
+
+        let dim = m.nrows();
+        assert!(dim >= 2, "fusion-tree space must be non-trivial, got {dim}");
+
+        // Unitarity: M† M ≈ I.
+        let mdag = m.mapv(|z| z.conj()).t().to_owned();
+        let prod = mdag.dot(&m);
+        let mut max_dev = 0.0_f64;
+        for i in 0..dim {
+            for j in 0..dim {
+                let expected = if i == j { 1.0 } else { 0.0 };
+                max_dev = max_dev.max((prod[(i, j)] - Complex64::new(expected, 0.0)).norm());
+            }
+        }
+        assert!(
+            max_dev < 1e-10,
+            "braiding matrix is not unitary, max deviation = {max_dev}"
+        );
+
+        // Not the identity: at least one off-diagonal or non-unit-phase diagonal entry.
+        let identity = Array2::<Complex64>::eye(dim);
+        let diff: f64 = m
+            .iter()
+            .zip(identity.iter())
+            .map(|(a, b)| (a - b).norm_sqr())
+            .sum::<f64>()
+            .sqrt();
+        assert!(
+            diff > 1e-6,
+            "braiding matrix collapsed to the identity (fabrication regression)"
+        );
+    }
+
+    #[test]
+    fn test_topological_gate_to_matrix_inverse_braid() {
+        // Over- and under-crossings must be inverses: σ_i · σ_i^{-1} = I.
+        let model = IsingModel::new();
+        let over = TopologicalGate::new(
+            vec![BraidingOperation {
+                anyon1: 0,
+                anyon2: 1,
+                over: true,
+            }],
+            2,
+        );
+        let under = TopologicalGate::new(
+            vec![BraidingOperation {
+                anyon1: 0,
+                anyon2: 1,
+                over: false,
+            }],
+            2,
+        );
+        let m_over = over.to_matrix(&model).expect("over braid");
+        let m_under = under.to_matrix(&model).expect("under braid");
+        let prod = m_under.dot(&m_over);
+        let dim = prod.nrows();
+        let mut dev = 0.0_f64;
+        for i in 0..dim {
+            for j in 0..dim {
+                let exp = if i == j { 1.0 } else { 0.0 };
+                dev = dev.max((prod[(i, j)] - Complex64::new(exp, 0.0)).norm());
+            }
+        }
+        assert!(dev < 1e-10, "σ·σ⁻¹ should be identity, deviation {dev}");
     }
 
     #[test]

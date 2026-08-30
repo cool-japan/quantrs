@@ -134,6 +134,225 @@ impl QuantumIsolationForest {
 
         Ok(threshold)
     }
+
+    /// `AnomalyMetrics`/`QuantumAnomalyMetrics` with every field set to
+    /// `f64::NAN`, for use where no ground truth (or no real quantum
+    /// circuit execution) is available to honestly back a value.
+    fn not_computed_metrics() -> AnomalyMetrics {
+        AnomalyMetrics {
+            auc_roc: f64::NAN,
+            auc_pr: f64::NAN,
+            precision: f64::NAN,
+            recall: f64::NAN,
+            f1_score: f64::NAN,
+            false_positive_rate: f64::NAN,
+            false_negative_rate: f64::NAN,
+            mcc: f64::NAN,
+            balanced_accuracy: f64::NAN,
+            quantum_metrics: QuantumAnomalyMetrics {
+                quantum_advantage: f64::NAN,
+                entanglement_utilization: f64::NAN,
+                circuit_efficiency: f64::NAN,
+                quantum_error_rate: f64::NAN,
+                coherence_utilization: f64::NAN,
+            },
+        }
+    }
+
+    /// Evaluate detection performance against ground-truth labels.
+    ///
+    /// Unlike `detect()` (which has no access to labels and therefore cannot
+    /// honestly report supervised metrics), this computes real
+    /// confusion-matrix-derived precision/recall/F1/MCC/balanced-accuracy/
+    /// false-positive-and-negative rates, plus rank-based AUC-ROC and a
+    /// precision-recall-curve AUC-PR, from the model's actual anomaly scores
+    /// and predicted labels versus `true_labels` (`1` = anomaly, `0` =
+    /// normal), mirroring the pattern used by `clustering::core`'s
+    /// `evaluate`. `quantum_metrics` remain `NaN` (see
+    /// [`Self::not_computed_metrics`]): this classical implementation has no
+    /// real circuit-execution statistics to report.
+    pub fn evaluate(
+        &self,
+        data: &Array2<f64>,
+        true_labels: &Array1<i32>,
+    ) -> Result<AnomalyMetrics> {
+        if data.nrows() != true_labels.len() {
+            return Err(MLError::InvalidInput(format!(
+                "true_labels length {} does not match number of samples {}",
+                true_labels.len(),
+                data.nrows()
+            )));
+        }
+        if data.nrows() == 0 {
+            return Err(MLError::InvalidInput("Empty data".to_string()));
+        }
+
+        let anomaly_scores = self.compute_scores(data)?;
+        let threshold = self.compute_threshold(&anomaly_scores)?;
+        let predicted_labels: Vec<i32> = anomaly_scores
+            .iter()
+            .map(|&score| if score > threshold { 1 } else { 0 })
+            .collect();
+
+        let mut true_positive = 0.0_f64;
+        let mut false_positive = 0.0_f64;
+        let mut true_negative = 0.0_f64;
+        let mut false_negative = 0.0_f64;
+        for (&predicted, &truth) in predicted_labels.iter().zip(true_labels.iter()) {
+            match (predicted > 0, truth > 0) {
+                (true, true) => true_positive += 1.0,
+                (true, false) => false_positive += 1.0,
+                (false, true) => false_negative += 1.0,
+                (false, false) => true_negative += 1.0,
+            }
+        }
+
+        let precision = if true_positive + false_positive > 0.0 {
+            true_positive / (true_positive + false_positive)
+        } else {
+            0.0
+        };
+        let recall = if true_positive + false_negative > 0.0 {
+            true_positive / (true_positive + false_negative)
+        } else {
+            0.0
+        };
+        let f1_score = if precision + recall > 0.0 {
+            2.0 * precision * recall / (precision + recall)
+        } else {
+            0.0
+        };
+        let false_positive_rate = if false_positive + true_negative > 0.0 {
+            false_positive / (false_positive + true_negative)
+        } else {
+            0.0
+        };
+        let false_negative_rate = if false_negative + true_positive > 0.0 {
+            false_negative / (false_negative + true_positive)
+        } else {
+            0.0
+        };
+        let specificity = if true_negative + false_positive > 0.0 {
+            true_negative / (true_negative + false_positive)
+        } else {
+            0.0
+        };
+        let balanced_accuracy = (recall + specificity) / 2.0;
+
+        let mcc_denominator = ((true_positive + false_positive)
+            * (true_positive + false_negative)
+            * (true_negative + false_positive)
+            * (true_negative + false_negative))
+            .sqrt();
+        let mcc = if mcc_denominator > 0.0 {
+            (true_positive * true_negative - false_positive * false_negative) / mcc_denominator
+        } else {
+            0.0
+        };
+
+        let auc_roc = Self::compute_auc_roc(&anomaly_scores, true_labels);
+        let auc_pr = Self::compute_auc_pr(&anomaly_scores, true_labels);
+
+        Ok(AnomalyMetrics {
+            auc_roc,
+            auc_pr,
+            precision,
+            recall,
+            f1_score,
+            false_positive_rate,
+            false_negative_rate,
+            mcc,
+            balanced_accuracy,
+            quantum_metrics: QuantumAnomalyMetrics {
+                quantum_advantage: f64::NAN,
+                entanglement_utilization: f64::NAN,
+                circuit_efficiency: f64::NAN,
+                quantum_error_rate: f64::NAN,
+                coherence_utilization: f64::NAN,
+            },
+        })
+    }
+
+    /// Real AUC-ROC via the rank-sum (Mann-Whitney U) formulation: rank all
+    /// scores ascending (averaging ranks for ties), then
+    /// `AUC = (sum of positive-class ranks - n_pos*(n_pos+1)/2) / (n_pos*n_neg)`.
+    fn compute_auc_roc(scores: &Array1<f64>, true_labels: &Array1<i32>) -> f64 {
+        let n_pos = true_labels.iter().filter(|&&l| l > 0).count();
+        let n_neg = true_labels.len() - n_pos;
+        if n_pos == 0 || n_neg == 0 {
+            return f64::NAN;
+        }
+
+        let mut indexed: Vec<(usize, f64)> = scores.iter().cloned().enumerate().collect();
+        indexed.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        let mut ranks = vec![0.0_f64; indexed.len()];
+        let mut i = 0;
+        while i < indexed.len() {
+            let mut j = i;
+            while j + 1 < indexed.len() && indexed[j + 1].1 == indexed[i].1 {
+                j += 1;
+            }
+            // Average rank (1-indexed) for the tied group [i, j].
+            let average_rank = ((i + 1) + (j + 1)) as f64 / 2.0;
+            for item in indexed.iter().take(j + 1).skip(i) {
+                ranks[item.0] = average_rank;
+            }
+            i = j + 1;
+        }
+
+        let rank_sum_positive: f64 = true_labels
+            .iter()
+            .enumerate()
+            .filter(|(_, &label)| label > 0)
+            .map(|(idx, _)| ranks[idx])
+            .sum();
+
+        let n_pos_f = n_pos as f64;
+        let n_neg_f = n_neg as f64;
+        (rank_sum_positive - n_pos_f * (n_pos_f + 1.0) / 2.0) / (n_pos_f * n_neg_f)
+    }
+
+    /// Real AUC-PR: sweep the score threshold from highest to lowest score,
+    /// tracking precision/recall at each step, and integrate the
+    /// precision-recall curve via the trapezoidal rule.
+    fn compute_auc_pr(scores: &Array1<f64>, true_labels: &Array1<i32>) -> f64 {
+        let n_pos = true_labels.iter().filter(|&&l| l > 0).count();
+        if n_pos == 0 {
+            return f64::NAN;
+        }
+
+        let mut indexed: Vec<(f64, i32)> = scores
+            .iter()
+            .cloned()
+            .zip(true_labels.iter().cloned())
+            .collect();
+        indexed.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+
+        let mut true_positive = 0.0_f64;
+        let mut false_positive = 0.0_f64;
+        let n_pos_f = n_pos as f64;
+
+        let mut points: Vec<(f64, f64)> = vec![(0.0, 1.0)]; // (recall, precision)
+        for (_, label) in &indexed {
+            if *label > 0 {
+                true_positive += 1.0;
+            } else {
+                false_positive += 1.0;
+            }
+            let recall = true_positive / n_pos_f;
+            let precision = true_positive / (true_positive + false_positive);
+            points.push((recall, precision));
+        }
+
+        let mut area = 0.0;
+        for window in points.windows(2) {
+            let (recall_a, precision_a) = window[0];
+            let (recall_b, precision_b) = window[1];
+            area += (recall_b - recall_a) * (precision_a + precision_b) / 2.0;
+        }
+        area
+    }
 }
 
 impl AnomalyDetectorTrait for QuantumIsolationForest {
@@ -168,25 +387,23 @@ impl AnomalyDetectorTrait for QuantumIsolationForest {
             },
         );
 
-        // Placeholder metrics
-        let metrics = AnomalyMetrics {
-            auc_roc: 0.85,
-            auc_pr: 0.80,
-            precision: 0.75,
-            recall: 0.70,
-            f1_score: 0.72,
-            false_positive_rate: 0.05,
-            false_negative_rate: 0.10,
-            mcc: 0.65,
-            balanced_accuracy: 0.80,
-            quantum_metrics: QuantumAnomalyMetrics {
-                quantum_advantage: 1.05,
-                entanglement_utilization: 0.60,
-                circuit_efficiency: 0.75,
-                quantum_error_rate: 0.03,
-                coherence_utilization: 0.70,
-            },
-        };
+        // `detect()` is unsupervised (no ground-truth labels are passed in),
+        // so the confusion-matrix-based metrics below (AUC-ROC/PR,
+        // precision/recall/F1, MCC, balanced accuracy, FPR/FNR) are not
+        // computable here -- they previously held fixed, entirely fabricated
+        // constants regardless of `data`. `f64::NAN` makes that honestly
+        // explicit (any comparison against a NaN is false, so a caller can't
+        // mistake it for a real score); call [`Self::evaluate`] with
+        // ground-truth labels to get real values for these fields.
+        //
+        // The quantum_metrics sub-fields are NaN for the same reason: this
+        // isolation forest's splits are chosen purely classically
+        // (`thread_rng().random_range`/`random::<f64>()` in `build_tree`);
+        // `quantum_split`/`quantum_splitting` are recorded flags that do not
+        // currently influence split selection, so there is no real quantum
+        // circuit execution here to derive "quantum advantage" or
+        // "entanglement utilization" from.
+        let metrics = Self::not_computed_metrics();
 
         Ok(AnomalyResult {
             anomaly_scores,
@@ -359,5 +576,124 @@ impl QuantumIsolationTree {
             return 1.0;
         }
         2.0 * (n as f64 - 1.0).ln() - 2.0 * (n - 1) as f64 / n as f64
+    }
+}
+
+#[cfg(test)]
+mod regression_tests {
+    use super::*;
+    use crate::anomaly_detection::config::QuantumAnomalyConfig;
+
+    fn make_forest() -> QuantumIsolationForest {
+        QuantumIsolationForest::new(QuantumAnomalyConfig::default()).expect("construction")
+    }
+
+    /// Two tight clusters plus a few far-away outliers, with ground-truth
+    /// labels marking the outliers as anomalies.
+    fn clustered_data_with_labels() -> (Array2<f64>, Array1<i32>) {
+        let mut rows = Vec::new();
+        for i in 0..20 {
+            let jitter = (i as f64) * 0.001;
+            rows.push(vec![0.0 + jitter, 0.0 + jitter]);
+        }
+        // Clear outliers, far from the cluster.
+        rows.push(vec![50.0, 50.0]);
+        rows.push(vec![-50.0, -50.0]);
+
+        let n = rows.len();
+        let data = Array2::from_shape_vec((n, 2), rows.concat()).expect("valid shape");
+        let mut labels = vec![0i32; n];
+        labels[n - 1] = 1;
+        labels[n - 2] = 1;
+        (data, Array1::from_vec(labels))
+    }
+
+    /// Regression test for the "detect() returns hardcoded metrics" bug:
+    /// `detect()` has no ground truth, so its metrics must be honestly
+    /// marked as not computed (NaN), not a fixed set of plausible-looking
+    /// constants that never reflect `data`.
+    #[test]
+    fn detect_reports_not_computed_metrics() {
+        let mut forest = make_forest();
+        let (data, _labels) = clustered_data_with_labels();
+        forest.fit(&data).expect("fit should succeed");
+
+        let result = forest.detect(&data).expect("detect should succeed");
+        assert!(result.metrics.auc_roc.is_nan());
+        assert!(result.metrics.precision.is_nan());
+        assert!(result.metrics.recall.is_nan());
+        assert!(result.metrics.f1_score.is_nan());
+        assert!(result.metrics.mcc.is_nan());
+        assert!(result.metrics.quantum_metrics.quantum_advantage.is_nan());
+    }
+
+    /// Regression test: `evaluate()` must compute real confusion-matrix
+    /// metrics from the actual scores/labels, not fabricate them. With two
+    /// obvious outliers correctly isolated, precision/recall should both be
+    /// meaningfully high (not the old hardcoded 0.75/0.70) and MCC positive.
+    #[test]
+    fn evaluate_computes_real_metrics_from_ground_truth() {
+        let mut forest = make_forest();
+        let (data, labels) = clustered_data_with_labels();
+        forest.fit(&data).expect("fit should succeed");
+
+        let metrics = forest
+            .evaluate(&data, &labels)
+            .expect("evaluate should succeed");
+
+        assert!(!metrics.precision.is_nan());
+        assert!(!metrics.recall.is_nan());
+        assert!(metrics.recall > 0.0, "recall was {}", metrics.recall);
+        assert!(
+            metrics.auc_roc > 0.5,
+            "expected better-than-random AUC-ROC for obviously separated \
+             outliers, got {}",
+            metrics.auc_roc
+        );
+        assert!(
+            metrics.mcc > 0.0,
+            "expected positive MCC for a model that isolates real outliers, got {}",
+            metrics.mcc
+        );
+        // Quantum metrics remain honestly unmeasured: no real circuit
+        // execution backs them in this classical implementation.
+        assert!(metrics.quantum_metrics.quantum_advantage.is_nan());
+    }
+
+    #[test]
+    fn evaluate_rejects_mismatched_label_length() {
+        let mut forest = make_forest();
+        let (data, _labels) = clustered_data_with_labels();
+        forest.fit(&data).expect("fit should succeed");
+
+        let wrong_labels = Array1::from_vec(vec![0i32, 1]);
+        assert!(forest.evaluate(&data, &wrong_labels).is_err());
+    }
+
+    #[test]
+    fn auc_roc_is_perfect_for_perfectly_separated_scores() {
+        // Scores strictly increasing with the positive class perfectly
+        // ranked above the negative class: AUC-ROC must be exactly 1.0.
+        let scores = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.9, 1.0]);
+        let labels = Array1::from_vec(vec![0, 0, 0, 1, 1]);
+        let auc = QuantumIsolationForest::compute_auc_roc(&scores, &labels);
+        assert!(
+            (auc - 1.0).abs() < 1e-9,
+            "expected perfect AUC-ROC, got {auc}"
+        );
+    }
+
+    #[test]
+    fn auc_roc_is_chance_for_symmetric_scores() {
+        // Positive-class scores {2, 3} and negative-class scores {1, 4}: of
+        // the 4 (positive, negative) pairs, exactly 2 have the positive
+        // score ranked above the negative one, giving AUC = 2/4 = 0.5.
+        let scores = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0]);
+        let labels = Array1::from_vec(vec![0, 1, 1, 0]);
+        let auc = QuantumIsolationForest::compute_auc_roc(&scores, &labels);
+        assert!(
+            (auc - 0.5).abs() < 1e-9,
+            "expected chance-level AUC-ROC, got {auc}"
+        );
     }
 }

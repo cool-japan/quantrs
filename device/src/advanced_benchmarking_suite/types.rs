@@ -1031,7 +1031,17 @@ impl AdvancedHardwareBenchmarkSuite {
                 *n_estimators,
                 *learning_rate,
             )?,
-            _ => (vec![0u8; 100], 0.8, 0.75),
+            // No real training routine is implemented for these model
+            // types yet; report that honestly instead of silently
+            // returning a fake "trained" model (100 zero bytes) with a
+            // fixed, plausible-looking 0.8/0.75 score pair unrelated to
+            // `x_train`/`y_train`.
+            other => {
+                return Err(DeviceError::NotImplemented(format!(
+                    "ML model type {other:?} is not yet implemented; supported types are \
+                     LinearRegression, RandomForest, and GradientBoosting"
+                )));
+            }
         };
         let cv_scores = self.cross_validate(&x_train, &y_train, model_type)?;
         let predictions = Self::predict_with_model(&model_data, &x_test)?;
@@ -1401,4 +1411,69 @@ pub struct BootstrapConfig {
     pub confidence_level: f64,
     /// Bootstrap method
     pub method: BootstrapMethod,
+}
+
+#[cfg(test)]
+mod real_train_model_tests {
+    use super::*;
+    use crate::calibration::CalibrationManager;
+
+    async fn make_test_suite() -> AdvancedHardwareBenchmarkSuite {
+        let config = AdvancedBenchmarkConfig::default();
+        let calibration_manager = CalibrationManager::new();
+        let topology = crate::topology::HardwareTopology::linear_topology(4);
+        AdvancedHardwareBenchmarkSuite::new(config, calibration_manager, topology)
+            .await
+            .expect("AdvancedHardwareBenchmarkSuite creation should succeed")
+    }
+
+    fn make_test_features() -> Array2<f64> {
+        Array2::from_shape_vec(
+            (10, 3),
+            (0..30).map(|v| v as f64 * 0.1).collect::<Vec<f64>>(),
+        )
+        .expect("valid feature matrix shape")
+    }
+
+    #[tokio::test]
+    async fn test_train_model_unsupported_type_is_honest_error_not_fake_success() {
+        let suite = make_test_suite().await;
+        let features = make_test_features();
+
+        // NeuralNetwork has no real training routine implemented; this
+        // must honestly error instead of silently returning a fake
+        // "trained" model (100 zero bytes, fixed 0.8/0.75 scores).
+        let result = suite
+            .train_model(
+                &MLModelType::NeuralNetwork {
+                    hidden_layers: vec![4, 2],
+                },
+                &features,
+            )
+            .await;
+        assert!(result.is_err(), "expected an honest error, got {result:?}");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("NeuralNetwork") || err_msg.contains("not yet implemented"));
+    }
+
+    #[tokio::test]
+    async fn test_train_model_supported_types_still_succeed() {
+        let suite = make_test_suite().await;
+        let features = make_test_features();
+
+        for model_type in [
+            MLModelType::LinearRegression,
+            MLModelType::RandomForest { n_estimators: 5 },
+            MLModelType::GradientBoosting {
+                n_estimators: 5,
+                learning_rate: 0.1,
+            },
+        ] {
+            let result = suite.train_model(&model_type, &features).await;
+            assert!(
+                result.is_ok(),
+                "expected {model_type:?} to still succeed, got {result:?}"
+            );
+        }
+    }
 }

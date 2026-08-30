@@ -586,9 +586,52 @@ impl PerformanceMonitor {
         PerformanceSummary {
             average_gate_time,
             gates_per_second,
-            memory_efficiency: 0.85, // Would be calculated from actual metrics
-            parallelization_efficiency: 0.75, // Would be calculated from actual metrics
+            memory_efficiency: self.compute_memory_efficiency(),
+            parallelization_efficiency: self.compute_parallelization_efficiency(),
         }
+    }
+
+    /// Realized memory efficiency in `[0, 1]` from the monitor's own allocation
+    /// records: the fraction of allocations whose byte size had already been seen
+    /// (and could thus have been served from a reused buffer). Returns `0.0` when
+    /// no allocations have been recorded.
+    fn compute_memory_efficiency(&self) -> f64 {
+        if self.allocation_patterns.is_empty() {
+            return 0.0;
+        }
+        let mut seen_sizes: std::collections::HashSet<usize> = std::collections::HashSet::new();
+        let mut reusable = 0usize;
+        for (_, size, _) in &self.allocation_patterns {
+            if seen_sizes.contains(size) {
+                reusable += 1;
+            } else {
+                seen_sizes.insert(*size);
+            }
+        }
+        reusable as f64 / self.allocation_patterns.len() as f64
+    }
+
+    /// Parallelization efficiency in `[0, 1]`.
+    ///
+    /// True parallel efficiency (parallel speedup / thread count) requires
+    /// matched serial-vs-parallel execution timings, which this monitor does not
+    /// collect. To avoid fabricating a measurement we report `0.0` ("not
+    /// measured") unless throughput metrics carrying a real measured value have
+    /// been populated, in which case that value is normalized and returned.
+    fn compute_parallelization_efficiency(&self) -> f64 {
+        // `circuits_completed` is only non-zero once real throughput sampling has
+        // populated the metrics; without it there is no parallel signal to report.
+        if self.throughput_metrics.circuits_completed == 0 {
+            return 0.0;
+        }
+        // Normalize observed gate throughput against per-qubit throughput as a
+        // bounded, data-derived efficiency proxy.
+        let gates = self.throughput_metrics.gates_per_second;
+        let qubits = self.throughput_metrics.qubits_simulated_per_second;
+        if gates <= 0.0 || qubits <= 0.0 {
+            return 0.0;
+        }
+        (qubits / gates).clamp(0.0, 1.0)
     }
 }
 
@@ -612,10 +655,98 @@ impl MemoryTracker {
 
         MemorySummary {
             peak_memory_usage,
-            buffer_pool_efficiency: 0.85, // Would be calculated from actual pool statistics
-            memory_leak_risk: 0.1,        // Would be calculated from growth patterns
-            allocation_efficiency: 0.9,   // Would be calculated from reuse patterns
+            buffer_pool_efficiency: self.compute_buffer_pool_efficiency(),
+            memory_leak_risk: self.compute_memory_leak_risk(),
+            allocation_efficiency: self.compute_allocation_efficiency(),
         }
+    }
+
+    /// Realized buffer-pool efficiency in `[0, 1]`.
+    ///
+    /// When explicit buffer-pool statistics have been recorded, this is the true
+    /// reuse rate `reuses / (allocations + reuses)`. Otherwise it is derived from
+    /// the observed allocation pattern as the fraction of allocations whose byte
+    /// size was already seen before (i.e. a buffer of that size could have been
+    /// reused from a pool). With no allocations recorded the result is `0.0`.
+    fn compute_buffer_pool_efficiency(&self) -> f64 {
+        let recorded =
+            self.buffer_pool_stats.total_allocations + self.buffer_pool_stats.total_reuses;
+        if recorded > 0 {
+            return self.buffer_pool_stats.total_reuses as f64 / recorded as f64;
+        }
+
+        if self.allocation_patterns.is_empty() {
+            return 0.0;
+        }
+
+        let mut seen_sizes: std::collections::HashSet<usize> = std::collections::HashSet::new();
+        let mut reusable = 0usize;
+        for (_, size, _) in &self.allocation_patterns {
+            if seen_sizes.contains(size) {
+                reusable += 1;
+            } else {
+                seen_sizes.insert(*size);
+            }
+        }
+        reusable as f64 / self.allocation_patterns.len() as f64
+    }
+
+    /// Allocation efficiency in `[0, 1]`: the share of total allocated bytes that
+    /// is still "live" at peak, i.e. `peak_memory / total_allocated_bytes`.
+    ///
+    /// A value near 1 means allocations are tightly clustered around the peak
+    /// working set (little churn); a low value means many transient allocations
+    /// were made and freed relative to the peak footprint. Returns `0.0` when no
+    /// allocations have been recorded.
+    fn compute_allocation_efficiency(&self) -> f64 {
+        if self.allocation_patterns.is_empty() {
+            return 0.0;
+        }
+        let total_allocated: usize = self
+            .allocation_patterns
+            .iter()
+            .map(|(_, size, _)| *size)
+            .sum();
+        if total_allocated == 0 {
+            return 0.0;
+        }
+        let peak = self.peak_memory.values().max().copied().unwrap_or(0);
+        (peak as f64 / total_allocated as f64).clamp(0.0, 1.0)
+    }
+
+    /// Memory-leak risk in `[0, 1]` derived from the cumulative-allocation growth
+    /// trend across the recorded window.
+    ///
+    /// The allocation sizes are split into a first and second half (ordered by
+    /// record time); the risk is the normalized positive growth of mean
+    /// allocation size from the first half to the second. Sustained growth in
+    /// allocation size is the in-process signal of a leak. Fewer than two samples
+    /// (no trend observable) yields `0.0`.
+    fn compute_memory_leak_risk(&self) -> f64 {
+        if self.leak_detection.memory_growth_rate > 0.0 {
+            return self.leak_detection.memory_growth_rate.clamp(0.0, 1.0);
+        }
+
+        let count = self.allocation_patterns.len();
+        if count < 2 {
+            return 0.0;
+        }
+        let mid = count / 2;
+        let first_sum: usize = self.allocation_patterns[..mid]
+            .iter()
+            .map(|(_, size, _)| *size)
+            .sum();
+        let second_sum: usize = self.allocation_patterns[mid..]
+            .iter()
+            .map(|(_, size, _)| *size)
+            .sum();
+        let first_mean = first_sum as f64 / mid.max(1) as f64;
+        let second_mean = second_sum as f64 / (count - mid).max(1) as f64;
+        if first_mean <= 0.0 {
+            return 0.0;
+        }
+        let growth = (second_mean - first_mean) / first_mean;
+        growth.clamp(0.0, 1.0)
     }
 }
 
@@ -632,13 +763,45 @@ impl CircuitAnalyzer {
                 .or_insert(0) += 1;
         }
 
+        // Real circuit depth (critical-path length) from gate ordering and
+        // per-qubit dependencies. Previously this was left at 0, which made the
+        // depth-based health score and depth analysis report meaningless values.
+        self.complexity_metrics.depth = Self::compute_circuit_depth(circuit);
+
         // Calculate complexity score
         self.complexity_metrics.entanglement_measure = self.calculate_entanglement_measure();
         self.complexity_metrics.parallelization_potential =
-            self.calculate_parallelization_potential();
+            self.calculate_parallelization_potential(circuit);
 
         // Calculate overall health score
         self.health_score = self.calculate_circuit_health();
+    }
+
+    /// Compute the circuit depth (critical-path length) from the gate sequence.
+    ///
+    /// Each gate's depth is one more than the maximum depth currently assigned to
+    /// any qubit it acts on; the result is the deepest qubit track. This is the
+    /// standard layered-depth (ASAP) computation, a real function of gate order
+    /// and qubit usage.
+    fn compute_circuit_depth<const N: usize>(
+        circuit: &quantrs2_circuit::builder::Circuit<N>,
+    ) -> usize {
+        let mut qubit_depths: HashMap<u32, usize> = HashMap::new();
+        let mut max_depth = 0usize;
+        for gate in circuit.gates() {
+            let qubits = gate.qubits();
+            let input_depth = qubits
+                .iter()
+                .map(|q| qubit_depths.get(&q.id()).copied().unwrap_or(0))
+                .max()
+                .unwrap_or(0);
+            let new_depth = input_depth + 1;
+            for q in &qubits {
+                qubit_depths.insert(q.id(), new_depth);
+            }
+            max_depth = max_depth.max(new_depth);
+        }
+        max_depth
     }
 
     fn calculate_entanglement_measure(&self) -> f64 {
@@ -653,22 +816,28 @@ impl CircuitAnalyzer {
         two_qubit_gates as f64 / self.complexity_metrics.total_gates.max(1) as f64
     }
 
-    fn calculate_parallelization_potential(&self) -> f64 {
-        // Simplified calculation based on gate dependencies
-        // In a real implementation, this would analyze the circuit DAG
-        let single_qubit_gates = self
-            .gate_statistics
-            .iter()
-            .filter(|(name, _)| {
-                matches!(
-                    name.as_str(),
-                    "H" | "X" | "Y" | "Z" | "S" | "T" | "RX" | "RY" | "RZ"
-                )
-            })
-            .map(|(_, count)| *count)
-            .sum::<usize>();
-
-        single_qubit_gates as f64 / self.complexity_metrics.total_gates.max(1) as f64
+    /// Parallelization potential in `[0, 1]` derived from the real circuit DAG.
+    ///
+    /// Using the ASAP layered depth, the maximum achievable parallel width is
+    /// `total_gates / depth` (gates per layer). The potential is the fraction of
+    /// work that overlaps beyond the serial critical path:
+    /// `1 - depth / total_gates`. A purely sequential circuit (depth == gates)
+    /// scores 0; a fully parallel single-layer circuit approaches 1. Empty
+    /// circuits score 0.
+    fn calculate_parallelization_potential<const N: usize>(
+        &self,
+        circuit: &quantrs2_circuit::builder::Circuit<N>,
+    ) -> f64 {
+        let total_gates = self.complexity_metrics.total_gates;
+        if total_gates == 0 {
+            return 0.0;
+        }
+        let depth = if self.complexity_metrics.depth > 0 {
+            self.complexity_metrics.depth
+        } else {
+            Self::compute_circuit_depth(circuit)
+        };
+        (1.0 - depth as f64 / total_gates as f64).clamp(0.0, 1.0)
     }
 
     fn calculate_circuit_health(&self) -> f64 {
@@ -692,7 +861,8 @@ impl CircuitAnalyzer {
             gate_distribution: self.gate_statistics.clone(),
             depth_analysis: DepthAnalysis {
                 total_depth: self.complexity_metrics.depth,
-                critical_path_length: self.complexity_metrics.depth, // Simplified
+                // Layered (ASAP) depth equals the critical-path length.
+                critical_path_length: self.complexity_metrics.depth,
                 parallelization_opportunities: (self.complexity_metrics.parallelization_potential
                     * 10.0) as usize,
             },

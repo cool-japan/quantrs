@@ -18,8 +18,10 @@
 
 #[cfg(feature = "braket")]
 mod client {
+    use hmac::{Hmac, KeyInit, Mac};
     use reqwest::Client;
     use serde::{Deserialize, Serialize};
+    use sha2::{Digest, Sha256};
     use std::collections::HashMap;
     use std::fmt::Write;
     use std::time::{Duration, Instant};
@@ -27,6 +29,8 @@ mod client {
     use tokio::runtime::Runtime;
 
     use crate::ising::{IsingError, IsingModel, QuboModel};
+
+    type HmacSha256 = Hmac<Sha256>;
 
     /// Errors that can occur when interacting with AWS Braket API
     #[derive(Error, Debug)]
@@ -427,12 +431,10 @@ mod client {
         /// Get a list of available devices
         pub fn get_devices(&self) -> BraketResult<Vec<BraketDevice>> {
             let url = format!("https://braket.{}.amazonaws.com/devices", self.region);
+            let sig = self.sign_request("GET", "/devices", "", b"")?;
 
             self.runtime.block_on(async {
-                let response = self
-                    .client
-                    .get(&url)
-                    .header("Authorization", self.get_auth_header().await?)
+                let response = Self::apply_sigv4_headers(self.client.get(&url), &sig)
                     .send()
                     .await?;
 
@@ -636,16 +638,12 @@ mod client {
 
         /// Get task status
         pub fn get_task_status(&self, task_arn: &str) -> BraketResult<TaskResult> {
-            let url = format!(
-                "https://braket.{}.amazonaws.com/quantum-task/{}",
-                self.region, task_arn
-            );
+            let path = format!("/quantum-task/{task_arn}");
+            let url = format!("https://braket.{}.amazonaws.com{path}", self.region);
+            let sig = self.sign_request("GET", &path, "", b"")?;
 
             self.runtime.block_on(async {
-                let response = self
-                    .client
-                    .get(&url)
-                    .header("Authorization", self.get_auth_header().await?)
+                let response = Self::apply_sigv4_headers(self.client.get(&url), &sig)
                     .send()
                     .await?;
 
@@ -665,16 +663,12 @@ mod client {
 
         /// Cancel a running task
         pub fn cancel_task(&self, task_arn: &str) -> BraketResult<()> {
-            let url = format!(
-                "https://braket.{}.amazonaws.com/quantum-task/{}/cancel",
-                self.region, task_arn
-            );
+            let path = format!("/quantum-task/{task_arn}/cancel");
+            let url = format!("https://braket.{}.amazonaws.com{path}", self.region);
+            let sig = self.sign_request("POST", &path, "", b"")?;
 
             self.runtime.block_on(async {
-                let response = self
-                    .client
-                    .post(&url)
-                    .header("Authorization", self.get_auth_header().await?)
+                let response = Self::apply_sigv4_headers(self.client.post(&url), &sig)
                     .send()
                     .await?;
 
@@ -778,15 +772,15 @@ mod client {
         /// List recent tasks
         pub fn list_tasks(&self, limit: Option<usize>) -> BraketResult<Vec<TaskResult>> {
             let mut url = format!("https://braket.{}.amazonaws.com/quantum-tasks", self.region);
+            let mut query = String::new();
             if let Some(limit) = limit {
                 let _ = write!(url, "?limit={}", limit);
+                let _ = write!(query, "limit={}", limit);
             }
+            let sig = self.sign_request("GET", "/quantum-tasks", &query, b"")?;
 
             self.runtime.block_on(async {
-                let response = self
-                    .client
-                    .get(&url)
-                    .header("Authorization", self.get_auth_header().await?)
+                let response = Self::apply_sigv4_headers(self.client.get(&url), &sig)
                     .send()
                     .await?;
 
@@ -809,12 +803,10 @@ mod client {
         /// Get cost tracking information
         pub fn get_cost_summary(&self) -> BraketResult<serde_json::Value> {
             let url = format!("https://braket.{}.amazonaws.com/usage", self.region);
+            let sig = self.sign_request("GET", "/usage", "", b"")?;
 
             self.runtime.block_on(async {
-                let response = self
-                    .client
-                    .get(&url)
-                    .header("Authorization", self.get_auth_header().await?)
+                let response = Self::apply_sigv4_headers(self.client.get(&url), &sig)
                     .send()
                     .await?;
 
@@ -867,11 +859,13 @@ mod client {
                     serde_json::json!(readout_therm);
             }
 
+            // The signed payload hash must match exactly the bytes reqwest's
+            // `.json(&task_spec)` will serialize onto the wire.
+            let payload = serde_json::to_vec(&task_spec)?;
+            let sig = self.sign_request("POST", "/quantum-task", "", &payload)?;
+
             self.runtime.block_on(async {
-                let response = self
-                    .client
-                    .post(&url)
-                    .header("Authorization", self.get_auth_header().await?)
+                let response = Self::apply_sigv4_headers(self.client.post(&url), &sig)
                     .header("Content-Type", "application/json")
                     .json(&task_spec)
                     .send()
@@ -943,14 +937,278 @@ mod client {
             Ok(())
         }
 
-        /// Generate AWS authentication header
-        async fn get_auth_header(&self) -> BraketResult<String> {
-            // Simplified authentication - in practice would use AWS SDK
-            // This is a placeholder for proper AWS Signature Version 4
-            Ok(format!(
-                "AWS4-HMAC-SHA256 Credential={}/...",
-                self.credentials.0
-            ))
+        /// Compute the real AWS Signature Version 4 headers for a request.
+        ///
+        /// Implements the full SigV4 canonical-request / string-to-sign /
+        /// signing-key-derivation-chain algorithm (see the [AWS SigV4
+        /// spec](https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html))
+        /// using the access/secret key already stored in `self.credentials`
+        /// and HMAC-SHA256 from RustCrypto's `hmac`/`sha2` crates (never a
+        /// hand-rolled HMAC/SHA256). Returns the `Authorization` header value
+        /// together with the `X-Amz-Date` (and, for temporary credentials,
+        /// `X-Amz-Security-Token`) header values that must accompany it,
+        /// since the signature is only valid for the exact date/token pair it
+        /// was computed against.
+        fn sign_request(
+            &self,
+            method: &str,
+            path: &str,
+            query_string: &str,
+            payload: &[u8],
+        ) -> BraketResult<SigV4Headers> {
+            let (access_key, secret_key, session_token) = &self.credentials;
+            const SERVICE: &str = "braket";
+            let host = format!("braket.{}.amazonaws.com", self.region);
+
+            let now = chrono::Utc::now();
+            let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
+            let date_stamp = now.format("%Y%m%d").to_string();
+
+            let payload_hash = hex::encode(Sha256::digest(payload));
+
+            // Canonical headers, sorted lexicographically by lowercase name
+            // (host < x-amz-date < x-amz-security-token already holds here).
+            let mut canonical_headers = format!("host:{host}\nx-amz-date:{amz_date}\n");
+            let mut signed_headers = String::from("host;x-amz-date");
+            if let Some(token) = session_token {
+                let _ = write!(canonical_headers, "x-amz-security-token:{token}\n");
+                signed_headers.push_str(";x-amz-security-token");
+            }
+
+            let canonical_request = format!(
+                "{method}\n{}\n{}\n{canonical_headers}\n{signed_headers}\n{payload_hash}",
+                canonical_uri(path),
+                canonical_query_string(query_string),
+            );
+            let canonical_request_hash = hex::encode(Sha256::digest(canonical_request.as_bytes()));
+
+            let credential_scope = format!("{date_stamp}/{}/{SERVICE}/aws4_request", self.region);
+            let string_to_sign = format!(
+                "AWS4-HMAC-SHA256\n{amz_date}\n{credential_scope}\n{canonical_request_hash}"
+            );
+
+            // SigV4 signing-key derivation chain: kDate -> kRegion -> kService -> kSigning.
+            let k_date = hmac_sha256(
+                format!("AWS4{secret_key}").as_bytes(),
+                date_stamp.as_bytes(),
+            )?;
+            let k_region = hmac_sha256(&k_date, self.region.as_bytes())?;
+            let k_service = hmac_sha256(&k_region, SERVICE.as_bytes())?;
+            let k_signing = hmac_sha256(&k_service, b"aws4_request")?;
+            let signature = hex::encode(hmac_sha256(&k_signing, string_to_sign.as_bytes())?);
+
+            let authorization = format!(
+                "AWS4-HMAC-SHA256 Credential={access_key}/{credential_scope}, \
+                 SignedHeaders={signed_headers}, Signature={signature}"
+            );
+
+            Ok(SigV4Headers {
+                authorization,
+                amz_date,
+                security_token: session_token.clone(),
+            })
+        }
+
+        /// Attach the real SigV4 `Authorization`/`X-Amz-Date`
+        /// (/`X-Amz-Security-Token`) headers computed by [`Self::sign_request`]
+        /// to a request builder.
+        fn apply_sigv4_headers(
+            builder: reqwest::RequestBuilder,
+            sig: &SigV4Headers,
+        ) -> reqwest::RequestBuilder {
+            let builder = builder
+                .header("Authorization", &sig.authorization)
+                .header("X-Amz-Date", &sig.amz_date);
+            if let Some(token) = &sig.security_token {
+                builder.header("X-Amz-Security-Token", token)
+            } else {
+                builder
+            }
+        }
+    }
+
+    /// The real, per-request headers produced by [`BraketClient::sign_request`].
+    struct SigV4Headers {
+        /// The `Authorization` header value.
+        authorization: String,
+        /// The `X-Amz-Date` header value the signature was computed against.
+        amz_date: String,
+        /// The `X-Amz-Security-Token` header value, for temporary credentials.
+        security_token: Option<String>,
+    }
+
+    /// Compute `HMAC-SHA256(key, data)` via RustCrypto's `hmac`/`sha2` crates.
+    fn hmac_sha256(key: &[u8], data: &[u8]) -> BraketResult<Vec<u8>> {
+        let mut mac = HmacSha256::new_from_slice(key)
+            .map_err(|e| BraketError::AuthError(format!("invalid HMAC key: {e}")))?;
+        mac.update(data);
+        Ok(mac.finalize().into_bytes().to_vec())
+    }
+
+    /// URI-encode a single path segment or query component per the SigV4
+    /// canonicalization rules (RFC 3986 unreserved characters pass through
+    /// unescaped; everything else is percent-encoded).
+    fn uri_encode_component(component: &str) -> String {
+        let mut out = String::with_capacity(component.len());
+        for byte in component.bytes() {
+            match byte {
+                b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                    out.push(byte as char);
+                }
+                _ => {
+                    let _ = write!(out, "%{byte:02X}");
+                }
+            }
+        }
+        out
+    }
+
+    /// Canonical URI: each `/`-separated segment percent-encoded, slashes preserved.
+    fn canonical_uri(path: &str) -> String {
+        if path.is_empty() || path == "/" {
+            return "/".to_string();
+        }
+        path.split('/')
+            .map(uri_encode_component)
+            .collect::<Vec<_>>()
+            .join("/")
+    }
+
+    /// Canonical query string: parameters percent-encoded and sorted by name,
+    /// per the SigV4 spec.
+    fn canonical_query_string(query: &str) -> String {
+        let query = query.strip_prefix('?').unwrap_or(query);
+        if query.is_empty() {
+            return String::new();
+        }
+        let mut pairs: Vec<(String, String)> = query
+            .split('&')
+            .filter(|pair| !pair.is_empty())
+            .map(|pair| {
+                let mut parts = pair.splitn(2, '=');
+                let key = parts.next().unwrap_or_default();
+                let value = parts.next().unwrap_or_default();
+                (uri_encode_component(key), uri_encode_component(value))
+            })
+            .collect();
+        pairs.sort();
+        pairs
+            .into_iter()
+            .map(|(k, v)| format!("{k}={v}"))
+            .collect::<Vec<_>>()
+            .join("&")
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        fn test_client() -> BraketClient {
+            BraketClient::new("AKIAEXAMPLE", "secretkeyexample", "us-east-1")
+                .expect("client construction should succeed")
+        }
+
+        #[test]
+        fn sign_request_produces_a_well_formed_real_sigv4_header() {
+            let client = test_client();
+            let sig = client
+                .sign_request("GET", "/devices", "", b"")
+                .expect("signing should succeed");
+
+            assert!(sig
+                .authorization
+                .starts_with("AWS4-HMAC-SHA256 Credential=AKIAEXAMPLE/"));
+            assert!(sig.authorization.contains("SignedHeaders=host;x-amz-date"));
+
+            let signature_part = sig
+                .authorization
+                .rsplit("Signature=")
+                .next()
+                .expect("signature should be present");
+            assert_eq!(
+                signature_part.len(),
+                64,
+                "SHA256 HMAC signature must be 64 hex chars"
+            );
+            assert!(signature_part.chars().all(|c| c.is_ascii_hexdigit()));
+
+            // amz_date must be in the canonical ISO8601 basic format.
+            assert_eq!(sig.amz_date.len(), 16);
+            assert!(sig.amz_date.ends_with('Z'));
+        }
+
+        #[test]
+        fn sign_request_is_not_a_fixed_placeholder_it_varies_with_the_real_request() {
+            let client = test_client();
+            let sig_devices = client
+                .sign_request("GET", "/devices", "", b"")
+                .expect("signing should succeed");
+            let sig_usage = client
+                .sign_request("GET", "/usage", "", b"")
+                .expect("signing should succeed");
+            let sig_post = client
+                .sign_request("POST", "/devices", "", b"{}")
+                .expect("signing should succeed");
+
+            // The old placeholder was `"AWS4-HMAC-SHA256 Credential={access_key}/..."`
+            // for every single request regardless of method/path/body; a real
+            // signature must differ across genuinely different requests.
+            assert_ne!(sig_devices.authorization, sig_usage.authorization);
+            assert_ne!(sig_devices.authorization, sig_post.authorization);
+        }
+
+        #[test]
+        fn sign_request_is_deterministic_for_the_same_inputs_at_the_same_instant() {
+            // The signing-key derivation chain and HMAC must be pure functions
+            // of (secret key, date, region, service, canonical request): given
+            // the same date stamp, re-signing the same request must reproduce
+            // the same signature bit-for-bit.
+            let client = test_client();
+            let sig1 = client
+                .sign_request("GET", "/devices", "", b"")
+                .expect("signing should succeed");
+            let sig2 = client
+                .sign_request("GET", "/devices", "", b"")
+                .expect("signing should succeed");
+
+            // Both signed within the same wall-clock second in practice; if the
+            // date happens to roll over between calls this would legitimately
+            // differ, so only assert equality when the dates matched.
+            if sig1.amz_date == sig2.amz_date {
+                assert_eq!(sig1.authorization, sig2.authorization);
+            }
+        }
+
+        #[test]
+        fn canonical_uri_percent_encodes_reserved_characters_but_preserves_slashes() {
+            assert_eq!(canonical_uri(""), "/");
+            assert_eq!(canonical_uri("/devices"), "/devices");
+            assert_eq!(
+                canonical_uri("/quantum-task/arn:aws:braket:us-east-1:1234:task/abc"),
+                "/quantum-task/arn%3Aaws%3Abraket%3Aus-east-1%3A1234%3Atask/abc"
+            );
+        }
+
+        #[test]
+        fn canonical_query_string_sorts_and_encodes_parameters() {
+            assert_eq!(canonical_query_string(""), "");
+            assert_eq!(canonical_query_string("limit=5"), "limit=5");
+            assert_eq!(
+                canonical_query_string("b=2&a=1"),
+                "a=1&b=2",
+                "parameters must be sorted by name"
+            );
+        }
+
+        #[test]
+        fn hmac_sha256_matches_a_known_test_vector() {
+            // RFC 4231 test case 1: key = 20 bytes of 0x0b, data = "Hi There".
+            let key = vec![0x0bu8; 20];
+            let mac = hmac_sha256(&key, b"Hi There").expect("hmac should succeed");
+            assert_eq!(
+                hex::encode(mac),
+                "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7"
+            );
         }
     }
 }

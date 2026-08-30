@@ -368,27 +368,99 @@ impl Expression {
         }
     }
 
-    /// Extract a subexpression by its ID
+    /// Extract the single operand of a unary node identified by its operator name.
+    ///
+    /// The `op` string uses the same spelling as the `define_language!` tokens
+    /// (e.g. `"neg"`, `"sin"`, `"cos"`, `"exp"`, `"log"`, `"dagger"`). Returns
+    /// `None` when the root node is not the requested unary operator.
+    ///
+    /// This is the structural access used by [`crate::pattern`] matching: it walks
+    /// the real `RecExpr` rather than the textual representation, so it works for
+    /// arbitrarily nested expressions.
+    pub(crate) fn unary_arg(&self, op: &str) -> Option<Self> {
+        let inner_id = match (op, self.root()) {
+            ("neg", ExprLang::Neg([id]))
+            | ("inv", ExprLang::Inv([id]))
+            | ("abs", ExprLang::Abs([id]))
+            | ("sin", ExprLang::Sin([id]))
+            | ("cos", ExprLang::Cos([id]))
+            | ("tan", ExprLang::Tan([id]))
+            | ("exp", ExprLang::Exp([id]))
+            | ("log", ExprLang::Log([id]))
+            | ("sqrt", ExprLang::Sqrt([id]))
+            | ("asin", ExprLang::Asin([id]))
+            | ("acos", ExprLang::Acos([id]))
+            | ("atan", ExprLang::Atan([id]))
+            | ("sinh", ExprLang::Sinh([id]))
+            | ("cosh", ExprLang::Cosh([id]))
+            | ("tanh", ExprLang::Tanh([id]))
+            | ("re", ExprLang::Re([id]))
+            | ("im", ExprLang::Im([id]))
+            | ("conj", ExprLang::Conj([id]))
+            | ("trace", ExprLang::Trace([id]))
+            | ("dagger", ExprLang::Dagger([id]))
+            | ("det", ExprLang::Determinant([id]))
+            | ("transpose", ExprLang::Transpose([id])) => *id,
+            _ => return None,
+        };
+        Some(self.extract_subexpr(inner_id))
+    }
+
+    /// Extract both operands of a binary node identified by its operator name.
+    ///
+    /// The `op` string uses the same spelling as the `define_language!` tokens
+    /// (e.g. `"+"`, `"*"`, `"/"`, `"^"`, `"comm"`, `"anticomm"`, `"tensor"`).
+    /// Returns `None` when the root node is not the requested binary operator.
+    pub(crate) fn binary_args(&self, op: &str) -> Option<(Self, Self)> {
+        let (left_id, right_id) = match (op, self.root()) {
+            ("+", ExprLang::Add([l, r]))
+            | ("*", ExprLang::Mul([l, r]))
+            | ("/", ExprLang::Div([l, r]))
+            | ("^", ExprLang::Pow([l, r]))
+            | ("comm", ExprLang::Commutator([l, r]))
+            | ("anticomm", ExprLang::Anticommutator([l, r]))
+            | ("tensor", ExprLang::TensorProduct([l, r])) => (*l, *r),
+            _ => return None,
+        };
+        Some((
+            self.extract_subexpr(left_id),
+            self.extract_subexpr(right_id),
+        ))
+    }
+
+    /// Extract a subexpression by its ID.
+    ///
+    /// Builds a fresh, compact `RecExpr` containing *only* the nodes reachable
+    /// from `id` (its transitive children), in canonical post-order. Nodes that
+    /// precede `id` in the parent buffer but are not part of this subgraph are
+    /// excluded. Shared child nodes (a DAG) are copied once and reused, so the
+    /// extracted expression is canonical and two structurally-equal
+    /// subexpressions compare equal under [`PartialEq`].
     fn extract_subexpr(&self, id: Id) -> Self {
-        let target_idx = usize::from(id);
         let mut new_expr = RecExpr::default();
-
-        // Build a mapping from old IDs to new IDs
-        let mut id_map = std::collections::HashMap::new();
-
-        // Traverse the expression up to and including the target node
-        for (idx, node) in self.expr.as_ref().iter().enumerate() {
-            if idx > target_idx {
-                break;
-            }
-            let new_node = node
-                .clone()
-                .map_children(|old_id| *id_map.get(&old_id).unwrap_or(&old_id));
-            let new_id = new_expr.add(new_node);
-            id_map.insert(Id::from(idx), new_id);
-        }
-
+        let mut id_map: std::collections::HashMap<Id, Id> = std::collections::HashMap::new();
+        self.copy_reachable(id, &mut new_expr, &mut id_map);
         Self { expr: new_expr }
+    }
+
+    /// Recursively copy the node `old_id` and its children into `new_expr`,
+    /// returning the new `Id`. Children are copied first (post-order) so the
+    /// resulting buffer is well-formed; `id_map` memoizes already-copied nodes so
+    /// shared subgraphs are not duplicated.
+    fn copy_reachable(
+        &self,
+        old_id: Id,
+        new_expr: &mut RecExpr<ExprLang>,
+        id_map: &mut std::collections::HashMap<Id, Id>,
+    ) -> Id {
+        if let Some(&new_id) = id_map.get(&old_id) {
+            return new_id;
+        }
+        let node = self.expr[old_id].clone();
+        let remapped = node.map_children(|child| self.copy_reachable(child, new_expr, id_map));
+        let new_id = new_expr.add(remapped);
+        id_map.insert(old_id, new_id);
+        new_id
     }
 
     // =========================================================================

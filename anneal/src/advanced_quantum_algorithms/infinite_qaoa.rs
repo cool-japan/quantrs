@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 
 use super::error::{AdvancedQuantumError, AdvancedQuantumResult};
 use super::utils::{calculate_relative_improvement, normalize_parameters, validate_parameters};
-use crate::ising::IsingModel;
+use crate::ising::{IsingModel, QuboModel};
 use crate::simulator::{AnnealingParams, AnnealingResult, AnnealingSolution};
 
 /// Infinite-depth QAOA (∞-QAOA) optimizer
@@ -451,90 +451,61 @@ impl InfiniteDepthQAOA {
     where
         P: Clone + 'static,
     {
-        // For compatibility with the coordinator, convert to the expected format
-        if let Ok(ising_problem) = self.convert_to_ising(problem) {
-            let solution = self.optimize(&ising_problem)?;
-            match solution {
-                Ok(annealing_solution) => {
-                    let spins: Vec<i32> = annealing_solution
-                        .best_spins
-                        .iter()
-                        .map(|&s| i32::from(s))
-                        .collect();
-                    Ok(Ok(spins))
-                }
-                Err(err) => Ok(Err(err)),
+        // Convert the caller's problem to an Ising model, then optimize it.
+        let ising_problem = self.convert_to_ising(problem)?;
+        let solution = self.optimize(&ising_problem)?;
+        match solution {
+            Ok(annealing_solution) => {
+                let spins: Vec<i32> = annealing_solution
+                    .best_spins
+                    .iter()
+                    .map(|&s| i32::from(s))
+                    .collect();
+                Ok(Ok(spins))
             }
-        } else {
-            Err(AdvancedQuantumError::ParameterError(
-                "Cannot convert problem to Ising model".to_string(),
-            ))
+            Err(err) => Ok(Err(err)),
         }
     }
 
-    /// Convert generic problem to Ising model
+    /// Convert a supported problem type into an [`IsingModel`].
+    ///
+    /// The optimizer operates natively on Ising models. Inputs that already are an
+    /// `IsingModel` (owned or by reference) are used directly, and `QuboModel`
+    /// inputs are converted exactly via the standard `x = (1 + s)/2` substitution
+    /// (`QuboModel::to_ising`). The constant energy offset produced by that
+    /// conversion is dropped because it shifts every configuration's energy by the
+    /// same amount and therefore does not change the optimal spin assignment.
+    ///
+    /// Any other type is rejected with an honest error rather than being silently
+    /// replaced by fabricated problem data.
     fn convert_to_ising<P: 'static>(
         &self,
         problem: &P,
     ) -> Result<IsingModel, AdvancedQuantumError> {
-        // Try to downcast to known problem types
         use std::any::Any;
+        let any_problem = problem as &dyn Any;
 
-        // Check if it's already an Ising model
-        if let Some(ising) = (problem as &dyn Any).downcast_ref::<IsingModel>() {
+        // Already an Ising model (owned or reference).
+        if let Some(ising) = any_problem.downcast_ref::<IsingModel>() {
             return Ok(ising.clone());
         }
-
-        // Check if it's a reference to Ising model
-        if let Some(ising_ref) = (problem as &dyn Any).downcast_ref::<&IsingModel>() {
+        if let Some(ising_ref) = any_problem.downcast_ref::<&IsingModel>() {
             return Ok((*ising_ref).clone());
         }
 
-        // For other problem types, we need more sophisticated conversion
-        // For now, create a reasonable default problem for testing
-        let num_qubits = self.estimate_problem_size(problem);
-        let mut ising = IsingModel::new(num_qubits);
-
-        // Add random structure based on problem hash
-        let problem_hash = self.hash_problem(problem);
-        let mut rng = ChaCha8Rng::seed_from_u64(problem_hash);
-
-        // Add biases
-        for i in 0..num_qubits {
-            let bias = rng.random_range(-1.0..1.0);
-            ising
-                .set_bias(i, bias)
-                .map_err(AdvancedQuantumError::IsingError)?;
+        // QUBO models convert exactly to the Ising picture.
+        if let Some(qubo) = any_problem.downcast_ref::<QuboModel>() {
+            return Ok(qubo.to_ising().0);
+        }
+        if let Some(qubo_ref) = any_problem.downcast_ref::<&QuboModel>() {
+            return Ok((*qubo_ref).to_ising().0);
         }
 
-        // Add couplings with some sparsity
-        let coupling_probability = 0.3;
-        for i in 0..num_qubits {
-            for j in (i + 1)..num_qubits {
-                if rng.random::<f64>() < coupling_probability {
-                    let coupling = rng.random_range(-1.0..1.0);
-                    ising
-                        .set_coupling(i, j, coupling)
-                        .map_err(AdvancedQuantumError::IsingError)?;
-                }
-            }
-        }
-
-        Ok(ising)
-    }
-
-    /// Estimate problem size from generic type
-    const fn estimate_problem_size<P>(&self, _problem: &P) -> usize {
-        // In practice, would extract size from problem structure
-        // For now, use reasonable default
-        16
-    }
-
-    /// Generate hash for problem to ensure consistent conversion
-    const fn hash_problem<P>(&self, _problem: &P) -> u64 {
-        // In practice, would hash problem structure
-        // For now, use fixed seed for reproducibility
-        12_345
+        Err(AdvancedQuantumError::ParameterError(
+            "Unsupported problem type for infinite-depth QAOA: expected IsingModel or QuboModel; \
+             convert the problem to an IsingModel before solving"
+                .to_string(),
+        ))
     }
 
     /// Optimize using infinite-depth QAOA
@@ -807,7 +778,8 @@ impl InfiniteDepthQAOA {
         // Calculate approximate expectation values using quantum-inspired methods
         for i in 0..problem.num_qubits {
             if let Ok(bias) = problem.get_bias(i) {
-                energy += bias * self.estimate_qubit_expectation_improved(i, params, depth);
+                energy +=
+                    bias * self.estimate_qubit_expectation_improved(i, params, depth, problem);
             }
         }
 
@@ -816,7 +788,9 @@ impl InfiniteDepthQAOA {
                 if let Ok(coupling) = problem.get_coupling(i, j) {
                     if coupling.abs() > 1e-10 {
                         energy += coupling
-                            * self.estimate_coupling_expectation_improved(i, j, params, depth);
+                            * self.estimate_coupling_expectation_improved(
+                                i, j, params, depth, problem,
+                            );
                     }
                 }
             }
@@ -983,51 +957,44 @@ impl InfiniteDepthQAOA {
         expectation
     }
 
-    /// Estimate single qubit expectation value
-    fn estimate_qubit_expectation(&self, _qubit: usize, params: &[f64]) -> f64 {
-        // Simplified expectation value estimation
-        let depth = params.len() / 2;
-        let mut expectation = 0.0;
-
-        for d in 0..depth {
-            let gamma = params[2 * d];
-            let beta = params[2 * d + 1];
-
-            // Simple approximation
-            expectation += (gamma * beta).cos() / depth as f64;
+    /// Effective local (mean-field) field acting on `qubit`.
+    ///
+    /// Combines the qubit's own bias with the sum of its coupling strengths to all
+    /// other qubits. This is the standard mean-field local field `h_i + Σ_j J_ij`
+    /// and makes the large-system estimators genuinely problem- and qubit-aware.
+    fn local_field(&self, qubit: usize, problem: &IsingModel) -> f64 {
+        let mut field = problem.get_bias(qubit).unwrap_or(0.0);
+        for other in 0..problem.num_qubits {
+            if other == qubit {
+                continue;
+            }
+            field += problem.get_coupling(qubit, other).unwrap_or(0.0);
         }
-
-        expectation.tanh() // Keep in [-1, 1]
+        field
     }
 
-    /// Estimate two-qubit coupling expectation value
-    fn estimate_coupling_expectation(&self, qubit1: usize, qubit2: usize, params: &[f64]) -> f64 {
-        // Simplified two-qubit expectation
-        let exp1 = self.estimate_qubit_expectation(qubit1, params);
-        let exp2 = self.estimate_qubit_expectation(qubit2, params);
-
-        // Simple correlation approximation
-        exp1 * exp2 * 0.8 // Reduce correlation strength
-    }
-
-    /// Improved single qubit expectation value estimation
+    /// Mean-field single-qubit ⟨Z⟩ estimator for large systems.
+    ///
+    /// Propagates a single-qubit magnetization through the alternating QAOA layers
+    /// using the qubit's actual effective local field, so the estimate depends on
+    /// both the qubit index and the problem data.
     fn estimate_qubit_expectation_improved(
         &self,
         qubit: usize,
         params: &[f64],
         depth: usize,
+        problem: &IsingModel,
     ) -> f64 {
         // Enhanced expectation value estimation using QAOA theory
-        let mut expectation = 0.0;
         let mut state_prob_up = 0.5; // Start in equal superposition
+        let local_field = self.local_field(qubit, problem);
 
         for layer in 0..depth {
             let gamma = params[2 * layer];
             let beta = params[2 * layer + 1];
 
-            // Apply problem Hamiltonian effect (simplified single-qubit approximation)
-            // This would depend on the local field and neighborhood
-            let local_field = 0.0; // Would calculate from bias and neighbor coupling effects
+            // Apply problem Hamiltonian effect (single-qubit mean-field approximation)
+            // driven by the qubit's actual effective local field.
             state_prob_up = (0.5 * 2.0f64.mul_add(state_prob_up, -1.0))
                 .mul_add((gamma * local_field).cos(), 0.5);
 
@@ -1037,8 +1004,11 @@ impl InfiniteDepthQAOA {
             state_prob_up = 0.5f64.mul_add(z_expectation, 0.5);
         }
 
-        expectation = 2.0f64.mul_add(state_prob_up, -1.0); // Convert to Z expectation in [-1, 1]
-        expectation.tanh() // Ensure bounded
+        let expectation = 2.0f64.mul_add(state_prob_up, -1.0); // Convert to Z expectation in [-1, 1]
+                                                               // Bias the sign toward the energetically favorable orientation: a positive
+                                                               // local field lowers energy for a -1 spin, so nudge the magnetization with
+                                                               // the field direction to break the degeneracy of the symmetric estimator.
+        (expectation - local_field.tanh()).tanh()
     }
 
     /// Improved two-qubit coupling expectation value estimation
@@ -1048,10 +1018,11 @@ impl InfiniteDepthQAOA {
         qubit2: usize,
         params: &[f64],
         depth: usize,
+        problem: &IsingModel,
     ) -> f64 {
         // Enhanced two-qubit expectation using correlation functions
-        let exp1 = self.estimate_qubit_expectation_improved(qubit1, params, depth);
-        let exp2 = self.estimate_qubit_expectation_improved(qubit2, params, depth);
+        let exp1 = self.estimate_qubit_expectation_improved(qubit1, params, depth, problem);
+        let exp2 = self.estimate_qubit_expectation_improved(qubit2, params, depth, problem);
 
         // Calculate correlation based on QAOA dynamics
         let mut correlation_factor = 1.0;
@@ -1074,20 +1045,77 @@ impl InfiniteDepthQAOA {
         independent_correlation * qaoa_correlation
     }
 
-    /// Extract solution from optimized parameters
+    /// Extract a discrete spin configuration from the optimized QAOA parameters.
+    ///
+    /// For simulable problem sizes the full QAOA state is reconstructed with the
+    /// optimized angles (`|+⟩⊗n` followed by the alternating problem/mixer layers),
+    /// and the returned bit-string is the most-probable measurement outcome of that
+    /// state — a genuine, problem- and qubit-dependent readout. For larger systems
+    /// the mean-field, qubit-aware estimator (which uses each qubit's actual local
+    /// field) is used instead of an exponential-memory simulation.
     fn extract_solution_from_params(
         &self,
         params: &[f64],
         problem: &IsingModel,
     ) -> AdvancedQuantumResult<Vec<i8>> {
-        let mut solution = Vec::new();
-
-        for i in 0..problem.num_qubits {
-            let expectation = self.estimate_qubit_expectation(i, params);
-            solution.push(if expectation > 0.0 { 1 } else { -1 });
+        let num_qubits = problem.num_qubits;
+        if num_qubits == 0 {
+            return Ok(Vec::new());
         }
 
+        let depth = params.len() / 2;
+
+        // Simulable regime: rebuild the actual QAOA state and read it out.
+        if num_qubits <= 12 {
+            let mut state = self.initialize_plus_state(num_qubits);
+            for layer in 0..depth {
+                let gamma = params[2 * layer];
+                let beta = params[2 * layer + 1];
+                self.apply_problem_hamiltonian(&mut state, problem, gamma);
+                self.apply_mixer_hamiltonian(&mut state, num_qubits, beta);
+            }
+            return Ok(self.extract_spins_from_state(&state, num_qubits));
+        }
+
+        // Large-system regime: mean-field per-qubit magnetization sign, using the
+        // qubit-aware estimator (which incorporates each qubit's local field).
+        let mut solution = Vec::with_capacity(num_qubits);
+        for qubit in 0..num_qubits {
+            let expectation =
+                self.estimate_qubit_expectation_improved(qubit, params, depth, problem);
+            solution.push(if expectation >= 0.0 { 1 } else { -1 });
+        }
         Ok(solution)
+    }
+
+    /// Read a spin configuration out of a QAOA amplitude vector.
+    ///
+    /// Returns the spins of the most-probable computational basis state (the mode
+    /// of `|amplitude|²`). Bit `i` set corresponds to spin `+1`, cleared to `-1`,
+    /// matching the convention used throughout the energy evaluation. Using the
+    /// mode (rather than per-qubit marginals) correctly resolves degenerate,
+    /// spin-flip-symmetric ground states instead of collapsing them to a symmetric
+    /// average.
+    fn extract_spins_from_state(&self, state: &[Complex64], num_qubits: usize) -> Vec<i8> {
+        let mut best_index = 0usize;
+        let mut best_probability = -1.0;
+        for (index, amplitude) in state.iter().enumerate() {
+            let probability = amplitude.norm_sqr();
+            if probability > best_probability {
+                best_probability = probability;
+                best_index = index;
+            }
+        }
+
+        (0..num_qubits)
+            .map(|qubit| {
+                if (best_index >> qubit) & 1 == 1 {
+                    1i8
+                } else {
+                    -1i8
+                }
+            })
+            .collect()
     }
 
     /// Check convergence across depths
@@ -1187,6 +1215,130 @@ mod tests {
         for &param in &params {
             assert!(param >= 0.0 && param <= 2.0 * PI);
         }
+    }
+
+    #[test]
+    fn test_convert_to_ising_uses_actual_ising() {
+        let optimizer = create_infinite_qaoa_optimizer();
+        let mut ising = IsingModel::new(3);
+        ising.set_bias(0, 0.75).expect("set bias");
+        ising.set_coupling(1, 2, -0.5).expect("set coupling");
+
+        let converted = optimizer
+            .convert_to_ising(&ising)
+            .expect("Ising input should convert");
+        assert_eq!(converted.num_qubits, 3);
+        assert!((converted.get_bias(0).expect("bias") - 0.75).abs() < 1e-12);
+        assert!((converted.get_coupling(1, 2).expect("coupling") + 0.5).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_convert_to_ising_from_qubo() {
+        let optimizer = create_infinite_qaoa_optimizer();
+        // Build a small QUBO and confirm the derived Ising matches to_ising().
+        let mut qubo = QuboModel::new(2);
+        qubo.set_linear(0, 1.0).expect("set linear");
+        qubo.set_linear(1, -2.0).expect("set linear");
+        qubo.set_quadratic(0, 1, 0.5).expect("set quadratic");
+
+        let converted = optimizer
+            .convert_to_ising(&qubo)
+            .expect("QUBO input should convert");
+        let (expected, _offset) = qubo.to_ising();
+
+        assert_eq!(converted.num_qubits, expected.num_qubits);
+        for i in 0..expected.num_qubits {
+            assert!(
+                (converted.get_bias(i).expect("bias") - expected.get_bias(i).expect("bias")).abs()
+                    < 1e-12
+            );
+        }
+        assert!(
+            (converted.get_coupling(0, 1).expect("coupling")
+                - expected.get_coupling(0, 1).expect("coupling"))
+            .abs()
+                < 1e-12
+        );
+    }
+
+    #[test]
+    fn test_convert_to_ising_rejects_unsupported_type() {
+        let optimizer = create_infinite_qaoa_optimizer();
+        // A plain integer is neither an IsingModel nor a QuboModel.
+        let bogus: usize = 42;
+        let result = optimizer.convert_to_ising(&bogus);
+        assert!(
+            result.is_err(),
+            "unsupported problem types must return an honest error, not fabricated data"
+        );
+    }
+
+    #[test]
+    fn test_extract_spins_from_state_reads_amplitudes() {
+        let optimizer = create_infinite_qaoa_optimizer();
+        // A 2-qubit state concentrated on basis index 2 = binary 10:
+        // bit 0 = 0 -> spin -1, bit 1 = 1 -> spin +1.
+        let mut state = vec![Complex64::new(0.0, 0.0); 4];
+        state[2] = Complex64::new(1.0, 0.0);
+
+        let spins = optimizer.extract_spins_from_state(&state, 2);
+        assert_eq!(spins, vec![-1i8, 1i8]);
+
+        // A different mode yields different, qubit-specific spins (not uniform).
+        let mut state_b = vec![Complex64::new(0.0, 0.0); 4];
+        state_b[1] = Complex64::new(1.0, 0.0); // index 1 = binary 01 -> spins (+1, -1)
+        let spins_b = optimizer.extract_spins_from_state(&state_b, 2);
+        assert_eq!(spins_b, vec![1i8, -1i8]);
+        assert_ne!(spins, spins_b);
+    }
+
+    #[test]
+    fn test_extract_solution_derives_from_qaoa_state() {
+        let optimizer = create_infinite_qaoa_optimizer();
+        let mut problem = IsingModel::new(2);
+        problem.set_bias(0, 1.5).expect("set bias");
+        problem.set_bias(1, -2.0).expect("set bias");
+        problem.set_coupling(0, 1, 0.5).expect("set coupling");
+
+        // depth-2 parameters
+        let params = vec![0.7, 0.3, 0.4, 0.9];
+
+        // Independently reconstruct the QAOA state with the same primitives.
+        let mut state = optimizer.initialize_plus_state(2);
+        for layer in 0..2 {
+            optimizer.apply_problem_hamiltonian(&mut state, &problem, params[2 * layer]);
+            optimizer.apply_mixer_hamiltonian(&mut state, 2, params[2 * layer + 1]);
+        }
+        let expected = optimizer.extract_spins_from_state(&state, 2);
+
+        let solution = optimizer
+            .extract_solution_from_params(&params, &problem)
+            .expect("solution extraction should succeed");
+
+        // The extraction must come from the actual amplitudes, not a qubit-index
+        // independent formula.
+        assert_eq!(solution, expected);
+        assert_eq!(solution.len(), 2);
+        assert!(solution.iter().all(|&s| s == 1 || s == -1));
+    }
+
+    #[test]
+    fn test_solve_reports_consistent_spins_for_ising() {
+        // End-to-end: solving a 2-qubit Ising must return one spin per qubit
+        // (each ±1), derived from the actual state rather than a uniform vector.
+        let mut optimizer = create_custom_infinite_qaoa(
+            2,
+            DepthIncrementStrategy::Linear,
+            ParameterInitializationMethod::Heuristic,
+        );
+        let mut problem = IsingModel::new(2);
+        problem.set_bias(0, 1.0).expect("set bias");
+        problem.set_bias(1, -1.0).expect("set bias");
+
+        let result = optimizer.solve(&problem).expect("solve should succeed");
+        let spins = result.expect("annealing should produce a solution");
+        assert_eq!(spins.len(), 2);
+        assert!(spins.iter().all(|&s| s == 1 || s == -1));
     }
 
     #[test]

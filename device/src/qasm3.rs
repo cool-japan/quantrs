@@ -979,16 +979,100 @@ impl SwitchBuilder {
     }
 }
 
-/// Convert a QuantRS2 circuit to QASM 3.0
+/// Convert a `QuantRS2` circuit to QASM 3.0.
+///
+/// Iterates the circuit gates and emits one QASM 3.0 statement per gate using
+/// the standard OpenQASM 3.0 gate names. Parameterized rotations are emitted
+/// with their angle; gates with no QASM 3.0 standard-library equivalent produce
+/// an honest [`DeviceError::CircuitConversion`] naming the offending gate rather
+/// than being silently dropped.
 pub fn circuit_to_qasm3<const N: usize>(
-    _circuit: &quantrs2_circuit::prelude::Circuit<N>,
+    circuit: &quantrs2_circuit::prelude::Circuit<N>,
 ) -> DeviceResult<Qasm3Circuit> {
+    use quantrs2_core::gate::{multi::*, single::*, GateOp};
+
     let mut builder = Qasm3Builder::new(N);
 
-    // In a complete implementation, this would iterate through the circuit gates
-    // and convert each to QASM 3.0 statements
+    for gate in circuit.gates() {
+        let any = gate.as_any();
+        let qubits: Vec<usize> = gate.qubits().iter().map(|q| q.id() as usize).collect();
 
-    // For now, return a placeholder circuit
+        // Parameterized single-qubit rotations.
+        if let Some(g) = any.downcast_ref::<RotationX>() {
+            builder.gate_with_params("rx", &[g.theta], &qubits)?;
+            continue;
+        }
+        if let Some(g) = any.downcast_ref::<RotationY>() {
+            builder.gate_with_params("ry", &[g.theta], &qubits)?;
+            continue;
+        }
+        if let Some(g) = any.downcast_ref::<RotationZ>() {
+            builder.gate_with_params("rz", &[g.theta], &qubits)?;
+            continue;
+        }
+        if let Some(g) = any.downcast_ref::<PGate>() {
+            builder.gate_with_params("p", &[g.lambda], &qubits)?;
+            continue;
+        }
+        if let Some(g) = any.downcast_ref::<UGate>() {
+            builder.gate_with_params("u", &[g.theta, g.phi, g.lambda], &qubits)?;
+            continue;
+        }
+        // Parameterized two-qubit rotations.
+        if let Some(g) = any.downcast_ref::<CRX>() {
+            builder.gate_with_params("crx", &[g.theta], &qubits)?;
+            continue;
+        }
+        if let Some(g) = any.downcast_ref::<CRY>() {
+            builder.gate_with_params("cry", &[g.theta], &qubits)?;
+            continue;
+        }
+        if let Some(g) = any.downcast_ref::<CRZ>() {
+            builder.gate_with_params("crz", &[g.theta], &qubits)?;
+            continue;
+        }
+        if let Some(g) = any.downcast_ref::<RXX>() {
+            builder.gate_with_params("rxx", &[g.theta], &qubits)?;
+            continue;
+        }
+        if let Some(g) = any.downcast_ref::<RYY>() {
+            builder.gate_with_params("ryy", &[g.theta], &qubits)?;
+            continue;
+        }
+        if let Some(g) = any.downcast_ref::<RZZ>() {
+            builder.gate_with_params("rzz", &[g.theta], &qubits)?;
+            continue;
+        }
+
+        // Non-parameterized gates: map QuantRS2 names to QASM 3.0 standard names.
+        let qasm_name = match gate.name() {
+            "H" => "h",
+            "X" => "x",
+            "Y" => "y",
+            "Z" => "z",
+            "S" => "s",
+            "S†" => "sdg",
+            "T" => "t",
+            "T†" => "tdg",
+            "√X" => "sx",
+            "√X†" => "sxdg",
+            "I" => "id",
+            "CNOT" => "cx",
+            "CZ" => "cz",
+            "CY" => "cy",
+            "CH" => "ch",
+            "SWAP" => "swap",
+            "Toffoli" => "ccx",
+            "Fredkin" => "cswap",
+            other => {
+                return Err(DeviceError::CircuitConversion(format!(
+                    "Gate '{other}' has no OpenQASM 3.0 standard-library equivalent"
+                )));
+            }
+        };
+        builder.gate(qasm_name, &qubits)?;
+    }
+
     builder.build()
 }
 
@@ -1112,5 +1196,59 @@ mod tests {
         let qasm = circuit.to_string();
 
         assert!(qasm.contains("for i in [0:3]"));
+    }
+
+    #[test]
+    fn test_circuit_to_qasm3_emits_real_statements() {
+        use quantrs2_circuit::prelude::Circuit;
+
+        // H, CNOT, RZ(pi/2): 3 gates → expect exactly 3 gate statements.
+        let mut circuit = Circuit::<2>::new();
+        circuit.h(0).expect("add H");
+        circuit.cnot(0, 1).expect("add CNOT");
+        circuit.rz(1, std::f64::consts::PI / 2.0).expect("add RZ");
+
+        let qasm3 = circuit_to_qasm3(&circuit).expect("conversion should succeed");
+        let text = qasm3.to_string();
+
+        // The real gate statements must be present, not silently dropped.
+        assert!(text.contains("h q[0]"), "missing H: {text}");
+        assert!(text.contains("cx q[0], q[1]"), "missing CNOT: {text}");
+        assert!(text.contains("rz"), "missing RZ: {text}");
+
+        // Statement count must match the gate count (3 gates → 3 statements).
+        let gate_statements = qasm3
+            .statements
+            .iter()
+            .filter(|s| matches!(s, Qasm3Statement::Gate { .. }))
+            .count();
+        assert_eq!(
+            gate_statements,
+            circuit.gates().len(),
+            "QASM3 statement count must equal circuit gate count"
+        );
+    }
+
+    #[test]
+    fn test_circuit_to_qasm3_unsupported_gate_is_honest_error() {
+        use quantrs2_circuit::prelude::Circuit;
+        use quantrs2_core::gate::multi::XXPlusYY;
+
+        // XXPlusYY has no QASM 3.0 standard-library mapping here.
+        let mut circuit = Circuit::<2>::new();
+        circuit
+            .add_gate(XXPlusYY {
+                qubit1: quantrs2_core::qubit::QubitId(0),
+                qubit2: quantrs2_core::qubit::QubitId(1),
+                theta: 0.5,
+                beta: 0.25,
+            })
+            .expect("add XXPlusYY");
+
+        let result = circuit_to_qasm3(&circuit);
+        assert!(
+            matches!(result, Err(DeviceError::CircuitConversion(_))),
+            "expected honest CircuitConversion error, got {result:?}"
+        );
     }
 }

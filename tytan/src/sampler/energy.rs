@@ -630,71 +630,33 @@ pub fn hobo_compute_influence(state: &[bool], tensor: &ArrayD<f64>) -> Vec<f64> 
     g
 }
 
-/// Update the HOBO influence vector after flipping bit `k` to `new_val`.
+/// Update the HOBO influence vector after flipping bit `k`.
 ///
-/// For correctness and simplicity, this recomputes the full influence vector
-/// from the new state rather than performing an incremental update, which
-/// guarantees correctness for arbitrary tensor ranks.
+/// This now does exactly what its contract has always promised: it
+/// recomputes the full influence vector from the updated `state`, which is
+/// the only approach that is correct for arbitrary tensor ranks (an
+/// incremental update needs to know, for every other term touching `k`,
+/// whether each *other* variable in that term is currently active — which
+/// requires the full state anyway, so there is no cheaper correct
+/// alternative here). This delegates to [`hobo_recompute_influence`].
+///
+/// A previous version of this function tried to perform a partial
+/// incremental update without access to `state` and, for any tensor term
+/// involving a third active variable beyond `{q, k}`, silently treated that
+/// term as contributing zero — silently under-counting delta contributions
+/// for HOBO order ≥ 3. Requiring `state` explicitly removes that broken code
+/// path entirely.
 ///
 /// # Arguments
 ///
-/// * `g` – influence vector to update in-place (length `n`)
+/// * `g` – influence vector to overwrite (length must equal `state.len()`)
+/// * `state` – binary state vector *after* the flip has been applied
 /// * `tensor` – dynamic-dimensional HOBO coefficient tensor
-/// * `k` – index of the bit that was flipped
-/// * `new_val` – new value of `state[k]` after the flip
-pub fn hobo_update_influence(g: &mut [f64], tensor: &ArrayD<f64>, k: usize, new_val: bool) {
-    let n = g.len();
-    // Reconstruct the implicit state from the current g vector is not straightforward,
-    // so we recompute influence for all variables that could be affected by the flip.
-    // A flip of bit k changes g[q] for every q appearing in any term that also contains k.
-    // For correctness, recompute all entries via the delta of the flip.
-    let delta = if new_val { 1.0 } else { -1.0 };
-    for q in 0..n {
-        if q == k {
-            // g[k] itself: recompute via a synthetic state where we know x[k].
-            // We cannot reconstruct the full state from g alone, so we leave g[k]
-            // unchanged here and rely on the caller to update x[k] separately.
-            // The caller must call hobo_compute_influence after updating state.
-            continue;
-        }
-        // For each term containing both q and k, the contribution to g[q] changes
-        // by delta * product_of_other_active_vars.  We iterate the tensor.
-        let mut dg_q = 0.0f64;
-        for (indices, &coeff) in tensor.indexed_iter() {
-            if coeff == 0.0 {
-                continue;
-            }
-            let idx_slice = indices.slice();
-            // Check that both q and k appear in this term.
-            let has_q = idx_slice.contains(&q);
-            let has_k = idx_slice.contains(&k);
-            if !has_q || !has_k {
-                continue;
-            }
-            // Count occurrences of q in the index tuple.
-            let cnt_q = idx_slice.iter().filter(|&&i| i == q).count();
-            // Product of active vars that are neither q nor k.
-            let mut prod = 1.0f64;
-            let mut feasible = true;
-            for &idx in idx_slice {
-                if idx == q || idx == k {
-                    continue;
-                }
-                // We don't have the full state here; we use a conservative approach:
-                // mark this term as requiring caller to provide state.
-                // Because we do not have state here, this function uses the recompute strategy.
-                // This branch is a placeholder — see note below.
-                let _ = idx;
-                feasible = false;
-                prod = 0.0;
-                break;
-            }
-            if feasible {
-                dg_q += coeff * (cnt_q as f64) * prod * delta;
-            }
-        }
-        g[q] += dg_q;
-    }
+/// * `k` – index of the bit that was flipped (kept for API continuity; the
+///   recompute strategy does not need to special-case it)
+pub fn hobo_update_influence(g: &mut [f64], state: &[bool], tensor: &ArrayD<f64>, k: usize) {
+    let _ = k; // recomputation makes the flipped index irrelevant; kept for API stability
+    hobo_recompute_influence(g, state, tensor);
 }
 
 /// Fully recompute the HOBO influence vector from scratch given the updated state.
@@ -1211,5 +1173,63 @@ mod tests {
             (e_flat - e_array).abs() < 1e-12,
             "flat={e_flat}, array={e_array}"
         );
+    }
+
+    // ─── hobo_update_influence ─────────────────────────────────────────────
+
+    #[test]
+    fn test_hobo_update_influence_matches_full_recompute_for_order3() {
+        // A genuine order-3 HOBO tensor: every term T[i,j,l] involves three
+        // distinct variables, which is exactly the case the old
+        // `hobo_update_influence` silently under-counted (it zeroed out any
+        // term touching a third active variable beyond {q, k}).
+        let n = 5;
+        let mut tensor = ArrayD::<f64>::zeros(IxDyn(&[n, n, n]));
+        // A handful of nonzero 3-body coefficients.
+        tensor[[0, 1, 2]] = 1.5;
+        tensor[[2, 1, 0]] = 1.5;
+        tensor[[1, 2, 0]] = 1.5;
+        tensor[[1, 3, 4]] = -2.0;
+        tensor[[4, 3, 1]] = -2.0;
+        tensor[[3, 4, 1]] = -2.0;
+        tensor[[0, 2, 4]] = 0.75;
+
+        let mut state = vec![true, true, true, false, true];
+        let g = hobo_compute_influence(&state, &tensor);
+
+        // Flip bit k=1 and update influence via hobo_update_influence.
+        let k = 1;
+        state[k] = !state[k];
+        let mut g_updated = g.clone();
+        hobo_update_influence(&mut g_updated, &state, &tensor, k);
+
+        // The ground truth: a full recompute from the new state.
+        let g_expected = hobo_compute_influence(&state, &tensor);
+
+        for i in 0..n {
+            assert!(
+                (g_updated[i] - g_expected[i]).abs() < 1e-12,
+                "index {i}: updated={}, expected={}",
+                g_updated[i],
+                g_expected[i]
+            );
+        }
+    }
+
+    #[test]
+    fn test_hobo_update_influence_matches_hobo_recompute_influence() {
+        let n = 4;
+        let mut tensor = ArrayD::<f64>::zeros(IxDyn(&[n, n, n, n]));
+        tensor[[0, 1, 2, 3]] = 1.0;
+        tensor[[3, 2, 1, 0]] = 1.0;
+
+        let state = vec![true, false, true, true];
+        let mut g_via_update = vec![0.0; n];
+        hobo_update_influence(&mut g_via_update, &state, &tensor, 0);
+
+        let mut g_via_recompute = vec![0.0; n];
+        hobo_recompute_influence(&mut g_via_recompute, &state, &tensor);
+
+        assert_eq!(g_via_update, g_via_recompute);
     }
 }

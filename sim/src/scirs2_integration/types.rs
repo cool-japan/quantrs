@@ -1329,8 +1329,13 @@ pub enum VectorizationStrategy {
 pub struct SciRS2ParallelContext {
     /// Number of worker threads
     pub num_threads: usize,
-    /// Thread pool for parallel execution
-    pub thread_pool: ThreadPool,
+    /// Thread pool for parallel execution.
+    ///
+    /// Shared process-wide: building a pool spawns `num_threads` OS threads, and a
+    /// context is constructed by every `SciRS2Backend::new()` (hence by every
+    /// `StateVectorSimulator::new()`), so an owned pool per context would spawn
+    /// thousands of threads in any simulate-in-a-loop workload.
+    pub thread_pool: Arc<ThreadPool>,
     /// NUMA topology awareness
     pub numa_aware: bool,
 }

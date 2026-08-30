@@ -8,9 +8,7 @@
 //! - Integration with annealing schedules
 
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::random::prelude::*;
-use scirs2_core::random::ChaCha8Rng;
-use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -239,7 +237,12 @@ impl SyndromeDetector {
         let confidence = self.calculate_detection_confidence(&syndrome, &error_locations)?;
 
         // Update statistics
-        self.update_detection_stats(&syndrome, correction.as_ref(), start_time.elapsed());
+        self.update_detection_stats(
+            &syndrome,
+            correction.as_ref(),
+            confidence,
+            start_time.elapsed(),
+        );
 
         let metadata = SyndromeMetadata {
             detection_time: start_time.elapsed(),
@@ -540,10 +543,31 @@ impl SyndromeDetector {
             }
         }
 
+        // Derive decode-quality metrics from the correction weight relative to
+        // the code's correctable radius t = (d-1)/2 rather than reporting flat
+        // literals. A correction within the radius is fully trusted; trust
+        // decays as the weight approaches and exceeds t (where the simplified
+        // minimum-weight decoder is no longer guaranteed to succeed).
+        let correction_weight = corrections.len();
+        let correctable_radius = parameters.distance.saturating_sub(1) / 2;
+        let (confidence, success_probability) = if correction_weight == 0 {
+            (1.0, 1.0)
+        } else if correctable_radius == 0 {
+            // Distance-1 "code" cannot correct any error.
+            (0.0, 0.0)
+        } else {
+            let ratio = correction_weight as f64 / correctable_radius as f64;
+            // Within the radius (ratio <= 1) confidence stays high; beyond it the
+            // metric decays smoothly towards zero.
+            let confidence = (1.0 / (1.0 + (ratio - 1.0).max(0.0))).clamp(0.0, 1.0);
+            let success_probability = (1.0 - 0.5 * ratio).clamp(0.0, 1.0);
+            (confidence, success_probability)
+        };
+
         Ok(CorrectionOperation {
             pauli_corrections: corrections.clone(),
-            confidence: 0.8, // Default confidence
-            success_probability: 0.9,
+            confidence,
+            success_probability,
             required_resources: CorrectionResources {
                 num_measurements: syndrome.len(),
                 num_correction_gates: corrections.len(),
@@ -553,22 +577,73 @@ impl SyndromeDetector {
         })
     }
 
-    /// Measure syndrome from quantum state
+    /// Measure the stabilizer syndrome of a quantum state.
+    ///
+    /// Each stabilizer generator is stored in binary symplectic form: row `i`
+    /// has an `X` part in columns `[0, n)` and a `Z` part in columns
+    /// `[n, 2n)`, so the per-qubit Pauli is `I`, `X`, `Z`, or `Y = XZ` depending
+    /// on which bits are set. The syndrome bit is the genuine measurement
+    /// outcome of that multi-qubit Pauli `P` on the state vector: it is `0` when
+    /// the state lies in the `+1` eigenspace (`⟨ψ|P|ψ⟩ > 0`) and `1` when it
+    /// lies in the `−1` eigenspace, i.e. an error anticommuting with the
+    /// stabilizer has occurred. This reads the actual `state` rather than
+    /// fabricating coin-flips from the noise rate.
     fn measure_syndrome(&self, state: &QuantumState) -> QECResult<Vec<u8>> {
         let num_stabilizers = self.stabilizer_generators.nrows();
+        let num_columns = self.stabilizer_generators.ncols();
+        let num_qubits = num_columns / 2;
         let mut syndrome = vec![0u8; num_stabilizers];
 
-        // Simulate syndrome measurements
-        let mut rng = ChaCha8Rng::from_rng(&mut thread_rng());
-
         for i in 0..num_stabilizers {
-            // In a real implementation, this would measure the stabilizer
-            // For simulation, we'll generate syndrome based on noise model
-            let error_prob = self.config.noise_model.measurement_error_rate;
-            syndrome[i] = u8::from(rng.random::<f64>() < error_prob);
+            let expectation = self.stabilizer_expectation(state, i, num_qubits)?;
+            // +1 eigenvalue -> trivial (0); -1 eigenvalue -> error flagged (1).
+            // Threshold at zero so partially-mixed/noisy states still classify.
+            syndrome[i] = u8::from(expectation < 0.0);
         }
 
         Ok(syndrome)
+    }
+
+    /// Compute `Re⟨ψ|P_i|ψ⟩` for stabilizer generator `i` (a Hermitian
+    /// multi-qubit Pauli) on the state vector. Applies the Pauli string to a
+    /// working copy of the amplitudes and contracts with the original state.
+    fn stabilizer_expectation(
+        &self,
+        state: &QuantumState,
+        stabilizer_index: usize,
+        num_qubits: usize,
+    ) -> QECResult<f64> {
+        if num_qubits != state.num_qubits {
+            return Err(QuantumErrorCorrectionError::SyndromeError(format!(
+                "Stabilizer acts on {num_qubits} qubits but state has {}",
+                state.num_qubits
+            )));
+        }
+
+        // Apply the multi-qubit Pauli to a copy of the state, qubit by qubit.
+        let mut transformed = state.amplitudes.clone();
+        for qubit in 0..num_qubits {
+            let x_bit = self.stabilizer_generators[[stabilizer_index, qubit]] != 0;
+            let z_bit = self.stabilizer_generators[[stabilizer_index, num_qubits + qubit]] != 0;
+            let pauli = match (x_bit, z_bit) {
+                (false, false) => PauliType::I,
+                (true, false) => PauliType::X,
+                (false, true) => PauliType::Z,
+                (true, true) => PauliType::Y,
+            };
+            apply_pauli_to_amplitudes(&mut transformed, qubit, pauli);
+        }
+
+        // ⟨ψ|Pψ⟩ = Σ conj(ψ_k) · (Pψ)_k. For a Hermitian Pauli the result is
+        // real up to floating-point error, so take the real part.
+        let expectation: f64 = state
+            .amplitudes
+            .iter()
+            .zip(transformed.iter())
+            .map(|(psi, p_psi)| (psi.conj() * p_psi).re)
+            .sum();
+
+        Ok(expectation)
     }
 
     /// Check if syndrome is trivial (all zeros)
@@ -630,18 +705,68 @@ impl SyndromeDetector {
         syndrome_weight / syndrome.len() as f64
     }
 
-    /// Apply Pauli correction to state
+    /// Apply a single-qubit Pauli correction to the state vector in place.
+    ///
+    /// Acts on the amplitude vector (indexed so that qubit `q` is bit `q`, the
+    /// same convention as [`QuantumState::expectation_z`]):
+    ///
+    /// * `X` swaps the amplitudes of basis states that differ in qubit `q`;
+    /// * `Z` negates the amplitude of every basis state with qubit `q` set;
+    /// * `Y = iXZ`: `Y|0⟩ = i|1⟩`, `Y|1⟩ = −i|0⟩`;
+    /// * `I` is a no-op.
+    ///
+    /// Returns [`QuantumErrorCorrectionError::SyndromeError`] if the target
+    /// qubit is out of range for the state.
     fn apply_pauli_correction(
         &self,
-        state: &QuantumState,
+        state: &mut QuantumState,
         correction: &PauliCorrection,
     ) -> QECResult<()> {
-        // This would apply the actual Pauli operation in a real implementation
-        // For now, we'll just log the correction
-        println!(
-            "Applying {:?} correction to qubit {}",
-            correction.operation, correction.qubit
-        );
+        let qubit = correction.qubit;
+        if qubit >= state.num_qubits {
+            return Err(QuantumErrorCorrectionError::SyndromeError(format!(
+                "Correction targets qubit {qubit} but state has {} qubits",
+                state.num_qubits
+            )));
+        }
+
+        let bit = 1usize << qubit;
+        let dim = state.amplitudes.len();
+
+        match correction.operation {
+            PauliType::I => {}
+            PauliType::X => {
+                // Swap |..0..⟩ <-> |..1..⟩ for the target bit.
+                for index in 0..dim {
+                    if index & bit == 0 {
+                        let partner = index | bit;
+                        state.amplitudes.swap(index, partner);
+                    }
+                }
+            }
+            PauliType::Z => {
+                // Phase flip on the |1⟩ component of the target qubit.
+                for (index, amplitude) in state.amplitudes.iter_mut().enumerate() {
+                    if index & bit != 0 {
+                        *amplitude = -*amplitude;
+                    }
+                }
+            }
+            PauliType::Y => {
+                // Y|0> = i|1>, Y|1> = -i|0>.
+                let imag = scirs2_core::Complex64::new(0.0, 1.0);
+                for index in 0..dim {
+                    if index & bit == 0 {
+                        let partner = index | bit;
+                        let a0 = state.amplitudes[index];
+                        let a1 = state.amplitudes[partner];
+                        state.amplitudes[index] = -imag * a1;
+                        state.amplitudes[partner] = imag * a0;
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -650,6 +775,7 @@ impl SyndromeDetector {
         &mut self,
         syndrome: &[u8],
         correction: Option<&CorrectionOperation>,
+        confidence: f64,
         detection_time: Duration,
     ) {
         self.detection_stats.total_measurements += 1;
@@ -670,7 +796,9 @@ impl SyndromeDetector {
             syndrome: syndrome.to_vec(),
             error_locations: correction.map(|c| self.extract_error_locations(c)),
             correction_applied: correction.cloned(),
-            confidence: 0.8, // Would be calculated properly
+            // The genuine per-detection confidence computed in `detect_syndrome`
+            // from the syndrome weight and noise model.
+            confidence,
         };
 
         self.detection_stats.syndrome_history.push(record);
@@ -792,6 +920,49 @@ impl Default for NoiseModel {
             measurement_error_rate: 0.02,
             coherence_time: 100.0, // microseconds
             thermal_noise_rate: 0.0001,
+        }
+    }
+}
+
+/// Apply a single-qubit Pauli to a raw amplitude vector in place.
+///
+/// Uses the same bit convention as
+/// [`SyndromeDetector::apply_pauli_correction`] (qubit `q` is bit `q`):
+/// * `X` swaps amplitudes whose target bit differs;
+/// * `Z` negates amplitudes whose target bit is set;
+/// * `Y = iXZ` with `Y|0⟩ = i|1⟩`, `Y|1⟩ = −i|0⟩`;
+/// * `I` is a no-op.
+fn apply_pauli_to_amplitudes(amplitudes: &mut [Complex64], qubit: usize, pauli: PauliType) {
+    let bit = 1usize << qubit;
+    let dim = amplitudes.len();
+
+    match pauli {
+        PauliType::I => {}
+        PauliType::X => {
+            for index in 0..dim {
+                if index & bit == 0 {
+                    amplitudes.swap(index, index | bit);
+                }
+            }
+        }
+        PauliType::Z => {
+            for (index, amplitude) in amplitudes.iter_mut().enumerate() {
+                if index & bit != 0 {
+                    *amplitude = -*amplitude;
+                }
+            }
+        }
+        PauliType::Y => {
+            let imag = Complex64::new(0.0, 1.0);
+            for index in 0..dim {
+                if index & bit == 0 {
+                    let partner = index | bit;
+                    let a0 = amplitudes[index];
+                    let a1 = amplitudes[partner];
+                    amplitudes[index] = -imag * a1;
+                    amplitudes[partner] = imag * a0;
+                }
+            }
         }
     }
 }

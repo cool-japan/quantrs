@@ -1,13 +1,12 @@
-//! Tests for Metal GPU backend
+//! Tests for the Metal GPU backend.
 //!
-//! These tests verify that the Metal backend placeholder implementation
-//! is ready for SciRS2 integration.
+//! The real Metal compute backend is DEFERRED: these tests assert the *honest*
+//! behavior of the current build (availability is `false`, device info is
+//! `None`, and construction / kernel compilation return honest errors) rather
+//! than the previously fabricated "Metal is available" placeholders.
 
 #[cfg(test)]
 mod tests {
-    use crate::qubit::QubitId;
-    use scirs2_core::Complex64;
-
     #[cfg(feature = "metal")]
     use crate::gpu::metal_backend_scirs2_ready::{MetalQuantumState, *};
 
@@ -15,20 +14,13 @@ mod tests {
     fn test_metal_availability_detection() {
         #[cfg(feature = "metal")]
         {
-            let available = is_metal_available();
-
-            #[cfg(target_os = "macos")]
-            {
-                assert!(
-                    available,
-                    "Metal should be available on macOS with metal feature"
-                );
-            }
-
-            #[cfg(not(target_os = "macos"))]
-            {
-                assert!(!available, "Metal should not be available on non-macOS");
-            }
+            // Real Metal backend is DEFERRED (no device dispatch wired), so the
+            // honest answer is false on every platform — it must NOT fabricate
+            // availability just because the feature is on under macOS.
+            assert!(
+                !is_metal_available(),
+                "Metal must be reported unavailable until a real backend is wired"
+            );
         }
 
         #[cfg(not(feature = "metal"))]
@@ -41,24 +33,12 @@ mod tests {
     fn test_metal_device_info() {
         #[cfg(feature = "metal")]
         {
-            let info = get_metal_device_info();
-
-            #[cfg(target_os = "macos")]
-            {
-                assert!(
-                    info.is_some(),
-                    "Should return device info on macOS with metal feature"
-                );
-                let info_str = info.expect("Device info should be Some on macOS");
-                assert!(info_str.contains("Metal Device"));
-                assert!(info_str.contains("Max threads per threadgroup"));
-                assert!(info_str.contains("Max buffer length"));
-            }
-
-            #[cfg(not(target_os = "macos"))]
-            {
-                assert!(info.is_none(), "Should return None on non-macOS");
-            }
+            // No real Metal device is initialized → honest None (the previous
+            // fabricated placeholder specs were removed).
+            assert!(
+                get_metal_device_info().is_none(),
+                "Metal device info must be None until a real backend is wired"
+            );
         }
 
         #[cfg(not(feature = "metal"))]
@@ -67,69 +47,30 @@ mod tests {
 
     #[cfg(all(target_os = "macos", feature = "metal"))]
     #[test]
-    fn test_metal_quantum_state_creation() {
-        // Test creating quantum states of various sizes
+    fn test_metal_quantum_state_creation_is_deferred_error() {
+        // Real Metal device init is DEFERRED: construction must return an honest
+        // error rather than fabricating a placeholder device.
         for num_qubits in [1, 5, 10, 15] {
-            let result = MetalQuantumState::new(num_qubits);
-            assert!(result.is_ok(), "Should create {}-qubit state", num_qubits);
-
-            let state = result.expect("MetalQuantumState creation should succeed");
-            assert_eq!(state.num_qubits, num_qubits);
+            assert!(
+                MetalQuantumState::new(num_qubits).is_err(),
+                "MetalQuantumState::new must be an honest error until Metal is wired"
+            );
         }
     }
 
     #[cfg(all(target_os = "macos", feature = "metal"))]
     #[test]
-    fn test_single_qubit_gate_application() {
-        let mut state =
-            MetalQuantumState::new(5).expect("MetalQuantumState creation should succeed");
-
-        // Test Pauli-X gate
-        let pauli_x = [
-            Complex64::new(0.0, 0.0),
-            Complex64::new(1.0, 0.0),
-            Complex64::new(1.0, 0.0),
-            Complex64::new(0.0, 0.0),
-        ];
-
-        let result = state.apply_single_qubit_gate(&pauli_x, QubitId(0));
-        assert!(result.is_ok(), "Should apply Pauli-X gate");
-
-        // Test Hadamard gate
-        let sqrt2_inv = 1.0 / std::f64::consts::SQRT_2;
-        let hadamard = [
-            Complex64::new(sqrt2_inv, 0.0),
-            Complex64::new(sqrt2_inv, 0.0),
-            Complex64::new(sqrt2_inv, 0.0),
-            Complex64::new(-sqrt2_inv, 0.0),
-        ];
-
-        let result = state.apply_single_qubit_gate(&hadamard, QubitId(1));
-        assert!(result.is_ok(), "Should apply Hadamard gate");
-
-        // Test invalid qubit index
-        let result = state.apply_single_qubit_gate(&pauli_x, QubitId(5));
-        assert!(result.is_err(), "Should fail for out-of-range qubit");
-    }
-
-    #[cfg(all(target_os = "macos", feature = "metal"))]
-    #[test]
-    fn test_kernel_compilation() {
-        let state = MetalQuantumState::new(3).expect("MetalQuantumState creation should succeed");
-
-        // Test valid kernel names
-        let result = state.get_or_compile_kernel("apply_single_qubit_gate");
-        assert!(result.is_ok(), "Should compile single qubit gate kernel");
-
-        let kernel = result.expect("Kernel compilation should succeed");
-        assert_eq!(kernel.function_name, "apply_single_qubit_gate");
-
-        let result = state.get_or_compile_kernel("compute_probabilities");
-        assert!(result.is_ok(), "Should compile probabilities kernel");
-
-        // Test invalid kernel name
-        let result = state.get_or_compile_kernel("invalid_kernel");
-        assert!(result.is_err(), "Should fail for invalid kernel name");
+    fn test_kernel_compilation_is_deferred_error() {
+        // Even valid kernel names cannot be compiled yet (DEFERRED): an invalid
+        // name is a distinct error, and a valid name is an honest "unavailable"
+        // error — never a fabricated successfully-compiled placeholder pipeline.
+        // Note: construction itself is also a deferred error, so we cannot build
+        // a MetalQuantumState here; the compile path is covered by unit tests in
+        // the backend module returning honest errors.
+        assert!(
+            MetalQuantumState::new(3).is_err(),
+            "construction is a deferred error"
+        );
     }
 
     #[cfg(feature = "metal")]

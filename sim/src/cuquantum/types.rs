@@ -360,34 +360,121 @@ impl CuStateVecSimulator {
             self.initialize(N)?;
         }
         let start_time = std::time::Instant::now();
-        #[cfg(target_os = "macos")]
-        {
-            self.simulate_mock(circuit, start_time)
-        }
+
+        // Enabling the `cuquantum` feature expresses intent to use cuStateVec; it
+        // does not conjure the runtime. Probe for a genuine cuStateVec context and
+        // only hand the circuit to the GPU path when one exists -- otherwise run the
+        // real CPU state-vector path below, which returns the true result of the
+        // circuit rather than an error or a placeholder.
         #[cfg(all(feature = "cuquantum", not(target_os = "macos")))]
-        {
-            self.simulate_with_custatevec(circuit)
+        if Self::check_cuquantum_available() {
+            return self.simulate_with_custatevec(circuit);
         }
-        #[cfg(all(not(feature = "cuquantum"), not(target_os = "macos")))]
-        {
-            self.simulate_mock(circuit, start_time)
-        }
+
+        self.simulate_mock(circuit, start_time)
     }
-    /// Mock simulation for non-CUDA platforms
-    /// Available on macOS (always) and when cuquantum feature is disabled
-    #[cfg(any(target_os = "macos", not(feature = "cuquantum")))]
+    /// CPU fallback simulation, used whenever no real cuStateVec context is
+    /// available -- on macOS, when the `cuquantum` feature is disabled, and when
+    /// the feature is enabled but the runtime probe finds no cuQuantum library.
+    ///
+    /// This actually runs the circuit: every gate's real matrix
+    /// (`GateOp::matrix()`) is applied to the state vector via a genuine
+    /// tensor-contraction gate application (see [`Self::apply_gate_matrix`]).
+    /// It is *not* GPU-accelerated -- there is no real cuStateVec handle in
+    /// this build -- but the returned state is the true result of running
+    /// the circuit, not a placeholder `|0...0>`.
     fn simulate_mock<const N: usize>(
         &mut self,
         circuit: &Circuit<N>,
         start_time: std::time::Instant,
     ) -> Result<CuQuantumResult> {
-        let state_size = 1 << N;
-        let mut state = Array1::zeros(state_size);
+        let state_size = 1usize << N;
+        let mut state: Array1<Complex64> = Array1::zeros(state_size);
         state[0] = Complex64::new(1.0, 0.0);
+
+        for gate in circuit.gates() {
+            let qubits: Vec<usize> = gate.qubits().iter().map(|q| q.id() as usize).collect();
+            let matrix = gate.matrix().map_err(|e| {
+                SimulatorError::InvalidGate(format!(
+                    "failed to get matrix for gate '{}': {e}",
+                    gate.name()
+                ))
+            })?;
+            Self::apply_gate_matrix(&mut state, N, &qubits, &matrix)?;
+        }
+
         self.stats.total_simulations += 1;
         self.stats.total_gates += circuit.gates().len();
         self.stats.total_time_ms += start_time.elapsed().as_millis() as f64;
         Ok(CuQuantumResult::from_state_vector(state, N))
+    }
+
+    /// Apply an arbitrary `k`-qubit gate matrix (row-major, `2^k x 2^k`,
+    /// with `qubits[0]` as the most-significant index bit) to a full
+    /// `num_qubits`-qubit state vector, addressing the gate's target
+    /// qubits via `qubits`. Used by the CPU fallback path so that
+    /// [`Self::simulate_mock`] runs a real simulation instead of returning
+    /// an unmodified `|0...0>` state.
+    fn apply_gate_matrix(
+        state: &mut Array1<Complex64>,
+        num_qubits: usize,
+        qubits: &[usize],
+        matrix: &[Complex64],
+    ) -> Result<()> {
+        let k = qubits.len();
+        let dim = 1usize << k;
+        if matrix.len() != dim * dim {
+            return Err(SimulatorError::DimensionMismatch(format!(
+                "gate matrix has {} entries, expected {dim}x{dim} for a {k}-qubit gate",
+                matrix.len()
+            )));
+        }
+        for &q in qubits {
+            if q >= num_qubits {
+                return Err(SimulatorError::InvalidQubitIndex {
+                    index: q,
+                    num_qubits,
+                });
+            }
+        }
+
+        let other_qubits: Vec<usize> = (0..num_qubits).filter(|q| !qubits.contains(q)).collect();
+        let num_other = other_qubits.len();
+
+        let mut new_state = state.clone();
+        let mut amps = vec![Complex64::new(0.0, 0.0); dim];
+        let mut indices = vec![0usize; dim];
+
+        for other_bits in 0..(1usize << num_other) {
+            let mut base = 0usize;
+            for (bit_pos, &q) in other_qubits.iter().enumerate() {
+                if (other_bits >> bit_pos) & 1 == 1 {
+                    base |= 1 << q;
+                }
+            }
+
+            for combo in 0..dim {
+                let mut idx = base;
+                for (i, &q) in qubits.iter().enumerate() {
+                    if (combo >> (k - 1 - i)) & 1 == 1 {
+                        idx |= 1 << q;
+                    }
+                }
+                indices[combo] = idx;
+                amps[combo] = state[idx];
+            }
+
+            for (row, &target_idx) in indices.iter().enumerate() {
+                let mut acc = Complex64::new(0.0, 0.0);
+                for (col, amp) in amps.iter().enumerate() {
+                    acc += matrix[row * dim + col] * amp;
+                }
+                new_state[target_idx] = acc;
+            }
+        }
+
+        *state = new_state;
+        Ok(())
     }
     /// Get simulation statistics
     pub fn stats(&self) -> &SimulationStats {
@@ -440,13 +527,22 @@ impl CuStateVecSimulator {
     fn initialize_custatevec(&mut self, num_qubits: usize) -> Result<()> {
         Ok(())
     }
+    /// Run the circuit through a real cuStateVec context.
+    ///
+    /// Only reachable when [`Self::check_cuquantum_available`] reports a usable
+    /// runtime. This build carries no cuStateVec bindings, so the probe always
+    /// reports `false` and callers take the CPU state-vector path instead; the
+    /// error below states plainly that the bindings are missing rather than
+    /// fabricating a result that pretends the GPU ran.
     #[cfg(feature = "cuquantum")]
     fn simulate_with_custatevec<const N: usize>(
         &mut self,
-        circuit: &Circuit<N>,
+        _circuit: &Circuit<N>,
     ) -> Result<CuQuantumResult> {
         Err(SimulatorError::GpuError(
-            "cuStateVec simulation not yet implemented".to_string(),
+            "cuStateVec bindings are not linked into this build; \
+             rebuild against the cuQuantum SDK to use the GPU path"
+                .to_string(),
         ))
     }
 }
@@ -1242,4 +1338,68 @@ pub enum TensorContractionAlgorithm {
     OptimalWithSlicing,
     /// Random greedy trials
     RandomGreedy,
+}
+#[cfg(test)]
+mod cuquantum_mock_simulation_tests {
+    use super::*;
+    use quantrs2_circuit::prelude::Circuit;
+    use quantrs2_core::qubit::QubitId;
+
+    /// Regression test for the P0 finding: `simulate_mock` used to ignore
+    /// the circuit entirely and always return `|0...0>`. A single X gate
+    /// on qubit 0 of a 1-qubit circuit must now actually flip the state to
+    /// `|1>`.
+    #[test]
+    fn test_simulate_mock_applies_x_gate() {
+        let mut simulator =
+            CuStateVecSimulator::default_config().expect("failed to build simulator");
+        let mut circuit = Circuit::<1>::new();
+        circuit.x(QubitId::new(0)).expect("failed to add X gate");
+
+        let result = simulator.simulate(&circuit).expect("simulation failed");
+        let state = result.state_vector.expect("expected a state vector");
+
+        assert!(
+            (state[0].norm()).abs() < 1e-10,
+            "amplitude of |0> should vanish"
+        );
+        assert!(
+            (state[1].norm() - 1.0).abs() < 1e-10,
+            "amplitude of |1> should be 1.0 after X, got {:?}",
+            state[1]
+        );
+    }
+
+    /// Regression test: a real two-qubit CNOT must actually entangle the
+    /// state (not silently be dropped as identity).
+    #[test]
+    fn test_simulate_mock_applies_cnot_gate() {
+        let mut simulator =
+            CuStateVecSimulator::default_config().expect("failed to build simulator");
+        let mut circuit = Circuit::<2>::new();
+        circuit.x(QubitId::new(0)).expect("failed to add X gate");
+        circuit
+            .cnot(QubitId::new(0), QubitId::new(1))
+            .expect("failed to add CNOT gate");
+
+        let result = simulator.simulate(&circuit).expect("simulation failed");
+        let state = result.state_vector.expect("expected a state vector");
+
+        // Starting from |00>, X(q0) -> |q1=0,q0=1> = index 1,
+        // then CNOT(control=q0,target=q1) flips q1 -> |q1=1,q0=1> = index 3.
+        for (i, amp) in state.iter().enumerate() {
+            if i == 3 {
+                assert!(
+                    (amp.norm() - 1.0).abs() < 1e-10,
+                    "expected amplitude 1.0 at index 3, got {amp:?}"
+                );
+            } else {
+                assert!(
+                    amp.norm() < 1e-10,
+                    "expected zero amplitude at index {i}, got {amp:?}"
+                );
+            }
+        }
+        assert_eq!(simulator.stats().total_gates, 2);
+    }
 }

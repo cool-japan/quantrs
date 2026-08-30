@@ -591,9 +591,58 @@ impl CVGateSequence {
             .count()
     }
 
-    /// Optimize sequence (basic optimization)
+    /// Optimize the gate sequence.
+    ///
+    /// Three passes: (1) drop identity operations, (2) coalesce adjacent gates
+    /// of the same type acting on the same mode, and (3) drop any identities the
+    /// coalescing produced. Coalescing is exact for the Gaussian representation
+    /// used here:
+    /// - phase rotations add their angles, `R(φ₁)·R(φ₂) = R(φ₁+φ₂)`;
+    /// - displacements add their amplitudes, `D(α)·D(β) = D(α+β)` up to a global
+    ///   phase that does not affect the state's first/second moments.
     pub fn optimize(&mut self) -> Result<(), CVGateError> {
-        // Remove redundant identity operations
+        // Pass 1: remove redundant identity operations.
+        self.remove_identities();
+
+        // Pass 2: coalesce adjacent same-type, same-mode gates.
+        let mut optimized: Vec<CVGateParams> = Vec::with_capacity(self.gates.len());
+        for gate in std::mem::take(&mut self.gates) {
+            if let Some(last) = optimized.last_mut() {
+                if last.gate_type == gate.gate_type && last.modes == gate.modes {
+                    match gate.gate_type {
+                        CVGateType::PhaseRotation => {
+                            if let (Some(&a), Some(&b)) = (last.params.first(), gate.params.first())
+                            {
+                                last.params[0] = (a + b).rem_euclid(2.0 * PI);
+                                continue;
+                            }
+                        }
+                        CVGateType::Displacement => {
+                            if let (Some(&a), Some(&b)) =
+                                (last.complex_params.first(), gate.complex_params.first())
+                            {
+                                last.complex_params[0] =
+                                    Complex::new(a.real + b.real, a.imag + b.imag);
+                                continue;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            optimized.push(gate);
+        }
+        self.gates = optimized;
+
+        // Pass 3: coalescing may have collapsed gates to the identity.
+        self.remove_identities();
+
+        Ok(())
+    }
+
+    /// Drop gates that act as the identity: zero-angle phase rotations and
+    /// zero-amplitude displacements.
+    fn remove_identities(&mut self) {
         self.gates.retain(|gate| match gate.gate_type {
             CVGateType::PhaseRotation => {
                 if let Some(&phi) = gate.params.first() {
@@ -608,11 +657,6 @@ impl CVGateSequence {
                 .map_or(true, |alpha| alpha.magnitude() > 1e-10),
             _ => true,
         });
-
-        // Combine consecutive phase rotations on same mode
-        // TODO: Implement more sophisticated optimizations
-
-        Ok(())
     }
 }
 
@@ -714,5 +758,70 @@ mod tests {
 
         // Should remove identity operations
         assert_eq!(sequence.gates.len(), 0);
+    }
+
+    #[test]
+    fn test_optimize_coalesces_phase_rotations() {
+        let mut sequence = CVGateSequence::new(1);
+        sequence
+            .phase_rotation(PI / 2.0, 0)
+            .expect("Adding first rotation should succeed")
+            .phase_rotation(PI / 2.0, 0)
+            .expect("Adding second rotation should succeed");
+
+        sequence.optimize().expect("optimization should succeed");
+
+        // Two π/2 rotations on the same mode collapse to a single π rotation.
+        assert_eq!(sequence.gates.len(), 1);
+        assert_eq!(sequence.gate_count(CVGateType::PhaseRotation), 1);
+        assert!((sequence.gates[0].params[0] - PI).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_optimize_cancels_opposite_displacements() {
+        let mut sequence = CVGateSequence::new(1);
+        sequence
+            .displacement(Complex::new(1.0, 0.5), 0)
+            .expect("Adding displacement should succeed")
+            .displacement(Complex::new(-1.0, -0.5), 0)
+            .expect("Adding opposite displacement should succeed");
+
+        sequence.optimize().expect("optimization should succeed");
+
+        // D(α)·D(-α) = identity (up to global phase) -> removed entirely.
+        assert_eq!(sequence.gates.len(), 0);
+    }
+
+    #[test]
+    fn test_optimize_adds_displacements() {
+        let mut sequence = CVGateSequence::new(1);
+        sequence
+            .displacement(Complex::new(1.0, 0.0), 0)
+            .expect("Adding first displacement should succeed")
+            .displacement(Complex::new(2.0, 0.0), 0)
+            .expect("Adding second displacement should succeed");
+
+        sequence.optimize().expect("optimization should succeed");
+
+        // D(1)·D(2) = D(3) on the same mode.
+        assert_eq!(sequence.gates.len(), 1);
+        let alpha = sequence.gates[0].complex_params[0];
+        assert!((alpha.real - 3.0).abs() < 1e-10);
+        assert!(alpha.imag.abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_optimize_keeps_different_modes_separate() {
+        let mut sequence = CVGateSequence::new(2);
+        sequence
+            .phase_rotation(PI / 2.0, 0)
+            .expect("Adding rotation on mode 0 should succeed")
+            .phase_rotation(PI / 2.0, 1)
+            .expect("Adding rotation on mode 1 should succeed");
+
+        sequence.optimize().expect("optimization should succeed");
+
+        // Rotations on different modes must not be merged.
+        assert_eq!(sequence.gates.len(), 2);
     }
 }

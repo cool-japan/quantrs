@@ -37,6 +37,12 @@ num_cpus.workspace = true
 reqwest = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
 
+# For real AWS SigV4 request signing (Braket integration only)
+hmac = { workspace = true, optional = true }
+sha2 = { workspace = true, optional = true }
+hex = { workspace = true, optional = true }
+chrono = { workspace = true, optional = true }
+
 [dev-dependencies]
 tokio.workspace = true
 criterion.workspace = true
@@ -48,7 +54,7 @@ harness = false
 
 [features]
 default = []
-braket = ["dep:reqwest", "dep:tokio"]
+braket = ["dep:reqwest", "dep:tokio", "dep:hmac", "dep:sha2", "dep:hex", "dep:chrono"]
 dwave = ["dep:reqwest", "dep:tokio"]
 fujitsu = ["dep:reqwest", "dep:tokio"]
 

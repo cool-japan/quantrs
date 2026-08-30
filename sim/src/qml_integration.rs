@@ -890,7 +890,7 @@ impl QMLIntegration {
         })?;
         let mut norm_squared = 0.0;
 
-        for (_, grads) in cache.iter() {
+        for grads in cache.values() {
             for &grad in grads {
                 norm_squared += grad * grad;
             }
@@ -1387,6 +1387,30 @@ mod tests {
         assert_eq!(config.learning_rate, 0.01);
         assert_eq!(config.optimizer, OptimizerType::Adam);
         assert_eq!(config.loss_function, LossFunction::MeanSquaredError);
+    }
+
+    #[test]
+    fn test_compute_last_gradient_norm_sums_all_cached_entries_via_values() {
+        // Regression test for the `for grads in cache.values()` refactor in
+        // `compute_last_gradient_norm` (previously `for (_, grads) in cache.iter()`).
+        // Verifies every cached parameter's gradients are still included in the
+        // norm, regardless of the map key.
+        let config = QMLIntegrationConfig::default();
+        let integration = QMLIntegration::new(config).expect("Failed to create QML integration");
+
+        {
+            let mut cache = integration
+                .gradient_cache
+                .lock()
+                .expect("gradient cache lock should not be poisoned");
+            cache.insert("layer_0".to_string(), vec![3.0, 4.0]); // contributes 9 + 16 = 25
+            cache.insert("layer_1".to_string(), vec![0.0]); // contributes 0
+        }
+
+        let norm = integration
+            .compute_last_gradient_norm()
+            .expect("gradient norm computation should succeed");
+        assert_abs_diff_eq!(norm, 5.0, epsilon = 1e-10);
     }
 
     #[test]

@@ -43,14 +43,22 @@ regex.workspace = true
 # Symbolic computation - Pure Rust (SciRS2 POLICY: No C/C++ dependencies)
 quantrs2-symengine-pure = { workspace = true, optional = true }
 # num-traits.workspace = true           # REMOVED: Use scirs2_core::numeric (SciRS2 POLICY)
-pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"], optional = true }
+pyo3 = { workspace = true, features = ["abi3-py38"], optional = true }  # `extension-module` comes from maturin (py/pyproject.toml), never from a Cargo feature
 scirs2-numpy = { workspace = true, optional = true }
 chrono.workspace = true
 # numrs2 moved to py crate only — core/python_bindings.rs uses ndarray fallback, not numrs2 directly
+# OxiCUDA real GPU backend (Pure Rust CUDA replacement). Gated behind the `gpu`
+# feature so default builds stay GPU-free. Runtime-loads libcuda.so; honest
+# detection returns false when no device/driver is present.
+oxicuda = { workspace = true, optional = true }
+# wgpu + pollster: real WebGPU adapter/limit queries (portable GPU detection).
+# Gated behind `gpu`; wgpu version matches oxicuda-webgpu (29.0.3).
+wgpu = { workspace = true, optional = true }
+pollster = { workspace = true, optional = true }
 
 [features]
 default = []
-gpu = []  # GPU feature for conditional compilation
+gpu = ["dep:oxicuda", "dep:wgpu", "dep:pollster"]  # GPU feature: wires the real OxiCUDA backend (Pure Rust CUDA) + WebGPU queries
 simd = [] # ["scirs2-core/simd"]
 cuda = []
 metal = []

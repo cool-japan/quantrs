@@ -578,11 +578,16 @@ impl ONNXExporter {
         Ok((vec![node], vec![]))
     }
 
-    /// Get layer type string
-    fn get_layer_type(&self, _layer: &dyn KerasLayer) -> String {
-        // This would need to be implemented with proper type checking
-        // For now, return a placeholder
-        "Dense".to_string()
+    /// Get layer type string.
+    ///
+    /// Delegates to [`KerasLayer::layer_type`], which reflects the layer's
+    /// actual concrete Rust type (e.g. `"Dense"`, `"QuantumDense"`,
+    /// `"Activation"`) rather than always reporting `"Dense"`, so
+    /// `convert_layer`'s dispatch below correctly reaches
+    /// `convert_quantum_dense_layer`/`convert_activation_layer` for the
+    /// layers they were written for.
+    fn get_layer_type(&self, layer: &dyn KerasLayer) -> String {
+        layer.layer_type().to_string()
     }
 }
 
@@ -796,18 +801,6 @@ impl Sequential {
 
         exporter.export_sequential(self, input_shape, path)
     }
-
-    /// Get layers (placeholder - would need actual implementation)
-    fn layers(&self) -> &[Box<dyn KerasLayer>] {
-        // This would return the actual layers from the Sequential model
-        &[]
-    }
-
-    /// Compute output shape (placeholder)
-    fn compute_output_shape(&self, input_shape: &[usize]) -> Vec<usize> {
-        // This would compute the actual output shape
-        input_shape.to_vec()
-    }
 }
 
 #[cfg(test)]
@@ -895,5 +888,88 @@ mod tests {
 
         let info = utils::get_model_info("dummy_path");
         assert!(info.is_ok());
+    }
+
+    /// Regression test for the "get_layer_type always returns Dense" bug:
+    /// each concrete layer kind must report its own type, not a hardcoded
+    /// constant, and `convert_layer`'s dispatch must reach the dedicated
+    /// conversion path for each one.
+    #[test]
+    fn test_get_layer_type_reflects_concrete_layer_kind() {
+        use crate::keras_api::{Activation, ActivationFunction, Dense, QuantumDense};
+
+        let exporter = ONNXExporter::new();
+
+        let mut dense = Dense::new(4).name("dense_layer");
+        dense.build(&[3]).expect("dense should build");
+        assert_eq!(exporter.get_layer_type(&dense), "Dense");
+
+        let mut activation = Activation::new(ActivationFunction::ReLU).name("act_layer");
+        activation.build(&[4]).expect("activation should build");
+        assert_eq!(exporter.get_layer_type(&activation), "Activation");
+
+        let mut quantum_dense = QuantumDense::new(2, 2).name("quantum_layer");
+        quantum_dense
+            .build(&[2])
+            .expect("quantum dense should build");
+        assert_eq!(exporter.get_layer_type(&quantum_dense), "QuantumDense");
+    }
+
+    /// Regression test: exporting a Sequential model containing a Dense,
+    /// an Activation, and a QuantumDense layer must convert every layer via
+    /// its dedicated conversion path (previously, `get_layer_type` always
+    /// returned `"Dense"`, and `Sequential::layers()` always returned an
+    /// empty slice, so no layer -- let alone a non-Dense one -- was ever
+    /// actually converted).
+    #[test]
+    fn test_export_sequential_converts_every_layer_kind() {
+        use crate::keras_api::{Activation, ActivationFunction, Dense, QuantumDense, Sequential};
+
+        let mut model = Sequential::new();
+        model.add(Box::new(Dense::new(4).name("dense_layer")));
+        model.add(Box::new(
+            Activation::new(ActivationFunction::ReLU).name("act_layer"),
+        ));
+        model.add(Box::new(QuantumDense::new(2, 2).name("quantum_layer")));
+        model.build(vec![1, 3]).expect("model should build");
+
+        assert_eq!(model.layers().len(), 3);
+
+        let exporter = ONNXExporter::new().with_options(ExportOptions {
+            opset_version: 13,
+            include_quantum_ops: true,
+            optimize_classical_only: false,
+            quantum_backend: QuantumBackendTarget::Qiskit,
+        });
+
+        let mut graph = ONNXGraph::new("test_model");
+        let mut current_output = "input".to_string();
+        let mut op_types = Vec::new();
+        for (i, layer) in model.layers().iter().enumerate() {
+            let layer_name = format!("layer_{i}");
+            let output_name = format!("output_{i}");
+            let (nodes, initializers) = exporter
+                .convert_layer(layer.as_ref(), &layer_name, &current_output, &output_name)
+                .expect("layer conversion should succeed");
+            for node in &nodes {
+                op_types.push(node.op_type.clone());
+            }
+            for init in initializers {
+                graph.add_initializer(init);
+            }
+            for node in nodes {
+                graph.add_node(node);
+            }
+            current_output = output_name;
+        }
+
+        // The Dense layer should have produced a MatMul (and, since it has a
+        // bias, an Add); the Activation layer a Relu node; the QuantumDense
+        // layer its dedicated QuantumDense op -- proving every layer took its
+        // own real conversion path instead of all three collapsing onto the
+        // Dense path (or, worse, none running at all).
+        assert!(op_types.contains(&"MatMul".to_string()));
+        assert!(op_types.contains(&"Relu".to_string()));
+        assert!(op_types.contains(&"QuantumDense".to_string()));
     }
 }

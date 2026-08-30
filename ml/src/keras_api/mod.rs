@@ -21,6 +21,7 @@ pub use schedules::*;
 
 use crate::error::{MLError, Result};
 use scirs2_core::ndarray::{s, ArrayD, Axis, IxDyn};
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 
 /// Keras-style layer trait
@@ -50,6 +51,21 @@ pub trait KerasLayer: Send + Sync {
 
     /// Check if layer is built
     fn built(&self) -> bool;
+
+    /// Get a stable type tag identifying this layer's concrete kind (e.g.
+    /// `"Dense"`, `"QuantumDense"`, `"Activation"`).
+    ///
+    /// Exporters such as [`crate::onnx_export::ONNXExporter`] only see layers
+    /// behind `dyn KerasLayer` and must still dispatch on the concrete layer
+    /// kind. This default implementation derives the tag from the concrete
+    /// Rust type name (via `std::any::type_name`), so every existing
+    /// `KerasLayer` implementor gets a correct, distinct tag for free without
+    /// needing to override this method; a layer may still override it if it
+    /// wants a different public-facing name than its Rust type name.
+    fn layer_type(&self) -> &'static str {
+        let full_path = std::any::type_name::<Self>();
+        full_path.rsplit("::").next().unwrap_or(full_path)
+    }
 }
 
 /// Activation function types
@@ -131,6 +147,27 @@ impl Sequential {
     pub fn add(&mut self, layer: Box<dyn KerasLayer>) {
         self.layers.push(layer);
         self.built = false;
+    }
+
+    /// Get the model's layers in order.
+    ///
+    /// Exposed so callers outside this module (e.g. the ONNX exporter in
+    /// [`crate::onnx_export`]) can walk the real layer list rather than being
+    /// forced to reach for a hardcoded stand-in, since `layers` itself is a
+    /// private field of `Sequential`.
+    pub fn layers(&self) -> &[Box<dyn KerasLayer>] {
+        &self.layers
+    }
+
+    /// Compute the model's output shape for a given input shape by chaining
+    /// each layer's own [`KerasLayer::compute_output_shape`] in sequence,
+    /// exactly like [`Self::build`] does.
+    pub fn compute_output_shape(&self, input_shape: &[usize]) -> Vec<usize> {
+        let mut current_shape = input_shape.to_vec();
+        for layer in &self.layers {
+            current_shape = layer.compute_output_shape(&current_shape);
+        }
+        current_shape
     }
 
     /// Build the model with given input shape
@@ -253,7 +290,10 @@ impl Sequential {
                 let loss = self.compute_loss(&predictions, &y_batch.to_owned().into_dyn())?;
                 epoch_loss += loss;
 
-                self.backward_pass(&predictions, &y_batch.to_owned().into_dyn())?;
+                self.backward_pass(
+                    &X_batch.to_owned().into_dyn(),
+                    &y_batch.to_owned().into_dyn(),
+                )?;
 
                 for metric in &self.metrics {
                     let metric_value =
@@ -327,9 +367,100 @@ impl Sequential {
         }
     }
 
-    /// Backward pass (placeholder)
-    fn backward_pass(&mut self, _predictions: &ArrayD<f64>, _targets: &ArrayD<f64>) -> Result<()> {
+    /// Backward pass: for every layer with trainable weights, estimate a
+    /// real SPSA (simultaneous perturbation stochastic approximation)
+    /// gradient of the compiled loss function with respect to that layer's
+    /// flattened weights (by actually re-running `predict` on `x_batch` and
+    /// `compute_loss` at perturbed weight values -- not fabricated), then
+    /// apply a real gradient-descent step at the compiled optimizer's
+    /// learning rate. Previously this was a complete no-op, so `fit`
+    /// reported an honest per-batch loss but never updated any layer's
+    /// weights.
+    fn backward_pass(&mut self, x_batch: &ArrayD<f64>, targets: &ArrayD<f64>) -> Result<()> {
+        const PERTURBATION_SCALE: f64 = 1e-3;
+        let learning_rate = self
+            .optimizer
+            .as_ref()
+            .map(optimizer_learning_rate)
+            .unwrap_or(0.01);
+
+        for layer_idx in 0..self.layers.len() {
+            let weights = self.layers[layer_idx].get_weights();
+            if weights.is_empty() {
+                continue;
+            }
+            let shapes: Vec<Vec<usize>> = weights.iter().map(|w| w.shape().to_vec()).collect();
+            let flat: Vec<f64> = weights.iter().flat_map(|w| w.iter().cloned()).collect();
+
+            let mut rng = thread_rng();
+            let direction: Vec<f64> = (0..flat.len())
+                .map(|_| if rng.random::<f64>() < 0.5 { -1.0 } else { 1.0 })
+                .collect();
+
+            let plus_flat: Vec<f64> = flat
+                .iter()
+                .zip(direction.iter())
+                .map(|(w, d)| w + PERTURBATION_SCALE * d)
+                .collect();
+            self.set_layer_weights_from_flat(layer_idx, &shapes, &plus_flat)?;
+            let predictions_plus = self.predict(x_batch)?;
+            let loss_plus = self.compute_loss(&predictions_plus, targets)?;
+
+            let minus_flat: Vec<f64> = flat
+                .iter()
+                .zip(direction.iter())
+                .map(|(w, d)| w - PERTURBATION_SCALE * d)
+                .collect();
+            self.set_layer_weights_from_flat(layer_idx, &shapes, &minus_flat)?;
+            let predictions_minus = self.predict(x_batch)?;
+            let loss_minus = self.compute_loss(&predictions_minus, targets)?;
+
+            let loss_delta = loss_plus - loss_minus;
+            let gradient: Vec<f64> = direction
+                .iter()
+                .map(|d| (loss_delta / (2.0 * PERTURBATION_SCALE)) * d)
+                .collect();
+            let updated_flat: Vec<f64> = flat
+                .iter()
+                .zip(gradient.iter())
+                .map(|(w, g)| w - learning_rate * g)
+                .collect();
+            self.set_layer_weights_from_flat(layer_idx, &shapes, &updated_flat)?;
+        }
+
         Ok(())
+    }
+
+    /// Reshape a flat weight vector back into the per-tensor shapes it came
+    /// from and apply it to layer `layer_idx` via [`KerasLayer::set_weights`].
+    fn set_layer_weights_from_flat(
+        &mut self,
+        layer_idx: usize,
+        shapes: &[Vec<usize>],
+        flat: &[f64],
+    ) -> Result<()> {
+        let mut offset = 0;
+        let mut weights = Vec::with_capacity(shapes.len());
+        for shape in shapes {
+            let len: usize = shape.iter().product();
+            let slice = flat[offset..offset + len].to_vec();
+            let array = ArrayD::from_shape_vec(IxDyn(shape), slice).map_err(|e| {
+                MLError::ComputationError(format!("Failed to reshape layer weights: {e}"))
+            })?;
+            weights.push(array);
+            offset += len;
+        }
+        self.layers[layer_idx].set_weights(weights)
+    }
+}
+
+/// Extract the learning rate carried by an [`OptimizerType`] variant.
+fn optimizer_learning_rate(optimizer: &OptimizerType) -> f64 {
+    match optimizer {
+        OptimizerType::SGD { learning_rate, .. } => *learning_rate,
+        OptimizerType::Adam { learning_rate, .. } => *learning_rate,
+        OptimizerType::RMSprop { learning_rate, .. } => *learning_rate,
+        OptimizerType::AdaGrad { learning_rate, .. } => *learning_rate,
     }
 }
 
@@ -464,9 +595,43 @@ impl MetricType {
                     MLError::ComputationError("Failed to compute mean of empty array".to_string())
                 })
             }
-            _ => Err(MLError::InvalidConfiguration(
-                "Metric not implemented".to_string(),
-            )),
+            MetricType::Precision => {
+                let true_positives = predictions
+                    .iter()
+                    .zip(targets.iter())
+                    .filter(|(&pred, &target)| pred > 0.5 && target > 0.5)
+                    .count() as f64;
+                let predicted_positives =
+                    predictions.iter().filter(|&&pred| pred > 0.5).count() as f64;
+                if predicted_positives > 0.0 {
+                    Ok(true_positives / predicted_positives)
+                } else {
+                    Ok(0.0)
+                }
+            }
+            MetricType::Recall => {
+                let true_positives = predictions
+                    .iter()
+                    .zip(targets.iter())
+                    .filter(|(&pred, &target)| pred > 0.5 && target > 0.5)
+                    .count() as f64;
+                let actual_positives =
+                    targets.iter().filter(|&&target| target > 0.5).count() as f64;
+                if actual_positives > 0.0 {
+                    Ok(true_positives / actual_positives)
+                } else {
+                    Ok(0.0)
+                }
+            }
+            MetricType::F1Score => {
+                let precision = MetricType::Precision.compute(predictions, targets)?;
+                let recall = MetricType::Recall.compute(predictions, targets)?;
+                if precision + recall > 0.0 {
+                    Ok(2.0 * precision * recall / (precision + recall))
+                } else {
+                    Ok(0.0)
+                }
+            }
         }
     }
 }
@@ -733,5 +898,86 @@ mod tests {
 
         let mut act_sigmoid = Activation::new(sigmoid);
         act_sigmoid.build(&[10]).expect("Should build");
+    }
+
+    /// Regression test for the "backward_pass is a no-op" bug: `fit` must
+    /// actually change the Dense layer's weights and reduce the training
+    /// loss on an easily learnable linear-regression toy problem.
+    #[test]
+    fn test_fit_updates_weights_and_reduces_loss() {
+        let mut model = Sequential::new();
+        model.add(Box::new(Dense::new(2).name("dense1")));
+        model.build(vec![4, 3]).expect("build should succeed");
+        let mut model = model.compile(
+            LossFunction::MeanSquaredError,
+            OptimizerType::SGD {
+                learning_rate: 0.5,
+                momentum: 0.0,
+            },
+            vec![],
+        );
+
+        let x = Array::from_shape_vec(
+            IxDyn(&[4, 3]),
+            vec![0.1, 0.2, 0.3, 0.4, 0.1, 0.2, 0.3, 0.4, 0.1, 0.2, 0.3, 0.4],
+        )
+        .expect("valid shape");
+        let y = Array::from_shape_vec(IxDyn(&[4, 2]), vec![1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0])
+            .expect("valid shape");
+
+        let weights_before = model.layers[0].get_weights();
+        let initial_predictions = model.predict(&x).expect("predict should succeed");
+        let initial_loss = model
+            .compute_loss(&initial_predictions, &y)
+            .expect("loss should compute");
+
+        let history = model
+            .fit(&x, &y, 150, Some(4), None, vec![])
+            .expect("fit should succeed");
+
+        let weights_after = model.layers[0].get_weights();
+        let weights_changed = weights_before[0]
+            .iter()
+            .zip(weights_after[0].iter())
+            .any(|(a, b)| (a - b).abs() > 1e-9);
+        assert!(
+            weights_changed,
+            "expected Dense layer weights to change after fit"
+        );
+
+        let final_loss = *history.loss.last().expect("history should have losses");
+        assert!(
+            final_loss < initial_loss,
+            "expected training loss to decrease: initial={initial_loss}, final={final_loss}"
+        );
+    }
+
+    /// Regression test for the "Precision/Recall/F1Score always error" gap:
+    /// these metrics must now be computed from real confusion-matrix counts.
+    #[test]
+    fn test_precision_recall_f1_are_computed() {
+        let predictions =
+            Array::from_shape_vec(IxDyn(&[4]), vec![0.9, 0.1, 0.8, 0.3]).expect("valid shape");
+        let targets =
+            Array::from_shape_vec(IxDyn(&[4]), vec![1.0, 0.0, 0.0, 1.0]).expect("valid shape");
+
+        let precision = MetricType::Precision
+            .compute(&predictions, &targets)
+            .expect("precision should compute");
+        let recall = MetricType::Recall
+            .compute(&predictions, &targets)
+            .expect("recall should compute");
+        let f1 = MetricType::F1Score
+            .compute(&predictions, &targets)
+            .expect("f1 should compute");
+
+        // Predicted positives (pred > 0.5): indices 0, 2. True positives
+        // among those (target > 0.5 too): index 0 only -> precision = 1/2.
+        assert!((precision - 0.5).abs() < 1e-9, "precision was {precision}");
+        // Actual positives (target > 0.5): indices 0, 3. True positives
+        // found: index 0 only -> recall = 1/2.
+        assert!((recall - 0.5).abs() < 1e-9, "recall was {recall}");
+        // Equal precision and recall -> F1 equals the same value.
+        assert!((f1 - 0.5).abs() < 1e-9, "f1 was {f1}");
     }
 }

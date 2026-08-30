@@ -736,10 +736,7 @@ impl EnhancedNoiseCharacterizer {
         ];
         let characterizations: Vec<_> = tasks.into_iter().collect();
         for char_result in characterizations {
-            match char_result {
-                Ok(data) => result.merge(data),
-                Err(e) => return Err(e),
-            }
+            result.merge(char_result?);
         }
         if let Some(ml_analyzer) = &self.ml_analyzer {
             let ml_insights = ml_analyzer.analyze_noise_patterns(&result)?;
@@ -1223,4 +1220,67 @@ pub enum RecommendationType {
     ErrorMitigation,
     HardwareMaintenance,
     AlgorithmOptimization,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A mock `QuantumDevice` whose `execute` always fails, used to verify
+    /// that `characterize_noise` still correctly short-circuits on the first
+    /// task error after the `match { .. => return Err(e) }` -> `?` refactor.
+    struct FailingDevice {
+        topology: DeviceTopology,
+        calibration: CalibrationData,
+    }
+
+    impl FailingDevice {
+        fn new(num_qubits: usize) -> Self {
+            Self {
+                topology: DeviceTopology {
+                    num_qubits,
+                    connectivity: Vec::new(),
+                },
+                calibration: CalibrationData {
+                    gate_errors: HashMap::new(),
+                    readout_errors: vec![0.0; num_qubits],
+                    coherence_times: vec![(0.0, 0.0); num_qubits],
+                },
+            }
+        }
+    }
+
+    impl QuantumDevice for FailingDevice {
+        fn execute(&self, _circuit: DynamicCircuit, _shots: usize) -> QuantRS2Result<QuantumJob> {
+            Err(QuantRS2Error::InvalidInput(
+                "mock device always fails execution".to_string(),
+            ))
+        }
+
+        fn get_topology(&self) -> &DeviceTopology {
+            &self.topology
+        }
+
+        fn get_calibration_data(&self) -> &CalibrationData {
+            &self.calibration
+        }
+    }
+
+    #[test]
+    fn test_characterize_noise_propagates_first_task_error_via_question_mark() {
+        // Regression test for the `for char_result in characterizations { result.merge(char_result?); }`
+        // refactor in `characterize_noise` (previously a `match char_result { Ok(data) =>
+        // result.merge(data), Err(e) => return Err(e) }`). An error from the first
+        // characterization task (randomized benchmarking) must still short-circuit
+        // the whole pipeline instead of being silently swallowed.
+        let characterizer = EnhancedNoiseCharacterizer::new(EnhancedNoiseConfig::default());
+        let device = FailingDevice::new(2);
+        let qubits = vec![QubitId(0), QubitId(1)];
+
+        let result = characterizer.characterize_noise(&device, &qubits);
+        assert!(
+            result.is_err(),
+            "expected characterize_noise to propagate the failing device's error"
+        );
+    }
 }

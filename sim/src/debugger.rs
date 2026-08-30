@@ -14,7 +14,7 @@ use crate::error::{Result, SimulatorError};
 #[cfg(feature = "mps")]
 use crate::mps_enhanced::{EnhancedMPS, MPSConfig};
 use crate::statevector::StateVectorSimulator;
-use quantrs2_circuit::builder::Circuit;
+use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::gate::GateOp;
 
 // Placeholder for MPSConfig when MPS feature is disabled
@@ -375,19 +375,17 @@ impl<const N: usize> QuantumDebugger<N> {
         // Execute the current gate
         let gate_start = Instant::now();
 
-        // Apply gate to appropriate simulator
+        // Apply gate to appropriate simulator.
+        //
+        // The MPS backend evolves incrementally and is mutated in place here. The
+        // state-vector backend, by contrast, does not need per-gate mutation: its
+        // current amplitudes are reconstructed on demand by replaying the executed
+        // prefix (gates `0..current_gate`) in `get_current_state`. Advancing
+        // `self.current_gate` below is therefore sufficient to expose the correct
+        // state for the state-vector path.
         #[cfg(feature = "mps")]
         if let Some(ref mut mps) = self.mps_simulator {
             mps.apply_gate(circuit.gates()[self.current_gate].as_ref())?;
-        } else {
-            // For now, we'll use a simplified approach for the state vector simulator
-            // In practice, this would need proper integration with the actual simulator
-        }
-
-        #[cfg(not(feature = "mps"))]
-        {
-            // For now, we'll use a simplified approach for the state vector simulator
-            // In practice, this would need proper integration with the actual simulator
         }
 
         let gate_time = gate_start.elapsed();
@@ -440,6 +438,16 @@ impl<const N: usize> QuantumDebugger<N> {
     }
 
     /// Get current quantum state
+    ///
+    /// Returns the full `2^N` amplitude vector after the gates that have been
+    /// executed so far (`self.current_gate` gates from the loaded circuit).
+    ///
+    /// The state is reconstructed by replaying the executed prefix of the
+    /// circuit through the embedded [`StateVectorSimulator`]. This always
+    /// reflects the real amplitudes; if no circuit is loaded, the simulator
+    /// is in the initial `|0…0⟩` state, which is returned as a genuine state
+    /// vector (amplitude 1 on the zero basis state) rather than a fabricated
+    /// all-zero vector.
     pub fn get_current_state(&self) -> Result<Array1<Complex64>> {
         #[cfg(feature = "mps")]
         if let Some(ref mps) = self.mps_simulator {
@@ -448,21 +456,52 @@ impl<const N: usize> QuantumDebugger<N> {
                 .map_err(|e| SimulatorError::UnsupportedOperation(format!("MPS error: {e}")));
         }
 
-        // Return the state from the state vector simulator
-        // For now, return a dummy state
-        Ok(Array1::zeros(1 << N))
+        self.compute_statevector_prefix()
     }
 
-    /// Get entanglement entropy at specified cut
-    pub fn get_entanglement_entropy(&self, cut: usize) -> Result<f64> {
-        #[cfg(feature = "mps")]
-        if self.mps_simulator.is_some() {
-            // For now, return dummy value due to borrow checker issues
-            // In a real implementation, would need proper state management
-            return Ok(0.0);
+    /// Reconstruct the state-vector amplitudes for the executed circuit prefix.
+    ///
+    /// Builds a circuit containing only the first `self.current_gate` gates and
+    /// runs it through the embedded [`StateVectorSimulator`], returning the real
+    /// amplitudes. When no circuit is loaded the result is the initial `|0…0⟩`
+    /// state.
+    fn compute_statevector_prefix(&self) -> Result<Array1<Complex64>> {
+        let dim = 1_usize << N;
+
+        let Some(circuit) = self.circuit.as_ref() else {
+            // No circuit loaded: the simulator sits in the |0…0⟩ state.
+            let mut amplitudes = Array1::zeros(dim);
+            amplitudes[0] = Complex64::new(1.0, 0.0);
+            return Ok(amplitudes);
+        };
+
+        // Replay only the gates that have already been executed. We clone the
+        // shared `Arc` handles (cheap, no gate cloning) into a fresh prefix
+        // circuit so the simulator can evolve |0…0⟩ up to the current step.
+        let gates = circuit.gates();
+        let executed = self.current_gate.min(gates.len());
+
+        let mut prefix: Circuit<N> = Circuit::with_capacity(executed);
+        for gate in &gates[..executed] {
+            prefix.add_gate_arc(Arc::clone(gate))?;
         }
 
-        // Compute entanglement entropy from state vector
+        let register = self.simulator.run(&prefix)?;
+        Ok(Array1::from(register.amplitudes().to_vec()))
+    }
+
+    /// Get entanglement entropy at the specified bipartition cut.
+    ///
+    /// The cut splits the qubits into two contiguous groups; `cut` is the number
+    /// of qubits on one side of the partition. The von Neumann entropy (in nats,
+    /// consistent with the MPS path) of the reduced density matrix is returned.
+    ///
+    /// Both the state-vector and MPS backends are handled through
+    /// [`Self::get_current_state`], which yields the genuine amplitudes for the
+    /// current step (the MPS backend is contracted to a state vector via its
+    /// `to_statevector` method). This computes the real entropy in every case
+    /// rather than returning a placeholder.
+    pub fn get_entanglement_entropy(&self, cut: usize) -> Result<f64> {
         let state = self.get_current_state()?;
         compute_entanglement_entropy(&state, cut, N)
     }
@@ -655,7 +694,9 @@ impl<const N: usize> QuantumDebugger<N> {
     fn compute_all_entanglement_entropies(&self) -> Result<Vec<f64>> {
         let mut entropies = Vec::new();
         for &cut in &self.config.entropy_cuts {
-            if cut < N - 1 {
+            // Only evaluate genuine bipartitions: `cut` qubits on the left and
+            // `N - cut` on the right, both non-empty (1 <= cut <= N - 1).
+            if cut >= 1 && cut < N {
                 entropies.push(self.get_entanglement_entropy(cut)?);
             }
         }
@@ -747,37 +788,121 @@ pub struct DebugReport {
 
 // Helper functions
 
-/// Compute entanglement entropy from state vector
+/// Compute the bipartite von Neumann entanglement entropy from a state vector.
+///
+/// The amplitude vector `|ψ⟩` is reshaped into a `2^cut × 2^(num_qubits - cut)`
+/// matrix `M`. The Schmidt coefficients of the bipartition are the singular
+/// values `σ_i` of `M`, and the reduced-density-matrix eigenvalues are `σ_i²`.
+/// The von Neumann entropy is therefore `S = -Σ_i σ_i² ln σ_i²` (natural log,
+/// matching the convention used by the MPS backend's `entanglement_entropy`).
+///
+/// The singular value decomposition is computed with [`scirs2_linalg`] (the
+/// SciRS2 complex SVD, which diagonalizes `MᴴM`); `ndarray-linalg` is not used.
 fn compute_entanglement_entropy(
     state: &Array1<Complex64>,
     cut: usize,
     num_qubits: usize,
 ) -> Result<f64> {
-    if cut >= num_qubits - 1 {
+    // A valid bipartition needs at least one qubit on each side: `cut` qubits on
+    // the left (1..=num_qubits-1) and `num_qubits - cut` on the right. Reject
+    // cuts that would leave an empty subsystem or exceed the register.
+    if num_qubits < 2 || cut == 0 || cut >= num_qubits {
         return Err(SimulatorError::IndexOutOfBounds(cut));
     }
 
-    let left_dim = 1 << cut;
-    let right_dim = 1 << (num_qubits - cut);
+    let left_dim = 1usize << cut;
+    let right_dim = 1usize << (num_qubits - cut);
 
-    // Reshape state into matrix
+    // Reshape the state into the bipartite amplitude matrix M[i_left, i_right].
     let state_matrix =
         Array2::from_shape_vec((left_dim, right_dim), state.to_vec()).map_err(|_| {
             SimulatorError::DimensionMismatch("Invalid state vector dimension".to_string())
         })?;
 
-    // Compute SVD
-    // For now, return dummy value - proper implementation would use ndarray-linalg
-    Ok(0.0)
+    // Singular values via SciRS2 complex SVD. The squared singular values are the
+    // Schmidt probabilities p_i = σ_i².
+    let svd = scirs2_linalg::complex::decompositions::complex_svd(&state_matrix.view(), false)
+        .map_err(|e| SimulatorError::LinalgError(format!("complex SVD failed: {e}")))?;
+
+    let mut entropy = 0.0_f64;
+    for &sigma in &svd.s {
+        let p = sigma * sigma;
+        // Skip vanishing Schmidt coefficients; lim_{p->0} p ln p = 0.
+        if p > 1e-12 {
+            entropy -= p * p.ln();
+        }
+    }
+
+    // Guard against tiny negative values from floating-point round-off.
+    Ok(entropy.max(0.0))
 }
 
-/// Compute Pauli expectation value from state vector
-const fn compute_pauli_expectation(
-    state: &Array1<Complex64>,
-    pauli_string: &str,
-) -> Result<Complex64> {
-    // Simplified implementation - would need proper Pauli string evaluation
-    Ok(Complex64::new(0.0, 0.0))
+/// Compute the expectation value `⟨ψ| P |ψ⟩` of a Pauli string from a state vector.
+///
+/// `pauli_string` is a sequence of `I`, `X`, `Y`, `Z` characters, one per qubit.
+/// The leftmost character corresponds to the highest-index qubit (little-endian
+/// basis ordering), matching the convention of the MPS backend's
+/// `expectation_value_pauli`. The string length must equal the number of qubits.
+///
+/// This evaluates the real expectation value by applying the tensor-product
+/// Pauli operator to the amplitude vector; it does not return a placeholder.
+fn compute_pauli_expectation(state: &Array1<Complex64>, pauli_string: &str) -> Result<Complex64> {
+    let dim = state.len();
+    let num_qubits = dim.trailing_zeros() as usize;
+
+    if dim != 1usize << num_qubits {
+        return Err(SimulatorError::DimensionMismatch(format!(
+            "State vector length {dim} is not a power of two"
+        )));
+    }
+
+    if pauli_string.len() != num_qubits {
+        return Err(SimulatorError::InvalidInput(format!(
+            "Pauli string length {} doesn't match qubit count {num_qubits}",
+            pauli_string.len()
+        )));
+    }
+
+    let mut result = Complex64::new(0.0, 0.0);
+
+    for (i, amplitude) in state.iter().enumerate() {
+        let mut coeff = Complex64::new(1.0, 0.0);
+        let mut target_state = i;
+
+        // Leftmost character maps to the highest qubit, so iterate reversed to
+        // pair character position with qubit index 0, 1, 2, …
+        for (qubit, pauli_char) in pauli_string.chars().rev().enumerate() {
+            let bit = (i >> qubit) & 1;
+            match pauli_char {
+                'I' => {}
+                'X' => {
+                    target_state ^= 1 << qubit;
+                }
+                'Y' => {
+                    target_state ^= 1 << qubit;
+                    coeff *= if bit == 0 {
+                        Complex64::new(0.0, 1.0)
+                    } else {
+                        Complex64::new(0.0, -1.0)
+                    };
+                }
+                'Z' => {
+                    if bit == 1 {
+                        coeff = -coeff;
+                    }
+                }
+                other => {
+                    return Err(SimulatorError::InvalidInput(format!(
+                        "Invalid Pauli operator: {other}"
+                    )));
+                }
+            }
+        }
+
+        result += amplitude.conj() * coeff * state[target_state];
+    }
+
+    Ok(result)
 }
 
 /// Estimate circuit depth
@@ -834,5 +959,217 @@ mod tests {
             .remove_watchpoint("test")
             .expect("Failed to remove watchpoint");
         assert!(debugger.get_watchpoint("test").is_none());
+    }
+
+    /// Build a debugger with snapshots disabled and a Bell circuit loaded.
+    fn bell_debugger() -> QuantumDebugger<2> {
+        let config = DebugConfig {
+            store_snapshots: false,
+            ..DebugConfig::default()
+        };
+        let mut debugger: QuantumDebugger<2> =
+            QuantumDebugger::new(config).expect("Failed to create debugger");
+
+        let mut circuit: Circuit<2> = Circuit::new();
+        circuit
+            .bell_state(0, 1)
+            .expect("Failed to build Bell state");
+        debugger
+            .load_circuit(circuit)
+            .expect("Failed to load circuit");
+        debugger
+    }
+
+    #[test]
+    fn test_get_current_state_initial_is_zero_ket() {
+        // With no gates executed yet, the state must be a *genuine* |00> state
+        // (amplitude 1 on basis 0), not a fabricated all-zero vector.
+        let debugger = bell_debugger();
+        let state = debugger
+            .get_current_state()
+            .expect("Failed to get current state");
+
+        assert_eq!(state.len(), 4);
+        assert!((state[0] - Complex64::new(1.0, 0.0)).norm() < 1e-12);
+        for amp in state.iter().skip(1) {
+            assert!(amp.norm() < 1e-12);
+        }
+
+        // It must NOT be the old fabricated all-zero "dummy" vector.
+        let dummy: Array1<Complex64> = Array1::zeros(4);
+        assert!(
+            state != dummy,
+            "state must not be the fabricated all-zero vector"
+        );
+    }
+
+    #[test]
+    fn test_get_current_state_bell_amplitudes() {
+        // Execute H(0) then CNOT(0,1); the real Bell state is
+        // (|00> + |11>)/sqrt(2) = (1/sqrt2, 0, 0, 1/sqrt2).
+        let mut debugger = bell_debugger();
+        debugger.step().expect("step 1 failed"); // apply H
+        debugger.step().expect("step 2 failed"); // apply CNOT
+
+        let state = debugger
+            .get_current_state()
+            .expect("Failed to get current state");
+
+        let inv_sqrt2 = 1.0 / std::f64::consts::SQRT_2;
+        assert!((state[0] - Complex64::new(inv_sqrt2, 0.0)).norm() < 1e-10);
+        assert!(state[1].norm() < 1e-10);
+        assert!(state[2].norm() < 1e-10);
+        assert!((state[3] - Complex64::new(inv_sqrt2, 0.0)).norm() < 1e-10);
+
+        // Norm must be 1 (real, normalized state).
+        let norm_sq: f64 = state.iter().map(scirs2_core::Complex::norm_sqr).sum();
+        assert!((norm_sq - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_get_current_state_prefix_after_first_gate() {
+        // After only H(0), the state is (|00> + |01>)/sqrt2 = (1/sqrt2, 1/sqrt2, 0, 0).
+        // Qubit 0 is the low bit (little-endian: index 1 == q0=1), so H(0) populates
+        // indices 0 and 1. This verifies the executed *prefix* is reconstructed, not
+        // the full circuit.
+        let mut debugger = bell_debugger();
+        debugger.step().expect("step 1 failed"); // apply H only
+
+        let state = debugger
+            .get_current_state()
+            .expect("Failed to get current state");
+
+        let inv_sqrt2 = 1.0 / std::f64::consts::SQRT_2;
+        assert!((state[0] - Complex64::new(inv_sqrt2, 0.0)).norm() < 1e-10);
+        assert!((state[1] - Complex64::new(inv_sqrt2, 0.0)).norm() < 1e-10);
+        assert!(state[2].norm() < 1e-10);
+        assert!(state[3].norm() < 1e-10);
+    }
+
+    #[test]
+    fn test_entanglement_entropy_bell_is_ln2() {
+        // A Bell state is maximally entangled across the 1|1 cut: S = ln(2) nats.
+        let mut debugger = bell_debugger();
+        debugger.run().expect("run failed");
+
+        let entropy = debugger
+            .get_entanglement_entropy(1)
+            .expect("entropy failed");
+        assert!(
+            (entropy - std::f64::consts::LN_2).abs() < 1e-10,
+            "Bell entropy {entropy} should equal ln(2)"
+        );
+    }
+
+    #[test]
+    fn test_entanglement_entropy_product_state_is_zero() {
+        // |+0> = H(0) only is a product state across the 1|1 cut: S = 0.
+        let mut debugger = bell_debugger();
+        debugger.step().expect("step failed"); // H(0) only
+
+        let entropy = debugger
+            .get_entanglement_entropy(1)
+            .expect("entropy failed");
+        assert!(
+            entropy.abs() < 1e-10,
+            "product-state entropy {entropy} should be 0"
+        );
+    }
+
+    #[test]
+    fn test_compute_entanglement_entropy_known_schmidt() {
+        // Construct a 2-qubit state with known Schmidt coefficients
+        // |psi> = sqrt(0.8)|00> + sqrt(0.2)|11>.
+        // Reduced density eigenvalues are {0.8, 0.2}; entropy is the binary
+        // entropy in nats: -(0.8 ln 0.8 + 0.2 ln 0.2).
+        let p0 = 0.8_f64;
+        let p1 = 0.2_f64;
+        let state = Array1::from(vec![
+            Complex64::new(p0.sqrt(), 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(p1.sqrt(), 0.0),
+        ]);
+
+        let expected = -(p0 * p0.ln() + p1 * p1.ln());
+        let entropy = compute_entanglement_entropy(&state, 1, 2).expect("entropy failed");
+        assert!(
+            (entropy - expected).abs() < 1e-10,
+            "entropy {entropy} should equal {expected}"
+        );
+    }
+
+    #[test]
+    fn test_compute_entanglement_entropy_rejects_bad_cut() {
+        let state: Array1<Complex64> =
+            Array1::from(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
+        // num_qubits = 1: no valid bipartition exists.
+        assert!(compute_entanglement_entropy(&state, 0, 1).is_err());
+    }
+
+    #[test]
+    fn test_pauli_expectation_z_on_computational_basis() {
+        // <Z> on |0> = +1, <Z> on |1> = -1.
+        let zero: Array1<Complex64> =
+            Array1::from(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
+        let one: Array1<Complex64> =
+            Array1::from(vec![Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)]);
+
+        let ez0 = compute_pauli_expectation(&zero, "Z").expect("pauli failed");
+        let ez1 = compute_pauli_expectation(&one, "Z").expect("pauli failed");
+        assert!((ez0 - Complex64::new(1.0, 0.0)).norm() < 1e-12);
+        assert!((ez1 - Complex64::new(-1.0, 0.0)).norm() < 1e-12);
+    }
+
+    #[test]
+    fn test_pauli_expectation_x_on_plus_state() {
+        // |+> = (|0> + |1>)/sqrt2; <X> = +1, <Z> = 0.
+        let inv_sqrt2 = 1.0 / std::f64::consts::SQRT_2;
+        let plus: Array1<Complex64> = Array1::from(vec![
+            Complex64::new(inv_sqrt2, 0.0),
+            Complex64::new(inv_sqrt2, 0.0),
+        ]);
+
+        let ex = compute_pauli_expectation(&plus, "X").expect("pauli failed");
+        let ez = compute_pauli_expectation(&plus, "Z").expect("pauli failed");
+        assert!((ex - Complex64::new(1.0, 0.0)).norm() < 1e-12);
+        assert!(ez.norm() < 1e-12);
+    }
+
+    #[test]
+    fn test_pauli_expectation_zz_on_bell() {
+        // Bell state (|00>+|11>)/sqrt2: <ZZ> = +1, <XX> = +1, <ZI> = 0.
+        let inv_sqrt2 = 1.0 / std::f64::consts::SQRT_2;
+        let bell: Array1<Complex64> = Array1::from(vec![
+            Complex64::new(inv_sqrt2, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(inv_sqrt2, 0.0),
+        ]);
+
+        let ezz = compute_pauli_expectation(&bell, "ZZ").expect("pauli failed");
+        let exx = compute_pauli_expectation(&bell, "XX").expect("pauli failed");
+        let ezi = compute_pauli_expectation(&bell, "ZI").expect("pauli failed");
+        assert!((ezz - Complex64::new(1.0, 0.0)).norm() < 1e-12);
+        assert!((exx - Complex64::new(1.0, 0.0)).norm() < 1e-12);
+        assert!(ezi.norm() < 1e-12);
+    }
+
+    #[test]
+    fn test_pauli_expectation_length_mismatch_errors() {
+        let zero: Array1<Complex64> =
+            Array1::from(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
+        // One qubit but a two-character Pauli string.
+        assert!(compute_pauli_expectation(&zero, "ZZ").is_err());
+    }
+
+    #[test]
+    fn test_pauli_via_debugger_zz_on_bell() {
+        // End-to-end through the debugger API on a real executed circuit.
+        let mut debugger = bell_debugger();
+        debugger.run().expect("run failed");
+
+        let ezz = debugger.get_pauli_expectation("ZZ").expect("pauli failed");
+        assert!((ezz - Complex64::new(1.0, 0.0)).norm() < 1e-10);
     }
 }

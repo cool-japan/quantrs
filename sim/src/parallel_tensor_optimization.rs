@@ -448,38 +448,102 @@ impl ParallelTensorEngine {
         Ok(())
     }
 
-    /// Perform actual tensor contraction
+    /// Perform an einsum-style pairwise tensor contraction.
+    ///
+    /// Contracts axes `indices1` of `tensor1` against axes `indices2` of
+    /// `tensor2` (paired positionally, so `indices1[k]` is summed with
+    /// `indices2[k]` and their dimensions must match). The output carries the
+    /// free (uncontracted) axes of `tensor1` followed by those of `tensor2`:
+    ///
+    /// `out[f1, f2] = Σ_c tensor1[f1, c] * tensor2[f2, c]`
+    ///
+    /// where `c` ranges over all combinations of the contracted axes.
     fn perform_tensor_contraction(
         tensor1: &ArrayD<Complex64>,
         tensor2: &ArrayD<Complex64>,
         indices1: &[usize],
         indices2: &[usize],
     ) -> Result<ArrayD<Complex64>> {
-        // This is a simplified tensor contraction implementation
-        // In practice, this would use optimized BLAS operations
+        let shape1 = tensor1.shape().to_vec();
+        let shape2 = tensor2.shape().to_vec();
 
-        let shape1 = tensor1.shape();
-        let shape2 = tensor2.shape();
-
-        // Calculate output shape
-        let mut output_shape = Vec::new();
-        for (i, &size) in shape1.iter().enumerate() {
-            if !indices1.contains(&i) {
-                output_shape.push(size);
+        if indices1.len() != indices2.len() {
+            return Err(SimulatorError::InvalidInput(format!(
+                "Contraction requires equal numbers of contracted axes, got {} and {}",
+                indices1.len(),
+                indices2.len()
+            )));
+        }
+        for (&a, &b) in indices1.iter().zip(indices2.iter()) {
+            if a >= shape1.len() || b >= shape2.len() {
+                return Err(SimulatorError::InvalidInput(format!(
+                    "Contracted axis out of range: tensor1 axis {a} (rank {}), tensor2 axis {b} (rank {})",
+                    shape1.len(),
+                    shape2.len()
+                )));
+            }
+            if shape1[a] != shape2[b] {
+                return Err(SimulatorError::InvalidInput(format!(
+                    "Contracted dimension mismatch: tensor1 axis {a} has size {}, tensor2 axis {b} has size {}",
+                    shape1[a], shape2[b]
+                )));
             }
         }
-        for (i, &size) in shape2.iter().enumerate() {
-            if !indices2.contains(&i) {
-                output_shape.push(size);
+
+        // Partition axes into free (kept) and contracted (summed).
+        let free1: Vec<usize> = (0..shape1.len())
+            .filter(|i| !indices1.contains(i))
+            .collect();
+        let free2: Vec<usize> = (0..shape2.len())
+            .filter(|i| !indices2.contains(i))
+            .collect();
+
+        let free1_dims: Vec<usize> = free1.iter().map(|&i| shape1[i]).collect();
+        let free2_dims: Vec<usize> = free2.iter().map(|&i| shape2[i]).collect();
+        let contracted_dims: Vec<usize> = indices1.iter().map(|&i| shape1[i]).collect();
+
+        let output_shape: Vec<usize> = free1_dims
+            .iter()
+            .copied()
+            .chain(free2_dims.iter().copied())
+            .collect();
+        let mut output = ArrayD::zeros(IxDyn(&output_shape));
+
+        let free1_size: usize = free1_dims.iter().product::<usize>().max(1);
+        let free2_size: usize = free2_dims.iter().product::<usize>().max(1);
+        let contracted_size: usize = contracted_dims.iter().product::<usize>().max(1);
+
+        // Reusable multi-index scratch buffers.
+        let mut idx1 = vec![0usize; shape1.len()];
+        let mut idx2 = vec![0usize; shape2.len()];
+        let mut out_idx = vec![0usize; output_shape.len()];
+
+        for f1 in 0..free1_size {
+            let f1_idx = unravel_index(f1, &free1_dims);
+            for (pos, &axis) in free1.iter().enumerate() {
+                idx1[axis] = f1_idx[pos];
+                out_idx[pos] = f1_idx[pos];
+            }
+            for f2 in 0..free2_size {
+                let f2_idx = unravel_index(f2, &free2_dims);
+                for (pos, &axis) in free2.iter().enumerate() {
+                    idx2[axis] = f2_idx[pos];
+                    out_idx[free1.len() + pos] = f2_idx[pos];
+                }
+
+                let mut acc = Complex64::new(0.0, 0.0);
+                for c in 0..contracted_size {
+                    let c_idx = unravel_index(c, &contracted_dims);
+                    for (pos, (&a, &b)) in indices1.iter().zip(indices2.iter()).enumerate() {
+                        idx1[a] = c_idx[pos];
+                        idx2[b] = c_idx[pos];
+                    }
+                    acc += tensor1[IxDyn(&idx1)] * tensor2[IxDyn(&idx2)];
+                }
+                output[IxDyn(&out_idx)] = acc;
             }
         }
 
-        // Create output tensor
-        let output_dim = IxDyn(&output_shape);
-        let mut output = ArrayD::zeros(output_dim);
-
-        // Simplified contraction (this would be optimized in practice)
-        // For now, just return a placeholder
         Ok(output)
     }
 
@@ -620,6 +684,20 @@ impl Default for NumaTopology {
     }
 }
 
+/// Convert a row-major linear index into its multi-index for the given `dims`.
+///
+/// An empty `dims` slice yields an empty multi-index (the single element of a
+/// zero-dimensional / scalar axis set).
+fn unravel_index(mut linear: usize, dims: &[usize]) -> Vec<usize> {
+    let mut multi = vec![0usize; dims.len()];
+    for i in (0..dims.len()).rev() {
+        let d = dims[i];
+        multi[i] = linear % d;
+        linear /= d;
+    }
+    multi
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -686,5 +764,69 @@ mod tests {
 
         let result = strategies::work_stealing_contraction(&tensors, &[contraction], 2);
         assert!(result.is_ok());
+    }
+
+    /// Regression: `perform_tensor_contraction` previously returned an all-zero
+    /// placeholder. It must now compute the real contraction; a matrix product
+    /// is the canonical single-index contraction.
+    #[test]
+    fn test_perform_tensor_contraction_matrix_product() {
+        // A (2x3) . B (3x2) via contracting A axis 1 with B axis 0.
+        let a = Array::from_shape_vec(
+            IxDyn(&[2, 3]),
+            vec![
+                Complex64::new(1.0, 0.0),
+                Complex64::new(2.0, 0.0),
+                Complex64::new(3.0, 0.0),
+                Complex64::new(4.0, 0.0),
+                Complex64::new(5.0, 0.0),
+                Complex64::new(6.0, 0.0),
+            ],
+        )
+        .expect("A shape");
+        let b = Array::from_shape_vec(
+            IxDyn(&[3, 2]),
+            vec![
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(1.0, 0.0),
+            ],
+        )
+        .expect("B shape");
+
+        let out = ParallelTensorEngine::perform_tensor_contraction(&a, &b, &[1], &[0])
+            .expect("contraction should succeed");
+        assert_eq!(out.shape(), &[2, 2]);
+        // Expected A.B = [[4,5],[10,11]].
+        assert!((out[IxDyn(&[0, 0])] - Complex64::new(4.0, 0.0)).norm() < 1e-12);
+        assert!((out[IxDyn(&[0, 1])] - Complex64::new(5.0, 0.0)).norm() < 1e-12);
+        assert!((out[IxDyn(&[1, 0])] - Complex64::new(10.0, 0.0)).norm() < 1e-12);
+        assert!((out[IxDyn(&[1, 1])] - Complex64::new(11.0, 0.0)).norm() < 1e-12);
+    }
+
+    /// A contraction with no shared axes is an outer product; verify that too.
+    #[test]
+    fn test_perform_tensor_contraction_outer_product() {
+        let a = Array::from_shape_vec(
+            IxDyn(&[2]),
+            vec![Complex64::new(2.0, 0.0), Complex64::new(3.0, 0.0)],
+        )
+        .expect("A shape");
+        let b = Array::from_shape_vec(
+            IxDyn(&[2]),
+            vec![Complex64::new(5.0, 0.0), Complex64::new(7.0, 0.0)],
+        )
+        .expect("B shape");
+
+        let out = ParallelTensorEngine::perform_tensor_contraction(&a, &b, &[], &[])
+            .expect("outer product should succeed");
+        assert_eq!(out.shape(), &[2, 2]);
+        assert!((out[IxDyn(&[0, 0])] - Complex64::new(10.0, 0.0)).norm() < 1e-12);
+        assert!((out[IxDyn(&[0, 1])] - Complex64::new(14.0, 0.0)).norm() < 1e-12);
+        assert!((out[IxDyn(&[1, 0])] - Complex64::new(15.0, 0.0)).norm() < 1e-12);
+        assert!((out[IxDyn(&[1, 1])] - Complex64::new(21.0, 0.0)).norm() < 1e-12);
     }
 }

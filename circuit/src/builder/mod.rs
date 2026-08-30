@@ -185,13 +185,15 @@ impl GateOp for Measure {
     }
 
     fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
-        // Measurement doesn't have a unitary matrix representation
-        Ok(vec![
-            Complex64::new(1.0, 0.0),
-            Complex64::new(0.0, 0.0),
-            Complex64::new(0.0, 0.0),
-            Complex64::new(1.0, 0.0),
-        ])
+        // Measurement is a non-unitary, irreversible operation (wavefunction
+        // collapse followed by classical-bit assignment) and therefore has no
+        // unitary matrix representation. Callers that build a circuit-wide
+        // unitary (e.g. via repeated `gate.matrix()` composition) must fail
+        // loudly on circuits containing measurements rather than silently
+        // treating them as an identity no-op.
+        Err(quantrs2_core::error::QuantRS2Error::UnsupportedOperation(
+            "Measure has no unitary matrix representation".to_string(),
+        ))
     }
 
     fn as_any(&self) -> &dyn Any {

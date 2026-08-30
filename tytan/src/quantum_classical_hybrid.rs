@@ -38,6 +38,7 @@
 //! assert!(refined.energy <= 0.0);
 //! ```
 
+use crate::optimization::constraints::Constraint;
 use crate::sampler::{SampleResult, Sampler};
 use quantrs2_anneal::{IsingModel, QuboModel};
 use scirs2_core::ndarray::{Array1, Array2};
@@ -186,6 +187,8 @@ pub struct HybridOptimizer {
     fixed_variables: HashMap<String, bool>,
     /// Iteration history
     history: Vec<f64>,
+    /// Problem constraints used for feasibility repair/checking
+    constraints: Vec<Constraint>,
 }
 
 impl HybridOptimizer {
@@ -197,7 +200,27 @@ impl HybridOptimizer {
             tabu_list: HashSet::new(),
             fixed_variables: HashMap::new(),
             history: Vec::new(),
+            constraints: Vec::new(),
         }
+    }
+
+    /// Attach the problem's constraints so that constraint repair
+    /// (`RepairStrategy`) and feasibility checking (`compute_violations`)
+    /// operate on the real problem instead of being no-ops.
+    pub fn set_constraints(&mut self, constraints: Vec<Constraint>) {
+        self.constraints = constraints;
+    }
+
+    /// Builder-style variant of [`Self::set_constraints`].
+    #[must_use]
+    pub fn with_constraints(mut self, constraints: Vec<Constraint>) -> Self {
+        self.constraints = constraints;
+        self
+    }
+
+    /// Get the currently attached constraints
+    pub fn get_constraints(&self) -> &[Constraint] {
+        &self.constraints
     }
 
     /// Refine a solution using local search
@@ -484,32 +507,200 @@ impl HybridOptimizer {
         Ok((best_solution, best_energy))
     }
 
+    /// Total (unsigned) constraint violation across all attached constraints
+    fn total_violation(&self, solution: &HashMap<String, bool>) -> f64 {
+        self.constraints
+            .iter()
+            .map(|c| c.violation(solution).abs())
+            .sum()
+    }
+
+    /// Total constraint violation weighted by each constraint's
+    /// `penalty_weight` (defaulting to `1.0` when unset)
+    fn weighted_violation(&self, solution: &HashMap<String, bool>) -> f64 {
+        self.constraints
+            .iter()
+            .map(|c| c.penalty_weight.unwrap_or(1.0) * c.violation(solution).abs())
+            .sum()
+    }
+
+    /// Variables that participate in at least one currently-violated
+    /// constraint and are not fixed; these are the only sensible candidates
+    /// to flip during constraint repair.
+    fn repairable_variables(&self, solution: &HashMap<String, bool>) -> Vec<String> {
+        let mut vars: Vec<String> = self
+            .constraints
+            .iter()
+            .filter(|c| c.violation(solution).abs() > 1e-9)
+            .flat_map(|c| c.variables.iter().cloned())
+            .filter(|v| solution.contains_key(v) && !self.fixed_variables.contains_key(v))
+            .collect();
+        vars.sort();
+        vars.dedup();
+        vars
+    }
+
     /// Repair constraint violations
+    ///
+    /// Actually walks the attached [`Constraint`]s (see [`Self::set_constraints`])
+    /// and flips variables to reduce real violation according to the
+    /// configured [`RepairStrategy`]. When no constraints are attached this is
+    /// a genuine no-op (there is nothing to repair), rather than a fabricated
+    /// success.
     fn repair_constraints(
-        &self,
+        &mut self,
         solution: &HashMap<String, bool>,
         _qubo_matrix: &Array2<f64>,
     ) -> Result<HashMap<String, bool>, String> {
-        // Simplified constraint repair
-        // In practice, this would analyze specific constraint types
+        if self.constraints.is_empty() {
+            return Ok(solution.clone());
+        }
+
         let mut repaired = solution.clone();
+        let max_passes = self.config.max_local_iterations.min(200).max(1);
 
         match self.config.repair_strategy {
             RepairStrategy::Greedy => {
-                // Greedy repair: flip variables to reduce violations
-                // Placeholder implementation
+                for _ in 0..max_passes {
+                    let current = self.total_violation(&repaired);
+                    if current <= 1e-9 {
+                        break;
+                    }
+
+                    let mut best_var: Option<String> = None;
+                    let mut best_value = current;
+                    for var in self.repairable_variables(&repaired) {
+                        let mut candidate = repaired.clone();
+                        let cur_val = candidate[&var];
+                        candidate.insert(var.clone(), !cur_val);
+                        let candidate_violation = self.total_violation(&candidate);
+                        if candidate_violation < best_value {
+                            best_value = candidate_violation;
+                            best_var = Some(var);
+                        }
+                    }
+
+                    match best_var {
+                        Some(var) => {
+                            let cur_val = repaired[&var];
+                            repaired.insert(var, !cur_val);
+                        }
+                        None => break,
+                    }
+                }
             }
             RepairStrategy::Random => {
-                // Random repair
-                // Placeholder implementation
+                for _ in 0..max_passes {
+                    let current = self.total_violation(&repaired);
+                    if current <= 1e-9 {
+                        break;
+                    }
+
+                    let vars = self.repairable_variables(&repaired);
+                    if vars.is_empty() {
+                        break;
+                    }
+
+                    let idx = self.rng.random_range(0..vars.len());
+                    let var = vars[idx].clone();
+                    let mut candidate = repaired.clone();
+                    let cur_val = candidate[&var];
+                    candidate.insert(var.clone(), !cur_val);
+
+                    // Random repair still requires the move to not worsen
+                    // the total violation, otherwise it is not "repair".
+                    if self.total_violation(&candidate) <= current {
+                        repaired = candidate;
+                    }
+                }
             }
             RepairStrategy::Weighted => {
-                // Weighted repair
-                // Placeholder implementation
+                for _ in 0..max_passes {
+                    let current = self.weighted_violation(&repaired);
+                    if current <= 1e-9 {
+                        break;
+                    }
+
+                    let mut best_var: Option<String> = None;
+                    let mut best_value = current;
+                    for var in self.repairable_variables(&repaired) {
+                        let mut candidate = repaired.clone();
+                        let cur_val = candidate[&var];
+                        candidate.insert(var.clone(), !cur_val);
+                        let candidate_violation = self.weighted_violation(&candidate);
+                        if candidate_violation < best_value {
+                            best_value = candidate_violation;
+                            best_var = Some(var);
+                        }
+                    }
+
+                    match best_var {
+                        Some(var) => {
+                            let cur_val = repaired[&var];
+                            repaired.insert(var, !cur_val);
+                        }
+                        None => break,
+                    }
+                }
             }
             RepairStrategy::Iterative => {
-                // Iterative repair with backtracking
-                // Placeholder implementation
+                // Greedy single-flip repair; when no single flip improves the
+                // solution, search a wider (pairwise) neighborhood before
+                // giving up and backtracking to the best solution found.
+                let mut best = repaired.clone();
+                let mut best_violation = self.total_violation(&best);
+
+                for _ in 0..max_passes {
+                    if best_violation <= 1e-9 {
+                        break;
+                    }
+
+                    let mut improved = false;
+                    for var in self.repairable_variables(&best) {
+                        let mut candidate = best.clone();
+                        let cur_val = candidate[&var];
+                        candidate.insert(var.clone(), !cur_val);
+                        let candidate_violation = self.total_violation(&candidate);
+                        if candidate_violation < best_violation {
+                            best = candidate;
+                            best_violation = candidate_violation;
+                            improved = true;
+                            break;
+                        }
+                    }
+
+                    if improved {
+                        continue;
+                    }
+
+                    // Backtracking step: widen the neighborhood to pairs of
+                    // variables before concluding no further repair is
+                    // possible.
+                    let vars = self.repairable_variables(&best);
+                    let mut found_pair = false;
+                    'pairs: for i in 0..vars.len() {
+                        for j in (i + 1)..vars.len() {
+                            let mut candidate = best.clone();
+                            let vi = candidate[&vars[i]];
+                            let vj = candidate[&vars[j]];
+                            candidate.insert(vars[i].clone(), !vi);
+                            candidate.insert(vars[j].clone(), !vj);
+                            let candidate_violation = self.total_violation(&candidate);
+                            if candidate_violation < best_violation {
+                                best = candidate;
+                                best_violation = candidate_violation;
+                                found_pair = true;
+                                break 'pairs;
+                            }
+                        }
+                    }
+
+                    if !found_pair {
+                        break;
+                    }
+                }
+
+                repaired = best;
             }
         }
 
@@ -592,12 +783,21 @@ impl HybridOptimizer {
     }
 
     /// Iterative quantum-classical refinement
+    ///
+    /// Each iteration actually invokes the supplied `sampler` (e.g. a real
+    /// `SASampler`/`GASampler`/hardware-backed `Sampler`) on `qubo_matrix` to
+    /// obtain quantum/annealing samples, then refines each returned sample
+    /// with classical local search. Variables are named `x0`, `x1`, ...
+    /// matching [`Self::compute_energy`]'s convention.
     pub fn iterative_refinement<S: Sampler>(
         &mut self,
         sampler: &S,
         qubo_matrix: &Array2<f64>,
         num_samples: usize,
     ) -> Result<Vec<RefinedSolution>, String> {
+        let n = qubo_matrix.nrows();
+        let var_map: HashMap<String, usize> = (0..n).map(|i| (format!("x{i}"), i)).collect();
+
         let mut refined_solutions = Vec::new();
         let mut best_energy = f64::INFINITY;
 
@@ -608,17 +808,16 @@ impl HybridOptimizer {
                 self.config.max_qc_iterations
             );
 
-            // Quantum sampling step
-            // Note: This is a simplified interface; actual implementation would need proper QUBO format
-            // For now, we'll generate random samples as placeholder
-            let mut samples = Vec::new();
-            for _ in 0..num_samples {
-                let mut sample = HashMap::new();
-                for i in 0..qubo_matrix.nrows() {
-                    sample.insert(format!("x{i}"), self.rng.random::<bool>());
-                }
-                samples.push(sample);
-            }
+            // Quantum sampling step: actually run the injected sampler on the
+            // real QUBO matrix rather than fabricating uniform-random bits.
+            let sample_results = sampler
+                .run_qubo(&(qubo_matrix.clone(), var_map.clone()), num_samples)
+                .map_err(|e| format!("sampler failed during iterative refinement: {e}"))?;
+
+            let samples: Vec<HashMap<String, bool>> = sample_results
+                .into_iter()
+                .map(|result| result.assignments)
+                .collect();
 
             // Fix high-confidence variables if configured
             if let Some(criterion) = self.config.fixing_criterion {
@@ -673,12 +872,28 @@ impl HybridOptimizer {
     }
 
     /// Compute constraint violations
-    const fn compute_violations(
-        &self,
-        _solution: &HashMap<String, bool>,
-    ) -> Vec<ConstraintViolation> {
-        // Placeholder: would check actual constraints
-        Vec::new()
+    ///
+    /// Evaluates each attached [`Constraint`] (see [`Self::set_constraints`])
+    /// against the given assignment and reports the ones that are actually
+    /// violated. With no constraints attached this honestly returns an empty
+    /// list (there is nothing to violate), rather than fabricating success
+    /// for a problem it was never told about.
+    fn compute_violations(&self, solution: &HashMap<String, bool>) -> Vec<ConstraintViolation> {
+        self.constraints
+            .iter()
+            .filter_map(|c| {
+                let magnitude = c.violation(solution);
+                if magnitude.abs() > 1e-9 {
+                    Some(ConstraintViolation {
+                        constraint_id: c.name.clone(),
+                        magnitude,
+                        variables: c.variables.clone(),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     /// Check if optimization has converged
@@ -811,5 +1026,100 @@ mod tests {
         optimizer.history = vec![10.0, 9.0, 8.0];
 
         assert!(!optimizer.has_converged());
+    }
+
+    #[test]
+    fn test_iterative_refinement_actually_calls_sampler() {
+        use crate::sampler::SASampler;
+
+        let config = HybridConfig {
+            max_qc_iterations: 2,
+            max_local_iterations: 5,
+            fixing_criterion: None,
+            ..Default::default()
+        };
+        let mut optimizer = HybridOptimizer::new(config);
+        let sampler = SASampler::new(Some(42));
+
+        // Minimizing QUBO: -1 on the diagonal means x_i = 1 is favorable.
+        let qubo = Array2::from_shape_fn((3, 3), |(i, j)| if i == j { -1.0 } else { 0.0 });
+
+        let refined = optimizer
+            .iterative_refinement(&sampler, &qubo, 4)
+            .expect("iterative refinement should succeed");
+
+        // A real annealer run + classical refinement on this trivial QUBO
+        // must reach the true optimum (all variables true, energy = -3.0);
+        // the old fabricated "random bits" implementation had no such
+        // guarantee since it never actually consulted the sampler.
+        assert!(!refined.is_empty());
+        let best = refined
+            .iter()
+            .fold(f64::INFINITY, |acc, sol| acc.min(sol.energy));
+        assert!(
+            (best - (-3.0)).abs() < 1e-9,
+            "expected best energy -3.0 from a real sampler run, got {best}"
+        );
+    }
+
+    #[test]
+    fn test_repair_constraints_fixes_real_violation() {
+        use crate::optimization::constraints::{ConstraintType, Expression, Variable};
+
+        let config = HybridConfig {
+            repair_strategy: RepairStrategy::Greedy,
+            ..Default::default()
+        };
+        let mut optimizer = HybridOptimizer::new(config);
+
+        // Constraint: x0 == 1 (must be true).
+        let expr: Expression = Variable::new("x0".to_string()).into();
+        optimizer.set_constraints(vec![Constraint {
+            name: "x0_must_be_true".to_string(),
+            constraint_type: ConstraintType::Equality { target: 1.0 },
+            expression: expr,
+            variables: vec!["x0".to_string()],
+            penalty_weight: None,
+            slack_variables: Vec::new(),
+        }]);
+
+        let qubo = Array2::<f64>::zeros((2, 2));
+        let solution = HashMap::from([("x0".to_string(), false), ("x1".to_string(), false)]);
+
+        // Before the fix, is_feasible was hardcoded true for every solution
+        // regardless of actual constraints.
+        assert!(!optimizer.compute_violations(&solution).is_empty());
+
+        let refined = optimizer
+            .refine_solution(&solution, &qubo)
+            .expect("refinement should succeed");
+
+        assert!(refined.assignments["x0"], "repair should fix x0 to true");
+        assert!(refined.is_feasible);
+        assert!(refined.violations.is_empty());
+    }
+
+    #[test]
+    fn test_compute_violations_reports_real_violation_magnitude() {
+        use crate::optimization::constraints::{ConstraintType, Expression, Variable};
+
+        let mut optimizer = HybridOptimizer::new(HybridConfig::default());
+        let expr: Expression = Variable::new("x0".to_string()).into();
+        optimizer.set_constraints(vec![Constraint {
+            name: "x0_must_be_true".to_string(),
+            constraint_type: ConstraintType::Equality { target: 1.0 },
+            expression: expr,
+            variables: vec!["x0".to_string()],
+            penalty_weight: None,
+            slack_variables: Vec::new(),
+        }]);
+
+        let violated = HashMap::from([("x0".to_string(), false)]);
+        let violations = optimizer.compute_violations(&violated);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].magnitude, -1.0);
+
+        let satisfied = HashMap::from([("x0".to_string(), true)]);
+        assert!(optimizer.compute_violations(&satisfied).is_empty());
     }
 }

@@ -194,18 +194,24 @@ pub struct BackendRecommendation {
 /// Performance metrics for backend selection
 #[derive(Debug, Clone)]
 pub struct PerformanceMetrics {
-    /// Execution time
+    /// Execution time (measured wall-clock duration of the run)
     pub execution_time: Duration,
-    /// Memory usage
+    /// Memory required for the dense state vector of this circuit, in bytes
+    /// (`2^num_qubits * size_of::<Complex64>()`). This is the dominant, exact
+    /// memory cost of state-vector simulation; it is computed, not measured by a
+    /// profiler.
     pub memory_usage: usize,
-    /// CPU utilization
-    pub cpu_utilization: f64,
+    /// CPU utilization during the run. In-process CPU utilization cannot be
+    /// measured without an external profiler / OS sampling, so this is `None`
+    /// unless a caller supplies a measured value.
+    pub cpu_utilization: Option<f64>,
     /// GPU utilization (if applicable)
     pub gpu_utilization: Option<f64>,
-    /// Throughput (gates per second)
+    /// Throughput (gates per second), derived from `execution_time`
     pub throughput: f64,
-    /// Error rate
-    pub error_rate: f64,
+    /// Error rate. `None` when no error model was applied (no error to report);
+    /// a measured/estimated rate when available.
+    pub error_rate: Option<f64>,
 }
 
 /// Performance history entry for caching
@@ -474,7 +480,15 @@ impl AutoOptimizer {
         let depth_complexity = depth * num_qubits;
         let entanglement_complexity = self.estimate_entanglement_complexity(circuit)?;
 
-        Ok((gate_complexity + depth_complexity + entanglement_complexity) / 1000.0)
+        // Real structural-richness factor in [0, 1] derived from the circuit:
+        // denser, more entangling, higher-arity circuits scale the base score up.
+        let structural_richness = self.scirs2_analyzer.analyze_circuit_with_scirs2(circuit)?;
+        let richness_factor = 1.0 + structural_richness;
+
+        Ok(
+            (gate_complexity + depth_complexity + entanglement_complexity) * richness_factor
+                / 1000.0,
+        )
     }
 
     /// Estimate entanglement complexity
@@ -537,31 +551,49 @@ impl AutoOptimizer {
             }
         }
 
-        // Calculate connectivity properties
-        let max_degree = qubit_connections
+        // Deduplicate adjacency into undirected neighbor sets (2-qubit gates may
+        // appear multiple times between the same pair).
+        let adjacency: HashMap<QubitId, std::collections::HashSet<QubitId>> = qubit_connections
+            .iter()
+            .map(|(&node, neighbors)| {
+                let set: std::collections::HashSet<QubitId> =
+                    neighbors.iter().copied().filter(|&n| n != node).collect();
+                (node, set)
+            })
+            .collect();
+
+        // Calculate connectivity properties from the deduplicated graph
+        let max_degree = adjacency
             .values()
-            .map(std::vec::Vec::len)
+            .map(std::collections::HashSet::len)
             .max()
             .unwrap_or(0);
 
-        let avg_degree = if qubit_connections.is_empty() {
+        let avg_degree = if adjacency.is_empty() {
             0.0
         } else {
-            qubit_connections
+            adjacency
                 .values()
-                .map(std::vec::Vec::len)
+                .map(std::collections::HashSet::len)
                 .sum::<usize>() as f64
-                / qubit_connections.len() as f64
+                / adjacency.len() as f64
         };
 
-        // Simplified connected components analysis
-        let connected_components = 1; // Simplified for now
+        // Real connected-components count over the interaction graph (BFS).
+        // Isolated qubits (never touched by a 2-qubit gate) are each their own
+        // component, matching the total qubit count of the circuit.
+        let connected_components =
+            Self::count_connected_components(&adjacency, circuit.num_qubits());
 
-        // Simplified diameter calculation
-        let diameter = circuit.num_qubits().min(6); // Cap at 6 for practical purposes
+        // Real graph diameter: the longest shortest-path between any two qubits
+        // in the interaction graph (computed via BFS from each node). Disconnected
+        // graphs report the largest finite eccentricity found.
+        let diameter = Self::graph_diameter(&adjacency);
 
-        // Simplified clustering coefficient
-        let clustering_coefficient = 0.5; // Placeholder
+        // Real global clustering coefficient: average of per-node local clustering
+        // coefficients, where each node's coefficient is the fraction of its
+        // neighbor-pairs that are themselves connected (closed triplets).
+        let clustering_coefficient = Self::clustering_coefficient(&adjacency);
 
         Ok(ConnectivityProperties {
             max_degree,
@@ -570,6 +602,116 @@ impl AutoOptimizer {
             diameter,
             clustering_coefficient,
         })
+    }
+
+    /// Count connected components of the qubit-interaction graph.
+    ///
+    /// Qubits that never participate in a 2-qubit gate are not present in the
+    /// adjacency map; each such qubit forms its own singleton component.
+    fn count_connected_components(
+        adjacency: &HashMap<QubitId, std::collections::HashSet<QubitId>>,
+        total_qubits: usize,
+    ) -> usize {
+        use std::collections::{HashSet, VecDeque};
+
+        let mut visited: HashSet<QubitId> = HashSet::new();
+        let mut components = 0;
+
+        for &start in adjacency.keys() {
+            if visited.contains(&start) {
+                continue;
+            }
+            components += 1;
+            let mut queue = VecDeque::new();
+            queue.push_back(start);
+            visited.insert(start);
+            while let Some(node) = queue.pop_front() {
+                if let Some(neighbors) = adjacency.get(&node) {
+                    for &next in neighbors {
+                        if visited.insert(next) {
+                            queue.push_back(next);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Qubits absent from the interaction graph are isolated singletons.
+        let connected_qubits = visited.len();
+        let isolated = total_qubits.saturating_sub(connected_qubits);
+        components + isolated
+    }
+
+    /// Compute the diameter (longest shortest-path) of the interaction graph.
+    ///
+    /// Runs a BFS from every node and tracks the maximum finite distance found.
+    /// For a graph with no edges this is 0.
+    fn graph_diameter(adjacency: &HashMap<QubitId, std::collections::HashSet<QubitId>>) -> usize {
+        use std::collections::hash_map::Entry;
+        use std::collections::{HashMap as Map, VecDeque};
+
+        let mut diameter = 0;
+        for &source in adjacency.keys() {
+            let mut distances: Map<QubitId, usize> = Map::new();
+            distances.insert(source, 0);
+            let mut queue = VecDeque::new();
+            queue.push_back(source);
+            while let Some(node) = queue.pop_front() {
+                let current_dist = distances.get(&node).copied().unwrap_or(0);
+                if let Some(neighbors) = adjacency.get(&node) {
+                    for &next in neighbors {
+                        if let Entry::Vacant(slot) = distances.entry(next) {
+                            slot.insert(current_dist + 1);
+                            queue.push_back(next);
+                        }
+                    }
+                }
+            }
+            if let Some(&max_dist) = distances.values().max() {
+                diameter = diameter.max(max_dist);
+            }
+        }
+        diameter
+    }
+
+    /// Compute the global clustering coefficient (average local clustering).
+    ///
+    /// For each node with degree >= 2, the local coefficient is
+    /// `2 * links_between_neighbors / (degree * (degree - 1))`. The global value
+    /// is the mean over all nodes with degree >= 2. Returns 0.0 when no such node
+    /// exists (e.g. a graph with no triangles possible).
+    fn clustering_coefficient(
+        adjacency: &HashMap<QubitId, std::collections::HashSet<QubitId>>,
+    ) -> f64 {
+        let mut sum = 0.0;
+        let mut counted = 0usize;
+
+        for neighbors in adjacency.values() {
+            let degree = neighbors.len();
+            if degree < 2 {
+                continue;
+            }
+            let neighbor_list: Vec<QubitId> = neighbors.iter().copied().collect();
+            let mut links = 0usize;
+            for i in 0..neighbor_list.len() {
+                for j in (i + 1)..neighbor_list.len() {
+                    if let Some(set) = adjacency.get(&neighbor_list[i]) {
+                        if set.contains(&neighbor_list[j]) {
+                            links += 1;
+                        }
+                    }
+                }
+            }
+            let possible = degree * (degree - 1) / 2;
+            sum += links as f64 / possible as f64;
+            counted += 1;
+        }
+
+        if counted == 0 {
+            0.0
+        } else {
+            sum / counted as f64
+        }
     }
 
     /// Estimate entanglement depth using `SciRS2` analysis
@@ -635,14 +777,40 @@ impl AutoOptimizer {
             .map(|v| v as _)
     }
 
-    /// Check if circuit characteristics are similar to cached entry
-    const fn are_characteristics_similar(
+    /// Check if circuit characteristics are similar to a cached entry.
+    ///
+    /// Similarity is determined by hashing the characteristics into the same
+    /// coarse bucket used for the cache key (qubit count, gate-count order of
+    /// magnitude, two-qubit-density band). A cache entry only matches when its
+    /// stored circuit hash falls in the same bucket, ensuring we never reuse a
+    /// recommendation for a structurally different circuit.
+    fn are_characteristics_similar(
         &self,
         characteristics: &CircuitCharacteristics,
         entry: &PerformanceHistory,
     ) -> bool {
-        // Simplified similarity check - in practice would be more sophisticated
-        false // Always return false for now to avoid cache hits during development
+        self.characteristics_bucket_hash(characteristics) == entry.circuit_hash
+    }
+
+    /// Compute a coarse bucket hash for circuit characteristics.
+    ///
+    /// Circuits land in the same bucket when they share the same qubit count,
+    /// the same gate-count order of magnitude, and the same two-qubit-density
+    /// decile. This is the same key written when recording performance metrics,
+    /// so a hit means the cached backend was measured on a comparable workload.
+    fn characteristics_bucket_hash(&self, characteristics: &CircuitCharacteristics) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        let mut hasher = DefaultHasher::new();
+        characteristics.num_qubits.hash(&mut hasher);
+        // Bucket gate count by order of magnitude to tolerate small variation.
+        let gate_magnitude = (characteristics.num_gates as f64).max(1.0).log10().floor() as i64;
+        gate_magnitude.hash(&mut hasher);
+        // Bucket two-qubit density into deciles.
+        let density_decile = (characteristics.two_qubit_density * 10.0).round() as i64;
+        density_decile.hash(&mut hasher);
+        hasher.finish()
     }
 
     /// Build recommendation from cached performance data
@@ -905,17 +1073,39 @@ impl AutoOptimizer {
         backend_type: BackendType,
         execution_time: Duration,
     ) {
+        // Exact dense state-vector footprint for an N-qubit circuit. This is the
+        // dominant memory cost of state-vector simulation and is a deterministic
+        // function of the qubit count, not a profiler reading.
+        let state_vector_bytes = (1usize << N) * std::mem::size_of::<Complex64>();
+
+        let elapsed_secs = execution_time.as_secs_f64();
+        let throughput = if elapsed_secs > 0.0 {
+            circuit.num_gates() as f64 / elapsed_secs
+        } else {
+            0.0
+        };
+
         let metrics = PerformanceMetrics {
             execution_time,
-            memory_usage: 0,      // Would be measured in practice
-            cpu_utilization: 0.0, // Would be measured in practice
+            memory_usage: state_vector_bytes,
+            // In-process CPU utilization is unavailable without OS sampling.
+            cpu_utilization: None,
             gpu_utilization: None,
-            throughput: circuit.num_gates() as f64 / execution_time.as_secs_f64(),
-            error_rate: 0.0,
+            throughput,
+            // No error model was applied on this exact-simulation path.
+            error_rate: None,
+        };
+
+        // Store the coarse characteristics bucket so the cache lookup in
+        // `are_characteristics_similar` can match comparable circuits, rather
+        // than a per-gate hash that almost never repeats.
+        let circuit_hash = match self.analyze_circuit(circuit) {
+            Ok(characteristics) => self.characteristics_bucket_hash(&characteristics),
+            Err(_) => self.compute_circuit_hash(circuit),
         };
 
         let history_entry = PerformanceHistory {
-            circuit_hash: self.compute_circuit_hash(circuit),
+            circuit_hash,
             backend_type,
             metrics,
             timestamp: Instant::now(),
@@ -1010,14 +1200,47 @@ impl Default for AutoOptimizer {
 }
 
 impl SciRS2CircuitAnalyzer {
-    /// Analyze circuit using `SciRS2` tools (placeholder for future `SciRS2` integration)
-    const fn analyze_circuit_with_scirs2<const N: usize>(
+    /// Compute a normalized structural-richness score for a circuit in `[0, 1]`.
+    ///
+    /// This is a real function of the circuit, combining three measured ratios:
+    /// gate utilization (gates per qubit, saturating), two-qubit-gate fraction,
+    /// and average gate arity normalized by the qubit count. Circuits that touch
+    /// more qubits with more entangling, higher-arity gates score higher. When
+    /// advanced features are disabled the score is reported as `0.0` (analysis
+    /// not performed) rather than a fabricated value.
+    fn analyze_circuit_with_scirs2<const N: usize>(
         &self,
-        _circuit: &Circuit<N>,
+        circuit: &Circuit<N>,
     ) -> QuantRS2Result<f64> {
-        // Placeholder for SciRS2-specific circuit analysis
-        // Would use scirs2_core analysis tools when available
-        Ok(0.7) // Mock analysis result
+        if !self.enable_advanced_features {
+            return Ok(0.0);
+        }
+
+        let num_gates = circuit.num_gates();
+        if num_gates == 0 || N == 0 {
+            return Ok(0.0);
+        }
+
+        // Gate utilization: how densely gates are packed relative to qubits,
+        // squashed into [0, 1) with a smooth saturating curve.
+        let gates_per_qubit = num_gates as f64 / N as f64;
+        let utilization = gates_per_qubit / (1.0 + gates_per_qubit);
+
+        // Two-qubit (entangling) gate fraction.
+        let two_qubit_gates = circuit
+            .gates()
+            .iter()
+            .filter(|gate| gate.qubits().len() >= 2)
+            .count();
+        let entangling_fraction = two_qubit_gates as f64 / num_gates as f64;
+
+        // Average gate arity normalized by the qubit count.
+        let total_arity: usize = circuit.gates().iter().map(|gate| gate.qubits().len()).sum();
+        let mean_arity = total_arity as f64 / num_gates as f64;
+        let arity_score = (mean_arity / N as f64).min(1.0);
+
+        // Equal-weight blend of the three real structural signals.
+        Ok(((utilization + entangling_fraction + arity_score) / 3.0).clamp(0.0, 1.0))
     }
 }
 

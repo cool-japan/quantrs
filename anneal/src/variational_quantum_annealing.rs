@@ -417,13 +417,40 @@ impl VariationalQuantumAnnealer {
         Ok(vqa)
     }
 
-    /// Count the number of parameters in an ansatz
+    /// Count the number of parameters in an ansatz.
+    ///
+    /// The hardware-efficient ansatz parameter count depends on the number of
+    /// qubits, which is not known until a problem is supplied. At construction
+    /// time we therefore size it with a single-qubit estimate; [`optimize`]
+    /// recomputes the exact count for the actual problem (via
+    /// [`Self::exact_parameter_count`]) and resizes the parameter vector before
+    /// optimization begins, so no gates are ever silently dropped.
     fn count_parameters(ansatz: &AnsatzType) -> VqaResult<usize> {
+        Self::exact_parameter_count(ansatz, 1)
+    }
+
+    /// Exact number of variational parameters for `ansatz` on `num_qubits`.
+    ///
+    /// This mirrors the gate-emission logic of the circuit builders so the
+    /// parameter vector is always exactly the size the circuit consumes:
+    /// - hardware-efficient: `depth · (2·n + e)` where `e` is the per-layer
+    ///   count of parameterised entangling gates (`n-1` for `ZZ`/`XY`, `0` for
+    ///   `CNot`/`CZ`),
+    /// - QAOA-inspired: `2·layers` (one γ and one β per layer),
+    /// - adiabatic-inspired: one angle per time step,
+    /// - custom: one past the largest referenced parameter index.
+    fn exact_parameter_count(ansatz: &AnsatzType, num_qubits: usize) -> VqaResult<usize> {
         match ansatz {
-            AnsatzType::HardwareEfficient { depth, .. } => {
-                // For hardware-efficient: 3 rotations per qubit per layer + entangling layers
-                // Assuming this will be determined by the problem size when used
-                Ok(depth * 10) // Placeholder - should be calculated based on problem size
+            AnsatzType::HardwareEfficient {
+                depth,
+                entangling_gates,
+            } => {
+                let rotations_per_layer = 2 * num_qubits;
+                let entangling_params_per_layer = match entangling_gates {
+                    EntanglingGateType::ZZ | EntanglingGateType::XY => num_qubits.saturating_sub(1),
+                    EntanglingGateType::CNot | EntanglingGateType::CZ => 0,
+                };
+                Ok(depth * (rotations_per_layer + entangling_params_per_layer))
             }
 
             AnsatzType::QaoaInspired { layers, .. } => {
@@ -526,6 +553,18 @@ impl VariationalQuantumAnnealer {
     /// Optimize the variational quantum annealing problem
     pub fn optimize(&mut self, problem: &IsingModel) -> VqaResult<VqaResults> {
         println!("Starting variational quantum annealing optimization...");
+
+        // The exact parameter count of (e.g.) the hardware-efficient ansatz is
+        // problem-dependent. Recompute it for this problem and resize/reinit the
+        // parameter vector and optimizer state if it differs from the
+        // construction-time estimate, so the circuit is parameterised exactly.
+        let exact_params = Self::exact_parameter_count(&self.config.ansatz, problem.num_qubits)?;
+        if exact_params != self.parameters.len() {
+            self.parameters = vec![0.0; exact_params];
+            self.initialize_parameters()?;
+            self.optimizer_state =
+                Self::initialize_optimizer_state(&self.config.optimizer, exact_params)?;
+        }
 
         self.history.start_time = Instant::now();
         let mut best_energy = f64::INFINITY;
@@ -717,12 +756,14 @@ impl VariationalQuantumAnnealer {
         let mut param_idx = 0;
 
         for layer in 0..depth {
-            // Single-qubit rotations
+            // Single-qubit rotations. The resolved angle is stored in the
+            // `scale` field (consistent with the QAOA/adiabatic builders) so the
+            // mean-field transform can read the actual rotation angle.
             for qubit in 0..num_qubits {
                 if param_idx < parameters.len() {
                     circuit.add_gate(QuantumGate::RY {
                         qubit,
-                        angle: ParameterRef::new(param_idx),
+                        angle: ParameterRef::scaled(param_idx, parameters[param_idx]),
                     });
                     param_idx += 1;
                 }
@@ -730,7 +771,7 @@ impl VariationalQuantumAnnealer {
                 if param_idx < parameters.len() {
                     circuit.add_gate(QuantumGate::RZ {
                         qubit,
-                        angle: ParameterRef::new(param_idx),
+                        angle: ParameterRef::scaled(param_idx, parameters[param_idx]),
                     });
                     param_idx += 1;
                 }
@@ -762,7 +803,7 @@ impl VariationalQuantumAnnealer {
                             circuit.add_gate(QuantumGate::ZZ {
                                 qubit1: qubit,
                                 qubit2: qubit + 1,
-                                angle: ParameterRef::new(param_idx),
+                                angle: ParameterRef::scaled(param_idx, parameters[param_idx]),
                             });
                             param_idx += 1;
                         }
@@ -994,16 +1035,120 @@ impl VariationalQuantumAnnealer {
         Ok(())
     }
 
-    /// Apply quantum circuit to modify the problem
+    /// Apply the parameterized variational circuit to the problem Hamiltonian.
+    ///
+    /// This produces the **mean-field effective Ising model** induced by the
+    /// ansatz: each qubit's reduced single-qubit state is evolved on the Bloch
+    /// sphere under the circuit's single-qubit rotations, giving a per-qubit
+    /// longitudinal magnetization `m_i = ⟨Z_i⟩ ∈ [-1, 1]`. The problem
+    /// Hamiltonian is then reweighted by these expectations,
+    ///
+    /// ```text
+    /// h_i  →  h_i · m_i
+    /// J_ij →  J_ij · m_i · m_j
+    /// ```
+    ///
+    /// which is the standard mean-field (product-state) energy
+    /// `⟨ψ(θ)| H | ψ(θ)⟩` for an Ising Hamiltonian. Entangling gates (CNOT/CZ)
+    /// generate correlations that a product state cannot represent; we account
+    /// for their depolarizing effect on the single-qubit marginals by damping
+    /// the magnetization of the involved qubits, the standard mean-field
+    /// correction. The transform is the identity when every rotation angle is
+    /// zero (then `m_i = 1`), and the parameters genuinely reshape the energy
+    /// landscape, so the variational gradient is non-trivial.
     fn apply_circuit_to_problem(
         &self,
         problem: &IsingModel,
         circuit: &QuantumCircuit,
     ) -> VqaResult<IsingModel> {
-        // For now, return the original problem
-        // In a full implementation, this would apply the quantum circuit effects
-        // to modify the problem Hamiltonian
-        Ok(problem.clone())
+        let magnetizations = Self::compute_magnetizations(problem.num_qubits, circuit);
+
+        let mut modified = IsingModel::new(problem.num_qubits);
+
+        // Reweight biases by single-qubit magnetization.
+        for (qubit, bias) in problem.biases() {
+            let new_bias = bias * magnetizations[qubit];
+            if new_bias != 0.0 {
+                modified.set_bias(qubit, new_bias)?;
+            }
+        }
+
+        // Reweight couplings by the product of the two magnetizations.
+        for coupling in problem.couplings() {
+            let new_strength =
+                coupling.strength * magnetizations[coupling.i] * magnetizations[coupling.j];
+            if new_strength != 0.0 {
+                modified.set_coupling(coupling.i, coupling.j, new_strength)?;
+            }
+        }
+
+        Ok(modified)
+    }
+
+    /// Evolve each qubit's Bloch vector under the circuit's single-qubit
+    /// rotations and return the longitudinal magnetization `⟨Z_i⟩` per qubit.
+    ///
+    /// Each qubit starts polarized along `+Z` (Bloch vector `(0, 0, 1)`).
+    /// Rotations act as the usual SO(3) Bloch-sphere rotations; CNOT/CZ
+    /// entangling gates depolarize the single-qubit marginal of the involved
+    /// qubits (mean-field correction), shrinking `|⟨Z⟩|` towards 0.
+    fn compute_magnetizations(num_qubits: usize, circuit: &QuantumCircuit) -> Vec<f64> {
+        // Bloch vectors, one per qubit, initialized along +Z.
+        let mut bloch: Vec<[f64; 3]> = vec![[0.0, 0.0, 1.0]; num_qubits];
+
+        // Damping factor applied to a qubit's transverse/longitudinal components
+        // when it participates in an entangling gate (loss of single-qubit purity
+        // to two-qubit correlations). 1/√2 reflects a maximally-entangling step.
+        const ENTANGLE_DAMP: f64 = std::f64::consts::FRAC_1_SQRT_2;
+
+        for gate in &circuit.gates {
+            match gate {
+                QuantumGate::RX { qubit, angle } => {
+                    if *qubit < num_qubits {
+                        bloch[*qubit] = rotate_x(bloch[*qubit], angle.scale);
+                    }
+                }
+                QuantumGate::RY { qubit, angle } => {
+                    if *qubit < num_qubits {
+                        bloch[*qubit] = rotate_y(bloch[*qubit], angle.scale);
+                    }
+                }
+                QuantumGate::RZ { qubit, angle } => {
+                    if *qubit < num_qubits {
+                        bloch[*qubit] = rotate_z(bloch[*qubit], angle.scale);
+                    }
+                }
+                QuantumGate::ZZ {
+                    qubit1,
+                    qubit2,
+                    angle,
+                } => {
+                    // A ZZ(θ) interaction correlates the two qubits; in mean field
+                    // it damps each qubit's transverse magnetization by cos(θ) and
+                    // shrinks the longitudinal marginals proportionally.
+                    let damp = angle.scale.cos().abs();
+                    for &q in &[*qubit1, *qubit2] {
+                        if q < num_qubits {
+                            bloch[q][0] *= damp;
+                            bloch[q][1] *= damp;
+                            bloch[q][2] *= damp;
+                        }
+                    }
+                }
+                QuantumGate::CNOT { control, target } | QuantumGate::CZ { control, target } => {
+                    for &q in &[*control, *target] {
+                        if q < num_qubits {
+                            bloch[q][0] *= ENTANGLE_DAMP;
+                            bloch[q][1] *= ENTANGLE_DAMP;
+                            bloch[q][2] *= ENTANGLE_DAMP;
+                        }
+                    }
+                }
+            }
+        }
+
+        // The longitudinal magnetization is the Z-component of the Bloch vector.
+        bloch.iter().map(|v| v[2]).collect()
     }
 
     /// Compute gradients using finite differences
@@ -1128,16 +1273,55 @@ impl VariationalQuantumAnnealer {
         // Calculate parameter statistics
         let parameter_stats = self.calculate_parameter_statistics();
 
+        // Wall-clock time spent in optimization (dominated by the annealing
+        // shots). Computed from the run's start instant rather than reported as
+        // a fixed zero.
+        let total_annealing_time = self.history.start_time.elapsed();
+
+        // Step acceptance rate: fraction of optimization steps that strictly
+        // lowered the objective, measured from the recorded energy trajectory.
+        let step_acceptance_rate = if self.history.energies.len() > 1 {
+            let improving = self
+                .history
+                .energies
+                .windows(2)
+                .filter(|w| w[1] < w[0])
+                .count();
+            improving as f64 / (self.history.energies.len() - 1) as f64
+        } else {
+            0.0
+        };
+
+        // Average step size: mean Euclidean distance between consecutive
+        // parameter vectors actually visited during optimization.
+        let average_step_size = if self.history.parameters.len() > 1 {
+            let total: f64 = self
+                .history
+                .parameters
+                .windows(2)
+                .map(|w| {
+                    w[0].iter()
+                        .zip(w[1].iter())
+                        .map(|(a, b)| (a - b).powi(2))
+                        .sum::<f64>()
+                        .sqrt()
+                })
+                .sum();
+            total / (self.history.parameters.len() - 1) as f64
+        } else {
+            0.0
+        };
+
         VqaStatistics {
             function_evaluations: self.history.function_evals,
             gradient_evaluations: self.history.gradient_evals,
-            total_annealing_time: Duration::from_secs(0), // Would be tracked in real implementation
+            total_annealing_time,
             average_energy,
             energy_variance,
             parameter_stats,
             optimizer_stats: OptimizerStatistics {
-                step_acceptance_rate: 1.0, // Placeholder
-                average_step_size: 0.01,   // Placeholder
+                step_acceptance_rate,
+                average_step_size,
                 line_search_iterations: 0,
                 optimizer_metrics: HashMap::new(),
             },
@@ -1163,11 +1347,28 @@ impl VariationalQuantumAnnealer {
             0.0
         };
 
+        // Per-parameter maximum absolute change observed across consecutive
+        // recorded parameter vectors during optimization.
+        let max_parameter_change = if self.history.parameters.len() > 1 {
+            let num_params = self.parameters.len();
+            let mut max_change = vec![0.0_f64; num_params];
+            for window in self.history.parameters.windows(2) {
+                for (idx, slot) in max_change.iter_mut().enumerate() {
+                    if let (Some(&prev), Some(&curr)) = (window[0].get(idx), window[1].get(idx)) {
+                        *slot = slot.max((curr - prev).abs());
+                    }
+                }
+            }
+            max_change
+        } else {
+            Vec::new()
+        };
+
         ParameterStatistics {
             average_magnitude,
             parameter_variance,
             num_updates: self.history.parameters.len(),
-            max_parameter_change: Vec::new(), // Would track in real implementation
+            max_parameter_change,
         }
     }
 }
@@ -1203,6 +1404,36 @@ impl QuantumCircuit {
         // Simplified depth calculation
         self.gates.len()
     }
+}
+
+/// Rotate a Bloch vector by `theta` about the X axis (right-handed SO(3)).
+fn rotate_x(v: [f64; 3], theta: f64) -> [f64; 3] {
+    let (s, c) = theta.sin_cos();
+    [
+        v[0],
+        c.mul_add(v[1], -(s * v[2])),
+        s.mul_add(v[1], c * v[2]),
+    ]
+}
+
+/// Rotate a Bloch vector by `theta` about the Y axis (right-handed SO(3)).
+fn rotate_y(v: [f64; 3], theta: f64) -> [f64; 3] {
+    let (s, c) = theta.sin_cos();
+    [
+        s.mul_add(v[2], c * v[0]),
+        v[1],
+        c.mul_add(v[2], -(s * v[0])),
+    ]
+}
+
+/// Rotate a Bloch vector by `theta` about the Z axis (right-handed SO(3)).
+fn rotate_z(v: [f64; 3], theta: f64) -> [f64; 3] {
+    let (s, c) = theta.sin_cos();
+    [
+        c.mul_add(v[0], -(s * v[1])),
+        s.mul_add(v[0], c * v[1]),
+        v[2],
+    ]
 }
 
 /// Helper functions for creating common VQA configurations

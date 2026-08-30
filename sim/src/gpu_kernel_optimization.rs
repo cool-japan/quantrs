@@ -570,13 +570,13 @@ impl GPUKernelOptimizer {
                     }
                     SingleQubitKernelType::Generic => {
                         // Fallback to generic implementation
-                        self.apply_generic_single_qubit(state, qubit, gate_name)?;
+                        self.apply_generic_single_qubit(state, qubit, gate_name, parameters)?;
                     }
                 }
             }
             None => {
                 // Use generic implementation
-                self.apply_generic_single_qubit(state, qubit, gate_name)?;
+                self.apply_generic_single_qubit(state, qubit, gate_name, parameters)?;
             }
         }
 
@@ -846,15 +846,99 @@ impl GPUKernelOptimizer {
         Ok(())
     }
 
-    /// Generic single-qubit gate application
-    const fn apply_generic_single_qubit(
+    /// Generic single-qubit gate application.
+    ///
+    /// Used for any single-qubit gate that does not have a hand-optimized
+    /// kernel above (S†/T†/identity/√X/phase-family gates). Builds the
+    /// gate's real 2x2 unitary from its name (and, for phase-family gates,
+    /// its angle parameter) and applies it with the same strided
+    /// amplitude-pair update the specialized kernels use -- it never
+    /// silently leaves the state unchanged. A gate name this function
+    /// cannot resolve to a real matrix is an honest error, not a no-op.
+    fn apply_generic_single_qubit(
         &self,
-        state: &Array1<Complex64>,
+        state: &mut Array1<Complex64>,
         qubit: usize,
-        _gate_name: &str,
+        gate_name: &str,
+        parameters: Option<&[f64]>,
     ) -> QuantRS2Result<()> {
-        // Generic implementation using identity matrix
-        // Real implementation would use the actual gate matrix
+        let stride = 1usize << qubit;
+        let matrix = Self::single_qubit_matrix_for_name(gate_name, parameters)?;
+        Self::apply_matrix2_optimized(state, stride, &matrix)
+    }
+
+    /// Real 2x2 unitary for single-qubit gate names not covered by a
+    /// hand-optimized kernel. Returns an honest
+    /// [`QuantRS2Error::UnsupportedOperation`] for any name it cannot
+    /// resolve, rather than fabricating an identity.
+    fn single_qubit_matrix_for_name(
+        gate_name: &str,
+        parameters: Option<&[f64]>,
+    ) -> QuantRS2Result<[[Complex64; 2]; 2]> {
+        let one = Complex64::new(1.0, 0.0);
+        let zero = Complex64::new(0.0, 0.0);
+        match gate_name {
+            "I" | "Identity" | "identity" => Ok([[one, zero], [zero, one]]),
+            "S†" | "Sdg" | "SDagger" | "SDG" | "s_dagger" | "sdg" => {
+                Ok([[one, zero], [zero, Complex64::new(0.0, -1.0)]])
+            }
+            "T†" | "Tdg" | "TDagger" | "TDG" | "t_dagger" | "tdg" => Ok([
+                [one, zero],
+                [
+                    zero,
+                    Complex64::from_polar(1.0, -std::f64::consts::FRAC_PI_4),
+                ],
+            ]),
+            "√X" | "SqrtX" | "SX" | "sqrt_x" | "sx" => {
+                let plus = Complex64::new(0.5, 0.5);
+                let minus = Complex64::new(0.5, -0.5);
+                Ok([[plus, minus], [minus, plus]])
+            }
+            "√X†" | "SqrtXdg" | "SXDG" | "sqrt_x_dagger" | "sxdg" => {
+                let plus = Complex64::new(0.5, -0.5);
+                let minus = Complex64::new(0.5, 0.5);
+                Ok([[plus, minus], [minus, plus]])
+            }
+            "P" | "Phase" | "U1" | "phase_shift" | "u1" => {
+                let theta = parameters.and_then(|p| p.first()).copied().ok_or_else(|| {
+                    QuantRS2Error::InvalidInput(format!(
+                        "gate '{gate_name}' requires a phase-angle parameter"
+                    ))
+                })?;
+                Ok([[one, zero], [zero, Complex64::from_polar(1.0, theta)]])
+            }
+            _ => Err(QuantRS2Error::UnsupportedOperation(format!(
+                "gpu_kernel_optimization: no real matrix implementation for single-qubit gate \
+                 '{gate_name}'; add a specialized or generic-matrix case instead of a silent \
+                 no-op"
+            ))),
+        }
+    }
+
+    /// Apply an arbitrary 2x2 unitary to the strided amplitude pairs of a
+    /// single target qubit. Shared by every hand-optimized single-qubit
+    /// kernel's real counterpart and [`Self::apply_generic_single_qubit`].
+    fn apply_matrix2_optimized(
+        state: &mut Array1<Complex64>,
+        stride: usize,
+        matrix: &[[Complex64; 2]; 2],
+    ) -> QuantRS2Result<()> {
+        let n = state.len();
+        let amplitudes = state.as_slice_mut().ok_or_else(|| {
+            QuantRS2Error::InvalidInput("Failed to get mutable slice".to_string())
+        })?;
+
+        for i in 0..n / 2 {
+            let i0 = (i / stride) * (2 * stride) + (i % stride);
+            let i1 = i0 + stride;
+
+            let a0 = amplitudes[i0];
+            let a1 = amplitudes[i1];
+
+            amplitudes[i0] = matrix[0][0] * a0 + matrix[0][1] * a1;
+            amplitudes[i1] = matrix[1][0] * a0 + matrix[1][1] * a1;
+        }
+
         Ok(())
     }
 
@@ -1027,15 +1111,106 @@ impl GPUKernelOptimizer {
         Ok(())
     }
 
-    /// Generic two-qubit gate application
-    const fn apply_generic_two_qubit(
+    /// Generic two-qubit gate application.
+    ///
+    /// Used for any two-qubit gate that does not have a hand-optimized
+    /// kernel above (CNOT/CZ/SWAP/ISWAP). Builds the gate's real 4x4
+    /// unitary from its name and applies it with a genuine matrix-vector
+    /// contraction over each `(control, target)` amplitude quartet -- it
+    /// never silently leaves the state unchanged. A gate name this
+    /// function cannot resolve to a real matrix is an honest error, not a
+    /// no-op.
+    fn apply_generic_two_qubit(
         &self,
-        _state: &mut Array1<Complex64>,
-        _control: usize,
-        _target: usize,
-        _gate_name: &str,
+        state: &mut Array1<Complex64>,
+        control: usize,
+        target: usize,
+        gate_name: &str,
     ) -> QuantRS2Result<()> {
-        // Generic implementation placeholder
+        let matrix = Self::two_qubit_matrix_for_name(gate_name)?;
+        Self::apply_matrix4_optimized(state, control, target, &matrix)
+    }
+
+    /// Real 4x4 unitary (basis order `|control, target>`, `control` the
+    /// high local bit -- matching [`Self::apply_cnot_optimized`]'s
+    /// bit-indexing convention) for two-qubit gate names not covered by a
+    /// hand-optimized kernel. Returns an honest
+    /// [`QuantRS2Error::UnsupportedOperation`] for any name it cannot
+    /// resolve, rather than fabricating an identity.
+    fn two_qubit_matrix_for_name(gate_name: &str) -> QuantRS2Result<[[Complex64; 4]; 4]> {
+        let one = Complex64::new(1.0, 0.0);
+        let zero = Complex64::new(0.0, 0.0);
+        match gate_name {
+            "CY" | "cy" => Ok([
+                [one, zero, zero, zero],
+                [zero, one, zero, zero],
+                [zero, zero, zero, Complex64::new(0.0, -1.0)],
+                [zero, zero, Complex64::new(0.0, 1.0), zero],
+            ]),
+            "CH" | "ch" => {
+                let inv_sqrt2 = Complex64::new(std::f64::consts::FRAC_1_SQRT_2, 0.0);
+                Ok([
+                    [one, zero, zero, zero],
+                    [zero, one, zero, zero],
+                    [zero, zero, inv_sqrt2, inv_sqrt2],
+                    [zero, zero, inv_sqrt2, -inv_sqrt2],
+                ])
+            }
+            "CS" | "cs" => Ok([
+                [one, zero, zero, zero],
+                [zero, one, zero, zero],
+                [zero, zero, one, zero],
+                [zero, zero, zero, Complex64::new(0.0, 1.0)],
+            ]),
+            _ => Err(QuantRS2Error::UnsupportedOperation(format!(
+                "gpu_kernel_optimization: no real matrix implementation for two-qubit gate \
+                 '{gate_name}'; add a specialized or generic-matrix case instead of a silent \
+                 no-op"
+            ))),
+        }
+    }
+
+    /// Apply an arbitrary 4x4 unitary over the `(control, target)`
+    /// amplitude quartets of a full state vector. Basis ordering matches
+    /// [`Self::apply_cnot_optimized`]: `control` is the high local bit.
+    fn apply_matrix4_optimized(
+        state: &mut Array1<Complex64>,
+        control: usize,
+        target: usize,
+        matrix: &[[Complex64; 4]; 4],
+    ) -> QuantRS2Result<()> {
+        let n = state.len();
+        let control_mask = 1usize << control;
+        let target_mask = 1usize << target;
+
+        let amplitudes = state.as_slice_mut().ok_or_else(|| {
+            QuantRS2Error::InvalidInput("Failed to get mutable slice".to_string())
+        })?;
+
+        for i in 0..n {
+            if i & control_mask == 0 && i & target_mask == 0 {
+                let idx = [
+                    i,
+                    i | target_mask,
+                    i | control_mask,
+                    i | control_mask | target_mask,
+                ];
+                let amps = [
+                    amplitudes[idx[0]],
+                    amplitudes[idx[1]],
+                    amplitudes[idx[2]],
+                    amplitudes[idx[3]],
+                ];
+                for (row, &out_idx) in idx.iter().enumerate() {
+                    let mut acc = Complex64::new(0.0, 0.0);
+                    for (col, &amp) in amps.iter().enumerate() {
+                        acc += matrix[row][col] * amp;
+                    }
+                    amplitudes[out_idx] = acc;
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -1297,5 +1472,108 @@ mod tests {
         // State should be in superposition
         let total_prob: f64 = state.iter().map(|a| (a * a.conj()).re).sum();
         assert!((total_prob - 1.0).abs() < 1e-10);
+    }
+
+    /// Regression test for the P1 finding: `apply_generic_single_qubit`
+    /// used to be a structural no-op (it didn't even take `state` mutably)
+    /// that silently left the state unchanged for any gate name outside
+    /// the hand-optimized kernel set. An `S†` gate (not one of the
+    /// registered kernel names) applied to `|1>` must now produce the real
+    /// `-i` phase, not leave the amplitude untouched.
+    #[test]
+    fn test_generic_single_qubit_applies_real_matrix() {
+        let config = GPUKernelConfig::default();
+        let mut optimizer = GPUKernelOptimizer::new(config);
+
+        let mut state = Array1::from_vec(vec![Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)]);
+        optimizer
+            .apply_single_qubit_gate(&mut state, 0, "S†", None)
+            .expect("S-dagger gate should apply via the generic path");
+
+        assert!((state[0].norm()).abs() < 1e-10);
+        assert!(
+            (state[1] - Complex64::new(0.0, -1.0)).norm() < 1e-10,
+            "expected S† to apply a real -i phase to |1>, got {:?}",
+            state[1]
+        );
+    }
+
+    /// Regression test: a parametric generic gate (`P`/phase-shift) must
+    /// use the real supplied angle.
+    #[test]
+    fn test_generic_single_qubit_phase_uses_real_angle() {
+        let config = GPUKernelConfig::default();
+        let mut optimizer = GPUKernelOptimizer::new(config);
+
+        let mut state = Array1::from_vec(vec![Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)]);
+        optimizer
+            .apply_single_qubit_gate(&mut state, 0, "P", Some(&[std::f64::consts::FRAC_PI_2]))
+            .expect("P gate should apply via the generic path");
+
+        assert!(
+            (state[1] - Complex64::new(0.0, 1.0)).norm() < 1e-10,
+            "expected P(pi/2) to apply a real +i phase to |1>, got {:?}",
+            state[1]
+        );
+    }
+
+    /// Regression test: an unresolvable generic gate name must return an
+    /// honest error rather than silently leaving the state unchanged.
+    #[test]
+    fn test_generic_single_qubit_unknown_name_errors() {
+        let config = GPUKernelConfig::default();
+        let mut optimizer = GPUKernelOptimizer::new(config);
+
+        let mut state = Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
+        let result = optimizer.apply_single_qubit_gate(&mut state, 0, "totally_unknown_gate", None);
+        assert!(
+            result.is_err(),
+            "an unresolvable gate name must be an honest error"
+        );
+    }
+
+    /// Regression test for the P1 finding: `apply_generic_two_qubit` used
+    /// to take `state` by shared reference (structurally incapable of
+    /// mutating it) and always return `Ok(())`. A `CY` gate (not one of
+    /// the registered kernel names) applied with control set must now
+    /// really flip and phase the target, not leave the state unchanged.
+    #[test]
+    fn test_generic_two_qubit_applies_real_matrix() {
+        let config = GPUKernelConfig::default();
+        let mut optimizer = GPUKernelOptimizer::new(config);
+
+        // |10>: control (qubit 0) = 1, target (qubit 1) = 0.
+        let mut state = Array1::zeros(4);
+        state[1] = Complex64::new(1.0, 0.0);
+
+        optimizer
+            .apply_two_qubit_gate(&mut state, 0, 1, "CY")
+            .expect("CY gate should apply via the generic path");
+
+        // CY with control=1 applies Y to the target: Y|0> = i|1>, moving
+        // the amplitude to |11> (index 3) with a real +i phase.
+        assert!(state[1].norm() < 1e-10, "amplitude must leave |10>");
+        assert!(
+            (state[3] - Complex64::new(0.0, 1.0)).norm() < 1e-10,
+            "expected CY(control=1) to apply Y with a real +i phase, got {:?}",
+            state[3]
+        );
+    }
+
+    /// Regression test: an unresolvable generic two-qubit gate name must
+    /// return an honest error rather than silently leaving the state
+    /// unchanged.
+    #[test]
+    fn test_generic_two_qubit_unknown_name_errors() {
+        let config = GPUKernelConfig::default();
+        let mut optimizer = GPUKernelOptimizer::new(config);
+
+        let mut state = Array1::zeros(4);
+        state[0] = Complex64::new(1.0, 0.0);
+        let result = optimizer.apply_two_qubit_gate(&mut state, 0, 1, "totally_unknown_gate");
+        assert!(
+            result.is_err(),
+            "an unresolvable gate name must be an honest error"
+        );
     }
 }

@@ -11,6 +11,10 @@ use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 use quantrs2_circuit::builder::Circuit;
 use quantrs2_circuit::builder::Simulator as CircuitSimulator; // Circuit simulator trait
+#[cfg(feature = "python")]
+use quantrs2_core::gate::multi::{CRX, CRY, CRZ};
+#[cfg(feature = "python")]
+use quantrs2_core::gate::single::{RotationX, RotationY, RotationZ};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
@@ -222,150 +226,178 @@ impl DynamicCircuit {
         }
     }
 
-    /// Get the qubit for single-qubit gate
+    /// Get a reference to the `flat_index`-th gate in this circuit,
+    /// regardless of which concrete qubit-count variant it is. This is
+    /// what lets the introspection getters below give real (not
+    /// hardcoded) answers for every circuit size, not just [`Self::Q2`].
     #[cfg(feature = "python")]
-    pub fn get_single_qubit_for_gate(&self, gate_type: &str, index: usize) -> PyResult<u32> {
-        // Placeholder for visualization - in a real implementation, we would track this information
-        let gate_name = gate_type.to_string();
-        let gates = self.get_gate_names();
+    fn get_gate_by_flat_index(&self, flat_index: usize) -> Option<&(dyn GateOp + Send + Sync)> {
+        match self {
+            Self::Q2(c) => c.gates().get(flat_index).map(|g| g.as_ref()),
+            Self::Q3(c) => c.gates().get(flat_index).map(|g| g.as_ref()),
+            Self::Q4(c) => c.gates().get(flat_index).map(|g| g.as_ref()),
+            Self::Q5(c) => c.gates().get(flat_index).map(|g| g.as_ref()),
+            Self::Q6(c) => c.gates().get(flat_index).map(|g| g.as_ref()),
+            Self::Q7(c) => c.gates().get(flat_index).map(|g| g.as_ref()),
+            Self::Q8(c) => c.gates().get(flat_index).map(|g| g.as_ref()),
+            Self::Q9(c) => c.gates().get(flat_index).map(|g| g.as_ref()),
+            Self::Q10(c) => c.gates().get(flat_index).map(|g| g.as_ref()),
+            Self::Q12(c) => c.gates().get(flat_index).map(|g| g.as_ref()),
+            Self::Q16(c) => c.gates().get(flat_index).map(|g| g.as_ref()),
+            Self::Q20(c) => c.gates().get(flat_index).map(|g| g.as_ref()),
+            Self::Q24(c) => c.gates().get(flat_index).map(|g| g.as_ref()),
+            Self::Q32(c) => c.gates().get(flat_index).map(|g| g.as_ref()),
+        }
+    }
 
-        // Find the Nth occurrence of this gate type
+    /// Find the `index`-th gate named `gate_type` and return a reference
+    /// to it, or an honest `PyErr` if there is no such occurrence.
+    #[cfg(feature = "python")]
+    fn find_nth_gate(
+        &self,
+        gate_type: &str,
+        index: usize,
+    ) -> PyResult<&(dyn GateOp + Send + Sync)> {
+        let gates = self.get_gate_names();
         let mut count = 0;
         for (i, name) in gates.iter().enumerate() {
-            if name == &gate_name {
+            if name == gate_type {
                 if count == index {
-                    // Return a placeholder qubit ID - in a real implementation this would be accurate
-                    match self {
-                        Self::Q2(c) => {
-                            if let Some(gate) = c.gates().get(i) {
-                                if gate.qubits().len() == 1 {
-                                    return Ok(gate.qubits()[0].id());
-                                }
-                            }
-                        }
-                        // Repeat for all other qubit counts
-                        _ => return Ok(0),
-                    }
+                    return self.get_gate_by_flat_index(i).ok_or_else(|| {
+                        PyValueError::new_err(format!(
+                            "Gate {gate_type} at index {index} vanished while reading it"
+                        ))
+                    });
                 }
                 count += 1;
             }
         }
-
         Err(PyValueError::new_err(format!(
             "Gate {gate_type} at index {index} not found"
         )))
     }
 
-    /// Get the parameters for a rotation gate
+    /// Get the qubit for a single-qubit gate. Works for every circuit
+    /// size (previously only [`Self::Q2`] returned the real qubit; every
+    /// other variant returned a hardcoded `0`).
+    #[cfg(feature = "python")]
+    pub fn get_single_qubit_for_gate(&self, gate_type: &str, index: usize) -> PyResult<u32> {
+        let gate = self.find_nth_gate(gate_type, index)?;
+        let qubits = gate.qubits();
+        if qubits.len() != 1 {
+            return Err(PyValueError::new_err(format!(
+                "Gate {gate_type} at index {index} acts on {} qubit(s), expected 1",
+                qubits.len()
+            )));
+        }
+        Ok(qubits[0].id())
+    }
+
+    /// Get the real `(qubit, angle)` parameters for a single-qubit
+    /// rotation gate (RX/RY/RZ) by downcasting to the concrete gate
+    /// struct and reading its actual `theta` field -- not a hardcoded
+    /// `(0, 0.0)`.
     #[cfg(feature = "python")]
     pub fn get_rotation_params_for_gate(
         &self,
         gate_type: &str,
         index: usize,
     ) -> PyResult<(u32, f64)> {
-        // Placeholder for visualization - in a real implementation, we would track this information
-        let gate_name = gate_type.to_string();
-        let gates = self.get_gate_names();
-
-        // Find the Nth occurrence of this gate type
-        let mut count = 0;
-        for name in &gates {
-            if name == &gate_name {
-                if count == index {
-                    // Return placeholder values - in a real implementation these would be accurate
-                    return Ok((0, 0.0));
-                }
-                count += 1;
-            }
+        let gate = self.find_nth_gate(gate_type, index)?;
+        let qubits = gate.qubits();
+        if qubits.is_empty() {
+            return Err(PyValueError::new_err(format!(
+                "Gate {gate_type} at index {index} has no qubits"
+            )));
         }
 
-        Err(PyValueError::new_err(format!(
-            "Gate {gate_type} at index {index} not found"
-        )))
+        let theta = if let Some(g) = gate.as_any().downcast_ref::<RotationX>() {
+            g.theta
+        } else if let Some(g) = gate.as_any().downcast_ref::<RotationY>() {
+            g.theta
+        } else if let Some(g) = gate.as_any().downcast_ref::<RotationZ>() {
+            g.theta
+        } else {
+            return Err(PyValueError::new_err(format!(
+                "Gate {gate_type} at index {index} is not a recognized single-qubit rotation \
+                 gate (RX/RY/RZ); cannot extract its rotation angle"
+            )));
+        };
+
+        Ok((qubits[0].id(), theta))
     }
 
-    /// Get the parameters for a two-qubit gate
+    /// Get the real `(qubit1, qubit2)` for a two-qubit gate (CNOT, CZ,
+    /// SWAP, etc.), for every circuit size.
     #[cfg(feature = "python")]
     pub fn get_two_qubit_params_for_gate(
         &self,
         gate_type: &str,
         index: usize,
     ) -> PyResult<(u32, u32)> {
-        // Placeholder for visualization - in a real implementation, we would track this information
-        let gate_name = gate_type.to_string();
-        let gates = self.get_gate_names();
-
-        // Find the Nth occurrence of this gate type
-        let mut count = 0;
-        for name in &gates {
-            if name == &gate_name {
-                if count == index {
-                    // Return placeholder values - in a real implementation these would be accurate
-                    return Ok((0, 1));
-                }
-                count += 1;
-            }
+        let gate = self.find_nth_gate(gate_type, index)?;
+        let qubits = gate.qubits();
+        if qubits.len() != 2 {
+            return Err(PyValueError::new_err(format!(
+                "Gate {gate_type} at index {index} acts on {} qubit(s), expected 2",
+                qubits.len()
+            )));
         }
-
-        Err(PyValueError::new_err(format!(
-            "Gate {gate_type} at index {index} not found"
-        )))
+        Ok((qubits[0].id(), qubits[1].id()))
     }
 
-    /// Get the parameters for a controlled rotation gate
+    /// Get the real `(control, target, angle)` for a controlled rotation
+    /// gate (CRX/CRY/CRZ) by downcasting to the concrete gate struct and
+    /// reading its actual `theta` field -- not a hardcoded
+    /// `(0, 1, 0.0)`.
     #[cfg(feature = "python")]
     pub fn get_controlled_rotation_params_for_gate(
         &self,
         gate_type: &str,
         index: usize,
     ) -> PyResult<(u32, u32, f64)> {
-        // Placeholder for visualization - in a real implementation, we would track this information
-        let gate_name = gate_type.to_string();
-        let gates = self.get_gate_names();
-
-        // Find the Nth occurrence of this gate type
-        let mut count = 0;
-        for name in &gates {
-            if name == &gate_name {
-                if count == index {
-                    // Return placeholder values - in a real implementation these would be accurate
-                    return Ok((0, 1, 0.0));
-                }
-                count += 1;
-            }
+        let gate = self.find_nth_gate(gate_type, index)?;
+        let qubits = gate.qubits();
+        if qubits.len() != 2 {
+            return Err(PyValueError::new_err(format!(
+                "Gate {gate_type} at index {index} acts on {} qubit(s), expected 2 (control, target)",
+                qubits.len()
+            )));
         }
 
-        Err(PyValueError::new_err(format!(
-            "Gate {gate_type} at index {index} not found"
-        )))
+        let theta = if let Some(g) = gate.as_any().downcast_ref::<CRX>() {
+            g.theta
+        } else if let Some(g) = gate.as_any().downcast_ref::<CRY>() {
+            g.theta
+        } else if let Some(g) = gate.as_any().downcast_ref::<CRZ>() {
+            g.theta
+        } else {
+            return Err(PyValueError::new_err(format!(
+                "Gate {gate_type} at index {index} is not a recognized controlled rotation gate \
+                 (CRX/CRY/CRZ); cannot extract its rotation angle"
+            )));
+        };
+
+        Ok((qubits[0].id(), qubits[1].id(), theta))
     }
 
-    /// Get the parameters for a three-qubit gate
+    /// Get the real `(qubit1, qubit2, qubit3)` for a three-qubit gate
+    /// (Toffoli, Fredkin, etc.), for every circuit size.
     #[cfg(feature = "python")]
     pub fn get_three_qubit_params_for_gate(
         &self,
         gate_type: &str,
         index: usize,
     ) -> PyResult<(u32, u32, u32)> {
-        // Placeholder for visualization - in a real implementation, we would track this information
-        let gate_name = gate_type.to_string();
-        let gates = self.get_gate_names();
-
-        // Find the Nth occurrence of this gate type
-        let mut count = 0;
-        for name in &gates {
-            if name == &gate_name {
-                if count == index {
-                    // Return placeholder values - in a real implementation these would be accurate
-                    return Ok((0, 1, 2));
-                }
-                count += 1;
-            }
+        let gate = self.find_nth_gate(gate_type, index)?;
+        let qubits = gate.qubits();
+        if qubits.len() != 3 {
+            return Err(PyValueError::new_err(format!(
+                "Gate {gate_type} at index {index} acts on {} qubit(s), expected 3",
+                qubits.len()
+            )));
         }
-
-        Err(PyValueError::new_err(format!(
-            "Gate {gate_type} at index {index} not found"
-        )))
+        Ok((qubits[0].id(), qubits[1].id(), qubits[2].id()))
     }
 
     /// Apply a gate to the circuit
@@ -715,5 +747,89 @@ impl DynamicResult {
     #[must_use]
     pub const fn num_qubits(&self) -> usize {
         self.num_qubits
+    }
+}
+
+#[cfg(all(test, feature = "python"))]
+mod python_introspection_tests {
+    use super::*;
+    use quantrs2_core::gate::multi::CRY;
+    use quantrs2_core::gate::single::RotationY;
+    use quantrs2_core::qubit::QubitId;
+
+    /// Regression test for the P1 finding: the Python-exposed introspection
+    /// getters used to return hardcoded placeholder tuples (e.g. `(0, 0.0)`)
+    /// for every `DynamicCircuit` variant other than `Q2`. A `Q3` circuit
+    /// (three qubits) must now report the gate's *real* qubit index and
+    /// angle, not the `Q2`-only placeholder.
+    #[test]
+    fn test_single_qubit_and_rotation_params_for_q3_circuit() {
+        let mut dc = DynamicCircuit::new(3).expect("3 qubits supported");
+        // Place the rotation on qubit 2, which the old hardcoded fallback
+        // (`_ => return Ok(0)` / `Ok((0, 0.0))`) could never report.
+        dc.apply_gate(RotationY {
+            target: QubitId::new(2),
+            theta: 1.2345,
+        })
+        .expect("RY gate applied");
+
+        let qubit = dc
+            .get_single_qubit_for_gate("RY", 0)
+            .expect("real qubit for RY gate");
+        assert_eq!(
+            qubit, 2,
+            "expected the gate's real target qubit (2), not a hardcoded 0"
+        );
+
+        let (qubit, theta) = dc
+            .get_rotation_params_for_gate("RY", 0)
+            .expect("real rotation params for RY gate");
+        assert_eq!(qubit, 2);
+        assert!(
+            (theta - 1.2345).abs() < 1e-12,
+            "expected the gate's real angle (1.2345), not a hardcoded 0.0, got {theta}"
+        );
+    }
+
+    /// Regression test: controlled-rotation params on a `Q4` circuit must
+    /// report the real (control, target, angle), not the hardcoded
+    /// `(0, 1, 0.0)` placeholder that every non-`Q2` variant used to return.
+    #[test]
+    fn test_controlled_rotation_params_for_q4_circuit() {
+        let mut dc = DynamicCircuit::new(4).expect("4 qubits supported");
+        dc.apply_gate(CRY {
+            control: QubitId::new(3),
+            target: QubitId::new(1),
+            theta: 0.4321,
+        })
+        .expect("CRY gate applied");
+
+        let (control, target, theta) = dc
+            .get_controlled_rotation_params_for_gate("CRY", 0)
+            .expect("real controlled-rotation params for CRY gate");
+        assert_eq!(
+            control, 3,
+            "expected the gate's real control qubit (3), not a hardcoded 0"
+        );
+        assert_eq!(
+            target, 1,
+            "expected the gate's real target qubit (1), not a hardcoded 1-by-coincidence"
+        );
+        assert!(
+            (theta - 0.4321).abs() < 1e-12,
+            "expected the gate's real angle (0.4321), not a hardcoded 0.0, got {theta}"
+        );
+    }
+
+    /// Regression test: a gate lookup that legitimately doesn't exist must
+    /// return an honest `PyErr`, not a fabricated placeholder success.
+    #[test]
+    fn test_missing_gate_returns_honest_error() {
+        let dc = DynamicCircuit::new(3).expect("3 qubits supported");
+        let result = dc.get_single_qubit_for_gate("RY", 0);
+        assert!(
+            result.is_err(),
+            "expected an honest error for a nonexistent gate"
+        );
     }
 }

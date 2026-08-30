@@ -16,7 +16,7 @@ use crate::error::{Result, SimulatorError};
 use crate::pauli::{PauliOperatorSum, PauliString};
 use crate::scirs2_integration::SciRS2Backend;
 use crate::scirs2_sparse::{
-    SciRS2SparseSolver, SparseEigenResult, SparseMatrix, SparseSolverConfig,
+    jacobi_symmetric_eig, SciRS2SparseSolver, SparseEigenResult, SparseMatrix, SparseSolverConfig,
 };
 
 /// Spectral analysis result
@@ -951,7 +951,18 @@ impl SciRS2SpectralAnalyzer {
         full_idx
     }
 
-    /// Diagonalize Hermitian matrix using proper eigenvalue computation
+    /// Diagonalize a Hermitian matrix, returning its full spectrum of real
+    /// eigenvalues sorted in descending order.
+    ///
+    /// A complex Hermitian `n × n` matrix `H` is mapped to the equivalent real
+    /// symmetric `2n × 2n` matrix `[[Re(H), -Im(H)], [Im(H), Re(H)]]`, whose
+    /// spectrum consists of each eigenvalue of `H` with multiplicity two. That
+    /// real matrix is diagonalized with the robust Jacobi eigenvalue algorithm
+    /// ([`jacobi_symmetric_eig`]), and the duplicated eigenvalues are collapsed
+    /// back to the `n` eigenvalues of `H`. This returns the full spectrum for any
+    /// size — no truncation and no power-iteration approximation — and does not
+    /// rely on `scirs2-linalg` 0.6.1's numerically-unreliable complex Hermitian
+    /// solver.
     fn diagonalize_hermitian_matrix(&self, matrix: &Array2<Complex64>) -> Result<Vec<f64>> {
         let n = matrix.nrows();
         if n != matrix.ncols() {
@@ -959,81 +970,39 @@ impl SciRS2SpectralAnalyzer {
                 "Matrix must be square".to_string(),
             ));
         }
-
-        // For small matrices, implement simplified power iteration for dominant eigenvalue
-        if n <= 8 {
-            let mut eigenvalues = Vec::new();
-
-            // Power iteration to find largest eigenvalue
-            let mut x = Array1::from_vec(vec![Complex64::new(1.0, 0.0); n]);
-            let max_iterations = 100;
-            let tolerance = 1e-10;
-
-            for _ in 0..max_iterations {
-                // x = A * x
-                let new_x = matrix.dot(&x);
-
-                // Normalize
-                let norm = new_x
-                    .iter()
-                    .map(scirs2_core::Complex::norm_sqr)
-                    .sum::<f64>()
-                    .sqrt();
-                if norm < tolerance {
-                    break;
-                }
-
-                for (old, new) in x.iter_mut().zip(new_x.iter()) {
-                    *old = *new / norm;
-                }
-            }
-
-            // Compute Rayleigh quotient: λ = x†Ax / x†x
-            let ax = matrix.dot(&x);
-            let numerator: Complex64 = x
-                .iter()
-                .zip(ax.iter())
-                .map(|(xi, axi)| xi.conj() * axi)
-                .sum();
-            let denominator: f64 = x.iter().map(scirs2_core::Complex::norm_sqr).sum();
-
-            if denominator > tolerance {
-                eigenvalues.push(numerator.re / denominator);
-            }
-
-            // For small matrices, estimate remaining eigenvalues using trace and determinant
-            if n == 2 {
-                let trace = matrix[[0, 0]].re + matrix[[1, 1]].re;
-                let det = (matrix[[0, 0]] * matrix[[1, 1]] - matrix[[0, 1]] * matrix[[1, 0]]).re;
-
-                // Solve characteristic polynomial: λ² - trace*λ + det = 0
-                let discriminant = trace.mul_add(trace, -(4.0 * det));
-                if discriminant >= 0.0 {
-                    let sqrt_disc = discriminant.sqrt();
-                    eigenvalues.clear();
-                    eigenvalues.push(f64::midpoint(trace, sqrt_disc));
-                    eigenvalues.push((trace - sqrt_disc) / 2.0);
-                }
-            }
-
-            // If no eigenvalues computed, fall back to diagonal elements with warning
-            if eigenvalues.is_empty() {
-                eprintln!(
-                    "Warning: Failed to compute eigenvalues properly, using diagonal approximation"
-                );
-                for i in 0..n {
-                    eigenvalues.push(matrix[[i, i]].re);
-                }
-            }
-
-            eigenvalues.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
-            Ok(eigenvalues)
-        } else {
-            // For larger matrices, suggest using proper LAPACK implementation
-            Err(SimulatorError::UnsupportedOperation(
-                format!("Matrix size {n} too large. Recommend using ndarray-linalg or LAPACK for proper eigenvalue computation")
-            ))
+        if n == 0 {
+            return Ok(Vec::new());
         }
+        if n == 1 {
+            return Ok(vec![matrix[[0, 0]].re]);
+        }
+
+        // Build the real symmetric embedding. Hermitizing the input first (using
+        // (H + Hᴴ)/2 component-wise) cancels round-off asymmetry.
+        let mut embedded = Array2::<f64>::zeros((2 * n, 2 * n));
+        for i in 0..n {
+            for j in 0..n {
+                let re = 0.5 * (matrix[[i, j]].re + matrix[[j, i]].re);
+                let im = 0.5 * (matrix[[i, j]].im - matrix[[j, i]].im);
+                embedded[[i, j]] = re;
+                embedded[[i + n, j + n]] = re;
+                embedded[[i, j + n]] = -im;
+                embedded[[i + n, j]] = im;
+            }
+        }
+
+        let (mut embedded_eigenvalues, _vectors) = jacobi_symmetric_eig(&embedded);
+
+        // Each eigenvalue of H appears twice; collapse the sorted list by taking
+        // every second value.
+        embedded_eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let mut eigenvalues: Vec<f64> = embedded_eigenvalues
+            .into_iter()
+            .step_by(2)
+            .take(n)
+            .collect();
+        eigenvalues.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+        Ok(eigenvalues)
     }
 
     /// Get configuration

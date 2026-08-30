@@ -13,7 +13,7 @@ use quantrs2_core::{
     qubit::QubitId,
 };
 
-use crate::calibration::{CalibrationManager, DeviceCalibration};
+use crate::calibration::{CalibrationManager, DeviceCalibration, PulseShape};
 
 /// Circuit optimizer that uses device calibration data
 pub struct CalibrationOptimizer {
@@ -1024,13 +1024,86 @@ impl FidelityEstimator {
         }
     }
 
-    /// Estimate process fidelity of a quantum circuit
-    pub const fn estimate_process_fidelity<const N: usize>(
-        _circuit: &Circuit<N>,
+    /// Estimate process fidelity of a quantum circuit from device calibration.
+    ///
+    /// Computes the product of the per-operation fidelities looked up in
+    /// `calibration`: every gate contributes its calibrated gate fidelity and
+    /// (when [`Self::consider_spam_errors`] is set) every qubit touched by the
+    /// circuit contributes its readout fidelity. This is the standard
+    /// independent-error circuit-fidelity model `F ≈ Π_g F_g · Π_q F_readout(q)`.
+    ///
+    /// Returns an honest [`QuantRS2Error::InvalidInput`] when a gate in the
+    /// circuit has no calibration entry, instead of fabricating a fidelity.
+    pub fn estimate_process_fidelity<const N: usize>(
+        &self,
+        circuit: &Circuit<N>,
+        calibration: &DeviceCalibration,
     ) -> QuantRS2Result<f64> {
-        // This would implement more sophisticated fidelity estimation
-        // including process tomography data, error models, etc.
-        Ok(0.95) // Placeholder
+        let mut fidelity = 1.0_f64;
+        let mut touched_qubits: HashSet<QubitId> = HashSet::new();
+
+        for gate in circuit.gates() {
+            let qubits = gate.qubits();
+            for q in &qubits {
+                touched_qubits.insert(*q);
+            }
+            let gate_fidelity = match qubits.as_slice() {
+                [q] => {
+                    let gate_cal = calibration
+                        .single_qubit_gates
+                        .get(gate.name())
+                        .and_then(|g| g.qubit_data.get(q));
+                    match gate_cal {
+                        Some(data) => data.fidelity,
+                        None => {
+                            return Err(QuantRS2Error::InvalidInput(format!(
+                                "No single-qubit calibration for gate '{}' on qubit {}",
+                                gate.name(),
+                                q.id()
+                            )));
+                        }
+                    }
+                }
+                [control, target] => {
+                    let pair = calibration
+                        .two_qubit_gates
+                        .get(&(*control, *target))
+                        .or_else(|| calibration.two_qubit_gates.get(&(*target, *control)));
+                    match pair {
+                        Some(data) => data.fidelity,
+                        None => {
+                            return Err(QuantRS2Error::InvalidInput(format!(
+                                "No two-qubit calibration for gate '{}' on qubits ({}, {})",
+                                gate.name(),
+                                control.id(),
+                                target.id()
+                            )));
+                        }
+                    }
+                }
+                _ => {
+                    return Err(QuantRS2Error::UnsupportedOperation(format!(
+                        "Process-fidelity estimation supports 1- and 2-qubit gates only; \
+                         gate '{}' acts on {} qubits",
+                        gate.name(),
+                        qubits.len()
+                    )));
+                }
+            };
+            fidelity *= gate_fidelity;
+        }
+
+        if self.consider_spam_errors {
+            for q in &touched_qubits {
+                if let Some(readout) = calibration.readout_calibration.qubit_readout.get(q) {
+                    // Average assignment fidelity for the qubit.
+                    let readout_fidelity = 0.5 * (readout.p0_given_0 + readout.p1_given_1);
+                    fidelity *= readout_fidelity;
+                }
+            }
+        }
+
+        Ok(fidelity.clamp(0.0, 1.0))
     }
 
     /// Helper methods for optimization strategies
@@ -1280,15 +1353,140 @@ impl PulseOptimizer {
         }
     }
 
-    /// Optimize pulses for a gate
+    /// Generate an optimized, time-sampled in-phase pulse envelope for a
+    /// single-qubit gate from its device calibration.
+    ///
+    /// The envelope is sampled at [`Self::sample_rate`] (GHz) over the gate's
+    /// calibrated duration using the calibrated [`PulseShape`], scaled by the
+    /// calibrated drive amplitude and clipped to [`Self::max_amplitude`]. When
+    /// [`Self::use_drag`] is set and the shape carries a DRAG `beta`, the DRAG
+    /// quadrature derivative is folded into the in-phase samples via its
+    /// envelope-derivative correction.
+    ///
+    /// Returns an honest [`QuantRS2Error`] for gates that are not single-qubit
+    /// or that lack a calibration entry, instead of returning an empty vector
+    /// that silently pretends a pulse was produced.
     pub fn optimize_gate_pulses(
         &self,
         gate: &dyn GateOp,
         calibration: &DeviceCalibration,
     ) -> QuantRS2Result<Vec<f64>> {
-        // This would generate optimized pulse sequences
-        Ok(vec![]) // Placeholder
+        let qubits = gate.qubits();
+        let qubit = match qubits.as_slice() {
+            [q] => *q,
+            _ => {
+                return Err(QuantRS2Error::UnsupportedOperation(format!(
+                    "PulseOptimizer.optimize_gate_pulses supports single-qubit gates only; \
+                     gate '{}' acts on {} qubits",
+                    gate.name(),
+                    qubits.len()
+                )));
+            }
+        };
+
+        let gate_data = calibration
+            .single_qubit_gates
+            .get(gate.name())
+            .and_then(|g| g.qubit_data.get(&qubit))
+            .ok_or_else(|| {
+                QuantRS2Error::InvalidInput(format!(
+                    "No single-qubit calibration for gate '{}' on qubit {}",
+                    gate.name(),
+                    qubit.id()
+                ))
+            })?;
+
+        // Number of samples = duration[ns] * sample_rate[GHz] (GHz = samples/ns).
+        let num_samples = (gate_data.duration * self.sample_rate).round() as usize;
+        if num_samples == 0 {
+            // Virtual gates (e.g. RZ) have zero physical duration: no envelope.
+            return Ok(Vec::new());
+        }
+
+        let amp = gate_data.amplitude;
+        let mut samples = Vec::with_capacity(num_samples);
+        let n = num_samples as f64;
+        let center = (n - 1.0) / 2.0;
+
+        for k in 0..num_samples {
+            let t = k as f64;
+            let value = match &gate_data.pulse_shape {
+                PulseShape::Gaussian { sigma, .. } => gaussian_envelope(t, center, *sigma, amp),
+                PulseShape::GaussianDRAG { sigma, beta, .. } => {
+                    let base = gaussian_envelope(t, center, *sigma, amp);
+                    if self.use_drag {
+                        // DRAG in-phase remains the Gaussian; the derivative term
+                        // modifies the quadrature, but its leakage-suppression
+                        // correction back-acts on I as -beta * d/dt(envelope).
+                        let derivative = gaussian_derivative(t, center, *sigma, amp);
+                        beta.mul_add(-derivative, base)
+                    } else {
+                        base
+                    }
+                }
+                PulseShape::Square { rise_time } => {
+                    square_envelope(t, n, *rise_time, self.sample_rate, amp)
+                }
+                PulseShape::Cosine { rise_time } => {
+                    cosine_envelope(t, n, *rise_time, self.sample_rate, amp)
+                }
+                PulseShape::Custom { name, .. } => {
+                    return Err(QuantRS2Error::UnsupportedOperation(format!(
+                        "PulseOptimizer cannot synthesise custom pulse shape '{name}' \
+                         without its sample generator"
+                    )));
+                }
+            };
+            samples.push(value.clamp(-self.max_amplitude, self.max_amplitude));
+        }
+
+        Ok(samples)
     }
+}
+
+/// Normalised Gaussian envelope sample at time index `t` (in samples).
+fn gaussian_envelope(t: f64, center: f64, sigma: f64, amplitude: f64) -> f64 {
+    if sigma <= 0.0 {
+        return 0.0;
+    }
+    let x = (t - center) / sigma;
+    amplitude * (-0.5 * x * x).exp()
+}
+
+/// Time derivative (w.r.t. sample index) of [`gaussian_envelope`], used for the
+/// DRAG quadrature correction.
+fn gaussian_derivative(t: f64, center: f64, sigma: f64, amplitude: f64) -> f64 {
+    if sigma <= 0.0 {
+        return 0.0;
+    }
+    let x = t - center;
+    -(x / (sigma * sigma)) * amplitude * (-0.5 * (x / sigma).powi(2)).exp()
+}
+
+/// Flat-top (square) envelope with cosine rise/fall of `rise_time` nanoseconds.
+fn square_envelope(t: f64, n: f64, rise_time_ns: f64, sample_rate: f64, amplitude: f64) -> f64 {
+    let rise_samples = (rise_time_ns * sample_rate).max(0.0);
+    if rise_samples <= 0.0 {
+        return amplitude;
+    }
+    if t < rise_samples {
+        let phase = std::f64::consts::FRAC_PI_2 * (t / rise_samples);
+        amplitude * phase.sin()
+    } else if t > n - 1.0 - rise_samples {
+        let phase = std::f64::consts::FRAC_PI_2 * ((n - 1.0 - t) / rise_samples);
+        amplitude * phase.sin().max(0.0)
+    } else {
+        amplitude
+    }
+}
+
+/// Raised-cosine envelope spanning the whole gate window.
+fn cosine_envelope(t: f64, n: f64, _rise_time_ns: f64, _sample_rate: f64, amplitude: f64) -> f64 {
+    if n <= 1.0 {
+        return amplitude;
+    }
+    let phase = std::f64::consts::PI * t / (n - 1.0);
+    amplitude * phase.sin()
 }
 
 #[cfg(test)]
@@ -1321,14 +1519,34 @@ mod tests {
 
     #[test]
     fn test_fidelity_estimator() {
+        use crate::calibration::create_ideal_calibration;
+
         let estimator = FidelityEstimator::new();
         let mut circuit = Circuit::<3>::new();
         let _ = circuit.h(QubitId(0));
         let _ = circuit.cnot(QubitId(0), QubitId(1));
         let _ = circuit.cnot(QubitId(1), QubitId(2));
 
-        let fidelity = FidelityEstimator::estimate_process_fidelity(&circuit)
-            .expect("estimate_process_fidelity should succeed for valid circuit");
-        assert!(fidelity > 0.0 && fidelity <= 1.0);
+        // The "ideal" calibration uses F_1q = 0.999, F_cnot = 0.99, and
+        // readout p = 0.999, so the product is deterministic and must match the
+        // independent-error model exactly (H + 2×CNOT, 3 qubits read out).
+        let calibration = create_ideal_calibration("test_device".to_string(), 3);
+        let fidelity = estimator
+            .estimate_process_fidelity(&circuit, &calibration)
+            .expect("estimate_process_fidelity should succeed for calibrated circuit");
+        let expected = 0.999_f64 * 0.99 * 0.99 * 0.999_f64.powi(3);
+        assert!(
+            (fidelity - expected).abs() < 1e-12,
+            "process fidelity {fidelity} should equal product model {expected}"
+        );
+
+        // A gate on an un-calibrated qubit pair must yield an honest error, not
+        // a fabricated fidelity. The ideal calibration only covers the nearest-
+        // neighbour pairs (0,1) and (1,2), so a CNOT on (0,2) has no entry.
+        let mut uncalibrated = Circuit::<3>::new();
+        let _ = uncalibrated.cnot(QubitId(0), QubitId(2));
+        assert!(estimator
+            .estimate_process_fidelity(&uncalibrated, &calibration)
+            .is_err());
     }
 }

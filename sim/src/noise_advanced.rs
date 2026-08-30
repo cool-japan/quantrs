@@ -15,6 +15,66 @@ use quantrs2_core::qubit::QubitId;
 
 use crate::noise::{NoiseChannel, NoiseChannelType, NoiseModel};
 
+/// Multiply two single-qubit (2x2) operators stored as flattened row-major
+/// `Complex64` slices and return the product `a * b` (also flattened 2x2).
+///
+/// Index layout: element `[i][j]` lives at `2 * i + j`.
+fn matmul_2x2(a: &[Complex64], b: &[Complex64]) -> Vec<Complex64> {
+    let mut out = vec![Complex64::new(0.0, 0.0); 4];
+    for i in 0..2 {
+        for j in 0..2 {
+            let mut acc = Complex64::new(0.0, 0.0);
+            for k in 0..2 {
+                acc += a[2 * i + k] * b[2 * k + j];
+            }
+            out[2 * i + j] = acc;
+        }
+    }
+    out
+}
+
+/// Tensor (Kronecker) product of two single-qubit (2x2) operators stored as
+/// flattened row-major `Complex64` slices, returning the resulting 4x4 operator
+/// as a flattened row-major slice (16 elements).
+///
+/// For `A ⊗ B`, the element at `[2*r1 + r2][2*c1 + c2]` equals
+/// `A[r1][c1] * B[r2][c2]`. In the flattened 4x4 layout the destination index is
+/// `4 * (2*r1 + r2) + (2*c1 + c2)`.
+fn tensor_2x2(a: &[Complex64], b: &[Complex64]) -> Vec<Complex64> {
+    let mut out = vec![Complex64::new(0.0, 0.0); 16];
+    for r1 in 0..2 {
+        for c1 in 0..2 {
+            let a_val = a[2 * r1 + c1];
+            for r2 in 0..2 {
+                for c2 in 0..2 {
+                    let row = 2 * r1 + r2;
+                    let col = 2 * c1 + c2;
+                    out[4 * row + col] = a_val * b[2 * r2 + c2];
+                }
+            }
+        }
+    }
+    out
+}
+
+/// The four single-qubit Pauli matrices `{I, X, Y, Z}` as flattened row-major
+/// 2x2 `Complex64` slices.
+fn single_qubit_paulis() -> [Vec<Complex64>; 4] {
+    let zero = Complex64::new(0.0, 0.0);
+    let one = Complex64::new(1.0, 0.0);
+    let i_unit = Complex64::new(0.0, 1.0);
+    [
+        // I
+        vec![one, zero, zero, one],
+        // X
+        vec![zero, one, one, zero],
+        // Y
+        vec![zero, -i_unit, i_unit, zero],
+        // Z
+        vec![one, zero, zero, -one],
+    ]
+}
+
 /// Two-qubit depolarizing noise channel
 #[derive(Debug, Clone)]
 pub struct TwoQubitDepolarizingChannel {
@@ -193,18 +253,37 @@ impl NoiseChannel for TwoQubitDepolarizingChannel {
     }
 
     fn kraus_operators(&self) -> Vec<Vec<Complex64>> {
-        // Two-qubit depolarizing has 16 Kraus operators (15 Pauli errors + identity)
-        // This is a simplified implementation since full representation is large
+        // Two-qubit depolarizing channel:
+        //   rho -> (1 - p) rho + (p / 15) * sum_{(a,b) != (I,I)} (P_a x P_b) rho (P_a x P_b)^dagger
+        // This yields 16 Kraus operators, each a flattened 4x4 matrix (16 elems):
+        //   K_0    = sqrt(1 - p)  * (I x I)
+        //   K_1..15 = sqrt(p / 15) * (P_a x P_b)   for the 15 non-identity Pauli pairs.
+        // Trace preservation: sum_k K_k^dagger K_k
+        //   = (1 - p) I_4 + (p / 15) * 15 * I_4 = I_4   (each Pauli is unitary).
         let p = self.probability;
-        let sqrt_1_minus_p = (1.0 - p).sqrt();
-        let sqrt_p_15 = (p / 15.0).sqrt();
+        let sqrt_1_minus_p = Complex64::new((1.0 - p).sqrt(), 0.0);
+        let sqrt_p_15 = Complex64::new((p / 15.0).sqrt(), 0.0);
 
-        // Return placeholder Kraus operators
-        // In a full implementation, this would be a 16×16 matrix
-        vec![
-            vec![Complex64::new(sqrt_1_minus_p, 0.0)],
-            vec![Complex64::new(sqrt_p_15, 0.0)],
-        ]
+        let paulis = single_qubit_paulis();
+
+        let mut operators = Vec::with_capacity(16);
+        for (a_idx, pauli_a) in paulis.iter().enumerate() {
+            for (b_idx, pauli_b) in paulis.iter().enumerate() {
+                let mut op = tensor_2x2(pauli_a, pauli_b);
+                // (a_idx, b_idx) == (0, 0) is the identity pair I x I.
+                let scale = if a_idx == 0 && b_idx == 0 {
+                    sqrt_1_minus_p
+                } else {
+                    sqrt_p_15
+                };
+                for value in &mut op {
+                    *value *= scale;
+                }
+                operators.push(op);
+            }
+        }
+
+        operators
     }
 
     fn probability(&self) -> f64 {
@@ -295,13 +374,64 @@ impl NoiseChannel for ThermalRelaxationChannel {
     }
 
     fn kraus_operators(&self) -> Vec<Vec<Complex64>> {
-        // For thermal relaxation, we would typically have 3 Kraus operators
-        // This is a simplified implementation
+        // Thermal relaxation = generalized amplitude damping (T1) composed with
+        // pure phase damping (the residual T2 dephasing). Both are CPTP, so their
+        // composition is CPTP and trace-preserving.
+        //
+        // Generalized amplitude damping with gamma = p_reset and excited-state
+        // population p_e (all 2x2, flattened row-major as [a00, a01, a10, a11]):
+        //   A0 = sqrt(p_e)     * [[1, 0], [0, sqrt(1 - gamma)]]
+        //   A1 = sqrt(p_e)     * [[0, sqrt(gamma)], [0, 0]]
+        //   A2 = sqrt(1 - p_e) * [[sqrt(1 - gamma), 0], [0, 1]]
+        //   A3 = sqrt(1 - p_e) * [[0, 0], [sqrt(gamma), 0]]
+        // Phase damping with gamma_phi = 2 * p_phase (clamped to [0, 1]):
+        //   P0 = [[1, 0], [0, sqrt(1 - gamma_phi)]]
+        //   P1 = [[0, 0], [0, sqrt(gamma_phi)]]
+        // Final Kraus set = { P_i * A_j } (8 operators).
+        // Trace check: sum_{i,j} (P_i A_j)^dagger (P_i A_j)
+        //   = sum_j A_j^dagger (sum_i P_i^dagger P_i) A_j
+        //   = sum_j A_j^dagger A_j = I_2.
         let p_reset = 1.0 - (-self.gate_time / self.t1).exp();
         let p_phase = 0.5 * (1.0 - (-self.gate_time / self.t2).exp());
 
-        // Return placeholder Kraus operators
-        vec![vec![Complex64::new(1.0 - p_reset - p_phase, 0.0)]]
+        let gamma = p_reset.clamp(0.0, 1.0);
+        let gamma_phi = (2.0 * p_phase).clamp(0.0, 1.0);
+        let p_e = self.excited_state_population.clamp(0.0, 1.0);
+
+        let zero = Complex64::new(0.0, 0.0);
+        let sqrt_p_e = Complex64::new(p_e.sqrt(), 0.0);
+        let sqrt_1_minus_p_e = Complex64::new((1.0 - p_e).sqrt(), 0.0);
+        let sqrt_gamma = Complex64::new(gamma.sqrt(), 0.0);
+        let sqrt_1_minus_gamma = Complex64::new((1.0 - gamma).sqrt(), 0.0);
+        let sqrt_gamma_phi = Complex64::new(gamma_phi.sqrt(), 0.0);
+        let sqrt_1_minus_gamma_phi = Complex64::new((1.0 - gamma_phi).sqrt(), 0.0);
+        let one = Complex64::new(1.0, 0.0);
+
+        // Generalized amplitude damping operators.
+        let a0 = vec![sqrt_p_e, zero, zero, sqrt_p_e * sqrt_1_minus_gamma];
+        let a1 = vec![zero, sqrt_p_e * sqrt_gamma, zero, zero];
+        let a2 = vec![
+            sqrt_1_minus_p_e * sqrt_1_minus_gamma,
+            zero,
+            zero,
+            sqrt_1_minus_p_e,
+        ];
+        let a3 = vec![zero, zero, sqrt_1_minus_p_e * sqrt_gamma, zero];
+        let amplitude_ops = [a0, a1, a2, a3];
+
+        // Pure phase-damping operators.
+        let p0 = vec![one, zero, zero, sqrt_1_minus_gamma_phi];
+        let p1 = vec![zero, zero, zero, sqrt_gamma_phi];
+        let phase_ops = [p0, p1];
+
+        let mut operators = Vec::with_capacity(amplitude_ops.len() * phase_ops.len());
+        for phase_op in &phase_ops {
+            for amplitude_op in &amplitude_ops {
+                operators.push(matmul_2x2(phase_op, amplitude_op));
+            }
+        }
+
+        operators
     }
 
     fn probability(&self) -> f64 {
@@ -402,9 +532,31 @@ impl NoiseChannel for CrosstalkChannel {
     }
 
     fn kraus_operators(&self) -> Vec<Vec<Complex64>> {
-        // Crosstalk noise is complex and typically needs multiple Kraus operators
-        // This is a placeholder for a full implementation
-        vec![vec![Complex64::new(1.0, 0.0)]]
+        // The dominant, always-on crosstalk between two coupled qubits is the
+        // coherent ZZ interaction U_ZZ(phi) = exp(-i * phi/2 * (Z x Z)), with the
+        // coupling angle proportional to the crosstalk strength (phi = strength * PI).
+        // Because this is a coherent (unitary) process, the channel is described by
+        // a SINGLE Kraus operator K = U_ZZ, which is trivially trace-preserving
+        // (K^dagger K = I_4 since U_ZZ is unitary).
+        //
+        // Z x Z is diagonal in the computational basis (|00>, |01>, |10>, |11>)
+        // with eigenvalues (+1, -1, -1, +1), so
+        //   U_ZZ = diag(e^{-i phi/2}, e^{+i phi/2}, e^{+i phi/2}, e^{-i phi/2}).
+        // The result is returned as a flattened row-major 4x4 matrix (16 elems).
+        let phi = self.strength * PI;
+        let half = phi / 2.0;
+        let zero = Complex64::new(0.0, 0.0);
+        let phase_neg = Complex64::new(half.cos(), -half.sin()); // e^{-i phi/2}
+        let phase_pos = Complex64::new(half.cos(), half.sin()); // e^{+i phi/2}
+
+        // Diagonal 4x4 with the ZZ phases on the diagonal.
+        let mut op = vec![zero; 16];
+        op[0] = phase_neg; // |00>
+        op[5] = phase_pos; // |01>
+        op[10] = phase_pos; // |10>
+        op[15] = phase_neg; // |11>
+
+        vec![op]
     }
 
     fn probability(&self) -> f64 {
@@ -1143,5 +1295,209 @@ impl RealisticNoiseModelBuilder {
     #[must_use]
     pub fn build(self) -> AdvancedNoiseModel {
         self.model
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Accumulate `sum_k K_k^dagger K_k` for a Kraus set whose operators are
+    /// flattened row-major square matrices, returning the resulting `dim x dim`
+    /// matrix (flattened row-major). The dimension is inferred from the length of
+    /// each inner vector (a `dim x dim` matrix has `dim * dim` entries).
+    fn accumulate_kraus_completeness(kraus: &[Vec<Complex64>]) -> Vec<Complex64> {
+        assert!(!kraus.is_empty(), "Kraus set must be non-empty");
+
+        let len = kraus[0].len();
+        let dim = (len as f64).sqrt().round() as usize;
+        assert_eq!(
+            dim * dim,
+            len,
+            "each Kraus operator must be a square matrix"
+        );
+
+        let mut acc = vec![Complex64::new(0.0, 0.0); len];
+        for op in kraus {
+            assert_eq!(op.len(), len, "all Kraus operators must share a dimension");
+            // (K^dagger K)[i][j] = sum_k conj(K[k][i]) * K[k][j]
+            for i in 0..dim {
+                for j in 0..dim {
+                    let mut sum = Complex64::new(0.0, 0.0);
+                    for k in 0..dim {
+                        sum += op[k * dim + i].conj() * op[k * dim + j];
+                    }
+                    acc[i * dim + j] += sum;
+                }
+            }
+        }
+
+        acc
+    }
+
+    /// Assert that a flattened `dim x dim` matrix equals the identity within
+    /// `tol`.
+    fn assert_is_identity(matrix: &[Complex64], tol: f64) {
+        let len = matrix.len();
+        let dim = (len as f64).sqrt().round() as usize;
+        assert_eq!(dim * dim, len, "matrix must be square");
+
+        for i in 0..dim {
+            for j in 0..dim {
+                let value = matrix[i * dim + j];
+                let expected = if i == j { 1.0 } else { 0.0 };
+                assert!(
+                    (value.re - expected).abs() < tol && value.im.abs() < tol,
+                    "element [{i}][{j}] = {value:?} is not {expected} within {tol}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_two_qubit_depolarizing_kraus_trace_preserving() {
+        let channel = TwoQubitDepolarizingChannel {
+            qubit1: QubitId::new(0),
+            qubit2: QubitId::new(1),
+            probability: 0.137,
+        };
+
+        let kraus = channel.kraus_operators();
+
+        // Two-qubit depolarizing has exactly 16 Kraus operators (15 Pauli pairs
+        // plus identity), not the old fabricated 2 one-element vectors.
+        assert_eq!(kraus.len(), 16, "expected 16 Kraus operators");
+        for op in &kraus {
+            assert_eq!(op.len(), 16, "each operator must be a flattened 4x4 matrix");
+        }
+
+        let completeness = accumulate_kraus_completeness(&kraus);
+        assert_is_identity(&completeness, 1e-10);
+    }
+
+    #[test]
+    fn test_two_qubit_depolarizing_kraus_edge_probabilities() {
+        for &probability in &[0.0_f64, 1.0_f64] {
+            let channel = TwoQubitDepolarizingChannel {
+                qubit1: QubitId::new(0),
+                qubit2: QubitId::new(1),
+                probability,
+            };
+            let kraus = channel.kraus_operators();
+            assert_eq!(kraus.len(), 16);
+            let completeness = accumulate_kraus_completeness(&kraus);
+            assert_is_identity(&completeness, 1e-10);
+        }
+    }
+
+    #[test]
+    fn test_thermal_relaxation_kraus_trace_preserving() {
+        let channel = ThermalRelaxationChannel {
+            target: QubitId::new(0),
+            t1: 100e-6,
+            t2: 80e-6,
+            gate_time: 35e-9,
+            excited_state_population: 0.03,
+        };
+
+        let kraus = channel.kraus_operators();
+
+        // Composition of generalized amplitude damping (4 ops) and phase damping
+        // (2 ops) yields 8 single-qubit operators, well beyond the old single
+        // fabricated one-element vector.
+        assert!(
+            kraus.len() >= 4,
+            "expected at least 4 Kraus operators, got {}",
+            kraus.len()
+        );
+        assert_eq!(kraus.len(), 8, "expected 8 composed Kraus operators");
+        for op in &kraus {
+            assert_eq!(op.len(), 4, "each operator must be a flattened 2x2 matrix");
+        }
+
+        let completeness = accumulate_kraus_completeness(&kraus);
+        assert_is_identity(&completeness, 1e-10);
+    }
+
+    #[test]
+    fn test_thermal_relaxation_kraus_extreme_parameters() {
+        // Very short T1/T2 relative to gate time drive gamma and gamma_phi toward
+        // 1; the decomposition must remain trace-preserving and clamped.
+        let channel = ThermalRelaxationChannel {
+            target: QubitId::new(0),
+            t1: 1e-9,
+            t2: 1e-9,
+            gate_time: 1e-6,
+            excited_state_population: 0.5,
+        };
+
+        let kraus = channel.kraus_operators();
+        assert_eq!(kraus.len(), 8);
+        let completeness = accumulate_kraus_completeness(&kraus);
+        assert_is_identity(&completeness, 1e-10);
+    }
+
+    #[test]
+    fn test_crosstalk_kraus_trace_preserving() {
+        let channel = CrosstalkChannel {
+            primary: QubitId::new(0),
+            neighbor: QubitId::new(1),
+            strength: 0.3,
+        };
+
+        let kraus = channel.kraus_operators();
+
+        // Coherent ZZ crosstalk is a single unitary Kraus operator on the
+        // two-qubit (4x4) space, not the old fabricated 1-element vector.
+        assert_eq!(kraus.len(), 1, "coherent crosstalk has a single Kraus op");
+        assert_eq!(
+            kraus[0].len(),
+            16,
+            "the operator must be a flattened 4x4 unitary"
+        );
+
+        let completeness = accumulate_kraus_completeness(&kraus);
+        assert_is_identity(&completeness, 1e-10);
+    }
+
+    #[test]
+    fn test_tensor_2x2_matches_known_pauli_product() {
+        let paulis = single_qubit_paulis();
+        // Z x X should map |0>|+> style basis correctly; verify the explicit
+        // 4x4 layout against a hand-computed reference.
+        let z = &paulis[3];
+        let x = &paulis[1];
+        let zx = tensor_2x2(z, x);
+
+        // Z x X = [[0,1,0,0],[1,0,0,0],[0,0,0,-1],[0,0,-1,0]]
+        let one = Complex64::new(1.0, 0.0);
+        let neg_one = Complex64::new(-1.0, 0.0);
+        let zero = Complex64::new(0.0, 0.0);
+        let expected = vec![
+            zero, one, zero, zero, one, zero, zero, zero, zero, zero, zero, neg_one, zero, zero,
+            neg_one, zero,
+        ];
+        for (got, want) in zx.iter().zip(expected.iter()) {
+            assert!((got.re - want.re).abs() < 1e-12 && (got.im - want.im).abs() < 1e-12);
+        }
+    }
+
+    #[test]
+    fn test_matmul_2x2_identity_and_pauli() {
+        let paulis = single_qubit_paulis();
+        let identity = &paulis[0];
+        let x = &paulis[1];
+
+        // I * X == X
+        let product = matmul_2x2(identity, x);
+        for (got, want) in product.iter().zip(x.iter()) {
+            assert!((got.re - want.re).abs() < 1e-12 && (got.im - want.im).abs() < 1e-12);
+        }
+
+        // X * X == I
+        let xx = matmul_2x2(x, x);
+        for (got, want) in xx.iter().zip(identity.iter()) {
+            assert!((got.re - want.re).abs() < 1e-12 && (got.im - want.im).abs() < 1e-12);
+        }
     }
 }

@@ -87,6 +87,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             reinitialize_fraction: 0.0, // No random reinitialization
             local_search_radius: None,  // Global search
             seed: Some(42),             // Reproducible results
+            base_temperature: 0.1,      // Thermal floor for the acceptance rule
         };
 
         let mut reverse_simulator = ReverseAnnealingSimulator::new(reverse_params)?;
@@ -164,6 +165,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             reinitialize_fraction: 0.0,
             local_search_radius: None,
             seed: Some(42 + iteration),
+            base_temperature: 0.1,
         };
 
         let mut iter_simulator = ReverseAnnealingSimulator::new(iter_params)?;

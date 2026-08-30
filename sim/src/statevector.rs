@@ -67,6 +67,15 @@ pub struct StateVectorSimulator {
 
     /// `SciRS2` backend for optimized linear algebra operations
     scirs2_backend: SciRS2Backend,
+
+    /// Current quantum state managed by the imperative gate API
+    /// ([`StateVectorSimulator::initialize_state`], [`StateVectorSimulator::apply_h`], ...).
+    ///
+    /// This is empty until [`StateVectorSimulator::initialize_state`] (or
+    /// [`StateVectorSimulator::apply_interface_circuit`]) is called. The
+    /// [`Simulator::run`] entry point does not use this field; it evolves a
+    /// local state vector and is independent of the imperative API.
+    current_state: Vec<Complex64>,
 }
 
 impl Clone for StateVectorSimulator {
@@ -83,6 +92,7 @@ impl Clone for StateVectorSimulator {
                 .as_ref()
                 .map(|_| SimulationDiagnostics::new()),
             scirs2_backend: SciRS2Backend::new(),
+            current_state: self.current_state.clone(),
         }
     }
 }
@@ -156,6 +166,7 @@ impl StateVectorSimulator {
             use_gate_fusion: true,
             diagnostics: None,
             scirs2_backend: SciRS2Backend::new(),
+            current_state: Vec::new(),
         }
     }
 
@@ -171,6 +182,7 @@ impl StateVectorSimulator {
             use_gate_fusion: true,
             diagnostics: None,
             scirs2_backend: SciRS2Backend::new(),
+            current_state: Vec::new(),
         }
     }
 
@@ -186,6 +198,7 @@ impl StateVectorSimulator {
             use_gate_fusion: true,
             diagnostics: None,
             scirs2_backend: SciRS2Backend::new(),
+            current_state: Vec::new(),
         }
     }
 
@@ -203,6 +216,7 @@ impl StateVectorSimulator {
             use_gate_fusion: true,
             diagnostics: None,
             scirs2_backend: SciRS2Backend::new(),
+            current_state: Vec::new(),
         }
     }
 
@@ -218,6 +232,7 @@ impl StateVectorSimulator {
             use_gate_fusion: true,
             diagnostics: None,
             scirs2_backend: SciRS2Backend::new(),
+            current_state: Vec::new(),
         }
     }
 
@@ -293,6 +308,7 @@ impl StateVectorSimulator {
             use_gate_fusion: true,
             diagnostics: Some(SimulationDiagnostics::new()),
             scirs2_backend: SciRS2Backend::new(),
+            current_state: Vec::new(),
         }
     }
 
@@ -1017,64 +1033,157 @@ impl<const N: usize> Simulator<N> for StateVectorSimulator {
 }
 
 impl StateVectorSimulator {
+    /// Number of qubits currently represented by [`Self::current_state`].
+    ///
+    /// Returns an error if the state has not been initialised yet.
+    fn state_num_qubits(&self) -> QuantRS2Result<usize> {
+        let len = self.current_state.len();
+        if len == 0 || !len.is_power_of_two() {
+            return Err(QuantRS2Error::InvalidInput(
+                "Quantum state has not been initialised; call initialize_state first".to_string(),
+            ));
+        }
+        Ok(len.trailing_zeros() as usize)
+    }
+
+    /// Bounds-check a single qubit index against the current state size.
+    fn check_qubit(&self, qubit: usize) -> QuantRS2Result<()> {
+        let n = self.state_num_qubits()?;
+        if qubit >= n {
+            return Err(QuantRS2Error::InvalidQubitId(qubit as u32));
+        }
+        Ok(())
+    }
+
     /// Initialize state with specified number of qubits in |0...0⟩
-    pub const fn initialize_state(&mut self, num_qubits: usize) -> QuantRS2Result<()> {
-        // This is a placeholder - actual initialization would need the circuit framework
+    ///
+    /// Allocates a fresh `2^num_qubits` amplitude vector set to the
+    /// computational-basis state |0...0⟩ and stores it in [`Self::current_state`].
+    pub fn initialize_state(&mut self, num_qubits: usize) -> QuantRS2Result<()> {
+        if num_qubits == 0 {
+            return Err(QuantRS2Error::InvalidInput(
+                "Number of qubits must be at least 1".to_string(),
+            ));
+        }
+        if num_qubits >= usize::BITS as usize {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Number of qubits {num_qubits} is too large to address"
+            )));
+        }
+        let dim = 1usize << num_qubits;
+        let mut state = vec![Complex64::new(0.0, 0.0); dim];
+        state[0] = Complex64::new(1.0, 0.0);
+        self.current_state = state;
         Ok(())
     }
 
-    /// Get the current quantum state
+    /// Get a copy of the current quantum state amplitudes.
     pub fn get_state(&self) -> Vec<Complex64> {
-        // Placeholder - would return the actual state vector
-        vec![Complex64::new(1.0, 0.0)]
+        self.current_state.clone()
     }
 
-    /// Get mutable reference to the current quantum state
+    /// Get a copy of the current quantum state amplitudes.
+    ///
+    /// Historically named `get_state_mut`; it returns an owned copy that the
+    /// caller mutates and writes back via [`Self::set_state`].
     pub fn get_state_mut(&mut self) -> Vec<Complex64> {
-        // Placeholder - would return mutable reference to actual state vector
-        vec![Complex64::new(1.0, 0.0)]
+        self.current_state.clone()
     }
 
-    /// Set the quantum state
-    pub fn set_state(&mut self, _state: Vec<Complex64>) -> QuantRS2Result<()> {
-        // Placeholder - would set the actual state vector
+    /// Set the quantum state.
+    ///
+    /// The supplied vector must be non-empty with a power-of-two length so it
+    /// corresponds to an integer number of qubits.
+    pub fn set_state(&mut self, state: Vec<Complex64>) -> QuantRS2Result<()> {
+        if state.is_empty() || !state.len().is_power_of_two() {
+            return Err(QuantRS2Error::InvalidInput(
+                "State vector length must be a non-zero power of two".to_string(),
+            ));
+        }
+        self.current_state = state;
         Ok(())
     }
 
-    /// Apply an interface circuit to the quantum state
-    pub const fn apply_interface_circuit(
+    /// Apply an interface circuit to the current quantum state.
+    ///
+    /// If the state has not been initialised (or its size does not match the
+    /// circuit), it is (re)initialised to |0...0⟩ over `circuit.num_qubits`
+    /// qubits before the gates are applied.
+    pub fn apply_interface_circuit(
         &mut self,
-        _circuit: &crate::circuit_interfaces::InterfaceCircuit,
+        circuit: &crate::circuit_interfaces::InterfaceCircuit,
     ) -> QuantRS2Result<()> {
-        // Placeholder - would apply the circuit gates using the circuit framework
-        Ok(())
+        let expected_dim = 1usize << circuit.num_qubits;
+        if self.current_state.len() != expected_dim {
+            self.initialize_state(circuit.num_qubits)?;
+        }
+        let mut state = std::mem::take(&mut self.current_state);
+        let result = (|| {
+            for gate in &circuit.gates {
+                apply_interface_gate_to_state(&mut state, gate, circuit.num_qubits)?;
+            }
+            Ok(())
+        })();
+        self.current_state = state;
+        result
     }
 
     /// Apply Hadamard gate to qubit
-    pub const fn apply_h(&mut self, _qubit: usize) -> QuantRS2Result<()> {
-        // Placeholder - would apply H gate using circuit framework
+    pub fn apply_h(&mut self, qubit: usize) -> QuantRS2Result<()> {
+        self.check_qubit(qubit)?;
+        let inv_sqrt2 = 1.0 / std::f64::consts::SQRT_2;
+        let matrix = [
+            Complex64::new(inv_sqrt2, 0.0),
+            Complex64::new(inv_sqrt2, 0.0),
+            Complex64::new(inv_sqrt2, 0.0),
+            Complex64::new(-inv_sqrt2, 0.0),
+        ];
+        apply_single_qubit_inplace(&mut self.current_state, &matrix, qubit);
         Ok(())
     }
 
     /// Apply Pauli-X gate to qubit
-    pub const fn apply_x(&mut self, _qubit: usize) -> QuantRS2Result<()> {
-        // Placeholder - would apply X gate using circuit framework
+    pub fn apply_x(&mut self, qubit: usize) -> QuantRS2Result<()> {
+        self.check_qubit(qubit)?;
+        let matrix = [
+            Complex64::new(0.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
+        ];
+        apply_single_qubit_inplace(&mut self.current_state, &matrix, qubit);
         Ok(())
     }
 
     /// Apply Pauli-Z gate to qubit
-    pub const fn apply_z_public(&mut self, _qubit: usize) -> QuantRS2Result<()> {
-        // Placeholder - would apply Z gate using circuit framework
+    pub fn apply_z_public(&mut self, qubit: usize) -> QuantRS2Result<()> {
+        self.check_qubit(qubit)?;
+        let matrix = [
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(-1.0, 0.0),
+        ];
+        apply_single_qubit_inplace(&mut self.current_state, &matrix, qubit);
         Ok(())
     }
 
     /// Apply CNOT gate (public interface with usize indices)
-    pub const fn apply_cnot_public(
-        &mut self,
-        _control: usize,
-        _target: usize,
-    ) -> QuantRS2Result<()> {
-        // Placeholder - would apply CNOT gate using circuit framework
+    pub fn apply_cnot_public(&mut self, control: usize, target: usize) -> QuantRS2Result<()> {
+        self.check_qubit(control)?;
+        self.check_qubit(target)?;
+        if control == target {
+            return Err(QuantRS2Error::InvalidInput(
+                "CNOT control and target must differ".to_string(),
+            ));
+        }
+        let control_mask = 1usize << control;
+        let target_mask = 1usize << target;
+        for i in 0..self.current_state.len() {
+            if (i & control_mask) != 0 && (i & target_mask) == 0 {
+                self.current_state.swap(i, i | target_mask);
+            }
+        }
         Ok(())
     }
 
@@ -1228,25 +1337,209 @@ impl StateVectorSimulator {
         Ok(())
     }
 
-    /// Apply Toffoli (CCNOT) gate (public interface)
-    pub const fn apply_toffoli(
+    /// Apply Toffoli (CCNOT) gate to the current state (public interface).
+    ///
+    /// Flips `target` whenever both `control1` and `control2` are |1⟩.
+    pub fn apply_toffoli(
         &mut self,
         control1: QubitId,
         control2: QubitId,
         target: QubitId,
     ) -> QuantRS2Result<()> {
-        // This is a placeholder for external API - real implementation would need circuit framework
+        let c1 = control1.id() as usize;
+        let c2 = control2.id() as usize;
+        let t = target.id() as usize;
+        self.check_qubit(c1)?;
+        self.check_qubit(c2)?;
+        self.check_qubit(t)?;
+        if c1 == c2 || c1 == t || c2 == t {
+            return Err(QuantRS2Error::InvalidInput(
+                "Toffoli controls and target must be distinct".to_string(),
+            ));
+        }
+        let c1_mask = 1usize << c1;
+        let c2_mask = 1usize << c2;
+        let t_mask = 1usize << t;
+        for i in 0..self.current_state.len() {
+            if (i & c1_mask) != 0 && (i & c2_mask) != 0 && (i & t_mask) == 0 {
+                self.current_state.swap(i, i | t_mask);
+            }
+        }
         Ok(())
     }
 
-    /// Apply Fredkin (CSWAP) gate (public interface)
-    pub const fn apply_fredkin(
+    /// Apply Fredkin (CSWAP) gate to the current state (public interface).
+    ///
+    /// Swaps `target1` and `target2` whenever `control` is |1⟩.
+    pub fn apply_fredkin(
         &mut self,
         control: QubitId,
         target1: QubitId,
         target2: QubitId,
     ) -> QuantRS2Result<()> {
-        // This is a placeholder for external API - real implementation would need circuit framework
+        let c = control.id() as usize;
+        let t1 = target1.id() as usize;
+        let t2 = target2.id() as usize;
+        self.check_qubit(c)?;
+        self.check_qubit(t1)?;
+        self.check_qubit(t2)?;
+        if c == t1 || c == t2 || t1 == t2 {
+            return Err(QuantRS2Error::InvalidInput(
+                "Fredkin control and targets must be distinct".to_string(),
+            ));
+        }
+        let c_mask = 1usize << c;
+        let t1_mask = 1usize << t1;
+        let t2_mask = 1usize << t2;
+        for i in 0..self.current_state.len() {
+            // Swap the pair (t1=0, t2=1) with (t1=1, t2=0) once, only when the
+            // control bit is set.
+            if (i & c_mask) != 0 && (i & t1_mask) == 0 && (i & t2_mask) != 0 {
+                let partner = (i | t1_mask) & !t2_mask;
+                self.current_state.swap(i, partner);
+            }
+        }
         Ok(())
+    }
+}
+
+/// Apply a 2×2 single-qubit gate to `state` in place.
+///
+/// The matrix is row-major `[m00, m01, m10, m11]` acting on the amplitude
+/// pair whose `target` bit is 0 (row 0) and 1 (row 1).
+fn apply_single_qubit_inplace(state: &mut [Complex64], matrix: &[Complex64; 4], target: usize) {
+    let target_mask = 1usize << target;
+    for i in 0..state.len() {
+        if (i & target_mask) == 0 {
+            let j = i | target_mask;
+            let a = state[i];
+            let b = state[j];
+            state[i] = matrix[0] * a + matrix[1] * b;
+            state[j] = matrix[2] * a + matrix[3] * b;
+        }
+    }
+}
+
+/// Apply a `k`-qubit unitary `matrix` (dimension `2^k`, row-major) to `state`
+/// over the given `qubits`, following the convention that `qubits[0]` is the
+/// most-significant index of the gate matrix (matching the crate's existing
+/// two-qubit gate ordering).
+fn apply_multi_qubit_inplace(
+    state: &mut [Complex64],
+    matrix: &scirs2_core::ndarray::Array2<Complex64>,
+    qubits: &[usize],
+) -> QuantRS2Result<()> {
+    let k = qubits.len();
+    let gate_dim = 1usize << k;
+    if matrix.nrows() != gate_dim || matrix.ncols() != gate_dim {
+        return Err(QuantRS2Error::InvalidInput(format!(
+            "Gate matrix dimension {}x{} does not match {} qubit(s)",
+            matrix.nrows(),
+            matrix.ncols(),
+            k
+        )));
+    }
+    let mut combined_mask = 0usize;
+    for &q in qubits {
+        combined_mask |= 1usize << q;
+    }
+
+    let mut indices = vec![0usize; gate_dim];
+    let mut inputs = vec![Complex64::new(0.0, 0.0); gate_dim];
+    for base in 0..state.len() {
+        // Process each group of basis states (those sharing all non-target
+        // bits) exactly once, keyed on the representative with all target
+        // bits cleared.
+        if base & combined_mask != 0 {
+            continue;
+        }
+        for (g, (idx_slot, in_slot)) in indices.iter_mut().zip(inputs.iter_mut()).enumerate() {
+            let mut idx = base;
+            for (b, &q) in qubits.iter().enumerate() {
+                if (g >> (k - 1 - b)) & 1 == 1 {
+                    idx |= 1usize << q;
+                }
+            }
+            *idx_slot = idx;
+            *in_slot = state[idx];
+        }
+        for row in 0..gate_dim {
+            let mut acc = Complex64::new(0.0, 0.0);
+            for (col, &inp) in inputs.iter().enumerate() {
+                acc += matrix[[row, col]] * inp;
+            }
+            state[indices[row]] = acc;
+        }
+    }
+    Ok(())
+}
+
+/// Apply a single [`InterfaceGate`](crate::circuit_interfaces::InterfaceGate)
+/// to `state`.
+///
+/// Common single-qubit aliases (`X`, `H`) that the interface gate's own
+/// `unitary_matrix` does not resolve are handled here directly; every other
+/// unitary gate type is applied via its `unitary_matrix`. Genuinely
+/// non-unitary operations (measurement / reset) return an honest error rather
+/// than silently doing nothing.
+fn apply_interface_gate_to_state(
+    state: &mut [Complex64],
+    gate: &crate::circuit_interfaces::InterfaceGate,
+    num_qubits: usize,
+) -> QuantRS2Result<()> {
+    use crate::circuit_interfaces::InterfaceGateType;
+
+    for &q in &gate.qubits {
+        if q >= num_qubits {
+            return Err(QuantRS2Error::InvalidQubitId(q as u32));
+        }
+    }
+
+    let inv_sqrt2 = 1.0 / std::f64::consts::SQRT_2;
+    match &gate.gate_type {
+        InterfaceGateType::Identity => Ok(()),
+        InterfaceGateType::PauliX | InterfaceGateType::X => {
+            let m = [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+            ];
+            apply_single_qubit_inplace(state, &m, gate.qubits[0]);
+            Ok(())
+        }
+        InterfaceGateType::Hadamard | InterfaceGateType::H => {
+            let m = [
+                Complex64::new(inv_sqrt2, 0.0),
+                Complex64::new(inv_sqrt2, 0.0),
+                Complex64::new(inv_sqrt2, 0.0),
+                Complex64::new(-inv_sqrt2, 0.0),
+            ];
+            apply_single_qubit_inplace(state, &m, gate.qubits[0]);
+            Ok(())
+        }
+        InterfaceGateType::Measure | InterfaceGateType::Reset => {
+            Err(QuantRS2Error::UnsupportedOperation(format!(
+                "State-vector apply_interface_circuit does not support non-unitary '{:?}'",
+                gate.gate_type
+            )))
+        }
+        _ => {
+            let matrix = gate
+                .unitary_matrix()
+                .map_err(|e| QuantRS2Error::InvalidInput(e.to_string()))?;
+            if gate.qubits.len() == 1 {
+                let flat = [
+                    matrix[[0, 0]],
+                    matrix[[0, 1]],
+                    matrix[[1, 0]],
+                    matrix[[1, 1]],
+                ];
+                apply_single_qubit_inplace(state, &flat, gate.qubits[0]);
+                Ok(())
+            } else {
+                apply_multi_qubit_inplace(state, &matrix, &gate.qubits)
+            }
+        }
     }
 }

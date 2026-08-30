@@ -6,6 +6,12 @@
 
 QuantRS2-Sim is the comprehensive simulation engine of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing state-of-the-art quantum simulation algorithms, error correction codes, and performance optimization techniques for simulating quantum systems up to 30+ qubits on standard hardware.
 
+## Version 0.2.1 (2026-08-30)
+
+- **Quantum Phase Estimation performance fix**: `EnhancedPhaseEstimation` now builds each controlled-`U^(2^i)` power via matrix squaring instead of literal repeated application — O(phase_qubits) matrix multiplies instead of O(2^phase_qubits) state-vector passes. Also fixes `PhaseEstimationResult::precisions` always being length 1 regardless of eigenvalue count.
+- **Metal backend honest detection**: `is_available`/`is_mps_available`/`get_device_info` now report real availability via `PlatformCapabilities::detect().metal_available`.
+- SciRS2 upgraded to v0.6.5.
+
 ## Version 0.2.0 (2026-06-06)
 
 This release features refined integration with [SciRS2](https://github.com/cool-japan/scirs2) v0.5.0 for unprecedented performance. The sim crate now has 3,527 public items with 0 todo/unimplemented stubs.

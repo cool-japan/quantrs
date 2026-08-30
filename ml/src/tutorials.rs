@@ -1378,10 +1378,23 @@ pub mod utils {
         report
     }
 
-    /// Validate exercise solution
+    /// Validate exercise solution.
+    ///
+    /// Truly executing `exercise.test_cases` against `user_code` would
+    /// require compiling and running arbitrary user-submitted code inside a
+    /// sandboxed Rust toolchain, which this crate does not have. Rather than
+    /// fabricate a pass/fail verdict from an arbitrary heuristic (the
+    /// previous implementation scored purely by `user_code.len()`,
+    /// independent of `exercise.test_cases` or correctness), this performs a
+    /// real, deterministic lexical-similarity comparison against
+    /// `exercise.solution_code`: the fraction of the reference solution's
+    /// significant tokens (identifiers, method/gate names, numeric literals)
+    /// that also appear in `user_code`. This is a genuine, computed measure
+    /// of structural similarity to a known-correct solution -- it is *not* a
+    /// substitute for actually executing `exercise.test_cases`, which the
+    /// returned feedback makes explicit so callers cannot mistake it for
+    /// real dynamic grading.
     pub fn validate_exercise_solution(exercise: &Exercise, user_code: &str) -> ExerciseResult {
-        // Simplified validation - in practice would compile and test code
-        let mut passed_tests = 0;
         let total_tests = exercise.test_cases.len();
 
         // Basic validation checks
@@ -1389,22 +1402,32 @@ pub mod utils {
             return ExerciseResult {
                 passed: false,
                 score: 0.0,
-                passed_tests,
+                passed_tests: 0,
                 total_tests,
                 feedback: "Remove TODO comments and implement the solution".to_string(),
                 hints_used: 0,
             };
         }
 
-        // Mock test execution
-        passed_tests = if user_code.len() > 100 {
-            total_tests
+        let solution_tokens = significant_tokens(&exercise.solution_code);
+        let user_tokens = significant_tokens(user_code);
+
+        let score = if solution_tokens.is_empty() {
+            0.0
         } else {
-            total_tests / 2
+            let matched = solution_tokens
+                .iter()
+                .filter(|token| user_tokens.contains(*token))
+                .count();
+            matched as f64 / solution_tokens.len() as f64
         };
 
-        let score = passed_tests as f64 / total_tests as f64;
         let passed = score >= 0.7;
+        let passed_tests = if total_tests == 0 {
+            0
+        } else {
+            ((score * total_tests as f64).round() as usize).min(total_tests)
+        };
 
         ExerciseResult {
             passed,
@@ -1412,12 +1435,51 @@ pub mod utils {
             passed_tests,
             total_tests,
             feedback: if passed {
-                "Great job! All tests passed.".to_string()
+                format!(
+                    "Your solution shares {:.0}% of the reference solution's key tokens \
+                     (a structural/lexical similarity check, not executed test cases).",
+                    score * 100.0
+                )
             } else {
-                "Some tests failed. Check the hints and try again.".to_string()
+                format!(
+                    "Your solution shares only {:.0}% of the reference solution's key \
+                     tokens. Check the hints and try again. (Note: automated dynamic \
+                     grading is not available -- this is a structural similarity check \
+                     against the reference solution, not real test execution.)",
+                    score * 100.0
+                )
             },
             hints_used: 0,
         }
+    }
+
+    /// Extract the set of "significant" lexical tokens from source-like
+    /// text: maximal runs of identifier characters (letters, digits,
+    /// underscore), lowercased, excluding common Rust keywords that carry
+    /// little discriminative signal.
+    fn significant_tokens(code: &str) -> std::collections::HashSet<String> {
+        const STOPWORDS: &[&str] = &[
+            "fn", "let", "mut", "use", "pub", "struct", "impl", "return", "if", "else", "for",
+            "while", "loop", "match", "true", "false", "self", "ok", "err", "result", "crate",
+            "super", "as", "in", "dyn", "ref",
+        ];
+
+        let mut tokens = std::collections::HashSet::new();
+        let mut current = String::new();
+        for ch in code.chars().chain(std::iter::once(' ')) {
+            if ch.is_alphanumeric() || ch == '_' {
+                current.push(ch);
+            } else if !current.is_empty() {
+                let lowered = current.to_lowercase();
+                if !lowered.chars().all(|c| c.is_ascii_digit())
+                    && !STOPWORDS.contains(&lowered.as_str())
+                {
+                    tokens.insert(lowered);
+                }
+                current.clear();
+            }
+        }
+        tokens
     }
 }
 
@@ -1532,6 +1594,55 @@ mod tests {
         let result = utils::validate_exercise_solution(exercise, good_solution);
         assert!(result.passed);
         assert!(result.score > 0.7);
+        // The feedback must honestly disclose that this is a structural
+        // similarity check, not real test execution.
+        assert!(
+            result.feedback.contains("structural") || result.feedback.contains("similarity"),
+            "feedback should disclose the grading method: {}",
+            result.feedback
+        );
+    }
+
+    /// Regression test for the "score by user_code.len()" fabrication bug:
+    /// a submission long enough to have previously gamed the length
+    /// heuristic (`user_code.len() > 100`), but sharing essentially none of
+    /// the reference solution's key tokens, must now score low and fail,
+    /// rather than being reported as passing all tests.
+    #[test]
+    fn test_exercise_validation_rejects_long_irrelevant_solution() {
+        let manager = TutorialManager::new();
+        let exercise = manager
+            .get_exercise("qc_basic_gates")
+            .expect("Exercise should exist");
+
+        let padding = "x".repeat(30);
+        let irrelevant_solution = format!(
+            "This is a very long comment that says absolutely nothing about \
+             quantum gates or circuits at all, just filler padding {padding}."
+        );
+        assert!(
+            irrelevant_solution.len() > 100,
+            "solution must be long enough to have gamed the old length heuristic"
+        );
+
+        let result = utils::validate_exercise_solution(exercise, &irrelevant_solution);
+        assert!(
+            !result.passed,
+            "a long but irrelevant solution must not be reported as passing"
+        );
+        assert!(result.score < 0.7, "score was {}", result.score);
+    }
+
+    #[test]
+    fn test_exercise_validation_rejects_todo() {
+        let manager = TutorialManager::new();
+        let exercise = manager
+            .get_exercise("qc_basic_gates")
+            .expect("Exercise should exist");
+
+        let result = utils::validate_exercise_solution(exercise, "// TODO: implement this");
+        assert!(!result.passed);
+        assert_eq!(result.score, 0.0);
     }
 
     #[test]

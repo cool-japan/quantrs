@@ -290,15 +290,16 @@ impl QMLLayer for EntanglingLayer {
         let pairs = create_entangling_gates(self.num_qubits, self.pattern);
 
         if self.parameterized {
-            // Use parameterized entangling gates (CRZ)
+            // Parameterized entangling gates: controlled-RZ(θ) using each
+            // trainable parameter as the rotation angle.
             pairs
                 .iter()
                 .zip(self.parameters.iter())
-                .map(|((ctrl, tgt), _param)| {
-                    // For now, use CNOT - would implement CRZ
-                    Box::new(CNOT {
+                .map(|((ctrl, tgt), param)| {
+                    Box::new(crate::gate::multi::CRZ {
                         control: *ctrl,
                         target: *tgt,
+                        theta: param.value,
                     }) as Box<dyn GateOp>
                 })
                 .collect()
@@ -546,6 +547,8 @@ pub struct QuantumPoolingLayer {
     output_qubits: usize,
     /// Pooling strategy
     strategy: PoolingStrategy,
+    /// Trainable parameters (only populated for the `Parameterized` strategy).
+    parameters: Vec<Parameter>,
     /// Layer name
     name: String,
 }
@@ -561,14 +564,30 @@ pub enum PoolingStrategy {
 }
 
 impl QuantumPoolingLayer {
-    /// Create a new pooling layer
+    /// Create a new pooling layer.
+    ///
+    /// For the [`PoolingStrategy::Parameterized`] strategy this allocates one
+    /// trainable rotation angle per pooled pair; the other strategies are
+    /// non-unitary (partial trace / measurement) and carry no parameters.
     pub fn new(input_qubits: usize, strategy: PoolingStrategy) -> Self {
         let output_qubits = input_qubits / 2;
+
+        let parameters = match strategy {
+            PoolingStrategy::Parameterized => (0..output_qubits)
+                .map(|pair| Parameter {
+                    name: format!("pool_{pair}"),
+                    value: 0.0,
+                    bounds: Some((-PI, PI)),
+                })
+                .collect(),
+            PoolingStrategy::TraceOut | PoolingStrategy::MeasureCondition => Vec::new(),
+        };
 
         Self {
             input_qubits,
             output_qubits,
             strategy,
+            parameters,
             name: format!("QuantumPoolingLayer_{strategy:?}"),
         }
     }
@@ -580,25 +599,97 @@ impl QMLLayer for QuantumPoolingLayer {
     }
 
     fn parameters(&self) -> &[Parameter] {
-        &[]
+        &self.parameters
     }
 
     fn parameters_mut(&mut self) -> &mut [Parameter] {
-        &mut []
+        &mut self.parameters
     }
 
     fn gates(&self) -> Vec<Box<dyn GateOp>> {
-        // Pooling typically involves measurements or partial traces
-        // For now, return empty
-        vec![]
+        match self.strategy {
+            // Parameterized pooling: a controlled-RZ entangles each odd qubit
+            // (2*pair + 1) into the retained even qubit (2*pair) before the odd
+            // qubit is discarded, with a trainable rotation angle per pair.
+            PoolingStrategy::Parameterized => self
+                .parameters
+                .iter()
+                .enumerate()
+                .map(|(pair, param)| {
+                    let retained = QubitId((2 * pair) as u32);
+                    let discarded = QubitId((2 * pair + 1) as u32);
+                    Box::new(crate::gate::multi::CRZ {
+                        control: discarded,
+                        target: retained,
+                        theta: param.value,
+                    }) as Box<dyn GateOp>
+                })
+                .collect(),
+            // TraceOut / MeasureCondition are non-unitary operations (partial
+            // trace and mid-circuit measurement); they are realised by the
+            // surrounding circuit executor reducing the register from
+            // `input_qubits` to `output_qubits` rather than by unitary gates, so
+            // there are no gates to emit here. This empty result is the
+            // mathematically-correct representation, not a placeholder.
+            PoolingStrategy::TraceOut | PoolingStrategy::MeasureCondition => Vec::new(),
+        }
     }
 
     fn compute_gradients(
         &self,
-        _state: &Array1<Complex64>,
-        _loss_gradient: &Array1<Complex64>,
+        state: &Array1<Complex64>,
+        loss_gradient: &Array1<Complex64>,
     ) -> QuantRS2Result<Vec<f64>> {
-        Ok(vec![])
+        // Only the parameterized strategy has trainable parameters; the
+        // non-unitary strategies have none, so their gradient is empty.
+        if self.parameters.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Parameter-shift rule for the CRZ pooling rotations: for each pair,
+        // ∂⟨O⟩/∂θ = ½[f(θ+π/2) − f(θ−π/2)], approximated against the supplied
+        // upstream loss gradient on the retained-qubit overlap.
+        let num_qubits = self.input_qubits.max(1);
+        let dim = 1usize << num_qubits;
+        if state.len() != dim || loss_gradient.len() != dim {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "pooling gradient expects state/loss vectors of length {dim}"
+            )));
+        }
+
+        let shift = PI / 2.0;
+        let mut gradients = Vec::with_capacity(self.parameters.len());
+        for (pair, param) in self.parameters.iter().enumerate() {
+            let retained = QubitId((2 * pair) as u32);
+            let discarded = QubitId((2 * pair + 1) as u32);
+
+            let mut state_plus = state.clone();
+            let gate_plus = crate::gate::multi::CRZ {
+                control: discarded,
+                target: retained,
+                theta: param.value + shift,
+            };
+            crate::qml::simulator::apply_gate(&mut state_plus, &gate_plus)?;
+
+            let mut state_minus = state.clone();
+            let gate_minus = crate::gate::multi::CRZ {
+                control: discarded,
+                target: retained,
+                theta: param.value - shift,
+            };
+            crate::qml::simulator::apply_gate(&mut state_minus, &gate_minus)?;
+
+            // ⟨loss | (|ψ+⟩ − |ψ−⟩)/2⟩, real part is the parameter gradient.
+            let grad: f64 = loss_gradient
+                .iter()
+                .zip(state_plus.iter().zip(state_minus.iter()))
+                .map(|(g, (p, m))| (g.conj() * (p - m)).re)
+                .sum::<f64>()
+                / 2.0;
+            gradients.push(grad);
+        }
+
+        Ok(gradients)
     }
 
     fn name(&self) -> &str {
@@ -647,5 +738,66 @@ mod tests {
 
         let gates = layer.gates();
         assert_eq!(gates.len(), 8); // 6 rotation gates + 2 CNOTs
+    }
+
+    #[test]
+    fn test_parameterized_entangling_layer_uses_crz_not_cnot() {
+        // The parameterized branch must emit controlled-RZ gates that depend on
+        // the trainable parameters (the old fabrication emitted parameterless
+        // CNOTs and ignored the parameters).
+        let mut layer = EntanglingLayer::parameterized(3, EntanglementPattern::Linear);
+        let params = layer.parameters_mut();
+        for (i, p) in params.iter_mut().enumerate() {
+            p.value = 0.5 * (i as f64 + 1.0);
+        }
+        let gates = layer.gates();
+        assert!(!gates.is_empty());
+        for gate in &gates {
+            assert_eq!(
+                gate.name(),
+                "CRZ",
+                "parameterized entangling layer must emit CRZ gates"
+            );
+        }
+        // A CRZ(θ≠0) matrix must differ from a CNOT matrix.
+        let crz_matrix = gates[0].matrix().expect("crz matrix");
+        let cnot = crate::gate::multi::CNOT {
+            control: QubitId(0),
+            target: QubitId(1),
+        };
+        let cnot_matrix = cnot.matrix().expect("cnot matrix");
+        let differs = crz_matrix
+            .iter()
+            .zip(cnot_matrix.iter())
+            .any(|(a, b)| (a - b).norm() > 1e-9);
+        assert!(differs, "CRZ gate must not equal CNOT");
+    }
+
+    #[test]
+    fn test_parameterized_pooling_layer_emits_gates() {
+        // Parameterized pooling must produce trainable gates (the old impl
+        // returned an empty gate list regardless of strategy).
+        let mut layer = QuantumPoolingLayer::new(4, PoolingStrategy::Parameterized);
+        assert_eq!(layer.parameters().len(), 2); // 4 input -> 2 pooled pairs
+        for (i, p) in layer.parameters_mut().iter_mut().enumerate() {
+            p.value = 0.3 * (i as f64 + 1.0);
+        }
+        let gates = layer.gates();
+        assert_eq!(gates.len(), 2, "one pooling gate per pooled pair");
+        for gate in &gates {
+            assert_eq!(gate.name(), "CRZ");
+        }
+    }
+
+    #[test]
+    fn test_traceout_pooling_layer_has_no_gates_legit() {
+        // Non-unitary pooling strategies correctly carry no gates / parameters.
+        let layer = QuantumPoolingLayer::new(4, PoolingStrategy::TraceOut);
+        assert!(layer.parameters().is_empty());
+        assert!(layer.gates().is_empty());
+        assert!(layer
+            .compute_gradients(&Array1::zeros(16), &Array1::zeros(16))
+            .expect("gradients")
+            .is_empty());
     }
 }

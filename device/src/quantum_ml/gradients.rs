@@ -418,31 +418,30 @@ impl QuantumGradientCalculator {
 
     /// Execute a circuit on the quantum device
     async fn execute_circuit_helper(
-        device: &(dyn QuantumDevice + Send + Sync),
+        _device: &(dyn QuantumDevice + Send + Sync),
         circuit: &ParameterizedQuantumCircuit,
         shots: usize,
     ) -> DeviceResult<CircuitResult> {
-        // For now, return a mock result since we can't execute circuits directly
-        // In a real implementation, this would need proper circuit execution
-        let mut counts = std::collections::HashMap::new();
-        counts.insert("0".repeat(circuit.num_qubits()), shots / 2);
-        counts.insert("1".repeat(circuit.num_qubits()), shots / 2);
-
-        Ok(CircuitResult {
-            counts,
-            shots,
-            metadata: std::collections::HashMap::new(),
-        })
+        // Evaluate the circuit with the in-crate exact state-vector simulator
+        // and sample real measurement counts. This produces genuine,
+        // parameter-dependent statistics so the parameter-shift / finite-
+        // difference estimators see real gradients (previously a fabricated
+        // uniform 50/50 split that made every gradient identically zero).
+        crate::quantum_ml::circuit_simulation::simulate_and_sample(circuit, shots)
     }
 
-    /// Evaluate a parameterized circuit with specific parameter values
+    /// Evaluate a parameterized circuit with specific parameter values.
+    ///
+    /// Substitutes `parameters` into the circuit's parameterized rotation gates
+    /// (real implementation in
+    /// [`ParameterizedQuantumCircuit::with_parameters`]). Previously this
+    /// returned an unmodified clone, so the parameter-shift rule shifted nothing
+    /// and gradients collapsed to zero.
     fn evaluate_circuit_with_params(
         circuit: &ParameterizedQuantumCircuit,
         parameters: &[f64],
     ) -> DeviceResult<ParameterizedQuantumCircuit> {
-        // This would substitute parameters into the circuit
-        // For now, return a copy (implementation would be more sophisticated)
-        Ok(circuit.clone())
+        circuit.with_parameters(parameters)
     }
 
     /// Compute expectation value from measurement results

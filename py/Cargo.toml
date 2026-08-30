@@ -31,7 +31,10 @@ quantrs2-tytan = { workspace = true, optional = true }
 # Enhanced numerical computing and data analysis (using local development versions)
 numrs2 = { workspace = true, optional = true }
 pandrs = { workspace = true, optional = true }
-pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"] }
+# `extension-module` is injected by maturin (`[tool.maturin] features` in pyproject.toml).
+# Keeping it out of this manifest is what lets `cargo test --workspace --all-features`
+# link its test binaries against libpython.
+pyo3 = { workspace = true, features = ["abi3-py38"] }
 # ndarray.workspace = true  # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
 scirs2-numpy = { workspace = true, default-features = false }  # SciRS2-compatible numpy bindings (no auto-initialize)
 # rand.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
@@ -41,10 +44,12 @@ serde_json.workspace = true
 # SciRS2 dependencies (SCIRS2 POLICY)
 scirs2-core.workspace = true
 scirs2-autograd.workspace = true
+scirs2-linalg.workspace = true
+scirs2-fft.workspace = true
 
 [features]
 default = ["ml", "anneal", "tytan"]
-gpu = ["quantrs2-sim/gpu"]
+gpu = ["quantrs2-sim/gpu", "scirs2-core/gpu"]
 ml = ["quantrs2-ml"]
 anneal = ["quantrs2-anneal"]
 tytan = ["quantrs2-tytan"]

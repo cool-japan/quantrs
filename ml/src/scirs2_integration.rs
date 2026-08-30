@@ -5,8 +5,11 @@
 //! distributed training capabilities, and serialization formats.
 
 use crate::error::{MLError, Result};
-use scirs2_core::ndarray::{Array, Array1, Array2, Array3, ArrayD, ArrayViewD, Dimension, IxDyn};
+use scirs2_core::ndarray::{
+    Array, Array1, Array2, Array3, ArrayD, ArrayViewD, Axis, Dimension, Ix2, IxDyn,
+};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 /// Trait for tensor operations compatible with SciRS2
 pub trait SciRS2Tensor {
@@ -40,8 +43,15 @@ pub struct SciRS2Array {
     pub data: ArrayD<f64>,
     /// Whether gradients are required
     pub requires_grad: bool,
-    /// Gradient accumulator
-    pub grad: Option<ArrayD<f64>>,
+    /// Gradient accumulator. Wrapped in `Arc<Mutex<_>>` (rather than a bare
+    /// `ArrayD<f64>`) so that a `GradFunction` created for a downstream op
+    /// can hold a *shared handle* to this same accumulator and actually
+    /// write the real backpropagated gradient into it from `backward()`,
+    /// instead of only ever seeing a disconnected clone of the data with no
+    /// way back to the original leaf tensor. `Arc<Mutex<_>>` (rather than
+    /// `Rc<RefCell<_>>`) is used so that `GradFunction: Send + Sync`
+    /// remains satisfiable.
+    pub grad: Option<Arc<Mutex<ArrayD<f64>>>>,
     /// Operation history for backpropagation
     pub grad_fn: Option<Box<dyn GradFunction>>,
 }
@@ -72,7 +82,7 @@ impl SciRS2Array {
     /// Create a new SciRS2Array
     pub fn new(data: ArrayD<f64>, requires_grad: bool) -> Self {
         let grad = if requires_grad {
-            Some(ArrayD::zeros(data.raw_dim()))
+            Some(Arc::new(Mutex::new(ArrayD::zeros(data.raw_dim()))))
         } else {
             None
         };
@@ -98,12 +108,23 @@ impl SciRS2Array {
 
     /// Zero gradients
     pub fn zero_grad(&mut self) {
-        if let Some(ref mut grad) = self.grad {
-            grad.fill(0.0);
+        if let Some(ref grad) = self.grad {
+            lock_grad(grad).fill(0.0);
         }
     }
 
-    /// Backward pass
+    /// Set the seed gradient w.r.t. this array (typically all-ones for a
+    /// scalar loss) before calling [`Self::backward`].
+    pub fn set_grad(&mut self, grad: ArrayD<f64>) {
+        match &self.grad {
+            Some(cell) => *lock_grad(cell) = grad,
+            None => self.grad = Some(Arc::new(Mutex::new(grad))),
+        }
+    }
+
+    /// Backward pass: propagates `self.grad` one step upstream through
+    /// `self.grad_fn`, accumulating real gradients into the operands' own
+    /// (shared) gradient cells.
     pub fn backward(&mut self) -> Result<()> {
         // Extract grad_fn to avoid borrow conflicts
         if let Some(grad_fn) = self.grad_fn.take() {
@@ -115,17 +136,16 @@ impl SciRS2Array {
 
     /// Matrix multiplication using SciRS2 backend
     pub fn matmul(&self, other: &SciRS2Array) -> Result<SciRS2Array> {
-        // Placeholder - would use SciRS2 linalg operations
         let result_data = if self.data.ndim() == 2 && other.data.ndim() == 2 {
             let self_2d = self
                 .data
                 .view()
-                .into_dimensionality::<scirs2_core::ndarray::Ix2>()
+                .into_dimensionality::<Ix2>()
                 .map_err(|e| MLError::ComputationError(format!("Shape error: {}", e)))?;
             let other_2d = other
                 .data
                 .view()
-                .into_dimensionality::<scirs2_core::ndarray::Ix2>()
+                .into_dimensionality::<Ix2>()
                 .map_err(|e| MLError::ComputationError(format!("Shape error: {}", e)))?;
             self_2d.dot(&other_2d).into_dyn()
         } else {
@@ -139,8 +159,10 @@ impl SciRS2Array {
 
         if requires_grad {
             result.grad_fn = Some(Box::new(MatmulGradFn {
-                left_shape: self.data.raw_dim(),
-                right_shape: other.data.raw_dim(),
+                left_grad: self.grad.clone(),
+                right_grad: other.grad.clone(),
+                left_data: self.data.clone(),
+                right_data: other.data.clone(),
             }));
         }
 
@@ -154,7 +176,10 @@ impl SciRS2Array {
         let mut result = SciRS2Array::new(result_data, requires_grad);
 
         if requires_grad {
-            result.grad_fn = Some(Box::new(AddGradFn));
+            result.grad_fn = Some(Box::new(AddGradFn {
+                left_grad: self.grad.clone(),
+                right_grad: other.grad.clone(),
+            }));
         }
 
         Ok(result)
@@ -168,6 +193,8 @@ impl SciRS2Array {
 
         if requires_grad {
             result.grad_fn = Some(Box::new(MulGradFn {
+                left_grad: self.grad.clone(),
+                right_grad: other.grad.clone(),
                 left_data: self.data.clone(),
                 right_data: other.data.clone(),
             }));
@@ -192,7 +219,11 @@ impl SciRS2Array {
         let mut result = SciRS2Array::new(result_data, self.requires_grad);
 
         if self.requires_grad {
-            result.grad_fn = Some(Box::new(SumGradFn { axis }));
+            result.grad_fn = Some(Box::new(SumGradFn {
+                axis,
+                input_shape: self.data.raw_dim(),
+                input_grad: self.grad.clone(),
+            }));
         }
 
         Ok(result)
@@ -229,9 +260,19 @@ impl SciRS2Tensor for SciRS2Array {
     }
 
     fn sub(&self, other: &dyn SciRS2Tensor) -> Result<SciRS2Array> {
-        let result_data = &self.data - &other.to_scirs2()?.data;
-        let requires_grad = self.requires_grad || other.to_scirs2()?.requires_grad;
-        Ok(SciRS2Array::new(result_data, requires_grad))
+        let other_array = other.to_scirs2()?;
+        let result_data = &self.data - &other_array.data;
+        let requires_grad = self.requires_grad || other_array.requires_grad;
+        let mut result = SciRS2Array::new(result_data, requires_grad);
+
+        if requires_grad {
+            result.grad_fn = Some(Box::new(SubGradFn {
+                left_grad: self.grad.clone(),
+                right_grad: other_array.grad.clone(),
+            }));
+        }
+
+        Ok(result)
     }
 
     fn sum(&self, axis: Option<usize>) -> Result<SciRS2Array> {
@@ -308,59 +349,170 @@ impl SciRS2Tensor for SciRS2Array {
     }
 }
 
+/// Lock a shared gradient cell, recovering the inner data even if a prior
+/// panic poisoned the mutex (a plain `.lock().unwrap()` would instead panic
+/// again here, which production code must avoid).
+fn lock_grad(cell: &Arc<Mutex<ArrayD<f64>>>) -> std::sync::MutexGuard<'_, ArrayD<f64>> {
+    cell.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+/// Reads the seed gradient stored in `output.grad`, defaulting to an
+/// all-ones array (the standard implicit seed for a scalar loss) the first
+/// time `backward()` is called on a node whose gradient was never
+/// explicitly set via [`SciRS2Array::set_grad`].
+fn output_grad_or_ones(output: &SciRS2Array) -> ArrayD<f64> {
+    match &output.grad {
+        Some(cell) => lock_grad(cell).clone(),
+        None => ArrayD::ones(output.data.raw_dim()),
+    }
+}
+
+/// Accumulate `contribution` into a (possibly absent) shared gradient cell.
+fn accumulate_grad(cell: &Option<Arc<Mutex<ArrayD<f64>>>>, contribution: &ArrayD<f64>) {
+    if let Some(cell) = cell {
+        let mut guard = lock_grad(cell);
+        *guard = &*guard + contribution;
+    }
+}
+
 /// Trait for gradient functions
 pub trait GradFunction: Send + Sync {
     fn backward(&self, output: &mut SciRS2Array) -> Result<()>;
 }
 
-/// Gradient function for matrix multiplication
+/// Gradient function for matrix multiplication: for `C = A @ B`,
+/// `dL/dA = dL/dC @ B^T` and `dL/dB = A^T @ dL/dC`.
 #[derive(Debug)]
 struct MatmulGradFn {
-    left_shape: IxDyn,
-    right_shape: IxDyn,
+    left_grad: Option<Arc<Mutex<ArrayD<f64>>>>,
+    right_grad: Option<Arc<Mutex<ArrayD<f64>>>>,
+    left_data: ArrayD<f64>,
+    right_data: ArrayD<f64>,
 }
 
 impl GradFunction for MatmulGradFn {
-    fn backward(&self, _output: &mut SciRS2Array) -> Result<()> {
-        // Placeholder - would compute gradients for matmul inputs
+    fn backward(&self, output: &mut SciRS2Array) -> Result<()> {
+        let output_grad = output_grad_or_ones(output);
+        let grad_2d = output_grad
+            .view()
+            .into_dimensionality::<Ix2>()
+            .map_err(|e| MLError::ComputationError(format!("Shape error: {}", e)))?;
+
+        if self.left_grad.is_some() {
+            let right_2d = self
+                .right_data
+                .view()
+                .into_dimensionality::<Ix2>()
+                .map_err(|e| MLError::ComputationError(format!("Shape error: {}", e)))?;
+            let grad_left = grad_2d.dot(&right_2d.t()).into_dyn();
+            accumulate_grad(&self.left_grad, &grad_left);
+        }
+
+        if self.right_grad.is_some() {
+            let left_2d = self
+                .left_data
+                .view()
+                .into_dimensionality::<Ix2>()
+                .map_err(|e| MLError::ComputationError(format!("Shape error: {}", e)))?;
+            let grad_right = left_2d.t().dot(&grad_2d).into_dyn();
+            accumulate_grad(&self.right_grad, &grad_right);
+        }
+
         Ok(())
     }
 }
 
-/// Gradient function for addition
+/// Gradient function for addition: `d(A+B)/dA = d(A+B)/dB = 1`, so the
+/// output gradient flows through unchanged (but must still be *copied* into
+/// both operands' accumulators, unlike the previous no-op).
 #[derive(Debug)]
-struct AddGradFn;
+struct AddGradFn {
+    left_grad: Option<Arc<Mutex<ArrayD<f64>>>>,
+    right_grad: Option<Arc<Mutex<ArrayD<f64>>>>,
+}
 
 impl GradFunction for AddGradFn {
-    fn backward(&self, _output: &mut SciRS2Array) -> Result<()> {
-        // Gradient flows through unchanged for addition
+    fn backward(&self, output: &mut SciRS2Array) -> Result<()> {
+        let output_grad = output_grad_or_ones(output);
+        accumulate_grad(&self.left_grad, &output_grad);
+        accumulate_grad(&self.right_grad, &output_grad);
         Ok(())
     }
 }
 
-/// Gradient function for multiplication
+/// Gradient function for element-wise subtraction: `d(A-B)/dA = 1`,
+/// `d(A-B)/dB = -1`.
+#[derive(Debug)]
+struct SubGradFn {
+    left_grad: Option<Arc<Mutex<ArrayD<f64>>>>,
+    right_grad: Option<Arc<Mutex<ArrayD<f64>>>>,
+}
+
+impl GradFunction for SubGradFn {
+    fn backward(&self, output: &mut SciRS2Array) -> Result<()> {
+        let output_grad = output_grad_or_ones(output);
+        accumulate_grad(&self.left_grad, &output_grad);
+        let negated = output_grad.mapv(|x| -x);
+        accumulate_grad(&self.right_grad, &negated);
+        Ok(())
+    }
+}
+
+/// Gradient function for element-wise multiplication:
+/// `d(A*B)/dA = B`, `d(A*B)/dB = A` (Hadamard product with the output
+/// gradient).
 #[derive(Debug)]
 struct MulGradFn {
+    left_grad: Option<Arc<Mutex<ArrayD<f64>>>>,
+    right_grad: Option<Arc<Mutex<ArrayD<f64>>>>,
     left_data: ArrayD<f64>,
     right_data: ArrayD<f64>,
 }
 
 impl GradFunction for MulGradFn {
-    fn backward(&self, _output: &mut SciRS2Array) -> Result<()> {
-        // Placeholder - would compute gradients for element-wise multiplication
+    fn backward(&self, output: &mut SciRS2Array) -> Result<()> {
+        let output_grad = output_grad_or_ones(output);
+        let grad_left = &output_grad * &self.right_data;
+        let grad_right = &output_grad * &self.left_data;
+        accumulate_grad(&self.left_grad, &grad_left);
+        accumulate_grad(&self.right_grad, &grad_right);
         Ok(())
     }
 }
 
-/// Gradient function for sum reduction
+/// Gradient function for sum reduction: broadcasts the (scalar or
+/// reduced-axis) output gradient back across the reduced axis/axes to the
+/// original input shape.
 #[derive(Debug)]
 struct SumGradFn {
     axis: Option<usize>,
+    input_shape: IxDyn,
+    input_grad: Option<Arc<Mutex<ArrayD<f64>>>>,
 }
 
 impl GradFunction for SumGradFn {
-    fn backward(&self, _output: &mut SciRS2Array) -> Result<()> {
-        // Placeholder - would broadcast gradients for sum reduction
+    fn backward(&self, output: &mut SciRS2Array) -> Result<()> {
+        let output_grad = output_grad_or_ones(output);
+
+        let broadcasted = match self.axis {
+            None => {
+                let scalar = output_grad.iter().next().copied().unwrap_or(0.0);
+                ArrayD::from_elem(self.input_shape.clone(), scalar)
+            }
+            Some(ax) => {
+                let expanded = output_grad.insert_axis(Axis(ax));
+                expanded
+                    .broadcast(self.input_shape.clone())
+                    .ok_or_else(|| {
+                        MLError::ComputationError(
+                            "Failed to broadcast sum gradient back to input shape".to_string(),
+                        )
+                    })?
+                    .to_owned()
+            }
+        };
+
+        accumulate_grad(&self.input_grad, &broadcasted);
         Ok(())
     }
 }
@@ -412,7 +564,12 @@ impl SciRS2Optimizer {
         let epsilon = self.config.get("epsilon").unwrap_or(&1e-8);
 
         for (name, param) in params.iter_mut() {
-            if let Some(ref grad) = param.grad {
+            let grad_cell = match &param.grad {
+                Some(cell) => cell.clone(),
+                None => continue,
+            };
+            let grad = lock_grad(&grad_cell).clone();
+            {
                 // Initialize momentum and velocity if not present
                 let m_key = format!("{}_m", name);
                 let v_key = format!("{}_v", name);
@@ -430,7 +587,7 @@ impl SciRS2Optimizer {
                         .state
                         .get_mut(&m_key)
                         .expect("m_key was just inserted if not present");
-                    *m = *beta1 * &*m + (1.0 - *beta1) * grad;
+                    *m = *beta1 * &*m + (1.0 - *beta1) * &grad;
                 }
 
                 // Update second moment estimate
@@ -439,7 +596,7 @@ impl SciRS2Optimizer {
                         .state
                         .get_mut(&v_key)
                         .expect("v_key was just inserted if not present");
-                    *v = *beta2 * &*v + (1.0 - *beta2) * grad * grad;
+                    *v = *beta2 * &*v + (1.0 - *beta2) * &grad * &grad;
                 }
 
                 // Get references for bias correction
@@ -469,7 +626,12 @@ impl SciRS2Optimizer {
         let momentum = self.config.get("momentum").unwrap_or(&0.0);
 
         for (name, param) in params.iter_mut() {
-            if let Some(ref grad) = param.grad {
+            let grad_cell = match &param.grad {
+                Some(cell) => cell.clone(),
+                None => continue,
+            };
+            let grad = lock_grad(&grad_cell).clone();
+            {
                 if *momentum > 0.0 {
                     let v_key = format!("{}_v", name);
                     if !self.state.contains_key(&v_key) {
@@ -481,10 +643,10 @@ impl SciRS2Optimizer {
                         .state
                         .get_mut(&v_key)
                         .expect("v_key was just inserted if not present");
-                    *v = *momentum * &*v + *learning_rate * grad;
+                    *v = *momentum * &*v + *learning_rate * &grad;
                     param.data = &param.data - &*v;
                 } else {
-                    param.data = &param.data - *learning_rate * grad;
+                    param.data = &param.data - *learning_rate * &grad;
                 }
             }
         }
@@ -831,6 +993,130 @@ mod tests {
 
         let result = optimizer.step(&mut params);
         assert!(result.is_ok());
+    }
+
+    /// Regression test for the fabricated-autograd bug: `MatmulGradFn`,
+    /// `MulGradFn`, and `SumGradFn`'s `backward()` used to be a bare `Ok(())`
+    /// no-op, and `SciRS2Array` had no way to reach back to the input nodes
+    /// that produced an output, so gradients could never propagate through
+    /// matmul/mul/sum. This checks the exact analytic gradients:
+    /// `d(A@B)/dA = grad@B^T`, `d(A@B)/dB = A^T@grad`,
+    /// `d(A*B)/dA = grad*B`, `d(A*B)/dB = grad*A`, and that `sum()`
+    /// broadcasts its scalar seed gradient back across every input element.
+    #[test]
+    fn test_matmul_mul_sum_backward_are_real() {
+        // matmul: A (2x2) @ B (2x2) -> C; seed dL/dC with a known,
+        // non-uniform gradient and check dL/dA, dL/dB analytically.
+        let a_arr = Array2::from_shape_vec((2, 2), vec![1.0, 2.0, 3.0, 4.0])
+            .expect("valid shape for 2x2 array");
+        let b_arr = Array2::from_shape_vec((2, 2), vec![5.0, 6.0, 7.0, 8.0])
+            .expect("valid shape for 2x2 array");
+        let a = SciRS2Array::with_grad(a_arr.clone());
+        let b = SciRS2Array::with_grad(b_arr.clone());
+
+        let mut c = a.matmul(&b).expect("matmul should succeed");
+        let seed = Array2::from_shape_vec((2, 2), vec![1.0, 0.0, 0.0, 1.0])
+            .expect("valid shape for 2x2 array")
+            .into_dyn();
+        c.set_grad(seed.clone());
+        c.backward().expect("matmul backward should succeed");
+
+        // dL/dA = seed @ B^T, dL/dB = A^T @ seed (both computed independently
+        // here via plain ndarray ops, not by re-using the code under test).
+        let seed_2d = seed.into_dimensionality::<Ix2>().expect("2d seed");
+        let expected_grad_a = seed_2d.dot(&b_arr.t());
+        let expected_grad_b = a_arr.t().dot(&seed_2d);
+
+        let grad_a = a
+            .grad
+            .as_ref()
+            .expect("a should have a grad cell")
+            .lock()
+            .expect("grad lock should not be poisoned")
+            .clone();
+        let grad_b = b
+            .grad
+            .as_ref()
+            .expect("b should have a grad cell")
+            .lock()
+            .expect("grad lock should not be poisoned")
+            .clone();
+
+        for ((i, j), &expected) in expected_grad_a.indexed_iter() {
+            assert!(
+                (grad_a[[i, j]] - expected).abs() < 1e-9,
+                "matmul dL/dA mismatch at ({i},{j}): got {}, expected {expected}",
+                grad_a[[i, j]]
+            );
+        }
+        for ((i, j), &expected) in expected_grad_b.indexed_iter() {
+            assert!(
+                (grad_b[[i, j]] - expected).abs() < 1e-9,
+                "matmul dL/dB mismatch at ({i},{j}): got {}, expected {expected}",
+                grad_b[[i, j]]
+            );
+        }
+
+        // mul: element-wise x * y; dL/dx = seed * y, dL/dy = seed * x.
+        let x_arr = Array1::from_vec(vec![2.0, 3.0, 4.0]);
+        let y_arr = Array1::from_vec(vec![10.0, 20.0, 30.0]);
+        let x = SciRS2Array::with_grad(x_arr.clone());
+        let y = SciRS2Array::with_grad(y_arr.clone());
+
+        let mut z = x.mul(&y).expect("mul should succeed");
+        z.set_grad(ArrayD::from_elem(IxDyn(&[3]), 2.0));
+        z.backward().expect("mul backward should succeed");
+
+        let grad_x = x
+            .grad
+            .as_ref()
+            .expect("x should have a grad cell")
+            .lock()
+            .expect("grad lock should not be poisoned")
+            .clone();
+        let grad_y = y
+            .grad
+            .as_ref()
+            .expect("y should have a grad cell")
+            .lock()
+            .expect("grad lock should not be poisoned")
+            .clone();
+
+        for (i, (&gx, &yv)) in grad_x.iter().zip(y_arr.iter()).enumerate() {
+            assert!(
+                (gx - 2.0 * yv).abs() < 1e-9,
+                "mul dL/dx mismatch at {i}: got {gx}, expected {}",
+                2.0 * yv
+            );
+        }
+        for (i, (&gy, &xv)) in grad_y.iter().zip(x_arr.iter()).enumerate() {
+            assert!(
+                (gy - 2.0 * xv).abs() < 1e-9,
+                "mul dL/dy mismatch at {i}: got {gy}, expected {}",
+                2.0 * xv
+            );
+        }
+
+        // sum (full reduction): dL/d(input[i]) = seed for every element.
+        let s_arr = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0]);
+        let s = SciRS2Array::with_grad(s_arr);
+        let mut total = s.sum(None).expect("sum should succeed");
+        total.set_grad(ArrayD::from_elem(IxDyn(&[]), 3.5));
+        total.backward().expect("sum backward should succeed");
+
+        let grad_s = s
+            .grad
+            .as_ref()
+            .expect("s should have a grad cell")
+            .lock()
+            .expect("grad lock should not be poisoned")
+            .clone();
+        for &g in grad_s.iter() {
+            assert!(
+                (g - 3.5).abs() < 1e-9,
+                "sum backward did not broadcast the seed gradient: got {g}, expected 3.5"
+            );
+        }
     }
 
     #[test]

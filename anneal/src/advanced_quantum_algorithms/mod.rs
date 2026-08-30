@@ -29,7 +29,10 @@ use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::{ising::IsingModel, AnnealingResult, EmbeddingConfig};
+use crate::{
+    ising::{IsingModel, QuboModel},
+    AnnealingResult, EmbeddingConfig,
+};
 
 /// Advanced quantum algorithms coordinator
 ///
@@ -531,30 +534,62 @@ impl AdvancedQuantumAlgorithms {
         }
     }
 
-    /// Estimate problem density for algorithm selection
-    fn estimate_problem_density<P>(&self, _problem: &P, num_vars: usize) -> f64
+    /// Estimate problem density (fraction of realized couplings) for algorithm
+    /// selection.
+    ///
+    /// When the problem is convertible to an Ising model the true number of
+    /// non-zero couplings is used; otherwise a coarse heuristic is applied.
+    fn estimate_problem_density<P>(&self, problem: &P, num_vars: usize) -> f64
     where
         P: Clone + 'static,
     {
-        let max_interactions = num_vars * (num_vars - 1) / 2;
+        let max_interactions = num_vars * num_vars.saturating_sub(1) / 2;
 
         if max_interactions == 0 {
             return 0.0;
         }
 
-        // Simplified density estimation
-        let estimated_interactions = (num_vars as f64 * 2.0) as usize;
+        // Use the actual coupling count whenever the problem can be converted.
+        if let Ok(ising) = self.convert_to_ising(problem) {
+            let actual_interactions = ising
+                .couplings()
+                .iter()
+                .filter(|coupling| coupling.strength.abs() > 1e-12)
+                .count();
+            return actual_interactions as f64 / max_interactions as f64;
+        }
+
+        // Fallback heuristic for non-convertible problem types.
+        let estimated_interactions = num_vars * 2;
         estimated_interactions as f64 / max_interactions as f64
     }
 
-    /// Convert generic problem to Ising model (placeholder)
-    fn convert_to_ising<P>(&self, _problem: &P) -> Result<IsingModel, String>
+    /// Convert a supported problem type into an [`IsingModel`].
+    ///
+    /// Accepts `IsingModel` (owned or by reference) and `QuboModel` (converted via
+    /// `QuboModel::to_ising`), and returns an honest error for any other type
+    /// rather than fabricating a fixed-size empty model.
+    fn convert_to_ising<P>(&self, problem: &P) -> Result<IsingModel, String>
     where
         P: Clone + 'static,
     {
-        // Placeholder implementation - would need proper trait constraints
-        // For now, create a small default Ising model
-        Ok(IsingModel::new(50))
+        use std::any::Any;
+        let any_problem = problem as &dyn Any;
+
+        if let Some(ising) = any_problem.downcast_ref::<IsingModel>() {
+            return Ok(ising.clone());
+        }
+        if let Some(ising_ref) = any_problem.downcast_ref::<&IsingModel>() {
+            return Ok((*ising_ref).clone());
+        }
+        if let Some(qubo) = any_problem.downcast_ref::<QuboModel>() {
+            return Ok(qubo.to_ising().0);
+        }
+        if let Some(qubo_ref) = any_problem.downcast_ref::<&QuboModel>() {
+            return Ok((*qubo_ref).to_ising().0);
+        }
+
+        Err("Unsupported problem type: expected IsingModel or QuboModel".to_string())
     }
 }
 
@@ -574,5 +609,43 @@ impl Default for AdvancedAlgorithmConfig {
 impl Default for AdvancedQuantumAlgorithms {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_coordinator_convert_to_ising_real() {
+        let algorithms = AdvancedQuantumAlgorithms::default();
+
+        // Real Ising input is preserved.
+        let mut ising = IsingModel::new(4);
+        ising.set_bias(0, 0.5).expect("set bias");
+        ising.set_coupling(0, 1, -1.0).expect("set coupling");
+        ising.set_coupling(2, 3, 0.25).expect("set coupling");
+        let converted = algorithms
+            .convert_to_ising(&ising)
+            .expect("Ising input should convert");
+        assert_eq!(converted.num_qubits, 4);
+
+        // The density estimate reflects the actual coupling count (2 of 6).
+        let density = algorithms.estimate_problem_density(&ising, converted.num_qubits);
+        let expected = 2.0 / 6.0;
+        assert!(
+            (density - expected).abs() < 1e-12,
+            "density {density} != {expected}"
+        );
+    }
+
+    #[test]
+    fn test_coordinator_convert_to_ising_rejects_unsupported() {
+        let algorithms = AdvancedQuantumAlgorithms::default();
+        let bogus: Vec<f64> = vec![1.0, 2.0, 3.0];
+        assert!(
+            algorithms.convert_to_ising(&bogus).is_err(),
+            "unsupported types must error rather than return a fabricated empty model"
+        );
     }
 }

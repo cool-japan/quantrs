@@ -350,12 +350,13 @@ impl HardwareBackend for GpuBackend {
     }
 
     fn measure_latency(&mut self) -> Result<Duration, Box<dyn std::error::Error>> {
-        // Measure GPU kernel launch latency
+        // Measure real GPU kernel-launch latency through the backend context
+        // instead of returning a fabricated constant. The stub backend has no
+        // device, so this honestly surfaces "GPU not available".
         #[cfg(feature = "scirs")]
         {
             if let Some(ref mut ctx) = self.gpu_context {
-                // TODO: Implement measure_kernel_latency in stub
-                return Ok(Duration::from_millis(1));
+                return ctx.measure_kernel_latency();
             }
         }
 
@@ -368,10 +369,12 @@ impl HardwareBackend for GpuBackend {
         #[cfg(feature = "scirs")]
         {
             if let Some(ref ctx) = self.gpu_context {
-                // TODO: Implement get_device_info in stub
-                metrics.insert("gpu_memory_mb".to_string(), 8192.0);
-                metrics.insert("gpu_compute_units".to_string(), 64.0);
-                metrics.insert("gpu_clock_mhz".to_string(), 1500.0);
+                // Use the backend's actual device descriptor (zeroes for the stub
+                // backend) rather than fabricated GPU specs.
+                let info = ctx.get_device_info();
+                metrics.insert("gpu_memory_mb".to_string(), info.memory_mb as f64);
+                metrics.insert("gpu_compute_units".to_string(), info.compute_units as f64);
+                metrics.insert("gpu_clock_mhz".to_string(), info.clock_mhz as f64);
             }
         }
 

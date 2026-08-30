@@ -6,7 +6,6 @@
 
 use crate::error::{Result, SimulatorError};
 use crate::pauli::{PauliOperatorSum, PauliString};
-use crate::statevector::StateVectorSimulator;
 use quantrs2_core::gate::GateOp;
 use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
@@ -238,6 +237,67 @@ impl ParametricGate for ParametricRY {
     }
 }
 
+/// Non-parametric CNOT gate, used for the entangling layers of ansätze such
+/// as [`ansatze::hardware_efficient`]. It has no free parameters (an empty
+/// [`ParametricGate::parameter_indices`]), so parameter-shift/finite-
+/// difference/SPSA gradient computation simply never varies it, and its own
+/// gradient with respect to any parameter is the zero matrix.
+pub struct ParametricCNOT {
+    pub control: usize,
+    pub target: usize,
+}
+
+impl ParametricGate for ParametricCNOT {
+    fn name(&self) -> &'static str {
+        "CNOT"
+    }
+
+    fn qubits(&self) -> Vec<usize> {
+        vec![self.control, self.target]
+    }
+
+    fn parameter_indices(&self) -> Vec<usize> {
+        Vec::new()
+    }
+
+    fn matrix(&self, _params: &[f64]) -> Result<Array2<Complex64>> {
+        // Basis ordering |control, target> with `control` the high local
+        // bit, matching `apply_two_qubit_matrix`'s bit-indexing convention.
+        Ok(scirs2_core::ndarray::array![
+            [
+                Complex64::new(1., 0.),
+                Complex64::new(0., 0.),
+                Complex64::new(0., 0.),
+                Complex64::new(0., 0.)
+            ],
+            [
+                Complex64::new(0., 0.),
+                Complex64::new(1., 0.),
+                Complex64::new(0., 0.),
+                Complex64::new(0., 0.)
+            ],
+            [
+                Complex64::new(0., 0.),
+                Complex64::new(0., 0.),
+                Complex64::new(0., 0.),
+                Complex64::new(1., 0.)
+            ],
+            [
+                Complex64::new(0., 0.),
+                Complex64::new(0., 0.),
+                Complex64::new(1., 0.),
+                Complex64::new(0., 0.)
+            ]
+        ])
+    }
+
+    fn gradient(&self, _params: &[f64], _param_idx: usize) -> Result<Array2<Complex64>> {
+        // CNOT has no parameters, so its gradient w.r.t. any parameter is
+        // identically zero.
+        Ok(Array2::zeros((4, 4)))
+    }
+}
+
 pub struct ParametricRZ {
     pub qubit: usize,
     pub param_idx: usize,
@@ -328,7 +388,18 @@ impl ParametricCircuit {
         self.add_gate(Box::new(ParametricRZ { qubit, param_idx }));
     }
 
-    /// Evaluate circuit for given parameters and return final state
+    /// Add a (non-parametric) CNOT gate, used to build entangling layers.
+    pub fn cnot(&mut self, control: usize, target: usize) {
+        self.add_gate(Box::new(ParametricCNOT { control, target }));
+    }
+
+    /// Evaluate the circuit for the given parameters and return the final state vector.
+    ///
+    /// Starts from `|0...0>` and applies each parametric gate's matrix to the dense state
+    /// vector in sequence. Amplitudes use the little-endian convention (qubit `q` maps to
+    /// bit `q` of the basis index), matching [`compute_pauli_expectation_from_state`] so
+    /// expectation values and parameter-shift gradients are computed on the genuine state
+    /// produced by the circuit rather than a fixed placeholder.
     pub fn evaluate(&self, params: &[f64]) -> Result<Array1<Complex64>> {
         if params.len() != self.num_parameters {
             return Err(SimulatorError::InvalidInput(format!(
@@ -338,25 +409,37 @@ impl ParametricCircuit {
             )));
         }
 
-        // Initialize state vector simulator
-        let mut simulator = StateVectorSimulator::new();
+        let dim = 1usize << self.num_qubits;
+        let mut state = Array1::zeros(dim);
+        state[0] = Complex64::new(1.0, 0.0); // |0...0>
 
-        // Apply gates sequentially
         for gate in &self.gates {
             let matrix = gate.matrix(params)?;
             let qubits = gate.qubits();
 
-            if qubits.len() == 1 {
-                // Single-qubit gate - would need proper simulator integration
-                // For now, this is a placeholder
-            } else if qubits.len() == 2 {
-                // Two-qubit gate - would need proper simulator integration
+            match qubits.as_slice() {
+                [target] => {
+                    apply_single_qubit_matrix(&mut state, &matrix, *target, self.num_qubits)?;
+                }
+                [control, target] => {
+                    apply_two_qubit_matrix(
+                        &mut state,
+                        &matrix,
+                        *control,
+                        *target,
+                        self.num_qubits,
+                    )?;
+                }
+                _ => {
+                    return Err(SimulatorError::UnsupportedOperation(format!(
+                        "Parametric circuit evaluation supports one- and two-qubit gates, but '{}' acts on {} qubits",
+                        gate.name(),
+                        qubits.len()
+                    )));
+                }
             }
         }
 
-        // Return placeholder state for now
-        let mut state = Array1::zeros(1 << self.num_qubits);
-        state[0] = Complex64::new(1.0, 0.0); // |0...0>
         Ok(state)
     }
 
@@ -734,6 +817,109 @@ pub struct VQEResult {
 
 // Helper functions
 
+/// Apply a single-qubit gate matrix to a dense state vector in place.
+///
+/// `state` is indexed in the little-endian convention where bit `qubit` selects the
+/// physical value of that qubit. The 2x2 `gate` matrix is applied to every pair of
+/// amplitudes that differ only in qubit `qubit`.
+fn apply_single_qubit_matrix(
+    state: &mut Array1<Complex64>,
+    gate: &Array2<Complex64>,
+    qubit: usize,
+    num_qubits: usize,
+) -> Result<()> {
+    if qubit >= num_qubits {
+        return Err(SimulatorError::InvalidInput(format!(
+            "Gate targets qubit {qubit} but circuit has only {num_qubits} qubits"
+        )));
+    }
+    if gate.dim() != (2, 2) {
+        return Err(SimulatorError::InvalidInput(format!(
+            "Single-qubit gate matrix must be 2x2, got {:?}",
+            gate.dim()
+        )));
+    }
+
+    let stride = 1usize << qubit;
+    let dim = state.len();
+    let mut index = 0;
+    while index < dim {
+        if index & stride == 0 {
+            let i0 = index;
+            let i1 = index | stride;
+            let a0 = state[i0];
+            let a1 = state[i1];
+            state[i0] = gate[[0, 0]] * a0 + gate[[0, 1]] * a1;
+            state[i1] = gate[[1, 0]] * a0 + gate[[1, 1]] * a1;
+        }
+        index += 1;
+    }
+
+    Ok(())
+}
+
+/// Apply a two-qubit gate matrix to a dense state vector in place.
+///
+/// The 4x4 `gate` matrix acts on the basis `|control target>` (control is the high bit,
+/// target the low bit). Amplitudes are indexed little-endian by qubit position; for each
+/// group of four amplitudes that differ only in the control/target bits the gate is applied
+/// as a genuine matrix-vector product.
+fn apply_two_qubit_matrix(
+    state: &mut Array1<Complex64>,
+    gate: &Array2<Complex64>,
+    control: usize,
+    target: usize,
+    num_qubits: usize,
+) -> Result<()> {
+    if control >= num_qubits || target >= num_qubits {
+        return Err(SimulatorError::InvalidInput(format!(
+            "Two-qubit gate targets qubits {control} and {target} but circuit has only {num_qubits} qubits"
+        )));
+    }
+    if control == target {
+        return Err(SimulatorError::InvalidInput(
+            "Two-qubit gate requires two distinct qubits".to_string(),
+        ));
+    }
+    if gate.dim() != (4, 4) {
+        return Err(SimulatorError::InvalidInput(format!(
+            "Two-qubit gate matrix must be 4x4, got {:?}",
+            gate.dim()
+        )));
+    }
+
+    let control_mask = 1usize << control;
+    let target_mask = 1usize << target;
+    let dim = state.len();
+
+    for index in 0..dim {
+        // Process each block once, from its representative with both bits cleared.
+        if index & control_mask == 0 && index & target_mask == 0 {
+            let i00 = index;
+            let i01 = index | target_mask;
+            let i10 = index | control_mask;
+            let i11 = index | control_mask | target_mask;
+
+            let amplitudes = [state[i00], state[i01], state[i10], state[i11]];
+            let mut updated = [Complex64::new(0.0, 0.0); 4];
+            for (row, slot) in updated.iter_mut().enumerate() {
+                let mut acc = Complex64::new(0.0, 0.0);
+                for (col, &amplitude) in amplitudes.iter().enumerate() {
+                    acc += gate[[row, col]] * amplitude;
+                }
+                *slot = acc;
+            }
+
+            state[i00] = updated[0];
+            state[i01] = updated[1];
+            state[i10] = updated[2];
+            state[i11] = updated[3];
+        }
+    }
+
+    Ok(())
+}
+
 /// Compute expectation value of observable for given state
 fn compute_expectation_value(
     state: &Array1<Complex64>,
@@ -808,7 +994,14 @@ fn compute_pauli_expectation_from_state(
 pub mod ansatze {
     use super::ParametricCircuit;
 
-    /// Create a hardware-efficient ansatz
+    /// Create a hardware-efficient ansatz.
+    ///
+    /// Each layer applies a single-qubit `RY`/`RZ` rotation to every qubit
+    /// followed by a linear CNOT entangling ladder (`CNOT(q, q+1)` for
+    /// `q` in `0..num_qubits-1`). Without the entangling layer this ansatz
+    /// could only ever represent a product state; the CNOT ladder is what
+    /// lets it represent genuinely entangled states, as any real
+    /// hardware-efficient VQE ansatz requires.
     #[must_use]
     pub fn hardware_efficient(num_qubits: usize, num_layers: usize) -> ParametricCircuit {
         let mut circuit = ParametricCircuit::new(num_qubits);
@@ -823,8 +1016,14 @@ pub mod ansatze {
                 param_idx += 1;
             }
 
-            // Entangling layer (would need CNOT gates - simplified here)
-            // In practice, would add parametric CNOT gates
+            // Linear entangling layer: CNOT(q, q+1) for every adjacent pair.
+            // This is the standard hardware-efficient-ansatz entangling
+            // structure (e.g. Qiskit's `EfficientSU2` with linear
+            // entanglement) and is what makes the ansatz capable of
+            // representing entangled states at all.
+            for qubit in 0..num_qubits.saturating_sub(1) {
+                circuit.cnot(qubit, qubit + 1);
+            }
         }
 
         circuit
@@ -914,5 +1113,194 @@ mod tests {
         let ansatz = ansatze::hardware_efficient(3, 2);
         assert_eq!(ansatz.num_qubits, 3);
         assert!(ansatz.num_parameters > 0);
+    }
+
+    /// Regression test for the P1 finding: `hardware_efficient` used to
+    /// omit the entangling layer entirely, so the ansatz could only ever
+    /// represent a product state. It must now include a CNOT ladder
+    /// (`num_qubits - 1` CNOTs per layer) and actually produce an entangled
+    /// state for generic rotation angles.
+    #[test]
+    fn test_hardware_efficient_ansatz_includes_entangling_layer() {
+        let num_qubits = 2;
+        let num_layers = 1;
+        let ansatz = ansatze::hardware_efficient(num_qubits, num_layers);
+
+        // 1 layer * (2 rotations/qubit * 2 qubits + 1 CNOT) = 5 gates.
+        assert_eq!(ansatz.gates.len(), 5);
+        let cnot_count = ansatz.gates.iter().filter(|g| g.name() == "CNOT").count();
+        assert_eq!(
+            cnot_count,
+            num_qubits - 1,
+            "hardware_efficient must add a linear CNOT entangling ladder"
+        );
+
+        // RY(pi/2) on qubit 0 (creating (|0>+|1>)/sqrt(2)), identity on
+        // qubit 1 (|0>), then CNOT(0, 1) produces the Bell state
+        // (|00>+|11>)/sqrt(2). Its reduced single-qubit density matrices
+        // must be maximally mixed (purity = 0.5), which is impossible for
+        // any product state built purely from local single-qubit
+        // rotations -- i.e. impossible without a real entangling layer.
+        let params = vec![PI / 2.0, 0.0, 0.0, 0.0];
+        let state = ansatz
+            .evaluate(&params)
+            .expect("ansatz evaluation should succeed");
+
+        // Reduced density matrix of qubit 0: rho_00 = sum_{b1} |amp(b0=0,b1)|^2 etc.
+        let mut rho00 = Complex64::new(0.0, 0.0);
+        let mut rho01 = Complex64::new(0.0, 0.0);
+        let mut rho11 = Complex64::new(0.0, 0.0);
+        for other_bit in 0..2usize {
+            let idx0 = other_bit << 1; // qubit0 = 0, qubit1 = other_bit
+            let idx1 = (1) | (other_bit << 1); // qubit0 = 1, qubit1 = other_bit
+            rho00 += state[idx0] * state[idx0].conj();
+            rho11 += state[idx1] * state[idx1].conj();
+            rho01 += state[idx0] * state[idx1].conj();
+        }
+        let purity = (rho00 * rho00 + rho11 * rho11 + rho01 * rho01.conj() * 2.0).re;
+        assert!(
+            purity < 0.999,
+            "expected an entangled (mixed reduced state) result, got purity {purity}"
+        );
+    }
+
+    /// Test-only parametric gate that returns a fixed (parameter-independent) matrix.
+    /// Used to drive the forward evaluation with a known gate such as Hadamard.
+    struct FixedGate {
+        matrix: Array2<Complex64>,
+        wires: Vec<usize>,
+    }
+
+    impl ParametricGate for FixedGate {
+        fn name(&self) -> &str {
+            "FIXED"
+        }
+
+        fn qubits(&self) -> Vec<usize> {
+            self.wires.clone()
+        }
+
+        fn parameter_indices(&self) -> Vec<usize> {
+            Vec::new()
+        }
+
+        fn matrix(&self, _params: &[f64]) -> Result<Array2<Complex64>> {
+            Ok(self.matrix.clone())
+        }
+
+        fn gradient(&self, _params: &[f64], _param_idx: usize) -> Result<Array2<Complex64>> {
+            Ok(Array2::zeros(self.matrix.dim()))
+        }
+    }
+
+    #[test]
+    fn test_evaluate_hadamard_forward_state() {
+        // A circuit consisting of a single Hadamard on qubit 0 of a 1-qubit register.
+        let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
+        let h_matrix = scirs2_core::ndarray::array![
+            [
+                Complex64::new(inv_sqrt2, 0.0),
+                Complex64::new(inv_sqrt2, 0.0)
+            ],
+            [
+                Complex64::new(inv_sqrt2, 0.0),
+                Complex64::new(-inv_sqrt2, 0.0)
+            ]
+        ];
+
+        let mut circuit = ParametricCircuit::new(1);
+        circuit.add_gate(Box::new(FixedGate {
+            matrix: h_matrix,
+            wires: vec![0],
+        }));
+
+        let state = circuit
+            .evaluate(&[])
+            .expect("forward evaluation should succeed");
+
+        // Expected: (|0> + |1>)/sqrt(2), NOT the |0> placeholder.
+        assert!((state[0].re - inv_sqrt2).abs() < 1e-10, "amp(|0>) wrong");
+        assert!((state[1].re - inv_sqrt2).abs() < 1e-10, "amp(|1>) wrong");
+        assert!(
+            state[1].norm() > 1e-3,
+            "forward pass returned the |0> placeholder instead of the real state"
+        );
+    }
+
+    #[test]
+    fn test_evaluate_rx_pi_forward_state() {
+        // RX(pi) maps |0> -> -i|1>; this is a genuine, parameter-dependent result.
+        let mut circuit = ParametricCircuit::new(1);
+        circuit.rx(0, 0);
+
+        let state = circuit
+            .evaluate(&[PI])
+            .expect("forward evaluation should succeed");
+
+        assert!(state[0].norm() < 1e-10, "amp(|0>) should vanish for RX(pi)");
+        assert!((state[1].im + 1.0).abs() < 1e-10, "amp(|1>) should be -i");
+    }
+
+    #[test]
+    fn test_evaluate_bell_forward_state() {
+        // H on qubit 0 then CNOT(0, 1) prepares a Bell state through the real forward pass.
+        let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
+        let h_matrix = scirs2_core::ndarray::array![
+            [
+                Complex64::new(inv_sqrt2, 0.0),
+                Complex64::new(inv_sqrt2, 0.0)
+            ],
+            [
+                Complex64::new(inv_sqrt2, 0.0),
+                Complex64::new(-inv_sqrt2, 0.0)
+            ]
+        ];
+        let cnot = scirs2_core::ndarray::array![
+            [
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0)
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0)
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0)
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0)
+            ]
+        ];
+
+        let mut circuit = ParametricCircuit::new(2);
+        circuit.add_gate(Box::new(FixedGate {
+            matrix: h_matrix,
+            wires: vec![0],
+        }));
+        circuit.add_gate(Box::new(FixedGate {
+            matrix: cnot,
+            wires: vec![0, 1],
+        }));
+
+        let state = circuit
+            .evaluate(&[])
+            .expect("forward evaluation should succeed");
+
+        // Little-endian ordering: index = bit0 + 2*bit1.
+        // Bell state (|00> + |11>)/sqrt(2): indices 0 and 3 populated.
+        assert!((state[0].re - inv_sqrt2).abs() < 1e-10, "amp(|00>) wrong");
+        assert!(state[1].norm() < 1e-10, "amp(|01>) should vanish");
+        assert!(state[2].norm() < 1e-10, "amp(|10>) should vanish");
+        assert!((state[3].re - inv_sqrt2).abs() < 1e-10, "amp(|11>) wrong");
     }
 }

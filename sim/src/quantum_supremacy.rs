@@ -1007,14 +1007,60 @@ impl QuantumSupremacyVerifier {
         Ok(uniform_entropy - quantum_entropy)
     }
 
-    /// Compute statistical confidence
-    const fn compute_statistical_confidence(
+    /// Compute statistical confidence that the observed samples are
+    /// consistent with the ideal quantum distribution.
+    ///
+    /// Performs a real chi-squared goodness-of-fit test per circuit,
+    /// comparing each bitstring's observed sample frequency against its
+    /// expected probability `|amplitude|^2` under the ideal state, then
+    /// aggregates the chi-squared statistics (and their degrees of
+    /// freedom) across all circuits and converts the combined statistic
+    /// to a p-value via [`Self::chi_squared_p_value`].
+    fn compute_statistical_confidence(
         &self,
-        _ideal_amplitudes: &[Array1<Complex64>],
-        _quantum_samples: &[Vec<Vec<u8>>],
+        ideal_amplitudes: &[Array1<Complex64>],
+        quantum_samples: &[Vec<Vec<u8>>],
     ) -> Result<f64> {
-        // Placeholder implementation
-        Ok(0.95)
+        let mut total_chi_squared = 0.0;
+        let mut total_degrees_freedom = 0usize;
+
+        for (amplitudes, samples) in ideal_amplitudes.iter().zip(quantum_samples.iter()) {
+            if samples.is_empty() {
+                continue;
+            }
+            let dim = amplitudes.len();
+            let n = samples.len() as f64;
+
+            let mut observed_counts: HashMap<usize, usize> = HashMap::new();
+            for sample in samples {
+                let index = self.bitstring_to_index(sample);
+                *observed_counts.entry(index).or_insert(0) += 1;
+            }
+
+            let mut chi_squared = 0.0;
+            let mut categories_with_support = 0usize;
+            for index in 0..dim {
+                let expected_prob = amplitudes[index].norm_sqr();
+                let expected_count = expected_prob * n;
+                let observed_count = *observed_counts.get(&index).unwrap_or(&0) as f64;
+                if expected_count > 1e-12 {
+                    chi_squared += (observed_count - expected_count).powi(2) / expected_count;
+                    categories_with_support += 1;
+                }
+            }
+
+            total_chi_squared += chi_squared;
+            total_degrees_freedom += categories_with_support.saturating_sub(1);
+        }
+
+        if total_degrees_freedom == 0 {
+            // No usable statistics (e.g. every circuit had zero samples):
+            // honestly report zero confidence rather than a fabricated
+            // constant.
+            return Ok(0.0);
+        }
+
+        Ok(self.chi_squared_p_value(total_chi_squared, total_degrees_freedom))
     }
 
     /// Estimate quantum execution time
@@ -1106,12 +1152,37 @@ pub fn benchmark_quantum_supremacy(num_qubits: usize) -> Result<CrossEntropyResu
     verifier.verify_quantum_supremacy()
 }
 
-/// Verify specific quantum supremacy claim
+/// Verify a specific quantum supremacy claim against real experimental data.
+///
+/// Unlike a benchmark (which generates its own random circuits), verifying
+/// an actual claim requires the exact circuit that produced
+/// `experimental_data` -- there is no way to honestly cross-entropy-check
+/// samples against a circuit we don't know. `circuit` must therefore be
+/// supplied by the caller (e.g. reconstructed from the published circuit
+/// description of the claim being verified); this function classically
+/// simulates it to get the ideal amplitudes and then runs the real
+/// Linear XEB / Porter-Thomas / HOG / chi-squared analysis against
+/// `experimental_data`.
 pub fn verify_supremacy_claim(
     num_qubits: usize,
     circuit_depth: usize,
+    circuit: &RandomCircuit,
     experimental_data: &[Vec<u8>],
 ) -> Result<CrossEntropyResult> {
+    if circuit.num_qubits != num_qubits {
+        return Err(SimulatorError::InvalidConfiguration(format!(
+            "supplied circuit acts on {} qubits, but verification was requested for {num_qubits} qubits",
+            circuit.num_qubits
+        )));
+    }
+    if experimental_data.is_empty() {
+        return Err(SimulatorError::InvalidInput(
+            "verify_supremacy_claim requires at least one experimental sample".to_string(),
+        ));
+    }
+
+    let start_time = std::time::Instant::now();
+
     let params = VerificationParams {
         num_circuits: 1,
         samples_per_circuit: experimental_data.len(),
@@ -1119,32 +1190,43 @@ pub fn verify_supremacy_claim(
         ..Default::default()
     };
 
-    let mut verifier = QuantumSupremacyVerifier::new(num_qubits, params)?;
+    let verifier = QuantumSupremacyVerifier::new(num_qubits, params)?;
 
-    // This would require the actual circuit that produced the experimental data
-    // For now, return a placeholder result
+    let circuits = vec![circuit.clone()];
+    let ideal_amplitudes = verifier.compute_ideal_amplitudes(&circuits)?;
+    let quantum_samples = vec![experimental_data.to_vec()];
+
+    let linear_xeb = verifier.compute_linear_xeb(&ideal_amplitudes, &quantum_samples)?;
+    let porter_thomas = verifier.analyze_porter_thomas(&ideal_amplitudes)?;
+    let hog_score = verifier.compute_hog_score(&ideal_amplitudes, &quantum_samples)?;
+    let cross_entropy_diff =
+        verifier.compute_cross_entropy_difference(&ideal_amplitudes, &quantum_samples)?;
+    let confidence =
+        verifier.compute_statistical_confidence(&ideal_amplitudes, &quantum_samples)?;
+
+    let classical_time = start_time.elapsed().as_secs_f64();
+    let quantum_time = verifier.estimate_quantum_time()?;
+
+    let cost_comparison = CostComparison {
+        classical_time,
+        quantum_time,
+        classical_memory: verifier.estimate_classical_memory(),
+        speedup_factor: if quantum_time > 0.0 {
+            classical_time / quantum_time
+        } else {
+            0.0
+        },
+        operation_count: circuit_depth * num_qubits,
+    };
+
     Ok(CrossEntropyResult {
-        linear_xeb_fidelity: 0.0,
-        cross_entropy_difference: 0.0,
+        linear_xeb_fidelity: linear_xeb,
+        cross_entropy_difference: cross_entropy_diff,
         num_samples: experimental_data.len(),
-        confidence: 0.0,
-        porter_thomas: PorterThomasResult {
-            chi_squared: 0.0,
-            degrees_freedom: 0,
-            p_value: 0.0,
-            is_porter_thomas: false,
-            ks_statistic: 0.0,
-            mean: 0.0,
-            variance: 0.0,
-        },
-        hog_score: 0.0,
-        cost_comparison: CostComparison {
-            classical_time: 0.0,
-            quantum_time: 0.0,
-            classical_memory: 0,
-            speedup_factor: 0.0,
-            operation_count: 0,
-        },
+        confidence,
+        porter_thomas,
+        hog_score,
+        cost_comparison,
     })
 }
 

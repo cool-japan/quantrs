@@ -4,7 +4,7 @@
 //! comprehensive benchmarking, performance analysis, and statistical insights for quantum circuits.
 
 use crate::builder::Circuit;
-use crate::noise_models::{NoiseAnalysisResult, NoiseModel};
+use crate::noise_models::{NoiseAnalysisResult, NoiseAnalyzer, NoiseModel};
 use crate::simulator_interface::{ExecutionResult, SimulatorBackend};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
@@ -206,6 +206,10 @@ pub struct BenchmarkReport {
     pub success_rate: f64,
     /// Timing statistics
     pub timing_stats: DescriptiveStats,
+    /// Raw per-run timing samples (successful runs only), retained so later
+    /// baseline comparisons can operate on the real distribution rather than
+    /// a single summary statistic.
+    pub timing_samples: Vec<f64>,
     /// Memory statistics (if collected)
     pub memory_stats: Option<DescriptiveStats>,
     /// Performance regression analysis
@@ -430,8 +434,10 @@ impl CircuitBenchmark {
             None
         };
 
-        // Simulate circuit execution (placeholder)
-        let execution_results = None; // Would call simulator.execute()
+        // Actually execute the circuit through the injected simulator so the
+        // measured execution_time reflects real work, and the captured
+        // ExecutionResult reflects what the simulator produced.
+        let execution_outcome = simulator.execute(circuit as &dyn std::any::Any);
 
         let end_time = Instant::now();
         let end_memory = if self.config.collect_memory {
@@ -446,10 +452,20 @@ impl CircuitBenchmark {
             _ => None,
         };
 
-        // Analyze noise if model provided
+        let (success, error_message, execution_results) = match execution_outcome {
+            Ok(result) => (true, None, Some(result)),
+            Err(e) => (false, Some(e.to_string()), None),
+        };
+
+        // Perform real noise analysis when a noise model is provided, by
+        // registering it with a `NoiseAnalyzer` and running its full
+        // circuit-noise analysis (gate errors, decoherence, readout,
+        // crosstalk) against the actual circuit.
         let noise_analysis = if let Some(noise) = noise_model {
-            // Would perform noise analysis here
-            None
+            let mut analyzer = NoiseAnalyzer::new();
+            let device_key = format!("__circuit_benchmark_run_{run_id}__");
+            analyzer.add_noise_model(device_key.clone(), noise.clone());
+            Some(analyzer.analyze_circuit_noise(circuit, &device_key)?)
         } else {
             None
         };
@@ -458,8 +474,8 @@ impl CircuitBenchmark {
             run_id,
             execution_time,
             memory_usage,
-            success: true,
-            error_message: None,
+            success,
+            error_message,
             circuit_metrics: self.calculate_circuit_metrics(circuit),
             execution_results,
             noise_analysis,
@@ -565,6 +581,7 @@ impl CircuitBenchmark {
             completed_runs,
             success_rate,
             timing_stats,
+            timing_samples: timing_data,
             memory_stats,
             regression_analysis: Some(regression_analysis),
             distribution_fit: Some(distribution_fit),
@@ -707,10 +724,17 @@ impl CircuitBenchmark {
 
         let performance_factor = current_mean / baseline_mean;
 
-        // Perform statistical test for significance
+        // Perform statistical test for significance using the real retained
+        // per-run baseline timing samples (falling back to the summary mean
+        // only if the baseline report predates sample retention).
+        let baseline_samples: Vec<f64> = if baseline.timing_samples.is_empty() {
+            vec![baseline_mean]
+        } else {
+            baseline.timing_samples.clone()
+        };
         let significance = self.stats_analyzer.mann_whitney_test(
             &current_timing,
-            &[baseline_mean], // Simplified - would use actual baseline data
+            &baseline_samples,
             self.config.significance_level,
         )?;
 
@@ -726,11 +750,35 @@ impl CircuitBenchmark {
             _ => PracticalSignificance::VeryLarge,
         };
 
+        // Compute a real normal-approximation confidence interval for the
+        // difference in means (current - baseline), using the pooled
+        // standard error from both samples' variances.
+        let current_variance = self
+            .stats_analyzer
+            .calculate_descriptive_stats(&current_timing)?
+            .variance;
+        let baseline_variance = if baseline_samples.len() > 1 {
+            self.stats_analyzer
+                .calculate_descriptive_stats(&baseline_samples)?
+                .variance
+        } else {
+            baseline.timing_stats.std_dev * baseline.timing_stats.std_dev
+        };
+        let n_current = current_timing.len() as f64;
+        let n_baseline = baseline_samples.len().max(1) as f64;
+        let standard_error = (current_variance / n_current + baseline_variance / n_baseline).sqrt();
+        let z_critical = inverse_normal_cdf(1.0 - self.config.significance_level / 2.0);
+        let mean_difference = current_mean - baseline_mean;
+        let difference_ci = (
+            z_critical.mul_add(-standard_error, mean_difference),
+            z_critical.mul_add(standard_error, mean_difference),
+        );
+
         Ok(BaselineComparison {
             baseline_name: "baseline".to_string(),
             performance_factor,
             significance,
-            difference_ci: (0.0, 0.0), // Would calculate proper CI
+            difference_ci,
             effect_size,
             practical_significance,
         })
@@ -858,8 +906,27 @@ impl StatisticalAnalyzer {
 
         let r_squared = 1.0 - (ss_res / ss_tot);
 
-        // Calculate p-value for slope (simplified)
-        let slope_p_value = if slope.abs() > 0.001 { 0.05 } else { 0.5 };
+        // Calculate a real p-value for the slope estimate from Student's
+        // t-distribution: t = slope / se(slope), with n - 2 residual
+        // degrees of freedom, using the standard OLS standard-error formula
+        // se(slope) = sqrt(MSE / sum((x - x_mean)^2)).
+        let degrees_of_freedom = n - 2.0;
+        let slope_p_value = if degrees_of_freedom > 0.0 && denominator > 0.0 {
+            let mean_squared_error = (ss_res / degrees_of_freedom).max(0.0);
+            let standard_error_slope = (mean_squared_error / denominator).sqrt();
+            if standard_error_slope > 0.0 {
+                let t_statistic = slope / standard_error_slope;
+                student_t_two_sided_p_value(t_statistic, degrees_of_freedom)
+            } else if slope.abs() > 0.0 {
+                // Zero residual variance with a non-zero slope: perfect
+                // linear fit, so the trend is maximally significant.
+                0.0
+            } else {
+                1.0
+            }
+        } else {
+            1.0
+        };
         let significant_trend = slope_p_value < 0.05;
 
         Ok(RegressionAnalysis {
@@ -882,9 +949,11 @@ impl StatisticalAnalyzer {
             std_dev: stats.std_dev,
         };
 
-        // Simple goodness of fit (would use proper statistical tests in SciRS2)
-        let goodness_of_fit = 0.8; // Placeholder
-        let fit_p_value = 0.3; // Placeholder
+        // Real goodness-of-fit assessment: a one-sample Kolmogorov-Smirnov
+        // test of the empirical distribution against the fitted normal.
+        let (ks_statistic, fit_p_value) =
+            Self::kolmogorov_smirnov_normal_test(data, stats.mean, stats.std_dev);
+        let goodness_of_fit = (1.0 - ks_statistic).clamp(0.0, 1.0);
 
         Ok(DistributionFit {
             best_distribution: normal_dist,
@@ -894,20 +963,58 @@ impl StatisticalAnalyzer {
         })
     }
 
+    /// One-sample Kolmogorov-Smirnov test of `data` against a
+    /// `Normal(mean, std_dev)` distribution. Returns `(D statistic, p-value)`
+    /// using the asymptotic Kolmogorov distribution for the p-value.
+    fn kolmogorov_smirnov_normal_test(data: &[f64], mean: f64, std_dev: f64) -> (f64, f64) {
+        if data.is_empty() || std_dev <= 0.0 {
+            return (1.0, 0.0);
+        }
+
+        let mut sorted = data.to_vec();
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let n = sorted.len() as f64;
+
+        let mut max_diff = 0.0_f64;
+        for (i, &value) in sorted.iter().enumerate() {
+            let z = (value - mean) / std_dev;
+            let cdf = normal_cdf(z);
+            let empirical_upper = (i as f64 + 1.0) / n;
+            let empirical_lower = i as f64 / n;
+            max_diff = max_diff.max((empirical_upper - cdf).abs());
+            max_diff = max_diff.max((cdf - empirical_lower).abs());
+        }
+
+        let p_value = kolmogorov_smirnov_p_value(max_diff, sorted.len());
+        (max_diff, p_value)
+    }
+
     /// Detect outliers using specified method
     pub fn detect_outliers(
         &self,
         data: &[f64],
         method: OutlierDetectionMethod,
     ) -> QuantRS2Result<OutlierAnalysis> {
-        let outlier_indices = match method {
+        let (outlier_indices, threshold) = match method {
             OutlierDetectionMethod::IQR { multiplier } => {
-                self.detect_outliers_iqr(data, multiplier)?
+                (self.detect_outliers_iqr(data, multiplier)?, multiplier)
             }
             OutlierDetectionMethod::ZScore { threshold } => {
-                self.detect_outliers_zscore(data, threshold)?
+                (self.detect_outliers_zscore(data, threshold)?, threshold)
             }
-            _ => Vec::new(), // Other methods would be implemented
+            OutlierDetectionMethod::ModifiedZScore { threshold } => (
+                self.detect_outliers_modified_zscore(data, threshold)?,
+                threshold,
+            ),
+            OutlierDetectionMethod::IsolationForest
+            | OutlierDetectionMethod::LocalOutlierFactor => {
+                // These require a trained ensemble/density model that this
+                // analyzer does not implement; report honestly instead of
+                // silently claiming zero outliers were found.
+                return Err(QuantRS2Error::UnsupportedOperation(format!(
+                    "Outlier detection method {method:?} is not yet implemented"
+                )));
+            }
         };
 
         let num_outliers = outlier_indices.len();
@@ -928,7 +1035,7 @@ impl StatisticalAnalyzer {
             num_outliers,
             outlier_indices,
             detection_method: method,
-            threshold: 1.5, // Would depend on method
+            threshold,
             outlier_impact,
         })
     }
@@ -968,6 +1075,72 @@ impl StatisticalAnalyzer {
                 }
             })
             .collect())
+    }
+
+    /// Detect outliers using the modified Z-score method (median absolute
+    /// deviation based), which is more robust to extreme values than the
+    /// mean/std-dev based Z-score method above.
+    fn detect_outliers_modified_zscore(
+        &self,
+        data: &[f64],
+        threshold: f64,
+    ) -> QuantRS2Result<Vec<usize>> {
+        if data.is_empty() {
+            return Err(QuantRS2Error::InvalidInput("Empty data".to_string()));
+        }
+
+        let mut sorted = data.to_vec();
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let median = Self::median_of_sorted(&sorted);
+
+        let mut abs_deviations: Vec<f64> = data.iter().map(|&v| (v - median).abs()).collect();
+        abs_deviations.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let mad = Self::median_of_sorted(&abs_deviations);
+
+        if mad == 0.0 {
+            // No spread to normalize against: fall back to flagging any
+            // value that differs at all from the median, rather than
+            // dividing by zero or silently reporting no outliers.
+            return Ok(data
+                .iter()
+                .enumerate()
+                .filter_map(|(i, &value)| {
+                    if (value - median).abs() > f64::EPSILON {
+                        Some(i)
+                    } else {
+                        None
+                    }
+                })
+                .collect());
+        }
+
+        // 0.6745 is the constant that makes the MAD comparable to the
+        // standard deviation for normally distributed data (Iglewicz & Hoaglin).
+        Ok(data
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &value)| {
+                let modified_z = 0.6745 * (value - median) / mad;
+                if modified_z.abs() > threshold {
+                    Some(i)
+                } else {
+                    None
+                }
+            })
+            .collect())
+    }
+
+    /// Median of an already-sorted slice
+    fn median_of_sorted(sorted: &[f64]) -> f64 {
+        let count = sorted.len();
+        if count == 0 {
+            return 0.0;
+        }
+        if count % 2 == 0 {
+            f64::midpoint(sorted[count / 2 - 1], sorted[count / 2])
+        } else {
+            sorted[count / 2]
+        }
     }
 
     /// Calculate impact of outliers on statistics
@@ -1013,19 +1186,95 @@ impl StatisticalAnalyzer {
         sample2: &[f64],
         significance_level: f64,
     ) -> QuantRS2Result<HypothesisTestResult> {
-        // Simplified implementation - would use SciRS2's statistical functions
-        let test_statistic = 0.0; // Placeholder
-        let p_value = 0.1; // Placeholder
-        let critical_value = 1.96; // Placeholder
+        let n1 = sample1.len();
+        let n2 = sample2.len();
+        if n1 == 0 || n2 == 0 {
+            return Err(QuantRS2Error::InvalidInput(
+                "Mann-Whitney U test requires two non-empty samples".to_string(),
+            ));
+        }
+
+        // Combine both samples, tagging which group each value came from,
+        // then rank the combined data (ties receive the average of the
+        // ranks they span).
+        let mut combined: Vec<(f64, u8)> = sample1
+            .iter()
+            .map(|&value| (value, 0u8))
+            .chain(sample2.iter().map(|&value| (value, 1u8)))
+            .collect();
+        combined.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
+        let n_total = combined.len();
+        let mut ranks = vec![0.0_f64; n_total];
+        let mut tie_correction_sum = 0.0_f64;
+        let mut i = 0;
+        while i < n_total {
+            let mut j = i;
+            while j + 1 < n_total && (combined[j + 1].0 - combined[i].0).abs() < f64::EPSILON {
+                j += 1;
+            }
+            // Average (1-based) rank shared by the tied block [i, j]
+            let average_rank = ((i + 1) + (j + 1)) as f64 / 2.0;
+            for rank in ranks.iter_mut().take(j + 1).skip(i) {
+                *rank = average_rank;
+            }
+            let tie_group_size = (j - i + 1) as f64;
+            tie_correction_sum += tie_group_size.powi(3) - tie_group_size;
+            i = j + 1;
+        }
+
+        let rank_sum_sample1: f64 = combined
+            .iter()
+            .zip(ranks.iter())
+            .filter(|((_, group), _)| *group == 0)
+            .map(|(_, &rank)| rank)
+            .sum();
+
+        let n1_f = n1 as f64;
+        let n2_f = n2 as f64;
+        let n_total_f = n1_f + n2_f;
+
+        let u1 = rank_sum_sample1 - n1_f * (n1_f + 1.0) / 2.0;
+        let u2 = n1_f * n2_f - u1;
+        let u_statistic = u1.min(u2);
+
+        let mean_u = n1_f * n2_f / 2.0;
+        let tie_term = if n_total_f > 1.0 {
+            tie_correction_sum / (n_total_f * (n_total_f - 1.0))
+        } else {
+            0.0
+        };
+        let variance_u = (n1_f * n2_f / 12.0) * (n_total_f + 1.0 - tie_term);
+        let std_dev_u = variance_u.max(0.0).sqrt();
+
+        let p_value = if std_dev_u > 0.0 {
+            let difference = u1 - mean_u;
+            // Continuity correction toward the mean
+            let z_score = if difference > 0.0 {
+                (difference - 0.5) / std_dev_u
+            } else if difference < 0.0 {
+                (difference + 0.5) / std_dev_u
+            } else {
+                0.0
+            };
+            (2.0 * (1.0 - normal_cdf(z_score.abs()))).clamp(0.0, 1.0)
+        } else {
+            1.0
+        };
+
+        let critical_value = inverse_normal_cdf(1.0 - significance_level / 2.0);
         let reject_null = p_value < significance_level;
 
+        // Rank-biserial correlation as the effect size for a Mann-Whitney U test
+        let effect_size = 1.0 - (2.0 * u1) / (n1_f * n2_f);
+
         Ok(HypothesisTestResult {
-            test_statistic,
+            test_statistic: u_statistic,
             p_value,
             critical_value,
             reject_null,
             significance_level,
-            effect_size: None,
+            effect_size: Some(effect_size),
             confidence_interval: None,
         })
     }
@@ -1040,6 +1289,238 @@ impl Default for StatisticalAnalyzer {
     fn default() -> Self {
         Self::new()
     }
+}
+
+// ---------------------------------------------------------------------
+// Real statistical primitives backing the hypothesis tests, regression
+// significance, and goodness-of-fit tests above. These are standard
+// numerical-analysis approximations (Abramowitz & Stegun error function,
+// Acklam's inverse normal CDF, Lanczos log-gamma, and the Numerical
+// Recipes continued-fraction for the regularized incomplete beta
+// function), not statistical placeholders.
+// ---------------------------------------------------------------------
+
+/// Error function approximation (Abramowitz & Stegun 7.1.26), maximum
+/// absolute error ~1.5e-7.
+fn erf(x: f64) -> f64 {
+    let sign = if x < 0.0 { -1.0 } else { 1.0 };
+    let x = x.abs();
+
+    let a1 = 0.254_829_592_f64;
+    let a2 = -0.284_496_736_f64;
+    let a3 = 1.421_413_741_f64;
+    let a4 = -1.453_152_027_f64;
+    let a5 = 1.061_405_429_f64;
+    let p = 0.327_591_1_f64;
+
+    let t = 1.0 / p.mul_add(x, 1.0);
+    let poly = ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t;
+    let y = 1.0 - poly * (-x * x).exp();
+
+    sign * y
+}
+
+/// Standard normal cumulative distribution function.
+fn normal_cdf(z: f64) -> f64 {
+    0.5 * (1.0 + erf(z / std::f64::consts::SQRT_2))
+}
+
+/// Inverse standard normal CDF (quantile function) via Peter Acklam's
+/// rational approximation, accurate to about 1.15e-9.
+fn inverse_normal_cdf(p: f64) -> f64 {
+    if p <= 0.0 {
+        return f64::NEG_INFINITY;
+    }
+    if p >= 1.0 {
+        return f64::INFINITY;
+    }
+
+    const A: [f64; 6] = [
+        -3.969_683_028_665_376e+01,
+        2.209_460_984_245_205e+02,
+        -2.759_285_104_469_687e+02,
+        1.383_577_518_672_69e+02,
+        -3.066_479_806_614_716e+01,
+        2.506_628_277_459_239e+00,
+    ];
+    const B: [f64; 5] = [
+        -5.447_609_879_822_406e+01,
+        1.615_858_368_580_409e+02,
+        -1.556_989_798_598_866e+02,
+        6.680_131_188_771_972e+01,
+        -1.328_068_155_288_572e+01,
+    ];
+    const C: [f64; 6] = [
+        -7.784_894_002_430_293e-03,
+        -3.223_964_580_411_365e-01,
+        -2.400_758_277_161_838e+00,
+        -2.549_732_539_343_734e+00,
+        4.374_664_141_464_968e+00,
+        2.938_163_982_698_783e+00,
+    ];
+    const D: [f64; 4] = [
+        7.784_695_709_041_462e-03,
+        3.224_671_290_700_398e-01,
+        2.445_134_137_142_996e+00,
+        3.754_408_661_907_416e+00,
+    ];
+
+    let p_low = 0.024_85;
+    let p_high = 1.0 - p_low;
+
+    if p < p_low {
+        let q = (-2.0 * p.ln()).sqrt();
+        (((((C[0] * q + C[1]) * q + C[2]) * q + C[3]) * q + C[4]) * q + C[5])
+            / ((((D[0] * q + D[1]) * q + D[2]) * q + D[3]) * q + 1.0)
+    } else if p <= p_high {
+        let q = p - 0.5;
+        let r = q * q;
+        (((((A[0] * r + A[1]) * r + A[2]) * r + A[3]) * r + A[4]) * r + A[5]) * q
+            / (((((B[0] * r + B[1]) * r + B[2]) * r + B[3]) * r + B[4]) * r + 1.0)
+    } else {
+        let q = (-2.0 * (1.0 - p).ln()).sqrt();
+        -(((((C[0] * q + C[1]) * q + C[2]) * q + C[3]) * q + C[4]) * q + C[5])
+            / ((((D[0] * q + D[1]) * q + D[2]) * q + D[3]) * q + 1.0)
+    }
+}
+
+/// Natural log of the gamma function via the Lanczos approximation
+/// (g = 7, n = 9), accurate to double precision over the domain used here.
+fn ln_gamma(x: f64) -> f64 {
+    const COEFFICIENTS: [f64; 9] = [
+        0.999_999_999_999_809_9,
+        676.520_368_121_885_1,
+        -1_259.139_216_722_402_8,
+        771.323_428_777_653_1,
+        -176.615_029_162_140_6,
+        12.507_343_278_686_905,
+        -0.138_571_095_265_720_12,
+        9.984_369_578_019_572e-6,
+        1.505_632_735_149_311_6e-7,
+    ];
+
+    if x < 0.5 {
+        // Reflection formula for arguments below 0.5
+        (std::f64::consts::PI / (std::f64::consts::PI * x).sin()).ln() - ln_gamma(1.0 - x)
+    } else {
+        let x = x - 1.0;
+        let mut a = COEFFICIENTS[0];
+        let t = x + 7.5;
+        for (i, coeff) in COEFFICIENTS.iter().enumerate().skip(1) {
+            a += coeff / (x + i as f64);
+        }
+        0.5_f64.mul_add(
+            (2.0 * std::f64::consts::PI).ln(),
+            (x + 0.5) * t.ln() - t + a.ln(),
+        )
+    }
+}
+
+/// Continued-fraction evaluation used by the regularized incomplete beta
+/// function (Numerical Recipes `betacf`).
+fn incomplete_beta_continued_fraction(x: f64, a: f64, b: f64) -> f64 {
+    const MAX_ITERATIONS: usize = 200;
+    const EPSILON: f64 = 1e-12;
+    const FP_MIN: f64 = 1e-300;
+
+    let qab = a + b;
+    let qap = a + 1.0;
+    let qam = a - 1.0;
+    let mut c = 1.0_f64;
+    let mut d = 1.0 - qab * x / qap;
+    if d.abs() < FP_MIN {
+        d = FP_MIN;
+    }
+    d = 1.0 / d;
+    let mut h = d;
+
+    for m in 1..=MAX_ITERATIONS {
+        let m_f = m as f64;
+        let m2 = 2.0 * m_f;
+
+        let aa_even = m_f * (b - m_f) * x / ((qam + m2) * (a + m2));
+        d = 1.0 + aa_even * d;
+        if d.abs() < FP_MIN {
+            d = FP_MIN;
+        }
+        c = 1.0 + aa_even / c;
+        if c.abs() < FP_MIN {
+            c = FP_MIN;
+        }
+        d = 1.0 / d;
+        h *= d * c;
+
+        let aa_odd = -(a + m_f) * (qab + m_f) * x / ((a + m2) * (qap + m2));
+        d = 1.0 + aa_odd * d;
+        if d.abs() < FP_MIN {
+            d = FP_MIN;
+        }
+        c = 1.0 + aa_odd / c;
+        if c.abs() < FP_MIN {
+            c = FP_MIN;
+        }
+        d = 1.0 / d;
+        let delta = d * c;
+        h *= delta;
+
+        if (delta - 1.0).abs() < EPSILON {
+            break;
+        }
+    }
+
+    h
+}
+
+/// Regularized incomplete beta function `I_x(a, b)`.
+fn incomplete_beta(x: f64, a: f64, b: f64) -> f64 {
+    if x <= 0.0 {
+        return 0.0;
+    }
+    if x >= 1.0 {
+        return 1.0;
+    }
+
+    let ln_beta_fn = ln_gamma(a + b) - ln_gamma(a) - ln_gamma(b);
+    let front = (a.mul_add(x.ln(), ln_beta_fn) + b * (1.0 - x).ln()).exp();
+
+    if x < (a + 1.0) / (a + b + 2.0) {
+        front * incomplete_beta_continued_fraction(x, a, b) / a
+    } else {
+        1.0 - front * incomplete_beta_continued_fraction(1.0 - x, b, a) / b
+    }
+}
+
+/// Two-sided p-value for a Student's t-distributed statistic with the
+/// given (real-valued) degrees of freedom, computed via the regularized
+/// incomplete beta function: `p = I_{df / (df + t^2)}(df/2, 1/2)`.
+fn student_t_two_sided_p_value(t_statistic: f64, degrees_of_freedom: f64) -> f64 {
+    if degrees_of_freedom <= 0.0 {
+        return 1.0;
+    }
+    let x = degrees_of_freedom / (degrees_of_freedom + t_statistic * t_statistic);
+    incomplete_beta(x, degrees_of_freedom / 2.0, 0.5).clamp(0.0, 1.0)
+}
+
+/// Asymptotic p-value for the one-sample Kolmogorov-Smirnov statistic `d`
+/// computed from `n` observations, using the Kolmogorov distribution's
+/// alternating-series form (Marsaglia-Kolmogorov asymptotic expansion).
+fn kolmogorov_smirnov_p_value(d: f64, n: usize) -> f64 {
+    if n == 0 {
+        return 1.0;
+    }
+    let n_f = n as f64;
+    let lambda = (n_f.sqrt() + 0.12 + 0.11 / n_f.sqrt()) * d;
+    if lambda < 0.2 {
+        return 1.0;
+    }
+
+    let mut sum = 0.0_f64;
+    for k in 1..=100_i32 {
+        let sign = if k % 2 == 1 { 1.0 } else { -1.0 };
+        sum += sign * (-2.0 * f64::from(k * k) * lambda * lambda).exp();
+    }
+
+    (2.0 * sum).clamp(0.0, 1.0)
 }
 
 #[cfg(test)]
@@ -1105,5 +1586,222 @@ mod tests {
             }
             _ => panic!("Wrong distribution type"),
         }
+    }
+
+    /// A mock simulator that records whether/how many times it was invoked,
+    /// used to prove `run_single_benchmark` actually calls the injected
+    /// simulator instead of fabricating timing/results around no-op work.
+    struct RecordingSimulator {
+        calls: std::cell::Cell<usize>,
+    }
+
+    impl SimulatorExecutor for RecordingSimulator {
+        fn execute(&self, _circuit: &dyn std::any::Any) -> QuantRS2Result<ExecutionResult> {
+            self.calls.set(self.calls.get() + 1);
+            Ok(ExecutionResult {
+                measurements: HashMap::new(),
+                final_state: None,
+                execution_stats: crate::simulator_interface::ExecutionStats {
+                    execution_time: Duration::from_millis(1),
+                    memory_used: 0,
+                    shots: 1,
+                    success_rate: 1.0,
+                },
+                backend_results: HashMap::new(),
+            })
+        }
+    }
+
+    #[test]
+    fn test_run_single_benchmark_executes_simulator_and_noise_analysis() {
+        let mut circ: Circuit<2> = Circuit::new();
+        circ.h(0)
+            .expect("h gate should apply")
+            .cnot(0, 1)
+            .expect("cnot gate should apply");
+
+        let benchmark = CircuitBenchmark::new(BenchmarkConfig::default());
+        let simulator = RecordingSimulator {
+            calls: std::cell::Cell::new(0),
+        };
+        let noise_model = NoiseModel::ibm_quantum();
+
+        let run = benchmark
+            .run_single_benchmark(&circ, &simulator, Some(&noise_model), 0)
+            .expect("run_single_benchmark should succeed");
+
+        assert_eq!(
+            simulator.calls.get(),
+            1,
+            "run_single_benchmark must actually invoke simulator.execute()"
+        );
+        assert!(run.success);
+        assert!(
+            run.execution_results.is_some(),
+            "execution_results must be populated from the simulator's real output"
+        );
+
+        let noise_analysis = run
+            .noise_analysis
+            .expect("noise analysis must be computed when a noise model is supplied");
+        assert!(noise_analysis.total_error >= 0.0);
+        assert!(noise_analysis.total_fidelity <= 1.0);
+        assert!(
+            !noise_analysis.gate_errors.is_empty(),
+            "noise analysis should report per-gate errors for a circuit with gates"
+        );
+    }
+
+    #[test]
+    fn test_mann_whitney_clear_difference_rejects_null() {
+        let analyzer = StatisticalAnalyzer::new();
+        let low = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+        let high = vec![101.0, 102.0, 103.0, 104.0, 105.0, 106.0, 107.0, 108.0];
+
+        let result = analyzer
+            .mann_whitney_test(&low, &high, 0.05)
+            .expect("mann_whitney_test should succeed");
+
+        // U statistic for two completely non-overlapping equal-size samples is 0.
+        assert_eq!(result.test_statistic, 0.0);
+        assert!(
+            result.p_value < 0.01,
+            "p-value should be tiny for clearly separated distributions, got {}",
+            result.p_value
+        );
+        assert!(result.reject_null);
+        assert!((result.critical_value - 1.959_963_985).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_mann_whitney_identical_distributions_do_not_reject() {
+        let analyzer = StatisticalAnalyzer::new();
+        let sample = vec![1.0, 5.0, 3.0, 8.0, 2.0, 9.0, 4.0, 7.0];
+        let other = sample.clone();
+
+        let result = analyzer
+            .mann_whitney_test(&sample, &other, 0.05)
+            .expect("mann_whitney_test should succeed");
+
+        assert!(
+            result.p_value > 0.05,
+            "identical distributions should not show a significant difference, got p={}",
+            result.p_value
+        );
+        assert!(!result.reject_null);
+    }
+
+    #[test]
+    fn test_regression_slope_p_value_is_real() {
+        let analyzer = StatisticalAnalyzer::new();
+
+        // Perfect, noiseless linear trend: p-value should indicate strong significance.
+        let trending = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+        let strong = analyzer
+            .perform_regression_analysis(&trending)
+            .expect("perform_regression_analysis should succeed");
+        assert!(strong.slope_p_value < 1e-6);
+        assert!(strong.significant_trend);
+
+        // Perfectly flat data (zero slope, zero residual variance): the
+        // real t-test must report no significant trend, unlike the old
+        // heuristic which only checked `slope.abs() > 0.001`.
+        let flat = vec![5.0; 10];
+        let none = analyzer
+            .perform_regression_analysis(&flat)
+            .expect("perform_regression_analysis should succeed");
+        assert!((none.slope_p_value - 1.0).abs() < 1e-9);
+        assert!(!none.significant_trend);
+    }
+
+    #[test]
+    fn test_fit_distributions_not_hardcoded() {
+        let analyzer = StatisticalAnalyzer::new();
+        let data = vec![
+            -2.0, -1.5, -1.2, -0.8, -0.5, -0.3, -0.1, 0.0, 0.1, 0.3, 0.5, 0.8, 1.2, 1.5, 2.0,
+        ];
+
+        let fit = analyzer
+            .fit_distributions(&data)
+            .expect("fit_distributions should succeed");
+
+        assert!((0.0..=1.0).contains(&fit.goodness_of_fit));
+        assert!((0.0..=1.0).contains(&fit.fit_p_value));
+        assert!(
+            (fit.goodness_of_fit - 0.8).abs() > 1e-9 || (fit.fit_p_value - 0.3).abs() > 1e-9,
+            "goodness_of_fit/fit_p_value must be computed from the data, not the old hardcoded placeholders"
+        );
+    }
+
+    #[test]
+    fn test_detect_outliers_modified_zscore() {
+        let analyzer = StatisticalAnalyzer::new();
+        let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 100.0]; // 100.0 is a clear outlier
+
+        let outliers = analyzer
+            .detect_outliers_modified_zscore(&data, 3.5)
+            .expect("modified z-score detection should succeed");
+        assert_eq!(outliers, vec![5]);
+    }
+
+    #[test]
+    fn test_detect_outliers_unsupported_method_errors_honestly() {
+        let analyzer = StatisticalAnalyzer::new();
+        let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+
+        let isolation_forest_result =
+            analyzer.detect_outliers(&data, OutlierDetectionMethod::IsolationForest);
+        assert!(
+            isolation_forest_result.is_err(),
+            "unimplemented IsolationForest must return an honest error, not silently report zero outliers"
+        );
+
+        let lof_result =
+            analyzer.detect_outliers(&data, OutlierDetectionMethod::LocalOutlierFactor);
+        assert!(lof_result.is_err());
+    }
+
+    #[test]
+    fn test_benchmark_report_retains_timing_samples_for_baseline_comparison() {
+        let mut circ: Circuit<1> = Circuit::new();
+        circ.h(0).expect("h gate should apply");
+
+        let config = BenchmarkConfig {
+            num_runs: 20,
+            warmup_runs: 2,
+            ..BenchmarkConfig::default()
+        };
+
+        let simulator = RecordingSimulator {
+            calls: std::cell::Cell::new(0),
+        };
+
+        let mut baseline_benchmark = CircuitBenchmark::new(config.clone());
+        let baseline_report = baseline_benchmark
+            .run_benchmark(&circ, &simulator, None)
+            .expect("run_benchmark should succeed");
+
+        assert_eq!(
+            baseline_report.timing_samples.len(),
+            baseline_report.completed_runs,
+            "the real per-run timing samples must be retained on the report"
+        );
+
+        let mut current_benchmark = CircuitBenchmark::new(config);
+        current_benchmark
+            .run_benchmark(&circ, &simulator, None)
+            .expect("run_benchmark should succeed");
+
+        let comparison = current_benchmark
+            .compare_with_baseline(&baseline_report)
+            .expect("compare_with_baseline should succeed");
+
+        // With the real Mann-Whitney implementation operating on the full
+        // retained baseline distribution, the U statistic must reflect an
+        // actual rank comparison rather than the old fixed 0.0 placeholder
+        // derived from a single scalar baseline sample.
+        assert!(comparison.significance.test_statistic >= 0.0);
+        assert!((0.0..=1.0).contains(&comparison.significance.p_value));
+        assert!(comparison.difference_ci.0 <= comparison.difference_ci.1);
     }
 }

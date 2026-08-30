@@ -1377,30 +1377,65 @@ impl UnifiedProblem for UnifiedHealthcareResourceOptimization {
     }
 }
 
-/// Performance benchmarking for the unified solver
+/// Map a raw problem-size request onto the size categories
+/// [`super::create_benchmark_suite`] understands.
+const fn size_category_for(size: usize) -> &'static str {
+    if size <= 10 {
+        "small"
+    } else if size <= 50 {
+        "medium"
+    } else {
+        "large"
+    }
+}
+
+/// Performance benchmarking for the unified solver.
+///
+/// For every requested problem size, builds the industry's real benchmark
+/// suite ([`super::create_benchmark_suite`]), converts each problem to a real
+/// QUBO model, actually solves it with [`UnifiedSolverFactory::solve_classical`]
+/// (classical simulated annealing over the real `IsingModel`), and records the
+/// true elapsed solve time, the problem's own [`OptimizationProblem::evaluate_solution`]
+/// objective value, and its real [`OptimizationProblem::is_feasible`]
+/// convergence flag — no fabricated measurements. If a problem cannot yet be
+/// converted to a QUBO (e.g. an industry whose `to_qubo` is not implemented),
+/// that real error is propagated rather than recorded as a fabricated success.
 pub fn run_unified_benchmark(
     factory: &UnifiedSolverFactory,
     industry: &str,
     problem_sizes: Vec<usize>,
 ) -> ApplicationResult<UnifiedBenchmarkResults> {
     let mut results = UnifiedBenchmarkResults::new();
+    let params = AnnealingParams {
+        num_sweeps: 1000,
+        num_repetitions: 5,
+        ..Default::default()
+    };
 
     for size in problem_sizes {
-        // Create benchmark problems
-        let problems = super::create_benchmark_suite(industry, &format!("{size}"))?;
+        // Create the real benchmark problems for this industry/size category.
+        let problems = super::create_benchmark_suite(industry, size_category_for(size))?;
 
         for (i, problem) in problems.iter().enumerate() {
-            let start_time = std::time::Instant::now();
+            let (qubo_model, _var_map) = problem.to_qubo()?;
 
-            // This would require converting to UnifiedProblem
-            // For now, placeholder measurement
+            let start_time = std::time::Instant::now();
+            let solution = factory.solve_classical(&qubo_model, &params)?;
             let solve_time = start_time.elapsed().as_secs_f64() * 1000.0;
+
+            // Prefer the problem's own domain-specific objective evaluation;
+            // fall back to the raw Ising energy only if that evaluation
+            // itself is unavailable for this problem.
+            let objective_value = problem
+                .evaluate_solution(&solution.best_spins)
+                .unwrap_or(solution.best_energy);
+            let converged = problem.is_feasible(&solution.best_spins);
 
             results.add_result(
                 format!("{industry}_{size}_problem_{i}"),
                 solve_time,
-                0.0,
-                true,
+                objective_value,
+                converged,
             );
         }
     }
@@ -1533,5 +1568,54 @@ mod tests {
         factory.adjust_config_for_complexity(&mut config, ProblemComplexity::Large);
         assert!(config.annealing_params.num_sweeps >= 20_000);
         assert!(config.hardware_requirements.min_memory_gb >= 2.0);
+    }
+}
+
+#[cfg(test)]
+mod real_benchmark_tests {
+    use super::*;
+
+    #[test]
+    fn run_unified_benchmark_actually_solves_problems_not_a_fixed_placeholder() {
+        let factory = UnifiedSolverFactory::new();
+
+        let results = run_unified_benchmark(&factory, "finance", vec![5])
+            .expect("finance benchmark should really solve its QUBO problems");
+
+        assert!(
+            !results.results.is_empty(),
+            "expected at least one real benchmark result"
+        );
+
+        for (problem_id, result) in &results.results {
+            // The old placeholder unconditionally recorded objective_value=0.0
+            // for every problem; a real classical-annealing solve over a
+            // random portfolio QUBO should essentially never land exactly on
+            // 0.0, and must always report a non-negative elapsed solve time.
+            assert!(
+                result.solve_time_ms >= 0.0,
+                "{problem_id}: solve time must be a real non-negative measurement"
+            );
+            assert_ne!(
+                result.objective_value, 0.0,
+                "{problem_id}: objective value must come from a real solve, not the fabricated 0.0 constant"
+            );
+        }
+
+        assert_eq!(
+            results.statistics.total_problems_solved,
+            results.results.len()
+        );
+    }
+
+    #[test]
+    fn run_unified_benchmark_reports_a_real_error_for_an_unknown_industry() {
+        let factory = UnifiedSolverFactory::new();
+
+        // There is no real benchmark suite for this industry; the benchmark
+        // must propagate that real error rather than fabricating a
+        // "converged" result out of thin air.
+        let outcome = run_unified_benchmark(&factory, "not_a_real_industry", vec![5]);
+        assert!(outcome.is_err());
     }
 }

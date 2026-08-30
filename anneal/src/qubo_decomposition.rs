@@ -737,20 +737,154 @@ impl QuboDecomposer {
         Ok(sub_solutions)
     }
 
-    /// Refine solutions through iterative improvement
+    /// Refine solutions through iterative improvement.
+    ///
+    /// Recombines the per-sub-problem solutions into a single global assignment
+    /// (resolving overlap disagreements by majority vote), then runs
+    /// steepest-descent single-bit-flip local search against the *full* QUBO
+    /// objective. This couples the sub-problems across their (previously frozen)
+    /// boundaries: a flip is accepted only if it lowers the global energy, so
+    /// the returned improvement is the genuine objective decrease and is always
+    /// `≥ 0` — it is never fabricated. The improved global assignment is then
+    /// projected back onto each sub-problem so the next refinement round starts
+    /// from a consistent state.
     fn refine_solutions(
         &self,
-        _qubo: &QuboModel,
-        _sub_problems: &[SubProblem],
+        qubo: &QuboModel,
+        sub_problems: &[SubProblem],
         sub_solutions: &[SubSolution],
     ) -> DecompositionResult<(Vec<SubSolution>, f64)> {
-        // For now, return the same solutions with zero improvement
-        // In a real implementation, this would:
-        // 1. Fix variables based on current solutions
-        // 2. Re-solve sub-problems with fixed boundary conditions
-        // 3. Calculate improvement in objective value
+        let num_vars = qubo.num_variables;
+        if num_vars == 0 {
+            return Ok((sub_solutions.to_vec(), 0.0));
+        }
 
-        Ok((sub_solutions.to_vec(), 0.0))
+        // 1. Recombine current sub-solutions into a global assignment by majority
+        //    vote over variables shared across overlapping sub-problems.
+        let mut vote_counts: HashMap<usize, (usize, usize)> = HashMap::new();
+        for sub_solution in sub_solutions {
+            for (&var, &value) in &sub_solution.values {
+                let (true_votes, false_votes) = vote_counts.entry(var).or_insert((0, 0));
+                if value {
+                    *true_votes += 1;
+                } else {
+                    *false_votes += 1;
+                }
+            }
+        }
+
+        let mut assignment = vec![false; num_vars];
+        for (&var, &(true_votes, false_votes)) in &vote_counts {
+            if var < num_vars {
+                assignment[var] = true_votes > false_votes;
+            }
+        }
+
+        let initial_objective = qubo.objective(&assignment)?;
+
+        // 2. Steepest-descent single-bit-flip local search on the full QUBO.
+        //    Each pass flips the single variable yielding the largest energy
+        //    decrease; we stop when no improving flip remains or after a bounded
+        //    number of passes (proportional to the requested refinement budget).
+        let linear: Vec<f64> = (0..num_vars)
+            .map(|i| qubo.get_linear(i).unwrap_or(0.0))
+            .collect();
+        let quadratic = qubo.quadratic_terms();
+
+        // Adjacency for delta evaluation: neighbor -> coefficient.
+        let mut adjacency: Vec<Vec<(usize, f64)>> = vec![Vec::new(); num_vars];
+        for &(i, j, value) in &quadratic {
+            if i < num_vars && j < num_vars && value != 0.0 {
+                adjacency[i].push((j, value));
+                adjacency[j].push((i, value));
+            }
+        }
+
+        let max_passes = (self.config.refinement_iterations.max(1)) * num_vars;
+        let mut current_objective = initial_objective;
+
+        for _ in 0..max_passes {
+            // Find the flip with the most negative delta-energy.
+            let mut best_delta = 0.0;
+            let mut best_var = None;
+
+            for var in 0..num_vars {
+                let delta = Self::flip_delta(var, &assignment, &linear, &adjacency);
+                if delta < best_delta {
+                    best_delta = delta;
+                    best_var = Some(var);
+                }
+            }
+
+            match best_var {
+                Some(var) => {
+                    assignment[var] = !assignment[var];
+                    current_objective += best_delta;
+                }
+                None => break, // local optimum reached
+            }
+        }
+
+        let improvement = initial_objective - current_objective;
+
+        // 3. Project the improved global assignment back onto each sub-problem.
+        let mut new_solutions = Vec::with_capacity(sub_solutions.len());
+        for (sub_problem, sub_solution) in sub_problems.iter().zip(sub_solutions.iter()) {
+            let mut values = HashMap::with_capacity(sub_solution.values.len());
+            for &var in sub_solution.values.keys() {
+                let new_value = if var < num_vars {
+                    assignment[var]
+                } else {
+                    sub_solution.values[&var]
+                };
+                values.insert(var, new_value);
+            }
+
+            // Recompute this sub-problem's objective on its own variables under
+            // the refined assignment so the stored value stays honest.
+            let objective_value = Self::sub_objective(sub_problem, &values);
+
+            new_solutions.push(SubSolution {
+                subproblem_id: sub_solution.subproblem_id,
+                values,
+                objective_value,
+                solver_info: sub_solution.solver_info.clone(),
+            });
+        }
+
+        Ok((new_solutions, improvement.max(0.0)))
+    }
+
+    /// Energy change when flipping `var` in the current `assignment`.
+    ///
+    /// For QUBO energy `E = Σ Q_ii x_i + Σ_{i<j} Q_ij x_i x_j`, flipping
+    /// `x_v → 1 - x_v` changes the energy by `(1 - 2·x_v)·(Q_vv + Σ_j Q_vj x_j)`.
+    fn flip_delta(
+        var: usize,
+        assignment: &[bool],
+        linear: &[f64],
+        adjacency: &[Vec<(usize, f64)>],
+    ) -> f64 {
+        let x_v = if assignment[var] { 1.0 } else { 0.0 };
+        let mut local_field = linear[var];
+        for &(neighbor, coeff) in &adjacency[var] {
+            if assignment[neighbor] {
+                local_field += coeff;
+            }
+        }
+        (1.0 - 2.0 * x_v) * local_field
+    }
+
+    /// Objective of a single sub-problem under a (subset) assignment.
+    fn sub_objective(sub_problem: &SubProblem, values: &HashMap<usize, bool>) -> f64 {
+        let n = sub_problem.qubo.num_variables;
+        let mut local = vec![false; n];
+        for (&sub_idx, &orig_var) in &sub_problem.variable_mapping {
+            if sub_idx < n {
+                local[sub_idx] = values.get(&orig_var).copied().unwrap_or(false);
+            }
+        }
+        sub_problem.qubo.objective(&local).unwrap_or(0.0)
     }
 
     /// Reconstruct the complete solution from sub-solutions
@@ -873,5 +1007,99 @@ mod tests {
 
         assert_eq!(result.variable_values.len(), 6);
         assert!(result.stats.num_subproblems > 0);
+    }
+
+    #[test]
+    fn test_refinement_never_fabricates_improvement() {
+        // Build a QUBO whose true optimum is all-zeros (positive linear terms,
+        // positive couplings), then feed refine_solutions a deliberately bad
+        // (all-true) incumbent. The reported improvement must be the real
+        // energy decrease and never negative (never fabricated).
+        let mut qubo = QuboModel::new(5);
+        for i in 0..5 {
+            qubo.set_linear(i, 1.0).unwrap();
+        }
+        qubo.set_quadratic(0, 1, 1.0).unwrap();
+        qubo.set_quadratic(1, 2, 1.0).unwrap();
+
+        // Single trivial sub-problem covering all variables (identity mapping).
+        let variable_mapping: HashMap<usize, usize> = (0..5).map(|i| (i, i)).collect();
+        let sub_problem = SubProblem {
+            id: 0,
+            variables: (0..5).collect(),
+            qubo: qubo.clone(),
+            variable_mapping,
+            fixed_variables: HashMap::new(),
+        };
+
+        // Incumbent: everything set to true (high energy).
+        let bad_values: HashMap<usize, bool> = (0..5).map(|i| (i, true)).collect();
+        let initial_energy = {
+            let bits: Vec<bool> = (0..5).map(|i| bad_values[&i]).collect();
+            qubo.objective(&bits).unwrap()
+        };
+        assert!(initial_energy > 0.0);
+
+        let sub_solution = SubSolution {
+            subproblem_id: 0,
+            values: bad_values,
+            objective_value: initial_energy,
+            solver_info: String::new(),
+        };
+
+        let config = DecompositionConfig::default();
+        let decomposer = QuboDecomposer::new(config);
+        let (new_solutions, improvement) = decomposer
+            .refine_solutions(&qubo, &[sub_problem], &[sub_solution])
+            .expect("refine should succeed");
+
+        // Improvement is the real (non-negative) energy decrease.
+        assert!(improvement >= 0.0);
+        // Local search should have escaped the all-true state towards the
+        // all-false optimum, achieving a strictly positive improvement here.
+        assert!(improvement > 0.0);
+
+        // The recombined solution's energy must equal initial - improvement.
+        let refined_bits: Vec<bool> = (0..5)
+            .map(|i| new_solutions[0].values.get(&i).copied().unwrap_or(false))
+            .collect();
+        let refined_energy = qubo.objective(&refined_bits).unwrap();
+        assert!((refined_energy - (initial_energy - improvement)).abs() < 1e-9);
+        // And it must not be worse than where we started.
+        assert!(refined_energy <= initial_energy + 1e-12);
+    }
+
+    #[test]
+    fn test_refinement_at_optimum_reports_zero_improvement() {
+        // If the incumbent is already optimal, refine must report exactly 0.0
+        // improvement (it must not invent a positive number).
+        let mut qubo = QuboModel::new(3);
+        for i in 0..3 {
+            qubo.set_linear(i, 1.0).unwrap(); // optimum = all false
+        }
+
+        let variable_mapping: HashMap<usize, usize> = (0..3).map(|i| (i, i)).collect();
+        let sub_problem = SubProblem {
+            id: 0,
+            variables: (0..3).collect(),
+            qubo: qubo.clone(),
+            variable_mapping,
+            fixed_variables: HashMap::new(),
+        };
+
+        let good_values: HashMap<usize, bool> = (0..3).map(|i| (i, false)).collect();
+        let sub_solution = SubSolution {
+            subproblem_id: 0,
+            values: good_values,
+            objective_value: 0.0,
+            solver_info: String::new(),
+        };
+
+        let decomposer = QuboDecomposer::new(DecompositionConfig::default());
+        let (_new, improvement) = decomposer
+            .refine_solutions(&qubo, &[sub_problem], &[sub_solution])
+            .expect("refine should succeed");
+
+        assert_eq!(improvement, 0.0);
     }
 }

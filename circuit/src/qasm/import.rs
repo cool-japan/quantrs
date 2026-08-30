@@ -561,13 +561,11 @@ pub fn qasm_to_gates(qasm: &str) -> Result<(Vec<Box<dyn GateOp>>, usize), QasmEr
         //   The qubit arguments start after the ')' (or after the gate name if no parens).
 
         let mut params: Vec<f64> = Vec::new();
-        // `qubit_raw` is the slice of `stmt` starting at the qubit argument list
-        let qubit_raw: &str;
-
         // Find where the gate name ends in stmt (skip leading whitespace already trimmed)
         let after_name = stmt[gate_name.len()..].trim_start();
 
-        if after_name.starts_with('(') {
+        // `qubit_raw` is the slice of `stmt` starting at the qubit argument list
+        let qubit_raw: &str = if after_name.starts_with('(') {
             // Find matching closing paren
             let mut depth = 0i32;
             let mut paren_end = None;
@@ -620,10 +618,10 @@ pub fn qasm_to_gates(qasm: &str) -> Result<(Vec<Box<dyn GateOp>>, usize), QasmEr
                 params.push(val);
             }
 
-            qubit_raw = after_name[close_idx + 1..].trim();
+            after_name[close_idx + 1..].trim()
         } else {
-            qubit_raw = after_name;
-        }
+            after_name
+        };
 
         // Parse qubit arguments from `qubit_raw` using the tokenizer
         let qubit_tokens = tokenize(qubit_raw);

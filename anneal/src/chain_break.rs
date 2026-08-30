@@ -6,6 +6,7 @@
 
 use crate::embedding::Embedding;
 use crate::ising::{IsingError, IsingResult};
+use scirs2_core::random::{thread_rng, ChaCha8Rng, Rng, RngExt, SeedableRng};
 use std::collections::{HashMap, HashSet};
 
 /// Represents a solution from quantum annealing hardware
@@ -26,7 +27,13 @@ pub struct ResolvedSolution {
     pub logical_spins: Vec<i8>,
     /// Number of broken chains
     pub chain_breaks: usize,
-    /// Energy after resolution
+    /// Energy of the resolved *logical* configuration.
+    ///
+    /// When a [`LogicalProblem`] is supplied to the resolver this is the exact
+    /// energy of `logical_spins` under that problem. When no logical problem is
+    /// available the resolver cannot recompute the logical energy, so it reports
+    /// the measured hardware energy (a real quantity) as the best available
+    /// estimate.
     pub energy: f64,
     /// Original hardware solution
     pub hardware_solution: HardwareSolution,
@@ -75,10 +82,10 @@ impl ChainBreakResolver {
     ) -> IsingResult<ResolvedSolution> {
         match self.method {
             ResolutionMethod::MajorityVote => {
-                self.resolve_majority_vote(hardware_solution, embedding)
+                self.resolve_majority_vote(hardware_solution, embedding, logical_problem)
             }
             ResolutionMethod::WeightedMajority => {
-                self.resolve_weighted_majority(hardware_solution, embedding)
+                self.resolve_weighted_majority(hardware_solution, embedding, logical_problem)
             }
             ResolutionMethod::EnergyMinimization => {
                 let problem = logical_problem.ok_or_else(|| {
@@ -113,11 +120,7 @@ impl ChainBreakResolver {
         }
 
         // Sort by energy
-        resolved.sort_by(|a, b| {
-            a.energy
-                .partial_cmp(&b.energy)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        resolved.sort_by(|a, b| a.energy.total_cmp(&b.energy));
 
         Ok(resolved)
     }
@@ -127,10 +130,12 @@ impl ChainBreakResolver {
         &self,
         hardware_solution: &HardwareSolution,
         embedding: &Embedding,
+        logical_problem: Option<&LogicalProblem>,
     ) -> IsingResult<ResolvedSolution> {
         let mut logical_spins = Vec::new();
         let mut chain_breaks = 0;
         let num_vars = embedding.chains.len();
+        let mut rng = self.tie_break_rng();
 
         for var in 0..num_vars {
             let chain = embedding
@@ -160,17 +165,9 @@ impl ChainBreakResolver {
             } else if minus_votes > plus_votes {
                 -1
             } else {
-                // Tie - use random or default to +1
-                if self.tie_break_random {
-                    // Simple deterministic tie-break based on variable index
-                    if var % 2 == 0 {
-                        1
-                    } else {
-                        -1
-                    }
-                } else {
-                    1
-                }
+                // Genuine tie: break it with the (optionally seeded) RNG when
+                // random tie-breaking is enabled, otherwise default to +1.
+                self.break_tie(&mut rng)
             };
 
             // Check for chain breaks
@@ -182,10 +179,12 @@ impl ChainBreakResolver {
             logical_spins.push(logical_value);
         }
 
+        let energy = Self::resolved_energy(&logical_spins, hardware_solution, logical_problem);
+
         Ok(ResolvedSolution {
             logical_spins,
             chain_breaks,
-            energy: hardware_solution.energy, // Will be recalculated if needed
+            energy,
             hardware_solution: hardware_solution.clone(),
         })
     }
@@ -195,6 +194,7 @@ impl ChainBreakResolver {
         &self,
         hardware_solution: &HardwareSolution,
         embedding: &Embedding,
+        logical_problem: Option<&LogicalProblem>,
     ) -> IsingResult<ResolvedSolution> {
         // Weighted majority voting: weight each qubit's vote by the number of
         // other qubits in the chain that agree with it. This gives more influence
@@ -203,6 +203,7 @@ impl ChainBreakResolver {
         let num_vars = embedding.chains.len();
         let mut logical_spins = vec![0i8; num_vars];
         let mut chain_breaks = 0;
+        let mut rng = self.tie_break_rng();
 
         for var in 0..num_vars {
             if let Some(chain) = embedding.chains.get(&var) {
@@ -255,14 +256,14 @@ impl ChainBreakResolver {
                 } else if weight_minus > weight_plus {
                     logical_spins[var] = -1;
                 } else {
-                    // Tie - use random or first qubit
-                    if self.tie_break_random {
-                        use scirs2_core::random::{thread_rng, Rng};
-                        let mut rng = thread_rng();
-                        logical_spins[var] = if rng.random::<bool>() { 1 } else { -1 };
+                    // Genuine tie: break it with the (optionally seeded) RNG
+                    // when random tie-breaking is enabled, otherwise fall back
+                    // to the first qubit's measured spin.
+                    logical_spins[var] = if self.tie_break_random {
+                        self.break_tie(&mut rng)
                     } else {
-                        logical_spins[var] = hardware_solution.spins[chain[0]];
-                    }
+                        hardware_solution.spins[chain[0]]
+                    };
                 }
 
                 if has_disagreement {
@@ -271,10 +272,12 @@ impl ChainBreakResolver {
             }
         }
 
+        let energy = Self::resolved_energy(&logical_spins, hardware_solution, logical_problem);
+
         Ok(ResolvedSolution {
             logical_spins,
             chain_breaks,
-            energy: hardware_solution.energy,
+            energy,
             hardware_solution: hardware_solution.clone(),
         })
     }
@@ -286,7 +289,8 @@ impl ChainBreakResolver {
         embedding: &Embedding,
         logical_problem: &LogicalProblem,
     ) -> IsingResult<ResolvedSolution> {
-        let mut resolved = self.resolve_majority_vote(hardware_solution, embedding)?;
+        let mut resolved =
+            self.resolve_majority_vote(hardware_solution, embedding, Some(logical_problem))?;
 
         // For each broken chain, try flipping the logical variable
         for var in 0..resolved.logical_spins.len() {
@@ -317,7 +321,7 @@ impl ChainBreakResolver {
         hardware_solution: &HardwareSolution,
         embedding: &Embedding,
     ) -> IsingResult<ResolvedSolution> {
-        let resolved = self.resolve_majority_vote(hardware_solution, embedding)?;
+        let resolved = self.resolve_majority_vote(hardware_solution, embedding, None)?;
 
         if resolved.chain_breaks > 0 {
             Err(IsingError::HardwareConstraint(format!(
@@ -354,6 +358,49 @@ impl ChainBreakResolver {
         }
 
         Ok(false)
+    }
+
+    /// Construct the RNG used for tie-breaking.
+    ///
+    /// When a `seed` is configured the generator is deterministic (reproducible
+    /// runs); otherwise it is seeded from the thread RNG so ties are broken
+    /// genuinely at random.
+    fn tie_break_rng(&self) -> ChaCha8Rng {
+        match self.seed {
+            Some(seed) => ChaCha8Rng::seed_from_u64(seed),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
+        }
+    }
+
+    /// Break a vote tie. With `tie_break_random` enabled this draws a genuine
+    /// random spin from `rng`; otherwise it deterministically defaults to `+1`.
+    fn break_tie(&self, rng: &mut ChaCha8Rng) -> i8 {
+        if self.tie_break_random {
+            if rng.random_bool(0.5) {
+                1
+            } else {
+                -1
+            }
+        } else {
+            1
+        }
+    }
+
+    /// Energy of the resolved logical configuration.
+    ///
+    /// If a [`LogicalProblem`] is available the exact logical energy is
+    /// computed from the resolved spins. Otherwise the measured hardware energy
+    /// is returned, since the logical energy is not derivable without the
+    /// problem definition.
+    fn resolved_energy(
+        logical_spins: &[i8],
+        hardware_solution: &HardwareSolution,
+        logical_problem: Option<&LogicalProblem>,
+    ) -> f64 {
+        match logical_problem {
+            Some(problem) => problem.calculate_energy(logical_spins),
+            None => hardware_solution.energy,
+        }
     }
 }
 
@@ -479,7 +526,7 @@ impl ChainStrengthOptimizer {
         }
 
         // Sort coefficients
-        all_coeffs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        all_coeffs.sort_by(|a, b| a.total_cmp(b));
 
         // Use median as base strength
         let median = if all_coeffs.len() % 2 == 0 {
@@ -524,47 +571,80 @@ impl ChainStrengthOptimizer {
         best_strength
     }
 
-    /// Evaluate a chain strength
+    /// Evaluate a chain strength against a set of representative solutions.
+    ///
+    /// A chain holds together only if its inter-qubit coupling (the chain
+    /// `strength`) is large enough to resist the local field that tries to flip
+    /// part of the chain. For each test solution and each logical variable we
+    /// compute that local field magnitude
+    /// `|h_i + Σ_j J_ij·s_j|` (the energy gradient acting on variable `i`); the
+    /// strength must dominate the largest such field to keep every chain intact.
+    /// The returned score (lower is better, so it composes with
+    /// [`Self::optimize_strength`]'s minimization) penalizes:
+    ///
+    /// * **under-strength** — `strength` below the required field, scaled by a
+    ///   large factor because a broken chain corrupts the embedded solution; and
+    /// * **over-strength** — `strength` far above what is needed, which flattens
+    ///   the logical problem and degrades solution quality.
+    ///
+    /// When no test solutions are supplied the worst-case field is estimated
+    /// from the problem coefficients alone (every neighbor aligned adversarially).
     fn evaluate_strength(
         &self,
         strength: f64,
         logical_problem: &LogicalProblem,
         test_solutions: &[Vec<i8>],
     ) -> f64 {
-        // Simple evaluation: prefer strengths that maintain solution quality
-        // In practice, this would run actual annealing with different strengths
+        let num_vars = logical_problem.linear.len();
 
-        // For now, return a score based on the ratio to problem coefficients
-        let avg_coeff = self.calculate_average_coefficient(logical_problem);
+        // Largest local field observed across variables and test solutions.
+        let mut required_strength = 0.0_f64;
 
-        // Penalty for being too different from problem scale
-        (strength / avg_coeff - 1.5).abs()
-    }
-
-    /// Calculate average coefficient magnitude
-    fn calculate_average_coefficient(&self, logical_problem: &LogicalProblem) -> f64 {
-        let mut sum = 0.0;
-        let mut count = 0;
-
-        for &h in &logical_problem.linear {
-            if h.abs() > 1e-10 {
-                sum += h.abs();
-                count += 1;
+        if test_solutions.is_empty() {
+            // Worst case: every coupling pulls in the breaking direction.
+            for i in 0..num_vars {
+                let mut field = logical_problem.linear[i].abs();
+                for (&(a, b), &j) in &logical_problem.quadratic {
+                    if a == i || b == i {
+                        field += j.abs();
+                    }
+                }
+                required_strength = required_strength.max(field);
             }
-        }
-
-        for &J in logical_problem.quadratic.values() {
-            if J.abs() > 1e-10 {
-                sum += J.abs();
-                count += 1;
-            }
-        }
-
-        if count > 0 {
-            sum / f64::from(count)
         } else {
-            1.0
+            for solution in test_solutions {
+                for i in 0..num_vars.min(solution.len()) {
+                    let mut field = logical_problem.linear[i];
+                    for (&(a, b), &j) in &logical_problem.quadratic {
+                        if a == i {
+                            if let Some(&s) = solution.get(b) {
+                                field += j * f64::from(s);
+                            }
+                        } else if b == i {
+                            if let Some(&s) = solution.get(a) {
+                                field += j * f64::from(s);
+                            }
+                        }
+                    }
+                    required_strength = required_strength.max(field.abs());
+                }
+            }
         }
+
+        if required_strength <= 0.0 {
+            // No field to resist: any positive strength is fine; prefer the
+            // smallest to avoid distorting the (trivial) problem.
+            return strength;
+        }
+
+        // Penalty for being too weak (chains break) — heavily weighted.
+        const BREAK_PENALTY: f64 = 10.0;
+        let under = (required_strength - strength).max(0.0) / required_strength;
+
+        // Penalty for being unnecessarily strong (problem distortion).
+        let over = (strength - required_strength).max(0.0) / required_strength;
+
+        BREAK_PENALTY.mul_add(under, over)
     }
 }
 
@@ -707,6 +787,43 @@ mod tests {
 
         // Should be around the median of coefficients
         assert!(strength > 0.5 && strength < 5.0);
+    }
+
+    #[test]
+    fn test_evaluate_strength_uses_required_field() {
+        // Single coupling J=2 between var 0 and 1; with the test solution both
+        // aligned (+1,+1) the local field on each variable is |J·s| = 2, so the
+        // required chain strength is 2.0.
+        let mut problem = LogicalProblem::new(2);
+        problem.linear = vec![0.0, 0.0];
+        problem.quadratic.insert((0, 1), 2.0);
+
+        let optimizer = ChainStrengthOptimizer::default();
+        let test_solutions = vec![vec![1_i8, 1]];
+
+        // A strength below the required field is penalized far more heavily than
+        // a strength exactly at the required field.
+        let score_weak = optimizer.evaluate_strength(0.5, &problem, &test_solutions);
+        let score_matched = optimizer.evaluate_strength(2.0, &problem, &test_solutions);
+        let score_strong = optimizer.evaluate_strength(6.0, &problem, &test_solutions);
+
+        // The matched strength is the best (lowest score).
+        assert!(score_matched < score_weak);
+        assert!(score_matched < score_strong);
+        // At the required strength both penalties vanish.
+        assert!(score_matched.abs() < 1e-12);
+        // Under-strength is penalized by the heavy BREAK_PENALTY factor relative
+        // to an equal over-strength deviation.
+        let score_under = optimizer.evaluate_strength(1.0, &problem, &test_solutions); // 1 below
+        let score_over = optimizer.evaluate_strength(3.0, &problem, &test_solutions); // 1 above
+        assert!(score_under > score_over);
+
+        // optimize_strength must pick a strength resisting the field (>= ~2).
+        let best = optimizer.optimize_strength(&problem, &test_solutions);
+        assert!(
+            best >= 1.5,
+            "expected strength resisting the field, got {best}"
+        );
     }
 
     #[test]

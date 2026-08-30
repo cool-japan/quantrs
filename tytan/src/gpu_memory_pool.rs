@@ -236,13 +236,10 @@ impl GpuMemoryPool {
                 blocks.retain(|b| b.id != block_id);
             }
 
-            // Free GPU memory
-            // TODO: Implement free_raw in GPU stub
-            // unsafe {
-            //     self.context
-            //         .free_raw(ptr)
-            //         .map_err(|e| format!("Failed to free GPU memory: {}", e))?;
-            // }
+            // The stub backend tracks allocations purely in host-side accounting
+            // (block metadata + `current_size` below); there is no raw device
+            // pointer to release. A real SciRS2 GPU backend would additionally
+            // call `context.free_raw(ptr)` for each evicted block here.
         }
 
         self.current_size -= freed_size;

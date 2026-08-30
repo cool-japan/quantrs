@@ -34,9 +34,9 @@ use quantrs2_device::{
 async fn test_advanced_scheduler_initialization() {
     let scheduler = create_test_scheduler().await;
 
-    // Verify that all components are initialized
-    // TODO: Test using public API once available
-    // assert!(scheduler.core_scheduler.backends.read().unwrap_or_else(|e| e.into_inner()).is_empty());
+    // create_test_scheduler registers three backends; verify them via the
+    // public API.
+    assert_eq!(scheduler.get_available_backends_debug().len(), 3);
 
     // Test that advanced features are available
     let queue_predictions = scheduler.predict_queue_times().await;
@@ -208,11 +208,17 @@ async fn test_fairness_and_game_theory() {
 async fn test_dynamic_load_balancing() {
     let scheduler = create_test_scheduler().await;
 
-    // Add multiple backends for load balancing
-    // TODO: Use public API for backend registration
-    // scheduler.core_scheduler.register_backend(HardwareBackend::IBMQuantum).await.unwrap();
-    // scheduler.core_scheduler.register_backend(HardwareBackend::AmazonBraket).await.unwrap();
-    // scheduler.core_scheduler.register_backend(HardwareBackend::AzureQuantum).await.unwrap();
+    // create_test_scheduler already registered 3 backends; add more distinct
+    // backends via the public API to exercise load balancing across a larger pool.
+    scheduler
+        .register_backend(HardwareBackend::GoogleSycamore)
+        .await
+        .expect("registering GoogleSycamore backend should succeed");
+    scheduler
+        .register_backend(HardwareBackend::IonQ)
+        .await
+        .expect("registering IonQ backend should succeed");
+    assert_eq!(scheduler.get_available_backends_debug().len(), 5);
 
     // Test dynamic load balancing
     let load_balance_result = scheduler.dynamic_load_balance().await;
@@ -286,9 +292,8 @@ async fn test_advanced_scheduling_strategies() {
 
         let scheduler = AdvancedQuantumScheduler::new(params);
 
-        // Test that scheduler initializes with different strategies
-        // TODO: Test using public API once available
-        // assert!(scheduler.core_scheduler.backends.read().unwrap_or_else(|e| e.into_inner()).is_empty());
+        // A freshly-created scheduler has no registered backends yet.
+        assert!(scheduler.get_available_backends_debug().is_empty());
         println!("Successfully initialized scheduler with strategy: {strategy:?}");
     }
 }
@@ -316,9 +321,8 @@ async fn test_resource_allocation_strategies() {
 
         let scheduler = AdvancedQuantumScheduler::new(params);
 
-        // Test that scheduler initializes with different allocation strategies
-        // TODO: Test using public API once available
-        // assert!(scheduler.core_scheduler.backends.read().unwrap_or_else(|e| e.into_inner()).is_empty());
+        // A freshly-created scheduler has no registered backends yet.
+        assert!(scheduler.get_available_backends_debug().is_empty());
         println!("Successfully initialized scheduler with allocation strategy: {strategy:?}");
     }
 }
@@ -351,9 +355,8 @@ async fn test_ml_algorithm_configurations() {
 
         let scheduler = AdvancedQuantumScheduler::new(params);
 
-        // Test that scheduler initializes with different ML algorithms
-        // TODO: Test using public API once available
-        // assert!(scheduler.core_scheduler.backends.read().unwrap_or_else(|e| e.into_inner()).is_empty());
+        // A freshly-created scheduler has no registered backends yet.
+        assert!(scheduler.get_available_backends_debug().is_empty());
         println!("Successfully initialized scheduler with ML algorithm: {algorithm:?}");
     }
 }
@@ -525,13 +528,9 @@ struct UserPreferences {
 async fn test_performance_under_load() {
     let scheduler = create_test_scheduler().await;
 
-    // Register backends
-    // TODO: Use public API for backend registration
-    // scheduler.core_scheduler.register_backend(HardwareBackend::IBMQuantum).await.unwrap();
-    // scheduler.core_scheduler.register_backend(HardwareBackend::AmazonBraket).await.unwrap();
-
-    // Start scheduler
-    // scheduler.core_scheduler.start_scheduler().await.unwrap();
+    // create_test_scheduler already registered the backends; confirm via the
+    // public API before submitting load.
+    assert_eq!(scheduler.get_available_backends_debug().len(), 3);
 
     // Submit many jobs concurrently to test performance
     let num_jobs = 100;

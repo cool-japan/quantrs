@@ -838,7 +838,8 @@ impl CoherentIsingMachine {
 
         // Calculate final statistics
         let optical_stats = self.calculate_optical_statistics();
-        let performance_metrics = self.calculate_performance_metrics(best_energy, convergence_time);
+        let performance_metrics =
+            self.calculate_performance_metrics(problem, best_energy, convergence_time);
 
         // Prepare results
         let results = CimResults {
@@ -1139,14 +1140,51 @@ impl CoherentIsingMachine {
         }
     }
 
-    /// Calculate performance metrics
+    /// Calculate performance metrics.
+    ///
+    /// `solution_quality` is computed relative to the run's own observed
+    /// energy history rather than a fixed constant: it measures how much of
+    /// the *possible* improvement (from the worst energy actually seen down
+    /// to a real, always-computable naive lower bound on the true ground
+    /// state) was captured by `best_energy`. The naive lower bound sums the
+    /// most negative possible contribution of every bias and coupling term
+    /// independently (`-sum(|h_i|) - sum(|J_ij|)`) -- a valid (if usually
+    /// loose) lower bound on any Ising ground-state energy, derived from
+    /// `problem` itself with no external ground-truth required. A run that
+    /// makes no progress at all scores near `0`; one that reaches (or beats,
+    /// in the degenerate case the bound is tight) the naive bound scores `1`.
     fn calculate_performance_metrics(
         &self,
+        problem: &IsingModel,
         best_energy: f64,
         convergence_time: f64,
     ) -> CimPerformanceMetrics {
-        // Solution quality (placeholder - would need known ground state)
-        let solution_quality = 1.0; // Placeholder
+        let naive_lower_bound: f64 = -problem
+            .biases()
+            .iter()
+            .map(|(_, bias)| bias.abs())
+            .sum::<f64>()
+            - problem
+                .couplings()
+                .iter()
+                .map(|c| c.strength.abs())
+                .sum::<f64>();
+
+        let worst_energy = self
+            .energy_history
+            .iter()
+            .copied()
+            .fold(f64::NEG_INFINITY, f64::max);
+
+        let solution_quality =
+            if !worst_energy.is_finite() || (worst_energy - naive_lower_bound).abs() < 1e-12 {
+                // No history recorded, or the bound coincides with the worst
+                // energy seen (degenerate/trivial Hamiltonian): no meaningful
+                // improvement range to measure against.
+                0.0
+            } else {
+                ((worst_energy - best_energy) / (worst_energy - naive_lower_bound)).clamp(0.0, 1.0)
+            };
 
         // Time to convergence
         let time_to_convergence = convergence_time / self.config.total_time;
@@ -1160,12 +1198,21 @@ impl CoherentIsingMachine {
             / self.oscillators.len() as f64;
         let power_efficiency = 1.0 / (1.0 + average_power);
 
+        // Noise resilience: real, derived from the run's own configured
+        // noise levels -- lower configured noise implies the run is more
+        // resilient to noise-induced degradation (there was less of it to
+        // begin with), rather than a fixed constant regardless of `self.config`.
+        let noise_level = self.config.noise_config.quantum_noise
+            + self.config.noise_config.phase_noise
+            + self.config.noise_config.amplitude_noise;
+        let noise_resilience = 1.0 / (1.0 + noise_level);
+
         CimPerformanceMetrics {
             solution_quality,
             time_to_convergence,
             phase_transitions: 0, // Would need to track phase transitions
             power_efficiency,
-            noise_resilience: 0.8, // Placeholder
+            noise_resilience,
         }
     }
 }
@@ -1265,5 +1312,65 @@ mod tests {
         assert_eq!(osc.amplitude.magnitude(), 1.0);
         assert_eq!(osc.gain, 1.5);
         assert!(osc.gain > osc.threshold);
+    }
+
+    #[test]
+    fn solution_quality_is_real_and_data_dependent_not_a_fixed_one() {
+        let config = create_standard_cim_config(2, 1.0);
+        let mut cim = CoherentIsingMachine::new(config).expect("CIM creation should succeed");
+
+        let mut problem = IsingModel::new(2);
+        problem.set_bias(0, 1.0).expect("set_bias should succeed");
+        problem.set_bias(1, -1.0).expect("set_bias should succeed");
+        problem
+            .set_coupling(0, 1, 0.5)
+            .expect("set_coupling should succeed");
+        // naive_lower_bound = -(|1.0| + |-1.0| + |0.5|) = -2.5
+
+        cim.energy_history = vec![-2.5, -2.0, -1.0, 0.5]; // worst = 0.5
+        let metrics = cim.calculate_performance_metrics(&problem, -2.0, 0.5);
+
+        // quality = (worst - best) / (worst - lower_bound) = (0.5 - (-2.0)) / (0.5 - (-2.5)) = 2.5/3.0
+        assert!(
+            (metrics.solution_quality - (2.5 / 3.0)).abs() < 1e-9,
+            "expected a real data-derived quality, got {}",
+            metrics.solution_quality
+        );
+
+        // A run that made no progress at all (best == worst) must score near 0,
+        // not the old fixed 1.0 that claimed "perfect" regardless of outcome.
+        cim.energy_history = vec![0.5, 0.5, 0.5];
+        let no_progress_metrics = cim.calculate_performance_metrics(&problem, 0.5, 0.5);
+        assert!(no_progress_metrics.solution_quality < 0.1);
+    }
+
+    #[test]
+    fn noise_resilience_reflects_the_real_configured_noise_level() {
+        let low_noise_config = create_low_noise_cim_config(2);
+        let low_noise_cim =
+            CoherentIsingMachine::new(low_noise_config).expect("CIM creation should succeed");
+
+        let mut high_noise_config = create_standard_cim_config(2, 1.0);
+        high_noise_config.noise_config = NoiseConfig {
+            quantum_noise: 0.5,
+            phase_noise: 0.5,
+            amplitude_noise: 0.5,
+            temperature: 1.0,
+            decoherence_rate: 0.1,
+        };
+        let high_noise_cim =
+            CoherentIsingMachine::new(high_noise_config).expect("CIM creation should succeed");
+
+        let problem = IsingModel::new(2);
+        let low = low_noise_cim.calculate_performance_metrics(&problem, 0.0, 0.5);
+        let high = high_noise_cim.calculate_performance_metrics(&problem, 0.0, 0.5);
+
+        assert!(
+            low.noise_resilience > high.noise_resilience,
+            "a lower-noise configuration must score higher noise resilience than a higher-noise one \
+             (low={}, high={})",
+            low.noise_resilience,
+            high.noise_resilience
+        );
     }
 }

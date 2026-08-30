@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 /// Actions the RL agent can take to optimize circuits
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum OptimizationAction {
     /// Merge two consecutive single-qubit gates
     MergeSingleQubitGates { gate_index: usize },
@@ -378,17 +378,47 @@ impl QLearningOptimizer {
             .collect()
     }
 
-    /// Save Q-table to file
-    pub const fn save_q_table(&self, path: &str) -> QuantRS2Result<()> {
-        // In a real implementation, this would serialize the Q-table
-        // For now, we'll just return Ok
+    /// Save the learned Q-table to `path` as JSON.
+    ///
+    /// The Q-table is `HashMap<(Vec<u8>, OptimizationAction), f64>`. JSON object keys must
+    /// be strings, so entries are serialized as a flat list of
+    /// `((state_key, action), q_value)` tuples. Returns an honest error on serialization
+    /// or I/O failure rather than silently dropping the data.
+    pub fn save_q_table(&self, path: &str) -> QuantRS2Result<()> {
+        let q_table = self.q_table.read().unwrap_or_else(|e| e.into_inner());
+        let entries: Vec<((Vec<u8>, OptimizationAction), f64)> = q_table
+            .iter()
+            .map(|((state, action), value)| ((state.clone(), *action), *value))
+            .collect();
+        drop(q_table);
+
+        let json = serde_json::to_string(&entries).map_err(|e| {
+            QuantRS2Error::RuntimeError(format!("failed to serialize Q-table: {e}"))
+        })?;
+        std::fs::write(path, json).map_err(|e| {
+            QuantRS2Error::RuntimeError(format!("failed to write Q-table to '{path}': {e}"))
+        })?;
         Ok(())
     }
 
-    /// Load Q-table from file
-    pub const fn load_q_table(&mut self, path: &str) -> QuantRS2Result<()> {
-        // In a real implementation, this would deserialize the Q-table
-        // For now, we'll just return Ok
+    /// Load a Q-table from `path`, replacing the current table.
+    ///
+    /// Reads the JSON written by [`Self::save_q_table`]. Returns an honest error on I/O or
+    /// deserialization failure.
+    pub fn load_q_table(&mut self, path: &str) -> QuantRS2Result<()> {
+        let json = std::fs::read_to_string(path).map_err(|e| {
+            QuantRS2Error::RuntimeError(format!("failed to read Q-table from '{path}': {e}"))
+        })?;
+        let entries: Vec<((Vec<u8>, OptimizationAction), f64)> = serde_json::from_str(&json)
+            .map_err(|e| {
+                QuantRS2Error::RuntimeError(format!("failed to deserialize Q-table: {e}"))
+            })?;
+
+        let mut q_table = self.q_table.write().unwrap_or_else(|e| e.into_inner());
+        q_table.clear();
+        for ((state, action), value) in entries {
+            q_table.insert((state, action), value);
+        }
         Ok(())
     }
 }
@@ -575,5 +605,92 @@ mod tests {
         assert_eq!(stats.total_episodes, 2);
         assert!(stats.average_depth_improvement > 0.0);
         assert!(stats.average_gate_reduction > 0.0);
+    }
+
+    #[test]
+    fn test_q_table_save_load_roundtrip() {
+        let mut optimizer = QLearningOptimizer::new(0.1, 0.95, 0.3);
+
+        // Populate the Q-table with a few real updates.
+        let state = CircuitState {
+            depth: 10,
+            gate_count: 50,
+            two_qubit_count: 15,
+            fidelity: 0.95,
+            qubit_count: 5,
+            connectivity_density: 0.6,
+            entanglement_measure: 0.8,
+        };
+        let next_state = CircuitState {
+            depth: 9,
+            gate_count: 48,
+            two_qubit_count: 15,
+            fidelity: 0.95,
+            qubit_count: 5,
+            connectivity_density: 0.6,
+            entanglement_measure: 0.8,
+        };
+        optimizer.update_q_value(
+            &state,
+            OptimizationAction::MergeSingleQubitGates { gate_index: 0 },
+            5.0,
+            &next_state,
+            &[],
+        );
+        optimizer.update_q_value(
+            &state,
+            OptimizationAction::CancelInversePairs { gate_index: 2 },
+            -1.5,
+            &next_state,
+            &[],
+        );
+
+        let original: HashMap<(Vec<u8>, OptimizationAction), f64> = optimizer
+            .q_table
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        assert!(!original.is_empty());
+
+        // Save to a temp file.
+        let mut path = std::env::temp_dir();
+        path.push(format!("quantrs_qtable_test_{}.json", std::process::id()));
+        let path_str = path.to_string_lossy().to_string();
+        optimizer
+            .save_q_table(&path_str)
+            .expect("saving Q-table should succeed");
+
+        // Load into a fresh optimizer.
+        let mut loaded_optimizer = QLearningOptimizer::new(0.1, 0.95, 0.3);
+        loaded_optimizer
+            .load_q_table(&path_str)
+            .expect("loading Q-table should succeed");
+
+        let loaded: HashMap<(Vec<u8>, OptimizationAction), f64> = loaded_optimizer
+            .q_table
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+
+        assert_eq!(loaded.len(), original.len());
+        for (key, value) in &original {
+            let loaded_value = loaded
+                .get(key)
+                .expect("loaded Q-table must contain every original key");
+            assert!((loaded_value - value).abs() < 1e-12);
+        }
+
+        // Clean up the temp file.
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_load_q_table_missing_file_errors() {
+        let mut optimizer = QLearningOptimizer::new(0.1, 0.95, 0.3);
+        let mut path = std::env::temp_dir();
+        path.push("quantrs_qtable_definitely_missing_xyz.json");
+        let _ = std::fs::remove_file(&path);
+        let result = optimizer.load_q_table(&path.to_string_lossy());
+        assert!(result.is_err(), "loading a missing file must be an error");
     }
 }

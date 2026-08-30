@@ -23,7 +23,7 @@ use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::time::{Duration, Instant};
 
 /// MPI-based distributed quantum simulator
@@ -239,21 +239,91 @@ pub enum MPIBackend {
 }
 
 /// Simulated MPI backend for testing
+///
+/// Unlike the TCP/Native backends (which need genuinely separate OS
+/// processes/nodes to talk to), this backend performs *real* in-process
+/// message passing between multiple [`MPICommunicator`] instances that
+/// share the same [`SimulatedMPIState`] (via a cloned `Arc`), each
+/// representing one rank and typically driven from its own thread. This
+/// makes it possible to exercise genuine multi-rank collective semantics
+/// (point-to-point exchange, gather, broadcast, allreduce, barrier)
+/// entirely locally, without any real network.
 #[derive(Debug, Clone)]
 pub struct SimulatedMPIBackend {
-    /// Shared state for all "processes"
-    shared_state: Arc<RwLock<SimulatedMPIState>>,
+    /// Shared state for all "processes", guarded by a condition variable so
+    /// that ranks can rendezvous with each other.
+    shared_state: Arc<(Mutex<SimulatedMPIState>, Condvar)>,
 }
 
-/// Shared state for simulated MPI
-#[derive(Debug, Default)]
+/// One in-progress (or just-completed) collective round.
+///
+/// Uses the classic "sense reversing" barrier pattern: ranks arrive and
+/// stash their payload under the round's current `generation`; once
+/// `size` ranks have arrived the round is closed out (`completed_*` is
+/// populated and `generation` is bumped), so any rank that arrives after
+/// that instant starts a fresh round instead of corrupting the old one.
+#[derive(Default)]
+struct CollectiveRound {
+    /// Generation number currently accepting arrivals.
+    generation: usize,
+    /// Payloads contributed by ranks that have arrived for `generation`.
+    payloads: BTreeMap<usize, Box<dyn std::any::Any + Send>>,
+    /// Generation number of the most recently completed round.
+    completed_generation: usize,
+    /// Payloads collected once `completed_generation` finished, kept
+    /// around (in rank order) so every arriving rank can read the result.
+    completed_payloads: BTreeMap<usize, Box<dyn std::any::Any + Send>>,
+}
+
+/// Shared state for simulated MPI: a real (in-process) mailbox for
+/// point-to-point exchange plus a set of named collective rounds.
+#[derive(Default)]
 pub struct SimulatedMPIState {
-    /// Message buffers for each rank
-    message_buffers: HashMap<usize, Vec<Vec<u8>>>,
-    /// Barrier counter
-    barrier_count: usize,
-    /// Collective operation results
-    collective_results: HashMap<String, Vec<u8>>,
+    /// Point-to-point mailbox keyed by `(from_rank, to_rank)`.
+    mailbox: HashMap<(usize, usize), Vec<u8>>,
+    /// Named collective rounds (e.g. `"gather:0"`, `"broadcast:0"`,
+    /// `"allreduce"`, `"barrier"`).
+    rounds: HashMap<String, CollectiveRound>,
+}
+
+impl std::fmt::Debug for SimulatedMPIState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SimulatedMPIState")
+            .field("pending_messages", &self.mailbox.len())
+            .field("active_rounds", &self.rounds.len())
+            .finish()
+    }
+}
+
+impl SimulatedMPIState {
+    /// Register `rank`'s arrival (with `payload`) at the named collective
+    /// round, closing the round out if this was the last of `size` ranks.
+    /// Returns the generation number this arrival belongs to.
+    fn arrive(
+        &mut self,
+        key: &str,
+        rank: usize,
+        size: usize,
+        payload: Box<dyn std::any::Any + Send>,
+    ) -> usize {
+        let round = self.rounds.entry(key.to_string()).or_default();
+        round.payloads.insert(rank, payload);
+        let my_generation = round.generation;
+        if round.payloads.len() >= size {
+            let payloads = std::mem::take(&mut round.payloads);
+            round.completed_generation = my_generation;
+            round.completed_payloads = payloads;
+            round.generation += 1;
+        }
+        my_generation
+    }
+
+    /// True once the round `generation` for `key` has fully completed.
+    fn round_ready(&self, key: &str, generation: usize) -> bool {
+        self.rounds.get(key).is_some_and(|round| {
+            round.completed_generation == generation && round.generation == generation + 1
+        })
+    }
 }
 
 /// TCP-based MPI backend
@@ -789,41 +859,100 @@ impl MPIQuantumSimulator {
     }
 
     /// Apply fully distributed gate (both qubits remote)
+    ///
+    /// Both `control` and `target` live in the partition-selecting (high)
+    /// bits of the global amplitude index: every amplitude *this* rank
+    /// holds shares the same fixed (control, target) bit values, which are
+    /// encoded directly in this rank's own MPI rank index. To apply the
+    /// full 4x4 `gate_matrix` we must combine our own amplitudes with the
+    /// amplitudes held by the three peer ranks that own the other three
+    /// (control, target) combinations -- real point-to-point exchange with
+    /// each of them, then a genuine matrix-vector product per index using
+    /// this rank's row of `gate_matrix`.
     fn apply_full_distributed_gate(
         &self,
         control: usize,
         target: usize,
         gate_matrix: &Array2<Complex64>,
     ) -> QuantRS2Result<()> {
-        // This requires coordination with multiple partners
-        // Simplified implementation - exchange with all relevant partners
         let local_qubits_len = self.gate_handler.gate_classifier.local_qubits.len();
 
-        let control_partition = control - local_qubits_len;
-        let target_partition = target - local_qubits_len;
+        let control_bit = control - local_qubits_len;
+        let target_bit = target - local_qubits_len;
+        if control_bit == target_bit {
+            return Err(QuantRS2Error::InvalidInput(
+                "apply_full_distributed_gate: control and target map to the same partition bit"
+                    .to_string(),
+            ));
+        }
 
-        // Exchange with control partner
-        let control_partner = self.communicator.rank ^ (1 << control_partition);
-        self.exchange_boundary_data(control_partner)?;
+        let rank = self.communicator.rank;
+        let own_control_val = (rank >> control_bit) & 1;
+        let own_target_val = (rank >> target_bit) & 1;
 
-        // Exchange with target partner
-        let target_partner = self.communicator.rank ^ (1 << target_partition);
-        self.exchange_boundary_data(target_partner)?;
+        let control_partner = rank ^ (1 << control_bit);
+        let target_partner = rank ^ (1 << target_bit);
+        let diag_partner = rank ^ (1 << control_bit) ^ (1 << target_bit);
 
-        // Apply gate (simplified - would need full 4-way exchange)
+        // Real exchange (not a placeholder): send our whole local partition
+        // to each peer and receive theirs in return.
+        let local_amplitudes: Vec<Complex64> = {
+            let state = self.local_state.read().map_err(|_| {
+                QuantRS2Error::InvalidInput("Failed to acquire state lock".to_string())
+            })?;
+            state.amplitudes.iter().copied().collect()
+        };
+
+        let control_flipped = self
+            .communicator
+            .sendrecv(&local_amplitudes, control_partner)?;
+        let target_flipped = self
+            .communicator
+            .sendrecv(&local_amplitudes, target_partner)?;
+        let both_flipped = self
+            .communicator
+            .sendrecv(&local_amplitudes, diag_partner)?;
+
+        // Slot the four peers' data by their true (control, target) bit
+        // values so we index `gate_matrix` the same way
+        // `apply_local_two_qubit_gate` does (row/col = 2*control + target),
+        // regardless of which combination this rank happens to own.
+        let mut amps_by_bits: [Option<&[Complex64]>; 4] = [None; 4];
+        amps_by_bits[(own_control_val << 1) | own_target_val] = Some(local_amplitudes.as_slice());
+        amps_by_bits[((1 - own_control_val) << 1) | own_target_val] =
+            Some(control_flipped.as_slice());
+        amps_by_bits[(own_control_val << 1) | (1 - own_target_val)] =
+            Some(target_flipped.as_slice());
+        amps_by_bits[((1 - own_control_val) << 1) | (1 - own_target_val)] =
+            Some(both_flipped.as_slice());
+
+        let own_row = (own_control_val << 1) | own_target_val;
+
         let mut state = self
             .local_state
             .write()
             .map_err(|_| QuantRS2Error::InvalidInput("Failed to acquire state lock".to_string()))?;
 
-        // Apply identity for now - full implementation would combine all exchanges
-        let _ = gate_matrix; // Use the gate matrix in full implementation
+        let n = state.amplitudes.len();
+        for i in 0..n {
+            let mut acc = Complex64::new(0.0, 0.0);
+            for (col, amps) in amps_by_bits.iter().enumerate() {
+                let amps = amps.ok_or_else(|| {
+                    QuantRS2Error::InvalidInput(
+                        "apply_full_distributed_gate: missing peer amplitude data".to_string(),
+                    )
+                })?;
+                let value = amps.get(i).copied().unwrap_or(Complex64::new(0.0, 0.0));
+                acc += gate_matrix[[own_row, col]] * value;
+            }
+            state.amplitudes[i] = acc;
+        }
 
         Ok(())
     }
 
     /// Perform a global barrier synchronization
-    pub const fn barrier(&self) -> QuantRS2Result<()> {
+    pub fn barrier(&self) -> QuantRS2Result<()> {
         self.communicator.barrier()
     }
 
@@ -916,8 +1045,8 @@ impl MPIQuantumSimulator {
 impl MPICommunicator {
     /// Create a new MPI communicator
     pub fn new() -> QuantRS2Result<Self> {
-        // Default to simulated MPI for now
-        let shared_state = Arc::new(RwLock::new(SimulatedMPIState::default()));
+        // Default to a single-rank simulated backend.
+        let shared_state = Arc::new((Mutex::new(SimulatedMPIState::default()), Condvar::new()));
         let backend = MPIBackend::Simulated(SimulatedMPIBackend { shared_state });
 
         Ok(Self {
@@ -953,102 +1082,237 @@ impl MPICommunicator {
         self.size
     }
 
-    /// Barrier synchronization
-    pub const fn barrier(&self) -> QuantRS2Result<()> {
+    /// Honest error for backends that require real external
+    /// processes/hardware (a live TCP peer, or a linked native MPI
+    /// runtime) that this single-process build cannot provide.
+    fn unsupported_backend(backend_name: &str, op: &str) -> QuantRS2Error {
+        QuantRS2Error::UnsupportedOperation(format!(
+            "{op}: the {backend_name} MPI backend requires a real connection to peer \
+             process(es)/node(s), which is not available in this build; use \
+             MPIBackend::Simulated for in-process multi-rank testing, or link a real \
+             transport for {backend_name}"
+        ))
+    }
+
+    fn lock_poisoned() -> QuantRS2Error {
+        QuantRS2Error::InvalidInput("MPI simulated backend lock was poisoned".to_string())
+    }
+
+    /// Barrier synchronization: every rank sharing this communicator's
+    /// `SimulatedMPIState` must call this before any of them proceeds.
+    pub fn barrier(&self) -> QuantRS2Result<()> {
         match &self.backend {
-            MPIBackend::Simulated(_) => {
-                // Simulated barrier is a no-op in single process
-                Ok(())
+            MPIBackend::Simulated(sim) => {
+                let (lock, cvar) = &*sim.shared_state;
+                let mut state = lock.lock().map_err(|_| Self::lock_poisoned())?;
+                let my_generation = state.arrive("barrier", self.rank, self.size, Box::new(()));
+                cvar.notify_all();
+                loop {
+                    if state.round_ready("barrier", my_generation) {
+                        return Ok(());
+                    }
+                    state = cvar.wait(state).map_err(|_| Self::lock_poisoned())?;
+                }
             }
-            MPIBackend::TCP(_) => {
-                // TCP barrier would need implementation
-                Ok(())
-            }
+            MPIBackend::TCP(_) => Err(Self::unsupported_backend("TCP", "barrier")),
             #[cfg(feature = "mpi")]
-            MPIBackend::Native(_) => {
-                // Native MPI barrier
-                Ok(())
-            }
+            MPIBackend::Native(_) => Err(Self::unsupported_backend("Native", "barrier")),
         }
     }
 
-    /// Send and receive data with a partner
+    /// Send and receive data with a partner rank (real rendezvous exchange
+    /// for the Simulated backend).
     pub fn sendrecv(
         &self,
         send_data: &[Complex64],
         partner: usize,
     ) -> QuantRS2Result<Vec<Complex64>> {
         match &self.backend {
-            MPIBackend::Simulated(_) => {
-                // In simulation, just return copy of send data
-                Ok(send_data.to_vec())
+            MPIBackend::Simulated(sim) => {
+                let (lock, cvar) = &*sim.shared_state;
+                let mut bytes = Vec::with_capacity(send_data.len() * 16);
+                for c in send_data {
+                    bytes.extend_from_slice(&c.re.to_le_bytes());
+                    bytes.extend_from_slice(&c.im.to_le_bytes());
+                }
+                {
+                    let mut state = lock.lock().map_err(|_| Self::lock_poisoned())?;
+                    state.mailbox.insert((self.rank, partner), bytes);
+                }
+                cvar.notify_all();
+
+                let mut state = lock.lock().map_err(|_| Self::lock_poisoned())?;
+                let recv_bytes = loop {
+                    if let Some(bytes) = state.mailbox.remove(&(partner, self.rank)) {
+                        break bytes;
+                    }
+                    state = cvar.wait(state).map_err(|_| Self::lock_poisoned())?;
+                };
+                drop(state);
+
+                let recv = recv_bytes
+                    .chunks_exact(16)
+                    .map(|chunk| {
+                        let re = f64::from_le_bytes(chunk[0..8].try_into().unwrap_or([0u8; 8]));
+                        let im = f64::from_le_bytes(chunk[8..16].try_into().unwrap_or([0u8; 8]));
+                        Complex64::new(re, im)
+                    })
+                    .collect();
+                Ok(recv)
             }
-            MPIBackend::TCP(_) => {
-                // TCP sendrecv would need implementation
-                Ok(send_data.to_vec())
-            }
+            MPIBackend::TCP(_) => Err(Self::unsupported_backend("TCP", "sendrecv")),
             #[cfg(feature = "mpi")]
-            MPIBackend::Native(_) => {
-                // Native MPI sendrecv
-                Ok(send_data.to_vec())
-            }
+            MPIBackend::Native(_) => Err(Self::unsupported_backend("Native", "sendrecv")),
         }
     }
 
-    /// Gather data from all ranks to root
-    pub fn gather<T: Clone>(&self, local_data: &[T], root: usize) -> QuantRS2Result<Vec<T>> {
+    /// Gather data from all ranks to `root` (root receives every rank's
+    /// contribution concatenated in rank order; other ranks get their own
+    /// data back, matching real `MPI_Gather` semantics).
+    pub fn gather<T: Clone + Send + 'static>(
+        &self,
+        local_data: &[T],
+        root: usize,
+    ) -> QuantRS2Result<Vec<T>> {
         match &self.backend {
-            MPIBackend::Simulated(_) => {
-                // In simulation, just return local data
-                Ok(local_data.to_vec())
+            MPIBackend::Simulated(sim) => {
+                let (lock, cvar) = &*sim.shared_state;
+                let key = format!("gather:{root}");
+                let payload: Box<dyn std::any::Any + Send> = Box::new(local_data.to_vec());
+                let mut state = lock.lock().map_err(|_| Self::lock_poisoned())?;
+                let my_generation = state.arrive(&key, self.rank, self.size, payload);
+                cvar.notify_all();
+                loop {
+                    if state.round_ready(&key, my_generation) {
+                        break;
+                    }
+                    state = cvar.wait(state).map_err(|_| Self::lock_poisoned())?;
+                }
+
+                if self.rank != root {
+                    return Ok(local_data.to_vec());
+                }
+
+                let round = state.rounds.get(&key).ok_or_else(|| {
+                    QuantRS2Error::InvalidInput(
+                        "gather: collective round missing after completion".to_string(),
+                    )
+                })?;
+                let mut result = Vec::new();
+                for boxed in round.completed_payloads.values() {
+                    let chunk = boxed.downcast_ref::<Vec<T>>().ok_or_else(|| {
+                        QuantRS2Error::InvalidInput(
+                            "gather: mismatched payload type across ranks".to_string(),
+                        )
+                    })?;
+                    result.extend(chunk.iter().cloned());
+                }
+                Ok(result)
             }
-            MPIBackend::TCP(_) => {
-                // TCP gather would need implementation
-                Ok(local_data.to_vec())
-            }
+            MPIBackend::TCP(_) => Err(Self::unsupported_backend("TCP", "gather")),
             #[cfg(feature = "mpi")]
-            MPIBackend::Native(_) => {
-                // Native MPI gather
-                Ok(local_data.to_vec())
-            }
+            MPIBackend::Native(_) => Err(Self::unsupported_backend("Native", "gather")),
         }
     }
 
-    /// Broadcast data from root to all ranks
-    pub fn broadcast<T: Clone>(&self, data: &[T], root: usize) -> QuantRS2Result<Vec<T>> {
+    /// Broadcast data from `root` to all ranks.
+    pub fn broadcast<T: Clone + Send + 'static>(
+        &self,
+        data: &[T],
+        root: usize,
+    ) -> QuantRS2Result<Vec<T>> {
         match &self.backend {
-            MPIBackend::Simulated(_) => {
-                // In simulation, just return data
-                Ok(data.to_vec())
+            MPIBackend::Simulated(sim) => {
+                let (lock, cvar) = &*sim.shared_state;
+                let key = format!("broadcast:{root}");
+                let payload: Box<dyn std::any::Any + Send> = Box::new(data.to_vec());
+                let mut state = lock.lock().map_err(|_| Self::lock_poisoned())?;
+                let my_generation = state.arrive(&key, self.rank, self.size, payload);
+                cvar.notify_all();
+                loop {
+                    if state.round_ready(&key, my_generation) {
+                        break;
+                    }
+                    state = cvar.wait(state).map_err(|_| Self::lock_poisoned())?;
+                }
+
+                let round = state.rounds.get(&key).ok_or_else(|| {
+                    QuantRS2Error::InvalidInput(
+                        "broadcast: collective round missing after completion".to_string(),
+                    )
+                })?;
+                let boxed = round.completed_payloads.get(&root).ok_or_else(|| {
+                    QuantRS2Error::InvalidInput(format!(
+                        "broadcast: root rank {root} did not participate in this round"
+                    ))
+                })?;
+                let result = boxed
+                    .downcast_ref::<Vec<T>>()
+                    .ok_or_else(|| {
+                        QuantRS2Error::InvalidInput(
+                            "broadcast: mismatched payload type across ranks".to_string(),
+                        )
+                    })?
+                    .clone();
+                Ok(result)
             }
-            MPIBackend::TCP(_) => {
-                // TCP broadcast would need implementation
-                Ok(data.to_vec())
-            }
+            MPIBackend::TCP(_) => Err(Self::unsupported_backend("TCP", "broadcast")),
             #[cfg(feature = "mpi")]
-            MPIBackend::Native(_) => {
-                // Native MPI broadcast
-                Ok(data.to_vec())
-            }
+            MPIBackend::Native(_) => Err(Self::unsupported_backend("Native", "broadcast")),
         }
     }
 
-    /// Allreduce operation
+    /// Allreduce operation: elementwise-reduce `local_data` across every
+    /// rank and return the reduced vector to all of them.
     pub fn allreduce(&self, local_data: &[f64], op: ReduceOp) -> QuantRS2Result<Vec<f64>> {
         match &self.backend {
-            MPIBackend::Simulated(_) => {
-                // In simulation, just return local data
-                Ok(local_data.to_vec())
+            MPIBackend::Simulated(sim) => {
+                let (lock, cvar) = &*sim.shared_state;
+                let key = "allreduce".to_string();
+                let payload: Box<dyn std::any::Any + Send> = Box::new(local_data.to_vec());
+                let mut state = lock.lock().map_err(|_| Self::lock_poisoned())?;
+                let my_generation = state.arrive(&key, self.rank, self.size, payload);
+                cvar.notify_all();
+                loop {
+                    if state.round_ready(&key, my_generation) {
+                        break;
+                    }
+                    state = cvar.wait(state).map_err(|_| Self::lock_poisoned())?;
+                }
+
+                let round = state.rounds.get(&key).ok_or_else(|| {
+                    QuantRS2Error::InvalidInput(
+                        "allreduce: collective round missing after completion".to_string(),
+                    )
+                })?;
+                let mut reduced: Option<Vec<f64>> = None;
+                for boxed in round.completed_payloads.values() {
+                    let v = boxed.downcast_ref::<Vec<f64>>().ok_or_else(|| {
+                        QuantRS2Error::InvalidInput(
+                            "allreduce: mismatched payload type across ranks".to_string(),
+                        )
+                    })?;
+                    reduced = Some(match reduced {
+                        None => v.clone(),
+                        Some(acc) => acc
+                            .iter()
+                            .zip(v.iter())
+                            .map(|(a, b)| match op {
+                                ReduceOp::Sum => a + b,
+                                ReduceOp::Max => a.max(*b),
+                                ReduceOp::Min => a.min(*b),
+                                ReduceOp::Prod => a * b,
+                            })
+                            .collect(),
+                    });
+                }
+                reduced.ok_or_else(|| {
+                    QuantRS2Error::InvalidInput("allreduce: empty collective round".to_string())
+                })
             }
-            MPIBackend::TCP(_) => {
-                // TCP allreduce would need implementation
-                Ok(local_data.to_vec())
-            }
+            MPIBackend::TCP(_) => Err(Self::unsupported_backend("TCP", "allreduce")),
             #[cfg(feature = "mpi")]
-            MPIBackend::Native(_) => {
-                // Native MPI allreduce
-                Ok(local_data.to_vec())
-            }
+            MPIBackend::Native(_) => Err(Self::unsupported_backend("Native", "allreduce")),
         }
     }
 }
@@ -1284,5 +1548,225 @@ mod tests {
 
         let result = simulator.apply_two_qubit_gate(0, 1, &cnot_gate);
         assert!(result.is_ok());
+    }
+
+    /// Regression test for the P0 finding: `MPICommunicator::sendrecv` used
+    /// to just echo the caller's own data back instead of exchanging real
+    /// data between ranks. With the fixed Simulated backend, two distinct
+    /// `MPICommunicator`s sharing the same `SimulatedMPIState` must
+    /// actually swap their payloads.
+    #[test]
+    fn test_simulated_backend_sendrecv_exchanges_real_data() {
+        let shared = Arc::new((Mutex::new(SimulatedMPIState::default()), Condvar::new()));
+        let comm0 = MPICommunicator::with_config(
+            0,
+            2,
+            MPIBackend::Simulated(SimulatedMPIBackend {
+                shared_state: shared.clone(),
+            }),
+        );
+        let comm1 = MPICommunicator::with_config(
+            1,
+            2,
+            MPIBackend::Simulated(SimulatedMPIBackend {
+                shared_state: shared.clone(),
+            }),
+        );
+
+        let handle0 = std::thread::spawn(move || {
+            comm0.sendrecv(&[Complex64::new(1.0, 2.0), Complex64::new(3.0, 4.0)], 1)
+        });
+        let handle1 = std::thread::spawn(move || {
+            comm1.sendrecv(&[Complex64::new(5.0, 6.0), Complex64::new(7.0, 8.0)], 0)
+        });
+
+        let recv0 = handle0
+            .join()
+            .expect("rank0 thread panicked")
+            .expect("rank0 sendrecv failed");
+        let recv1 = handle1
+            .join()
+            .expect("rank1 thread panicked")
+            .expect("rank1 sendrecv failed");
+
+        // Rank 0 must receive rank 1's data, and vice versa -- not its own.
+        assert_eq!(
+            recv0,
+            vec![Complex64::new(5.0, 6.0), Complex64::new(7.0, 8.0)]
+        );
+        assert_eq!(
+            recv1,
+            vec![Complex64::new(1.0, 2.0), Complex64::new(3.0, 4.0)]
+        );
+    }
+
+    /// Regression test for the P0 finding: `gather`/`broadcast`/`allreduce`
+    /// used to be no-ops that returned the caller's own local data. With
+    /// the fixed Simulated backend, root must receive every rank's
+    /// contribution (gather), every rank must receive root's data
+    /// (broadcast), and every rank must receive the true elementwise sum
+    /// (allreduce) -- computed from data it never had locally.
+    #[test]
+    fn test_simulated_backend_collectives_are_real() {
+        let shared = Arc::new((Mutex::new(SimulatedMPIState::default()), Condvar::new()));
+        let num_ranks = 3usize;
+        let mut handles = Vec::new();
+        for rank in 0..num_ranks {
+            let comm = MPICommunicator::with_config(
+                rank,
+                num_ranks,
+                MPIBackend::Simulated(SimulatedMPIBackend {
+                    shared_state: shared.clone(),
+                }),
+            );
+            handles.push(std::thread::spawn(move || {
+                let gathered = comm
+                    .gather(&[rank as f64], 0)
+                    .expect("gather should succeed");
+                let broadcasted = comm
+                    .broadcast(if rank == 0 { &[42i64] } else { &[] }, 0)
+                    .expect("broadcast should succeed");
+                let reduced = comm
+                    .allreduce(&[(rank + 1) as f64], ReduceOp::Sum)
+                    .expect("allreduce should succeed");
+                (rank, gathered, broadcasted, reduced)
+            }));
+        }
+
+        for handle in handles {
+            let (rank, gathered, broadcasted, reduced) = handle.join().expect("thread panicked");
+            if rank == 0 {
+                assert_eq!(gathered, vec![0.0, 1.0, 2.0]);
+            } else {
+                // Non-root ranks get their own contribution back, matching
+                // real MPI_Gather semantics (only root has the full result).
+                assert_eq!(gathered, vec![rank as f64]);
+            }
+            assert_eq!(broadcasted, vec![42i64]);
+            // Sum of (1, 2, 3) across the three ranks.
+            assert_eq!(reduced, vec![6.0]);
+        }
+    }
+
+    /// Regression test for the P0 finding: `apply_full_distributed_gate`
+    /// discarded the gate matrix entirely and applied identity whenever
+    /// both qubits of a two-qubit gate lived on remote ranks. This builds
+    /// four ranks (so a 3-qubit state has two genuinely remote qubits),
+    /// applies a real CNOT(control=qubit1, target=qubit2) across ranks,
+    /// and checks the amplitude actually moved to the physically correct
+    /// basis state instead of staying put.
+    #[test]
+    fn test_full_distributed_two_qubit_gate_applies_real_math() {
+        let total_qubits = 3usize;
+        let num_ranks = 4usize;
+        let shared = Arc::new((Mutex::new(SimulatedMPIState::default()), Condvar::new()));
+
+        // Basis index convention: index = qubit0 + 2*qubit1 + 4*qubit2.
+        // Start in |q2=0, q1=1, q0=0> = index 2.
+        let initial_index = 2usize;
+        // CNOT(control=qubit1, target=qubit2) in (control,target) row-major
+        // order (row/col = 2*control_val + target_val).
+        let cnot = Array2::from_shape_vec(
+            (4, 4),
+            vec![
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+            ],
+        )
+        .expect("valid 4x4 CNOT shape");
+
+        let local_size = (1usize << total_qubits) / num_ranks;
+        let mut handles = Vec::new();
+        for rank in 0..num_ranks {
+            let mut amplitudes = Array1::zeros(local_size);
+            let global_offset = rank * local_size;
+            if initial_index >= global_offset && initial_index < global_offset + local_size {
+                amplitudes[initial_index - global_offset] = Complex64::new(1.0, 0.0);
+            }
+
+            let local_state = LocalQuantumState {
+                amplitudes,
+                global_offset,
+                local_qubits: MPIQuantumSimulator::calculate_local_qubits(
+                    total_qubits,
+                    rank,
+                    num_ranks,
+                ),
+                ghost_cells: GhostCells::default(),
+            };
+
+            let communicator = MPICommunicator::with_config(
+                rank,
+                num_ranks,
+                MPIBackend::Simulated(SimulatedMPIBackend {
+                    shared_state: shared.clone(),
+                }),
+            );
+            let gate_handler = GateDistributionHandler {
+                routing_table: Arc::new(RwLock::new(HashMap::new())),
+                gate_classifier: GateClassifier {
+                    local_qubits: local_state.local_qubits.clone(),
+                },
+            };
+            let mut simulator = MPIQuantumSimulator {
+                communicator,
+                local_state: Arc::new(RwLock::new(local_state)),
+                config: MPISimulatorConfig {
+                    total_qubits,
+                    ..Default::default()
+                },
+                stats: Arc::new(Mutex::new(MPISimulatorStats::default())),
+                sync_manager: StateSynchronizationManager {
+                    strategy: SyncStrategy::Adaptive,
+                    pending: Arc::new(Mutex::new(Vec::new())),
+                },
+                gate_handler,
+            };
+
+            let cnot = cnot.clone();
+            handles.push(std::thread::spawn(move || {
+                simulator
+                    .apply_two_qubit_gate(1, 2, &cnot)
+                    .expect("apply_two_qubit_gate should succeed");
+                (rank, simulator.get_local_state().expect("get_local_state"))
+            }));
+        }
+
+        // Expected final basis state: control qubit1=1 flips target
+        // qubit2 0 -> 1, giving |q2=1, q1=1, q0=0> = index 6.
+        let expected_index = 6usize;
+
+        for handle in handles {
+            let (rank, state) = handle.join().expect("rank thread panicked");
+            let global_offset = rank * local_size;
+            for (i, amp) in state.iter().enumerate() {
+                let global_i = global_offset + i;
+                if global_i == expected_index {
+                    assert!(
+                        (amp.norm() - 1.0).abs() < 1e-10,
+                        "expected amplitude 1.0 at global index {expected_index}, got {amp:?} on rank {rank}"
+                    );
+                } else {
+                    assert!(
+                        amp.norm() < 1e-10,
+                        "expected zero amplitude at global index {global_i}, got {amp:?} on rank {rank}"
+                    );
+                }
+            }
+        }
     }
 }

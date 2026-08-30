@@ -387,11 +387,9 @@ impl QMLTrainer {
                 learning_rate: _,
                 regularization,
             } => {
-                // Compute quantum Fisher information
-                let state = Array1::zeros(1 << self.circuit.config.num_qubits);
-                let fisher = quantum_fisher_information(&self.circuit, &state)?;
-
-                // Compute natural gradient
+                // Compute the quantum Fisher information from the circuit's
+                // current parameterized state, then the natural gradient.
+                let fisher = quantum_fisher_information(&mut self.circuit)?;
                 natural_gradient(gradients, &fisher, *regularization)?
             }
 

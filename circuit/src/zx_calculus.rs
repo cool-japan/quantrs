@@ -269,11 +269,25 @@ impl ZXDiagram {
         changed
     }
 
-    /// Apply pi-commutation rule
-    /// A spider with phase π can pass through Hadamard gates
-    pub const fn pi_commutation(&mut self) -> bool {
-        // Implementation would involve complex graph rewriting
-        // For now, return false as this is a placeholder
+    /// π-commutation (Pauli-push) rule: **not currently applied**.
+    ///
+    /// The π-commutation identity `Z(α)·X(π) = X(π)·Z(-α)` only preserves the
+    /// diagram's semantics if the π-spider is *relocated* to the other side of
+    /// the neighbouring spider — a graph edge-surgery, not a local phase tweak.
+    /// A correct, semantics-preserving implementation requires that relocation
+    /// (and, in the general entangled case, gflow-aware reasoning), which is not
+    /// yet implemented here.
+    ///
+    /// This method therefore deliberately performs **no rewrite** and returns
+    /// `false` (the honest "nothing changed" signal): it never reports a
+    /// simplification it did not make, and the other rules
+    /// ([`spider_fusion`](Self::spider_fusion),
+    /// [`identity_removal`](Self::identity_removal),
+    /// [`hadamard_cancellation`](Self::hadamard_cancellation)) already cover the
+    /// reductions that are sound on the diagrams this module produces.  It is
+    /// kept in the rule set so that adding the real rewrite later is a localized
+    /// change.
+    pub const fn pi_commutation(&self) -> bool {
         false
     }
 
@@ -578,14 +592,40 @@ impl ZXOptimizer {
         Ok(())
     }
 
-    /// Extract rotation angle from gate (simplified)
+    /// Extract the rotation angle of a parameterized single-qubit gate.
+    ///
+    /// Downcasts the gate to the concrete `core` rotation/phase types and reads
+    /// the real angle.  Returns `0.0` (the identity phase) for gates that carry
+    /// no angle, so an unrecognized gate contributes a phase-0 spider rather
+    /// than a fabricated `π/4`.
     fn extract_rotation_angle(&self, gate: &dyn GateOp) -> f64 {
-        // This would need to access gate parameters
-        // For now, return a default value
-        PI / 4.0 // T gate angle
+        use quantrs2_core::gate::single::{Phase, RotationX, RotationY, RotationZ};
+
+        let any = gate.as_any();
+        if let Some(g) = any.downcast_ref::<RotationZ>() {
+            g.theta
+        } else if let Some(g) = any.downcast_ref::<RotationX>() {
+            g.theta
+        } else if let Some(g) = any.downcast_ref::<RotationY>() {
+            g.theta
+        } else if any.downcast_ref::<Phase>().is_some() {
+            // S gate = Z-rotation by π/2 (up to global phase).
+            PI / 2.0
+        } else {
+            0.0
+        }
     }
 
-    /// Optimize a circuit using ZX-calculus
+    /// Optimize a circuit using ZX-calculus.
+    ///
+    /// The circuit is converted to a ZX diagram, simplified by the rewrite rules
+    /// to convergence, and extracted back to a circuit.  Because circuit
+    /// extraction from an arbitrary entangled diagram is out of scope (see
+    /// [`zx_to_circuit`](Self::zx_to_circuit)), the extraction step returns an
+    /// honest error for diagrams that retain entangling structure (e.g. those
+    /// containing CNOTs).  The `optimization_stats` on the returned result
+    /// always reflect the *real* diagram-level simplification (node/T-count
+    /// reductions) regardless of whether extraction succeeds.
     pub fn optimize_circuit<const N: usize>(
         &self,
         circuit: &Circuit<N>,
@@ -596,7 +636,8 @@ impl ZXOptimizer {
         // Optimize the diagram
         let optimization_result = diagram.optimize();
 
-        // Convert back to circuit (simplified for now)
+        // Extract a circuit from the simplified diagram (honest error if the
+        // diagram is not extractable by the linear-wire extractor).
         let optimized_circuit = self.zx_to_circuit(&diagram)?;
 
         Ok(OptimizedZXResult {
@@ -607,24 +648,142 @@ impl ZXOptimizer {
         })
     }
 
-    /// Convert ZX diagram back to quantum circuit (simplified)
+    /// Extract a quantum circuit from a ZX diagram.
+    ///
+    /// General ZX-diagram extraction (recovering a circuit from an arbitrary,
+    /// entangled, post-optimization diagram) requires gflow-based synthesis and
+    /// is intentionally out of scope here.  This routine performs an **exact**
+    /// extraction for the class of diagrams that decompose into independent
+    /// per-qubit wires — i.e. circuits built only from single-qubit gates, plus
+    /// any diagram the rewrite rules reduce to that form.  Each wire is walked
+    /// from its `Input` to its `Output`, emitting one gate per degree-2 spider /
+    /// Hadamard encountered.
+    ///
+    /// If the diagram still contains entangling structure (a spider shared
+    /// between wires, e.g. a CNOT), this returns an honest
+    /// [`QuantRS2Error::UnsupportedOperation`] rather than silently dropping the
+    /// entangling gates and returning a circuit that is *not* equivalent.
     fn zx_to_circuit<const N: usize>(&self, diagram: &ZXDiagram) -> QuantRS2Result<Circuit<N>> {
-        // This is a complex process that would require:
-        // 1. Graph extraction algorithms
-        // 2. Synthesis of unitary matrices
-        // 3. Gate decomposition
-
-        // For now, return the original circuit structure
-        // In a full implementation, this would reconstruct the optimized circuit
         let mut circuit = Circuit::<N>::new();
 
-        // Placeholder: add identity gates for demonstration
-        for i in 0..N {
-            // This would be replaced with proper circuit reconstruction
+        for qubit in 0..N as u32 {
+            let Some(&input_id) = diagram.inputs.get(&qubit) else {
+                continue;
+            };
+            let Some(&output_id) = diagram.outputs.get(&qubit) else {
+                continue;
+            };
+
+            // Walk the wire from the input boundary to the output boundary.
+            let mut prev = input_id;
+            let mut current_neighbors = diagram.neighbors(input_id).to_vec();
+            // An input is degree-1 in a well-formed diagram; follow its single edge.
+            let mut current = match current_neighbors.as_slice() {
+                [next] => *next,
+                [] => continue, // disconnected boundary: nothing on this wire
+                _ => {
+                    return Err(QuantRS2Error::UnsupportedOperation(format!(
+                        "ZX extraction: input boundary for qubit {qubit} has degree \
+                         {} (expected 1); entangled diagrams are not supported",
+                        current_neighbors.len()
+                    )))
+                }
+            };
+
+            let mut guard = 0usize;
+            let node_budget = diagram.nodes.len() + 1;
+            while current != output_id {
+                guard += 1;
+                if guard > node_budget {
+                    return Err(QuantRS2Error::ComputationError(
+                        "ZX extraction: wire traversal did not terminate (cycle in diagram)"
+                            .to_string(),
+                    ));
+                }
+
+                let node = diagram.nodes.get(&current).ok_or_else(|| {
+                    QuantRS2Error::ComputationError(format!(
+                        "ZX extraction: dangling node reference {current}"
+                    ))
+                })?;
+                current_neighbors = diagram.neighbors(current).to_vec();
+
+                // Only degree-2 (pass-through) nodes can be extracted as a wire
+                // element; higher degree means the node entangles wires.
+                if current_neighbors.len() != 2 {
+                    return Err(QuantRS2Error::UnsupportedOperation(format!(
+                        "ZX extraction: node {current} on qubit {qubit} has degree {} \
+                         (expected 2); entangling structure cannot be extracted by the \
+                         linear-wire extractor",
+                        current_neighbors.len()
+                    )));
+                }
+
+                // Emit the gate corresponding to this node.
+                let target = QubitId(qubit);
+                match node {
+                    ZXNode::ZSpider { phase, .. } => {
+                        emit_phase_gate(&mut circuit, target, *phase, true)?;
+                    }
+                    ZXNode::XSpider { phase, .. } => {
+                        emit_phase_gate(&mut circuit, target, *phase, false)?;
+                    }
+                    ZXNode::Hadamard { .. } => {
+                        circuit.h(target)?;
+                    }
+                    ZXNode::Input { .. } | ZXNode::Output { .. } => {
+                        return Err(QuantRS2Error::ComputationError(format!(
+                            "ZX extraction: unexpected boundary node {current} in wire interior"
+                        )));
+                    }
+                }
+
+                // Step to the neighbor that is not where we came from.
+                let next = if current_neighbors[0] == prev {
+                    current_neighbors[1]
+                } else {
+                    current_neighbors[0]
+                };
+                prev = current;
+                current = next;
+            }
         }
 
         Ok(circuit)
     }
+}
+
+/// Emit the single-qubit gate for a degree-2 spider of the given color.
+///
+/// A phase of (multiples of) `π` collapses to the corresponding Pauli; `π/2`
+/// Z-spiders become `S`; otherwise a parameterized rotation is emitted.  A
+/// phase-0 spider is the identity and emits nothing.
+fn emit_phase_gate<const N: usize>(
+    circuit: &mut Circuit<N>,
+    target: QubitId,
+    phase: f64,
+    is_z: bool,
+) -> QuantRS2Result<()> {
+    let two_pi = 2.0 * PI;
+    // Normalize the phase into [0, 2π).
+    let phase = phase.rem_euclid(two_pi);
+    if phase.abs() < 1e-10 || (phase - two_pi).abs() < 1e-10 {
+        return Ok(()); // identity spider
+    }
+
+    if (phase - PI).abs() < 1e-10 {
+        // Pauli.
+        if is_z {
+            circuit.z(target)?;
+        } else {
+            circuit.x(target)?;
+        }
+    } else if is_z {
+        circuit.rz(target, phase)?;
+    } else {
+        circuit.rx(target, phase)?;
+    }
+    Ok(())
 }
 
 /// Result of ZX optimization containing original and optimized circuits
@@ -640,7 +799,7 @@ pub struct OptimizedZXResult<const N: usize> {
 mod tests {
     use super::*;
     use quantrs2_core::gate::multi::CNOT;
-    use quantrs2_core::gate::single::{Hadamard, PauliX};
+    use quantrs2_core::gate::single::Hadamard;
 
     #[test]
     fn test_zx_diagram_creation() {
@@ -764,5 +923,126 @@ mod tests {
             result.optimization_stats.final_node_count
                 <= result.optimization_stats.initial_node_count
         );
+    }
+
+    /// `extract_rotation_angle` must read the real gate angle, not a hardcoded
+    /// `π/4`.
+    #[test]
+    fn test_extract_rotation_angle_reads_real_theta() {
+        use quantrs2_core::gate::single::{RotationX, RotationY, RotationZ};
+        let optimizer = ZXOptimizer::new();
+
+        let rz = RotationZ {
+            target: QubitId(0),
+            theta: 0.123,
+        };
+        assert!((optimizer.extract_rotation_angle(&rz) - 0.123).abs() < 1e-12);
+
+        let rx = RotationX {
+            target: QubitId(0),
+            theta: 1.75,
+        };
+        assert!((optimizer.extract_rotation_angle(&rx) - 1.75).abs() < 1e-12);
+
+        let ry = RotationY {
+            target: QubitId(0),
+            theta: -0.6,
+        };
+        assert!((optimizer.extract_rotation_angle(&ry) + 0.6).abs() < 1e-12);
+
+        // A non-rotation gate must NOT report the bogus π/4.
+        let h = Hadamard { target: QubitId(0) };
+        assert!(optimizer.extract_rotation_angle(&h).abs() < 1e-12);
+    }
+
+    /// A single-qubit gate chain must extract back to a non-empty circuit
+    /// carrying the real gates — not the former empty placeholder circuit.
+    ///
+    /// We extract directly from the converted diagram (without running the lossy
+    /// optimize pass) to isolate the extractor: H; RZ(0.4); Z on one wire must
+    /// come back as H, RZ(0.4), Z.  (`circuit_to_zx` encodes a Pauli-Z as a
+    /// phase-π Z-spider, which the extractor inverts back to a Z gate.)
+    #[test]
+    fn test_zx_to_circuit_extracts_single_qubit_chain() {
+        use quantrs2_core::gate::single::{PauliZ, RotationZ};
+        let optimizer = ZXOptimizer::new();
+
+        let mut circuit = Circuit::<1>::new();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("h");
+        circuit
+            .add_gate(RotationZ {
+                target: QubitId(0),
+                theta: 0.4,
+            })
+            .expect("rz");
+        circuit.add_gate(PauliZ { target: QubitId(0) }).expect("z");
+
+        let diagram = optimizer.circuit_to_zx(&circuit).expect("to zx");
+        let extracted: Circuit<1> = optimizer.zx_to_circuit(&diagram).expect("extract");
+
+        let names: Vec<&str> = extracted.gates().iter().map(|g| g.name()).collect();
+        // H stays H; RZ(0.4) stays RZ; phase-π Z-spider extracts back to Z.
+        assert_eq!(names, vec!["H", "RZ", "Z"], "got {names:?}");
+
+        // The RZ must carry the real angle (0.4), proving extract_rotation_angle
+        // and the phase round-trip are real (not a fabricated π/4).
+        let rz = extracted
+            .gates()
+            .iter()
+            .find(|g| g.name() == "RZ")
+            .expect("rz present");
+        let rz_concrete = rz
+            .as_any()
+            .downcast_ref::<RotationZ>()
+            .expect("downcast RZ");
+        assert!(
+            (rz_concrete.theta - 0.4).abs() < 1e-10,
+            "RZ angle {}",
+            rz_concrete.theta
+        );
+    }
+
+    /// Extracting a circuit that still contains entangling structure (a CNOT)
+    /// must return an HONEST error rather than silently dropping the CNOT and
+    /// returning a non-equivalent circuit.
+    #[test]
+    fn test_zx_to_circuit_errors_on_entangling_diagram() {
+        let optimizer = ZXOptimizer::new();
+
+        let mut circuit = Circuit::<2>::new();
+        circuit
+            .add_gate(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            })
+            .expect("cnot");
+
+        let result = optimizer.optimize_circuit(&circuit);
+        assert!(
+            result.is_err(),
+            "entangling diagram extraction must error, not fabricate an empty circuit"
+        );
+    }
+
+    /// An empty single-qubit circuit (or one that cancels to identity) extracts
+    /// to an empty circuit successfully.
+    #[test]
+    fn test_zx_to_circuit_identity_is_empty() {
+        let optimizer = ZXOptimizer::new();
+
+        let mut circuit = Circuit::<1>::new();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("h1");
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("h2");
+
+        let result = optimizer
+            .optimize_circuit(&circuit)
+            .expect("optimize identity");
+        assert_eq!(result.optimized_circuit.gates().len(), 0);
     }
 }

@@ -136,10 +136,26 @@ impl PerformanceMonitor {
         }
         self.latency_histogram.push(latency);
 
-        // Calculate current throughput
-        let elapsed = self.start_time.elapsed();
-        if elapsed.as_secs_f64() > 0.0 {
-            let throughput = self.cycles_processed as f64 / elapsed.as_secs_f64();
+        // Calculate current throughput (cycles per second). Prefer wall-clock
+        // elapsed time; on very fast machines `start_time.elapsed()` can read as
+        // zero across several cycles, in which case we fall back to the total
+        // measured per-cycle processing time (always positive once any cycle
+        // with non-zero latency has been recorded). This guarantees a real,
+        // non-zero throughput sample rather than silently recording nothing.
+        let wall_elapsed = self.start_time.elapsed().as_secs_f64();
+        let processing_elapsed: f64 = self
+            .latency_histogram
+            .iter()
+            .map(Duration::as_secs_f64)
+            .sum();
+        let effective_elapsed = if wall_elapsed > 0.0 {
+            wall_elapsed
+        } else {
+            processing_elapsed
+        };
+
+        if effective_elapsed > 0.0 {
+            let throughput = self.cycles_processed as f64 / effective_elapsed;
             self.throughput_samples.push_back(throughput);
 
             // Keep only recent samples

@@ -217,27 +217,18 @@ mod tests {
         let config = CuQuantumConfig::default();
         let mut sim = CuStateVecSimulator::new(config).expect("Should create simulator");
         let circuit: Circuit<2> = Circuit::new();
-        let result = sim.simulate(&circuit);
-        // On non-macOS with cuquantum feature, simulation is not yet implemented
-        #[cfg(all(feature = "cuquantum", not(target_os = "macos")))]
-        {
-            assert!(
-                result.is_err(),
-                "Expected error for unimplemented cuStateVec"
-            );
-        }
-        #[cfg(any(target_os = "macos", not(feature = "cuquantum")))]
-        {
-            let result = result.expect("Should simulate circuit");
-            assert_eq!(result.num_qubits, 2);
-            assert!(result.state_vector.is_some());
-            let sv = result
-                .state_vector
-                .as_ref()
-                .expect("Should have state vector");
-            assert_eq!(sv.len(), 4);
-            assert!((sv[0].norm() - 1.0).abs() < 1e-10);
-        }
+        // `simulate` runs the real state-vector path on every platform and feature
+        // combination: without a live cuStateVec runtime it falls back to the CPU
+        // implementation rather than erroring out.
+        let result = sim.simulate(&circuit).expect("Should simulate circuit");
+        assert_eq!(result.num_qubits, 2);
+        assert!(result.state_vector.is_some());
+        let sv = result
+            .state_vector
+            .as_ref()
+            .expect("Should have state vector");
+        assert_eq!(sv.len(), 4);
+        assert!((sv[0].norm() - 1.0).abs() < 1e-10);
     }
     #[test]
     fn test_custatevec_statistics() {
@@ -247,19 +238,9 @@ mod tests {
         let stats = sim.stats();
         assert_eq!(stats.total_simulations, 0);
         let circuit: Circuit<2> = Circuit::new();
-        let result = sim.simulate(&circuit);
+        sim.simulate(&circuit).expect("Should simulate circuit");
         let stats_after = sim.stats();
-        // On non-macOS with cuquantum feature, simulation fails so stats won't increment
-        #[cfg(all(feature = "cuquantum", not(target_os = "macos")))]
-        {
-            assert!(result.is_err());
-            assert_eq!(stats_after.total_simulations, 0);
-        }
-        #[cfg(any(target_os = "macos", not(feature = "cuquantum")))]
-        {
-            let _ = result;
-            assert_eq!(stats_after.total_simulations, 1);
-        }
+        assert_eq!(stats_after.total_simulations, 1);
         sim.reset_stats();
         let stats_reset = sim.stats();
         assert_eq!(stats_reset.total_simulations, 0);
@@ -270,26 +251,14 @@ mod tests {
         let config_small = CuQuantumConfig::default();
         let mut sim_small = CuQuantumSimulator::new(config_small).expect("Should create simulator");
         let circuit: Circuit<2> = Circuit::new();
-        let result = sim_small.simulate(&circuit);
-        // On non-macOS with cuquantum feature, simulation is not yet implemented
-        #[cfg(all(feature = "cuquantum", not(target_os = "macos")))]
-        {
-            assert!(
-                result.is_err(),
-                "Expected error for unimplemented cuQuantum"
-            );
-        }
-        #[cfg(any(target_os = "macos", not(feature = "cuquantum")))]
-        {
-            let result = result.expect("Should simulate");
-            assert_eq!(result.num_qubits, 2);
-            let mut config_large = CuQuantumConfig::default();
-            config_large.max_statevec_qubits = 10;
-            let mut sim_large =
-                CuQuantumSimulator::new(config_large).expect("Should create simulator");
-            let result_large = sim_large.simulate(&circuit).expect("Should simulate");
-            assert_eq!(result_large.num_qubits, 2);
-        }
+        let result = sim_small.simulate(&circuit).expect("Should simulate");
+        assert_eq!(result.num_qubits, 2);
+
+        let mut config_large = CuQuantumConfig::default();
+        config_large.max_statevec_qubits = 10;
+        let mut sim_large = CuQuantumSimulator::new(config_large).expect("Should create simulator");
+        let result_large = sim_large.simulate(&circuit).expect("Should simulate");
+        assert_eq!(result_large.num_qubits, 2);
     }
     #[test]
     fn test_cutensornet_network_building() {

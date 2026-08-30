@@ -5,6 +5,12 @@
 
 QuantRS2-ML is the comprehensive quantum machine learning library of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing cutting-edge quantum algorithms, hybrid architectures, and industry-specific applications for next-generation artificial intelligence and data science.
 
+## Version 0.2.1
+
+Released: 2026-08-30
+
+- SciRS2 upgraded to v0.6.5; picks up the Rz/CRZ sign-convention fix and QNN/QAOA-adjacent workspace dependency updates from `quantrs2-core`/`quantrs2-sim`.
+
 ## Version 0.2.0
 
 Released: 2026-06-06
@@ -64,7 +70,7 @@ The `quantrs2-ml` crate is included in the main QuantRS2 workspace. To use it in
 
 ```toml
 [dependencies]
-quantrs2-ml = "0.2.0"
+quantrs2-ml = "0.2.1"
 ```
 
 ## Usage Examples
@@ -174,7 +180,7 @@ The `quantrs2-ml` crate supports GPU acceleration for quantum machine learning t
 
 ```toml
 [dependencies]
-quantrs2-ml = { version = "0.2.0", features = ["gpu"] }
+quantrs2-ml = { version = "0.2.1", features = ["gpu"] }
 ```
 
 ## License

@@ -470,16 +470,126 @@ impl VisualizationManager {
         Ok(entropies)
     }
 
-    /// Calculate mutual information between two qubits (simplified)
-    const fn calculate_mutual_information(
+    /// Calculate mutual information `I(i:j) = S(rho_i) + S(rho_j) - S(rho_ij)`
+    /// between two qubits from the true reduced density matrices of the
+    /// given state (not a fixed placeholder): traces out every other qubit
+    /// to get the single-qubit marginals `rho_i`/`rho_j` and the two-qubit
+    /// marginal `rho_ij`, then computes the real von Neumann entropy of
+    /// each via Hermitian eigendecomposition.
+    fn calculate_mutual_information(
         &self,
-        _state: &Array1<Complex64>,
-        _qubit_i: usize,
-        _qubit_j: usize,
-        _num_qubits: usize,
+        state: &Array1<Complex64>,
+        qubit_i: usize,
+        qubit_j: usize,
+        num_qubits: usize,
     ) -> Result<f64> {
-        // Simplified placeholder - in practice would compute reduced density matrices
-        Ok(0.5)
+        if qubit_i >= num_qubits || qubit_j >= num_qubits {
+            return Err(SimulatorError::InvalidQubitIndex {
+                index: qubit_i.max(qubit_j),
+                num_qubits,
+            });
+        }
+
+        let rho_i = Self::reduced_density_matrix(state, &[qubit_i], num_qubits);
+        let rho_j = Self::reduced_density_matrix(state, &[qubit_j], num_qubits);
+        let rho_ij = Self::reduced_density_matrix(state, &[qubit_i, qubit_j], num_qubits);
+
+        let s_i = Self::von_neumann_entropy(&rho_i)?;
+        let s_j = Self::von_neumann_entropy(&rho_j)?;
+        let s_ij = Self::von_neumann_entropy(&rho_ij)?;
+
+        // Subadditivity guarantees I(i:j) >= 0 in theory; clamp away tiny
+        // negative values coming from floating-point noise in the
+        // eigendecomposition rather than reporting a spurious negative.
+        Ok((s_i + s_j - s_ij).max(0.0))
+    }
+
+    /// Compute the reduced density matrix for `subset_qubits` by tracing
+    /// out every other qubit of `state`. `subset_qubits[0]` is the
+    /// most-significant index bit of the returned `2^k x 2^k` matrix,
+    /// where `k = subset_qubits.len()`.
+    fn reduced_density_matrix(
+        state: &Array1<Complex64>,
+        subset_qubits: &[usize],
+        num_qubits: usize,
+    ) -> Array2<Complex64> {
+        let k = subset_qubits.len();
+        let dim = 1usize << k;
+        let other_qubits: Vec<usize> = (0..num_qubits)
+            .filter(|q| !subset_qubits.contains(q))
+            .collect();
+        let num_other = other_qubits.len();
+
+        let mut rho = Array2::zeros((dim, dim));
+        let mut amps = vec![Complex64::new(0.0, 0.0); dim];
+
+        for other_bits in 0..(1usize << num_other) {
+            let mut base = 0usize;
+            for (bit_pos, &q) in other_qubits.iter().enumerate() {
+                if (other_bits >> bit_pos) & 1 == 1 {
+                    base |= 1 << q;
+                }
+            }
+
+            for combo in 0..dim {
+                let mut idx = base;
+                for (i, &q) in subset_qubits.iter().enumerate() {
+                    if (combo >> (k - 1 - i)) & 1 == 1 {
+                        idx |= 1 << q;
+                    }
+                }
+                amps[combo] = if idx < state.len() {
+                    state[idx]
+                } else {
+                    Complex64::new(0.0, 0.0)
+                };
+            }
+
+            for a in 0..dim {
+                for b in 0..dim {
+                    rho[[a, b]] += amps[a] * amps[b].conj();
+                }
+            }
+        }
+
+        rho
+    }
+
+    /// Von Neumann entropy `S(rho) = -sum_k lambda_k ln(lambda_k)` of a
+    /// density matrix, computed from a real Hermitian eigendecomposition
+    /// (not approximated from the diagonal alone).
+    fn von_neumann_entropy(rho: &Array2<Complex64>) -> Result<f64> {
+        let dim = rho.nrows();
+
+        // Symmetrize to guard against floating-point asymmetry tripping
+        // the eigensolver's strict Hermiticity check.
+        let mut symmetrized = Array2::zeros((dim, dim));
+        for a in 0..dim {
+            for b in 0..dim {
+                symmetrized[[a, b]] = (rho[[a, b]] + rho[[b, a]].conj()) * Complex64::new(0.5, 0.0);
+            }
+        }
+
+        let decomposition =
+            scirs2_linalg::complex::complex_eigh(&symmetrized.view()).map_err(|e| {
+                SimulatorError::InvalidInput(format!(
+                    "reduced-density-matrix eigendecomposition failed: {e}"
+                ))
+            })?;
+
+        let mut entropy = 0.0;
+        for &eigenvalue in decomposition.eigenvalues.iter() {
+            // A Hermitian density matrix has real eigenvalues; `complex_eigh`
+            // still returns them as `Complex<f64>` with (up to floating-point
+            // noise) zero imaginary part, so take the real part. Eigenvalues
+            // can also be slightly negative/greater-than-one due to floating
+            // point noise; clamp into the physical [0, 1] range.
+            let p = eigenvalue.re.clamp(0.0, 1.0);
+            if p > 1e-12 {
+                entropy -= p * p.ln();
+            }
+        }
+        Ok(entropy)
     }
 
     /// Calculate bipartite entropy for a given cut

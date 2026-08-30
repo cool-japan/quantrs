@@ -624,11 +624,18 @@ pub fn all_same_single_qubit(gates: &[Box<dyn GateOp>]) -> bool {
 }
 
 /// Extract the rotation angle from an RZ gate.
+///
+/// `RotationZ::matrix()` follows the IBM/Qiskit/OpenQASM-3 convention
+/// `Rz(θ) = diag(e^{-iθ/2}, e^{+iθ/2})`, so the angle cannot be read off a
+/// single diagonal entry's phase (`arg(m[0]) == -θ/2`, which silently negates
+/// θ). Instead take the phase difference between the two diagonal entries,
+/// which is `θ` and is invariant to any overall global phase the matrix may
+/// carry.
 pub fn extract_rz_angle(g: &dyn GateOp) -> Option<f64> {
     if g.name() != "RZ" {
         return None;
     }
-    g.matrix().ok().map(|m| 2.0 * m[0].arg())
+    g.matrix().ok().map(|m| (m[3] * m[0].conj()).arg())
 }
 
 /// Extract the rotation angle from an RX gate.

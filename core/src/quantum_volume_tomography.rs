@@ -87,7 +87,7 @@ impl QuantumVolume {
 
     /// Test quantum volume for a specific number of qubits
     fn test_quantum_volume<F>(
-        &self,
+        &mut self,
         n_qubits: usize,
         circuit_executor: &mut F,
     ) -> QuantRS2Result<f64>
@@ -116,45 +116,123 @@ impl QuantumVolume {
         Ok(success_rate)
     }
 
-    /// Generate a random model circuit for quantum volume
+    /// Generate a random model circuit for quantum volume.
     ///
-    /// Returns the circuit and the set of heavy outputs (outputs with above-median probability)
+    /// Builds the standard quantum-volume "square" circuit: `depth = n_qubits`
+    /// layers, where each layer randomly permutes the qubits (Fisher-Yates),
+    /// pairs them up, and applies a Haar-random 2-qubit unitary (an SU(4) element)
+    /// to each pair. The circuit is then classically simulated to determine the
+    /// heavy outputs.
+    ///
+    /// Returns the circuit (a non-empty list of gates) and the set of heavy
+    /// outputs (computational-basis indices with strictly-above-median ideal
+    /// probability).
     fn generate_random_circuit(
-        &self,
+        &mut self,
         n_qubits: usize,
     ) -> QuantRS2Result<(Vec<Box<dyn GateOp>>, Vec<usize>)> {
-        // For quantum volume, we use depth = n_qubits
+        // For quantum volume, the model circuit depth equals the qubit count.
         let depth = n_qubits;
+        let mut circuit: Vec<Box<dyn GateOp>> = Vec::new();
 
-        // Placeholder: generate random SU(4) gates
-        // In a real implementation, this would generate random 2-qubit unitaries
-        let circuit = vec![];
+        for _layer in 0..depth {
+            // Random permutation of the qubits, then pair adjacent entries.
+            let mut order: Vec<usize> = (0..n_qubits).collect();
+            self.shuffle(&mut order);
 
-        // Simulate ideal circuit to find heavy outputs
+            let num_pairs = n_qubits / 2;
+            for pair in 0..num_pairs {
+                let q1 = order[2 * pair];
+                let q2 = order[2 * pair + 1];
+                let unitary = self.random_su4()?;
+                circuit.push(Box::new(TwoQubitUnitaryGate::new(unitary, q1, q2)));
+            }
+        }
+
+        // Classically simulate the ideal circuit to find heavy outputs.
         let heavy_outputs = self.find_heavy_outputs(n_qubits, &circuit)?;
 
         Ok((circuit, heavy_outputs))
     }
 
-    /// Find heavy outputs (outputs with above-median probability)
+    /// Find heavy outputs: computational-basis states whose ideal probability is
+    /// strictly above the median probability.
+    ///
+    /// The circuit is simulated to a full state vector starting from `|0...0>`,
+    /// every `|amplitude|^2` probability is computed, the median probability is
+    /// taken, and the indices with probability strictly greater than the median
+    /// are returned. This is the genuine quantum-volume heavy-output definition.
     fn find_heavy_outputs(
         &self,
         n_qubits: usize,
-        _circuit: &[Box<dyn GateOp>],
+        circuit: &[Box<dyn GateOp>],
     ) -> QuantRS2Result<Vec<usize>> {
-        // Simulate the circuit classically to find heavy outputs
-        // This is a simplified placeholder
+        let num_states = 1usize << n_qubits;
 
-        let num_states = 1 << n_qubits;
-        let median_prob = 1.0 / (num_states as f64);
+        // Simulate the circuit to obtain the ideal probability distribution.
+        let state = simulate_circuit(circuit, n_qubits)?;
+        let probabilities: Vec<f64> = state.iter().map(|amp| amp.norm_sqr()).collect();
 
-        // In reality, we would:
-        // 1. Simulate the circuit
-        // 2. Calculate all outcome probabilities
-        // 3. Find those above median
+        // Median of the probability list.
+        let mut sorted = probabilities.clone();
+        sorted.sort_by(|a, b| a.total_cmp(b));
+        let median = if num_states % 2 == 0 {
+            0.5 * (sorted[num_states / 2 - 1] + sorted[num_states / 2])
+        } else {
+            sorted[num_states / 2]
+        };
 
-        // For now, return a placeholder (first half of bitstrings)
-        Ok((0..num_states / 2).collect())
+        // Indices strictly above the median probability.
+        let heavy_outputs: Vec<usize> = probabilities
+            .iter()
+            .enumerate()
+            .filter(|(_, &p)| p > median)
+            .map(|(idx, _)| idx)
+            .collect();
+
+        Ok(heavy_outputs)
+    }
+
+    /// Fisher-Yates shuffle using the protocol's RNG.
+    fn shuffle(&mut self, slice: &mut [usize]) {
+        let n = slice.len();
+        if n < 2 {
+            return;
+        }
+        for i in 0..n - 1 {
+            let j = self.rng.random_range(i..n);
+            slice.swap(i, j);
+        }
+    }
+
+    /// Generate a Haar-random 4x4 unitary (an element of U(4), which contains the
+    /// SU(4) gates used by the quantum-volume protocol).
+    ///
+    /// A matrix with i.i.d. complex-Gaussian entries is orthonormalised via the
+    /// Gram-Schmidt process; the resulting unitary is Haar-distributed (up to the
+    /// usual phase convention), giving a genuine random 2-qubit gate rather than a
+    /// fixed or parameterised placeholder.
+    fn random_su4(&mut self) -> QuantRS2Result<Array2<Complex64>> {
+        let dim = 4;
+        let mut matrix = Array2::<Complex64>::zeros((dim, dim));
+        for i in 0..dim {
+            for j in 0..dim {
+                let (re, im) = self.standard_normal_pair();
+                matrix[[i, j]] = Complex64::new(re, im);
+            }
+        }
+        gram_schmidt_unitary(&matrix)
+    }
+
+    /// Draw a pair of independent standard-normal samples via the Box-Muller
+    /// transform, sourcing uniforms from the protocol's RNG.
+    fn standard_normal_pair(&mut self) -> (f64, f64) {
+        // Guard against log(0) by clamping u1 away from zero.
+        let u1: f64 = self.rng.random_range(f64::EPSILON..1.0);
+        let u2: f64 = self.rng.random_range(0.0..1.0);
+        let r = (-2.0 * u1.ln()).sqrt();
+        let theta = 2.0 * std::f64::consts::PI * u2;
+        (r * theta.cos(), r * theta.sin())
     }
 
     /// Calculate heavy output probability
@@ -170,6 +248,193 @@ impl QuantumVolume {
 
         heavy_count as f64 / measurements.len() as f64
     }
+}
+
+/// A general 2-qubit unitary gate wrapping an arbitrary 4x4 unitary matrix.
+///
+/// The matrix is stored in row-major order over the local 2-qubit basis
+/// `{|q1 q2>}` with `q1` the high-order local bit, consistent with the row-major
+/// `matrix()` convention used by the gates in [`crate::gate::functions`].
+#[derive(Debug, Clone)]
+struct TwoQubitUnitaryGate {
+    matrix: Array2<Complex64>,
+    qubit1: QubitId,
+    qubit2: QubitId,
+}
+
+impl TwoQubitUnitaryGate {
+    fn new(matrix: Array2<Complex64>, qubit1: usize, qubit2: usize) -> Self {
+        Self {
+            matrix,
+            qubit1: QubitId::new(qubit1 as u32),
+            qubit2: QubitId::new(qubit2 as u32),
+        }
+    }
+}
+
+impl GateOp for TwoQubitUnitaryGate {
+    fn name(&self) -> &'static str {
+        "QV_SU4"
+    }
+
+    fn qubits(&self) -> Vec<QubitId> {
+        vec![self.qubit1, self.qubit2]
+    }
+
+    fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+        // Row-major flatten.
+        let (rows, cols) = self.matrix.dim();
+        let mut flat = Vec::with_capacity(rows * cols);
+        for i in 0..rows {
+            for j in 0..cols {
+                flat.push(self.matrix[[i, j]]);
+            }
+        }
+        Ok(flat)
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn clone_gate(&self) -> Box<dyn GateOp> {
+        Box::new(self.clone())
+    }
+}
+
+/// Gram-Schmidt orthonormalisation of the columns of `matrix`, yielding a unitary.
+fn gram_schmidt_unitary(matrix: &Array2<Complex64>) -> QuantRS2Result<Array2<Complex64>> {
+    let dim = matrix.nrows();
+    let mut result = Array2::<Complex64>::zeros((dim, dim));
+
+    for j in 0..dim {
+        let mut col = matrix.column(j).to_owned();
+
+        // Subtract projections onto previously-computed orthonormal columns.
+        for k in 0..j {
+            let prev = result.column(k);
+            let proj: Complex64 = col.iter().zip(prev.iter()).map(|(a, b)| b.conj() * a).sum();
+            for i in 0..dim {
+                col[i] -= proj * prev[i];
+            }
+        }
+
+        let norm = col.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
+        if norm < 1e-12 {
+            return Err(QuantRS2Error::ComputationError(
+                "Gram-Schmidt failed: degenerate random matrix".to_string(),
+            ));
+        }
+        for i in 0..dim {
+            result[[i, j]] = col[i] / Complex64::new(norm, 0.0);
+        }
+    }
+
+    Ok(result)
+}
+
+/// Classically simulate a gate circuit on `n_qubits` qubits starting from
+/// `|0...0>`, returning the final state vector.
+///
+/// Each gate's `matrix()` (row-major over its local basis, with `qubits()[0]` the
+/// high-order local bit) is applied to the relevant amplitude tuples via direct
+/// bit-mask indexing — the standard state-vector update.
+fn simulate_circuit(
+    circuit: &[Box<dyn GateOp>],
+    n_qubits: usize,
+) -> QuantRS2Result<Array1<Complex64>> {
+    let dim = 1usize << n_qubits;
+    let mut state = Array1::<Complex64>::zeros(dim);
+    state[0] = Complex64::new(1.0, 0.0);
+
+    for gate in circuit {
+        apply_gate(&mut state, gate.as_ref(), n_qubits)?;
+    }
+
+    Ok(state)
+}
+
+/// Apply a single (1- or multi-qubit) gate to the state vector in place.
+fn apply_gate(
+    state: &mut Array1<Complex64>,
+    gate: &dyn GateOp,
+    n_qubits: usize,
+) -> QuantRS2Result<()> {
+    let qubits = gate.qubits();
+    let k = qubits.len();
+    let gate_dim = 1usize << k;
+
+    let flat = gate.matrix()?;
+    if flat.len() != gate_dim * gate_dim {
+        return Err(QuantRS2Error::InvalidInput(format!(
+            "Gate matrix has {} entries, expected {} for {}-qubit gate",
+            flat.len(),
+            gate_dim * gate_dim,
+            k
+        )));
+    }
+    // Reshape row-major flat matrix into a 2D view.
+    let gate_matrix = Array2::from_shape_vec((gate_dim, gate_dim), flat)
+        .map_err(|e| QuantRS2Error::ComputationError(format!("Gate reshape failed: {e}")))?;
+
+    // Global bit positions for the gate's local bits. Local bit 0 (most
+    // significant in the gate basis) corresponds to qubits[0].
+    let qubit_bits: Vec<usize> = qubits.iter().map(|q| q.id() as usize).collect();
+    for &b in &qubit_bits {
+        if b >= n_qubits {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Gate acts on qubit {b} but circuit has only {n_qubits} qubits"
+            )));
+        }
+    }
+
+    let dim = 1usize << n_qubits;
+    // Iterate over all "base" indices where the gate's qubits are 0, then update
+    // the 2^k amplitudes for each combination of the gate's local bits.
+    let mut visited = vec![false; dim];
+    for base in 0..dim {
+        // Skip indices that set any of the gate qubits (we enumerate those via
+        // the local-combination loop below) and any already-processed group.
+        if visited[base] {
+            continue;
+        }
+        let mut anchor = base;
+        for &b in &qubit_bits {
+            anchor &= !(1 << b);
+        }
+        if anchor != base {
+            continue;
+        }
+
+        // Gather the 2^k amplitudes of this group.
+        let mut indices = vec![0usize; gate_dim];
+        let mut amplitudes = vec![Complex64::new(0.0, 0.0); gate_dim];
+        for local in 0..gate_dim {
+            let mut idx = anchor;
+            for (pos, &b) in qubit_bits.iter().enumerate() {
+                // Local bit `pos` is bit `(k - 1 - pos)` of `local` so that
+                // qubits[0] is the most-significant local bit.
+                let bit = (local >> (k - 1 - pos)) & 1;
+                if bit == 1 {
+                    idx |= 1 << b;
+                }
+            }
+            indices[local] = idx;
+            amplitudes[local] = state[idx];
+            visited[idx] = true;
+        }
+
+        // Apply the gate matrix: new[r] = Σ_c M[r,c] * old[c].
+        for r in 0..gate_dim {
+            let mut acc = Complex64::new(0.0, 0.0);
+            for c in 0..gate_dim {
+                acc += gate_matrix[[r, c]] * amplitudes[c];
+            }
+            state[indices[r]] = acc;
+        }
+    }
+
+    Ok(())
 }
 
 /// Result of quantum volume protocol
@@ -576,5 +841,152 @@ mod tests {
 
         let fiducials = gst.generate_fiducials();
         assert!(!fiducials.is_empty());
+    }
+
+    /// Build a 2-qubit gate whose action on |00> yields a chosen amplitude vector.
+    /// The supplied amplitudes form the first column of the unitary; the remaining
+    /// columns are completed by Gram-Schmidt from the standard basis.
+    fn gate_from_first_column(amps: [Complex64; 4], q1: usize, q2: usize) -> TwoQubitUnitaryGate {
+        let mut m = Array2::<Complex64>::zeros((4, 4));
+        for i in 0..4 {
+            m[[i, 0]] = amps[i];
+        }
+        // Seed the other columns with distinct standard basis vectors.
+        m[[1, 1]] = Complex64::new(1.0, 0.0);
+        m[[2, 2]] = Complex64::new(1.0, 0.0);
+        m[[3, 3]] = Complex64::new(1.0, 0.0);
+        let u = gram_schmidt_unitary(&m).expect("gram-schmidt");
+        TwoQubitUnitaryGate::new(u, q1, q2)
+    }
+
+    #[test]
+    fn test_apply_gate_bit_ordering_cnot() {
+        // A CNOT (control = qubit 0, target = qubit 1) in row-major form, with
+        // qubit 0 as the most-significant local bit. Applied to |10> (qubit 0
+        // set) it must produce |11>.
+        let cnot = scirs2_core::ndarray::array![
+            [
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0)
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0)
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0)
+            ],
+            [
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0)
+            ]
+        ];
+        let gate: Box<dyn GateOp> = Box::new(TwoQubitUnitaryGate::new(cnot, 0, 1));
+
+        // simulate_circuit starts at |00>; CNOT leaves it unchanged.
+        let state = simulate_circuit(std::slice::from_ref(&gate), 2).expect("simulate");
+        assert!((state[0].norm() - 1.0).abs() < 1e-12);
+
+        // Apply to a custom |10> state to check the controlled flip.
+        let mut custom = Array1::<Complex64>::zeros(4);
+        custom[1] = Complex64::new(1.0, 0.0); // qubit0 = 1, qubit1 = 0
+        apply_gate(&mut custom, gate.as_ref(), 2).expect("apply");
+        // Expect |11>: qubit0=1, qubit1=1 -> bits 0 and 1 set -> index 3.
+        assert!((custom[3].norm() - 1.0).abs() < 1e-12, "got {custom:?}");
+        assert!(custom[1].norm() < 1e-12);
+    }
+
+    #[test]
+    fn test_find_heavy_outputs_above_median_not_first_half() {
+        // Construct a circuit with a deliberately non-uniform output distribution
+        // (the four basis probabilities are all distinct), so the median is well
+        // defined and the heavy-output set is unambiguous.
+        let amps = [
+            Complex64::new(0.1_f64.sqrt(), 0.0),
+            Complex64::new(0.4_f64.sqrt(), 0.0),
+            Complex64::new(0.2_f64.sqrt(), 0.0),
+            Complex64::new(0.3_f64.sqrt(), 0.0),
+        ];
+        let gate = gate_from_first_column(amps, 0, 1);
+        let circuit: Vec<Box<dyn GateOp>> = vec![Box::new(gate)];
+
+        let qv = QuantumVolume::new(2, 1, 100);
+        let heavy = qv.find_heavy_outputs(2, &circuit).expect("heavy outputs");
+
+        // Independently recompute the expected heavy set directly from the
+        // simulated state vector (the source of truth).
+        let state = simulate_circuit(&circuit, 2).expect("simulate");
+        let probs: Vec<f64> = state.iter().map(|a| a.norm_sqr()).collect();
+
+        // The distribution must be genuinely non-uniform and normalised.
+        let total: f64 = probs.iter().sum();
+        assert!((total - 1.0).abs() < 1e-9);
+        let max_p = probs.iter().cloned().fold(0.0_f64, f64::max);
+        let min_p = probs.iter().cloned().fold(1.0_f64, f64::min);
+        assert!(max_p - min_p > 1e-3, "distribution should be non-uniform");
+
+        let mut sorted = probs.clone();
+        sorted.sort_by(|a, b| a.total_cmp(b));
+        let median = 0.5 * (sorted[1] + sorted[2]);
+        let mut expected: Vec<usize> = probs
+            .iter()
+            .enumerate()
+            .filter(|(_, &p)| p > median)
+            .map(|(i, _)| i)
+            .collect();
+        expected.sort_unstable();
+
+        let mut heavy_sorted = heavy.clone();
+        heavy_sorted.sort_unstable();
+        assert_eq!(
+            heavy_sorted, expected,
+            "heavy outputs must be exactly the strictly-above-median indices"
+        );
+        // For four distinct probabilities, exactly two are above the median.
+        assert_eq!(heavy_sorted.len(), 2);
+
+        // It must NOT be the old fabricated "first half" (0..num_states/2).
+        let first_half: Vec<usize> = (0..(1usize << 2) / 2).collect();
+        assert_ne!(
+            heavy_sorted, first_half,
+            "heavy outputs must be computed from probabilities, not the first half"
+        );
+    }
+
+    #[test]
+    fn test_generate_random_circuit_is_non_empty() {
+        // A real QV circuit must contain depth * (n/2) two-qubit gates, never an
+        // empty placeholder.
+        let mut qv = QuantumVolume::new(4, 1, 10);
+        let n = 4;
+        let (circuit, heavy) = qv.generate_random_circuit(n).expect("circuit");
+
+        // depth = n layers, each with n/2 = 2 gates -> 8 gates.
+        assert_eq!(circuit.len(), n * (n / 2));
+        assert!(!circuit.is_empty(), "QV circuit must not be empty");
+        for gate in &circuit {
+            assert_eq!(gate.qubits().len(), 2, "each QV gate acts on 2 qubits");
+        }
+
+        // The state must be normalised and heavy outputs computed from it.
+        let state = simulate_circuit(&circuit, n).expect("simulate");
+        let total: f64 = state.iter().map(|a| a.norm_sqr()).sum();
+        assert!(
+            (total - 1.0).abs() < 1e-9,
+            "state must stay normalised: {total}"
+        );
+
+        // Heavy outputs are a strict subset of all 2^n states and (for a generic
+        // random circuit) non-empty.
+        assert!(heavy.iter().all(|&i| i < (1usize << n)));
     }
 }

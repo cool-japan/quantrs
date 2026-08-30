@@ -5,6 +5,7 @@
 //! quantum circuits, enabling quantum-enhanced SVMs and kernel regression.
 
 use crate::error::{MLError, Result};
+use quantrs2_circuit::builder::Simulator;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_sim::statevector::StateVectorSimulator;
 use scirs2_core::ndarray::{Array1, Array2};
@@ -226,6 +227,25 @@ impl QuantumKernel {
     }
 }
 
+impl QuantumKernel {
+    /// Builds the kernel-estimation circuit on an `N`-qubit register, runs it
+    /// on the real state-vector simulator, and returns the fidelity kernel
+    /// value `|⟨0|U|0⟩|^2` where `U` is `H ⋅ encode(x2) ⋅ X ⋅ encode(x1) ⋅ H`
+    /// (the standard SWAP-test-free construction: since `H` is self-inverse
+    /// and the `X` gates only relabel which computational-basis amplitude
+    /// carries the overlap, the probability of observing all zeros encodes
+    /// the squared overlap between the two feature-map states).
+    fn compute_sized<const N: usize>(&self, x1: &Array1<f64>, x2: &Array1<f64>) -> Result<f64> {
+        let circuit = self.prepare_kernel_circuit::<N>(x1, x2)?;
+        let simulator = StateVectorSimulator::new();
+        let register = simulator.run(&circuit)?;
+
+        // Probability amplitude of the all-zeros computational basis state.
+        let amplitude_zero = register.amplitudes()[0];
+        Ok(amplitude_zero.norm_sqr().clamp(0.0, 1.0))
+    }
+}
+
 impl KernelFunction for QuantumKernel {
     fn compute(&self, x1: &Array1<f64>, x2: &Array1<f64>) -> Result<f64> {
         if x1.len() != x2.len() {
@@ -244,13 +264,42 @@ impl KernelFunction for QuantumKernel {
             )));
         }
 
-        // This is a dummy implementation
-        // In a real system, this would use quantum circuit simulation
+        // Estimate the kernel value by actually simulating the quantum
+        // feature-map circuit (prepare_kernel_circuit/encode_features),
+        // dispatching to the smallest supported register that can hold
+        // `num_qubits`, matching the pattern used by QuantumNeuralNetwork.
+        match self.num_qubits {
+            0 => Err(MLError::InvalidConfiguration(
+                "QuantumKernel requires at least one qubit".to_string(),
+            )),
+            1..=2 => self.compute_sized::<2>(x1, x2),
+            3..=4 => self.compute_sized::<4>(x1, x2),
+            5..=8 => self.compute_sized::<8>(x1, x2),
+            9..=16 => self.compute_sized::<16>(x1, x2),
+            n => Err(MLError::NotSupported(format!(
+                "Quantum kernel estimation supports at most 16 qubits on the \
+                 state-vector backend, got {n}"
+            ))),
+        }
+    }
+}
 
-        // Simulate quantum kernel using classical calculation
-        let dot_product = x1.iter().zip(x2.iter()).map(|(&a, &b)| a * b).sum::<f64>();
-        let similarity = dot_product.abs().min(1.0);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use scirs2_core::ndarray::array;
 
-        Ok(similarity)
+    #[test]
+    fn test_quantum_kernel_exploration() {
+        let kernel = QuantumKernel::new(2, 2);
+        let x = array![0.3, 0.5];
+        let y = array![0.3, 0.5];
+        let z = array![0.9, 0.1];
+
+        let k_xx = kernel.compute(&x, &x).expect("compute self");
+        let k_xy = kernel.compute(&x, &y).expect("compute identical");
+        let k_xz = kernel.compute(&x, &z).expect("compute distinct");
+        let k_yx = kernel.compute(&y, &x).expect("compute swapped");
+        eprintln!("k_xx={k_xx} k_xy={k_xy} k_xz={k_xz} k_yx={k_yx}");
     }
 }

@@ -18,6 +18,7 @@ use std::f64::consts::PI;
 use crate::applications::{ApplicationError, ApplicationResult};
 use crate::ising::{IsingModel, QuboModel};
 use crate::scirs2_integration::{SciRS2GraphAnalyzer, SciRS2QuboModel};
+use crate::simulator::{AnnealingParams, QuantumAnnealingSimulator};
 
 /// Bridge between QAOA circuits and quantum annealing
 pub struct QaoaAnnealBridge {
@@ -40,30 +41,47 @@ impl QaoaAnnealBridge {
         }
     }
 
-    /// Convert QAOA problem to QUBO formulation for annealing
+    /// Convert QAOA problem to QUBO formulation for annealing.
+    ///
+    /// Performs the exact Pauli-Z to binary-variable substitution and then
+    /// records analysis metrics for the resulting problem graph.
     pub fn qaoa_to_qubo(
         &mut self,
         qaoa_problem: &QaoaProblem,
     ) -> ApplicationResult<SciRS2QuboModel> {
+        let qubo = Self::qaoa_problem_to_qubo(qaoa_problem)?;
+
+        // Analyze the resulting problem graph
+        let analysis = self.graph_analyzer.analyze_problem_graph(&qubo)?;
+        println!(
+            "QAOA->QUBO conversion: {} qubits, {} edges, difficulty: {:?}",
+            analysis.metrics.num_nodes, analysis.metrics.num_edges, analysis.embedding_difficulty
+        );
+
+        Ok(qubo)
+    }
+
+    /// Pure QAOA-cost-Hamiltonian to QUBO conversion (no analyzer side effects).
+    ///
+    /// Each `Z_i` becomes `(1 - 2 x_i)` and each `Z_i Z_j` expands to
+    /// `1 - 2 x_i - 2 x_j + 4 x_i x_j`; the constant parts accumulate into the
+    /// QUBO offset so the objective value is preserved exactly.
+    fn qaoa_problem_to_qubo(qaoa_problem: &QaoaProblem) -> ApplicationResult<SciRS2QuboModel> {
         let num_vars = qaoa_problem.num_qubits;
         let mut qubo = SciRS2QuboModel::new(num_vars)?;
 
-        // Convert QAOA cost Hamiltonian to QUBO terms
         for clause in &qaoa_problem.cost_clauses {
             match clause {
                 QaoaClause::SingleQubit { qubit, weight } => {
-                    // Convert Pauli-Z term to QUBO linear term
-                    // Z_i -> (1 - 2*x_i) so coefficient becomes -2*weight
                     let current = qubo.linear_terms[*qubit];
                     qubo.set_linear(*qubit, current - 2.0 * weight)?;
+                    qubo.offset += weight;
                 }
                 QaoaClause::TwoQubit {
                     qubit1,
                     qubit2,
                     weight,
                 } => {
-                    // Convert ZZ term to QUBO quadratic term
-                    // Z_i * Z_j -> (1 - 2*x_i)(1 - 2*x_j) = 1 - 2*x_i - 2*x_j + 4*x_i*x_j
                     let current_linear1 = qubo.linear_terms[*qubit1];
                     let current_linear2 = qubo.linear_terms[*qubit2];
                     qubo.set_linear(*qubit1, current_linear1 - 2.0 * weight)?;
@@ -72,18 +90,10 @@ impl QaoaAnnealBridge {
                     qubo.offset += weight;
                 }
                 QaoaClause::MultiQubit { qubits, weight } => {
-                    // For multi-qubit terms, use auxiliary variables for reduction
-                    self.reduce_multi_qubit_term(&mut qubo, qubits, *weight)?;
+                    Self::reduce_multi_qubit_term(&mut qubo, qubits, *weight)?;
                 }
             }
         }
-
-        // Analyze the resulting problem graph
-        let analysis = self.graph_analyzer.analyze_problem_graph(&qubo)?;
-        println!(
-            "QAOA->QUBO conversion: {} qubits, {} edges, difficulty: {:?}",
-            analysis.metrics.num_nodes, analysis.metrics.num_edges, analysis.embedding_difficulty
-        );
 
         Ok(qubo)
     }
@@ -185,26 +195,48 @@ impl QaoaAnnealBridge {
         })
     }
 
-    /// Reduce multi-qubit terms using auxiliary variables
+    /// Reduce a multi-qubit cost term to QUBO form.
+    ///
+    /// A `k`-local term `weight · Z_{q₁}…Z_{qₖ}` couples the parity of `k`
+    /// qubits. Single- and two-qubit terms map exactly onto QUBO linear and
+    /// quadratic terms (handled by [`qaoa_to_qubo`]). For `k > 2` an *exact*
+    /// QUBO representation requires introducing auxiliary variables and a
+    /// quadratization penalty schedule (e.g. Rosenberg) that enlarges the
+    /// variable set — machinery this lightweight bridge does not provision.
+    ///
+    /// Rather than silently substitute a lossy pairwise chain (which would
+    /// change the optimization landscape without telling the caller), this
+    /// returns an honest error for genuinely high-order terms.
     fn reduce_multi_qubit_term(
-        &self,
         qubo: &mut SciRS2QuboModel,
         qubits: &[usize],
         weight: f64,
     ) -> ApplicationResult<()> {
-        if qubits.len() <= 2 {
-            return Ok(());
+        match qubits.len() {
+            0 => {
+                // Constant parity term: contributes a fixed offset.
+                qubo.offset += weight;
+                Ok(())
+            }
+            1 => {
+                let current = qubo.linear_terms[qubits[0]];
+                qubo.set_linear(qubits[0], current - 2.0 * weight)
+            }
+            2 => {
+                let current1 = qubo.linear_terms[qubits[0]];
+                let current2 = qubo.linear_terms[qubits[1]];
+                qubo.set_linear(qubits[0], current1 - 2.0 * weight)?;
+                qubo.set_linear(qubits[1], current2 - 2.0 * weight)?;
+                qubo.set_quadratic(qubits[0], qubits[1], 4.0 * weight)?;
+                qubo.offset += weight;
+                Ok(())
+            }
+            k => Err(ApplicationError::InvalidConfiguration(format!(
+                "exact QUBO reduction of a {k}-local cost term requires auxiliary \
+                 variables (quadratization), which this bridge does not provision; \
+                 decompose the term to at most 2-local before conversion"
+            ))),
         }
-
-        // For now, approximate multi-qubit terms as pairwise interactions
-        // More sophisticated reduction methods could be implemented
-        let pair_weight = weight / (qubits.len() - 1) as f64;
-
-        for i in 0..qubits.len() - 1 {
-            qubo.set_quadratic(qubits[i], qubits[i + 1], pair_weight)?;
-        }
-
-        Ok(())
     }
 
     fn qubo_to_qaoa(&self, _qubo: &SciRS2QuboModel) -> ApplicationResult<QaoaProblem> {
@@ -240,36 +272,103 @@ impl QaoaAnnealBridge {
         }
     }
 
-    fn solve_with_annealing(&self, qubo: &SciRS2QuboModel) -> ApplicationResult<SolutionResult> {
-        // Simplified annealing solve - would use actual annealing solver
-        let solution = vec![1; qubo.num_variables];
+    /// Convert a [`SciRS2QuboModel`] into the in-crate [`QuboModel`] so it can be
+    /// fed to the real annealing simulator. The CSR quadratic matrix stores each
+    /// off-diagonal entry symmetrically; the diagonal is folded into the linear
+    /// (QUBO) terms because `x² = x` for binary variables.
+    fn to_inner_qubo(qubo: &SciRS2QuboModel) -> ApplicationResult<QuboModel> {
+        let mut inner = QuboModel::new(qubo.num_variables);
+
+        for (i, &value) in qubo.linear_terms.iter().enumerate() {
+            if value != 0.0 {
+                inner
+                    .set_linear(i, value)
+                    .map_err(|e| ApplicationError::OptimizationError(e.to_string()))?;
+            }
+        }
+
+        for (i, j, value) in qubo.iter_quadratic() {
+            if value == 0.0 {
+                continue;
+            }
+            if i == j {
+                inner
+                    .add_linear(i, value)
+                    .map_err(|e| ApplicationError::OptimizationError(e.to_string()))?;
+            } else if i < j {
+                // The CSR matrix is symmetric: the full off-diagonal weight for
+                // the unordered pair {i, j} is value(i,j) + value(j,i). Take only
+                // the upper triangle and double to recover the total coupling.
+                inner
+                    .set_quadratic(i, j, 2.0 * value)
+                    .map_err(|e| ApplicationError::OptimizationError(e.to_string()))?;
+            }
+        }
+
+        Ok(inner)
+    }
+
+    /// Solve a QUBO with the real simulated-quantum-annealing engine.
+    ///
+    /// The QUBO is mapped to its equivalent Ising model and handed to
+    /// [`QuantumAnnealingSimulator`]; the returned spin ground-state estimate is
+    /// mapped back to a binary `{0, 1}` assignment and scored with the original
+    /// QUBO so the reported energy is the genuine objective value.
+    fn solve_qubo_via_annealing(
+        &self,
+        qubo: &SciRS2QuboModel,
+    ) -> ApplicationResult<(Vec<i8>, f64, usize)> {
+        if qubo.num_variables == 0 {
+            return Ok((Vec::new(), qubo.evaluate(&[])?, 0));
+        }
+
+        let inner = Self::to_inner_qubo(qubo)?;
+        let (ising, _offset) = inner.to_ising();
+
+        let mut params = AnnealingParams::default();
+        params.num_sweeps = self.config.annealing_sweeps.max(1);
+        params.num_repetitions = self.config.annealing_repetitions.max(1);
+
+        let simulator = QuantumAnnealingSimulator::new(params)
+            .map_err(|e| ApplicationError::OptimizationError(e.to_string()))?;
+        let result = simulator
+            .solve(&ising)
+            .map_err(|e| ApplicationError::OptimizationError(e.to_string()))?;
+
+        // Map Ising spins (-1/+1) to QUBO binary variables (0/1).
+        let solution: Vec<i8> = result.best_spins.iter().map(|&s| i8::from(s > 0)).collect();
         let energy = qubo.evaluate(&solution)?;
+
+        Ok((solution, energy, result.total_sweeps))
+    }
+
+    fn solve_with_annealing(&self, qubo: &SciRS2QuboModel) -> ApplicationResult<SolutionResult> {
+        let (solution, energy, sweeps) = self.solve_qubo_via_annealing(qubo)?;
 
         Ok(SolutionResult {
             energy,
             solution,
             qaoa_params: None,
-            iterations: 1000,
+            iterations: sweeps,
             convergence_data: vec![energy],
         })
     }
 
     fn solve_with_qaoa(&self, problem: &QaoaProblem) -> ApplicationResult<SolutionResult> {
-        // Simplified QAOA solve - would use actual QAOA implementation
-        let solution = vec![1; problem.num_qubits];
-        let energy = -1.0; // Placeholder
-
-        let qaoa_params = QaoaParameters {
-            beta: vec![PI / 4.0; self.config.default_qaoa_layers],
-            gamma: vec![PI / 2.0; self.config.default_qaoa_layers],
-            num_layers: self.config.default_qaoa_layers,
-        };
+        // This crate does not host a state-vector QAOA executor, so the QAOA
+        // cost Hamiltonian is solved on its equivalent QUBO with the real
+        // annealing engine. The bitstring is scored with the genuine QUBO
+        // objective and the variational angles are derived from that solution
+        // via the existing solution->parameter map (no placeholder energy).
+        let qubo = Self::qaoa_problem_to_qubo(problem)?;
+        let (solution, energy, sweeps) = self.solve_qubo_via_annealing(&qubo)?;
+        let qaoa_params = self.solution_to_qaoa_params(&solution, problem)?;
 
         Ok(SolutionResult {
             energy,
             solution,
             qaoa_params: Some(qaoa_params),
-            iterations: 100,
+            iterations: sweeps,
             convergence_data: vec![energy],
         })
     }
@@ -317,6 +416,10 @@ pub struct BridgeConfig {
     pub max_qaoa_qubits: usize,
     /// Timeout for hybrid optimization
     pub timeout_seconds: u64,
+    /// Number of Monte-Carlo sweeps used by the annealing solver
+    pub annealing_sweeps: usize,
+    /// Number of independent annealing restarts
+    pub annealing_repetitions: usize,
 }
 
 impl Default for BridgeConfig {
@@ -326,6 +429,8 @@ impl Default for BridgeConfig {
             energy_threshold: -1.0,
             max_qaoa_qubits: 20,
             timeout_seconds: 300,
+            annealing_sweeps: 1000,
+            annealing_repetitions: 10,
         }
     }
 }

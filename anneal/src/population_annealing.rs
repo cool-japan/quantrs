@@ -525,24 +525,40 @@ struct MpiInterface {
 }
 
 impl MpiInterface {
-    const fn new(config: MpiConfig) -> PopulationAnnealingResult<Self> {
-        // In a real implementation, this would initialize MPI
-        // For now, we just store the config
-        Ok(Self { config })
+    /// Attempt to initialize a distributed-population-annealing MPI interface.
+    ///
+    /// This crate has no real MPI backend: there is no `mpi`-crate dependency
+    /// (or equivalent) wired up, and standing up genuine multi-process
+    /// communication requires an actual MPI runtime/cluster, which is outside
+    /// what a single-process library can honestly provide. Silently
+    /// accepting `mpi_config` and running ordinary single-process annealing
+    /// would misrepresent the requested distributed run as having occurred,
+    /// so this always returns an honest error instead of fabricating success.
+    fn new(config: MpiConfig) -> PopulationAnnealingResult<Self> {
+        Err(PopulationAnnealingError::MpiError(format!(
+            "Distributed population annealing (num_processes={}, rank={}) was requested via \
+             `mpi_config`, but this build has no real MPI backend wired up (no `mpi`-crate \
+             dependency or equivalent). Real MPI support has not been implemented; refusing to \
+             silently fall back to single-process annealing under a distributed configuration. \
+             Construct `PopulationAnnealingSimulator` with `mpi_config: None` to run \
+             single-process.",
+            config.num_processes, config.rank
+        )))
     }
 
-    const fn exchange_populations(
+    /// Would exchange population members across MPI ranks in a real
+    /// distributed backend. Unreachable in practice: [`Self::new`] always
+    /// errors, so no [`MpiInterface`] value can ever be constructed to call
+    /// this on. Kept honest (rather than a silent no-op) in case that
+    /// invariant ever changes.
+    fn exchange_populations(
         &self,
         _population: &mut Vec<PopulationMember>,
     ) -> PopulationAnnealingResult<()> {
-        // In a real implementation, this would:
-        // 1. Gather population statistics from all processes
-        // 2. Perform load balancing if needed
-        // 3. Exchange population members between processes
-        // 4. Redistribute populations based on performance
-
-        // For now, this is a placeholder
-        Ok(())
+        Err(PopulationAnnealingError::MpiError(format!(
+            "Real MPI population exchange is not implemented (rank={})",
+            self.config.rank
+        )))
     }
 }
 
@@ -646,5 +662,45 @@ mod tests {
         assert!(result.best_energy <= 0.0); // Should find good solution
         assert_eq!(result.final_population.len(), 50);
         assert_eq!(result.energy_history.len(), 10);
+    }
+
+    #[test]
+    fn mpi_config_is_honestly_rejected_instead_of_silently_running_single_process() {
+        // Requesting distributed annealing via `mpi_config` must fail loudly
+        // (there is no real MPI backend in this crate) rather than silently
+        // constructing a working single-process simulator.
+        let config = PopulationAnnealingConfig {
+            mpi_config: Some(MpiConfig {
+                num_processes: 4,
+                rank: 0,
+                load_balancing: true,
+                communication_frequency: 5,
+            }),
+            ..Default::default()
+        };
+
+        let result = PopulationAnnealingSimulator::new(config);
+        assert!(
+            result.is_err(),
+            "constructing a simulator with mpi_config set must be a real, honest error"
+        );
+        match result {
+            Err(PopulationAnnealingError::MpiError(message)) => {
+                assert!(message.contains("MPI"));
+            }
+            Err(other) => panic!("expected PopulationAnnealingError::MpiError, got {other:?}"),
+            Ok(_) => panic!("expected an error, but simulator construction succeeded"),
+        }
+    }
+
+    #[test]
+    fn no_mpi_config_still_constructs_a_working_single_process_simulator() {
+        // Sanity check that the honest MPI rejection didn't collaterally
+        // break the default (non-distributed) construction path.
+        let config = PopulationAnnealingConfig {
+            mpi_config: None,
+            ..Default::default()
+        };
+        assert!(PopulationAnnealingSimulator::new(config).is_ok());
     }
 }

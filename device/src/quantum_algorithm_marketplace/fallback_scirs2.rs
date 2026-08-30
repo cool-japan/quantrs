@@ -178,16 +178,157 @@ pub struct MinimizeResult {
     pub nfev: usize,
 }
 
-/// Fallback linear algebra functions
+/// Real symmetric eigensolver using the cyclic Jacobi algorithm (pure Rust
+/// fallback for when the `scirs2` feature is disabled).
+///
+/// Assumes the input is **symmetric**; it is defensively symmetrized as
+/// `(A + Aᵀ) / 2`. Returns `(eigenvalues, eigenvectors)` with ascending
+/// eigenvalues and orthonormal eigenvector columns. Non-square input is an error.
 pub fn eig(matrix: &Array2<f64>) -> LinalgResult<(Array1<f64>, Array2<f64>)> {
-    // Very basic fallback - return identity-like results
-    let n = matrix.nrows();
-    let eigenvalues = Array1::ones(n);
-    let eigenvectors = Array2::eye(n);
-    Ok((eigenvalues, eigenvectors))
+    let (rows, cols) = matrix.dim();
+    if rows != cols {
+        return Err(LinalgError {
+            message: format!("eig requires a square matrix, got {rows}x{cols}"),
+        });
+    }
+    jacobi_symmetric_eig(matrix).map_err(|message| LinalgError { message })
 }
 
 pub fn matrix_norm(matrix: &Array2<f64>) -> f64 {
     // Frobenius norm
     matrix.iter().map(|x| x * x).sum::<f64>().sqrt()
+}
+
+/// Cyclic Jacobi eigenvalue algorithm for real symmetric matrices. Returns
+/// `(eigenvalues, eigenvectors)` ascending with orthonormal eigenvector
+/// columns. The input is defensively symmetrized as `(A + Aᵀ) / 2`.
+fn jacobi_symmetric_eig(matrix: &Array2<f64>) -> Result<(Array1<f64>, Array2<f64>), String> {
+    let n = matrix.nrows();
+    if n != matrix.ncols() {
+        return Err("jacobi_symmetric_eig requires a square matrix".to_string());
+    }
+    if n == 0 {
+        return Ok((Array1::zeros(0), Array2::zeros((0, 0))));
+    }
+
+    let mut a = Array2::<f64>::zeros((n, n));
+    for i in 0..n {
+        for j in 0..n {
+            a[(i, j)] = 0.5 * (matrix[(i, j)] + matrix[(j, i)]);
+        }
+    }
+
+    let mut eigenvectors = Array2::<f64>::eye(n);
+    if n == 1 {
+        return Ok((Array1::from_vec(vec![a[(0, 0)]]), eigenvectors));
+    }
+
+    let max_sweeps = 100;
+    for _ in 0..max_sweeps {
+        let mut off = 0.0;
+        for p in 0..n {
+            for q in (p + 1)..n {
+                off += a[(p, q)] * a[(p, q)];
+            }
+        }
+        if off <= f64::EPSILON * f64::EPSILON {
+            break;
+        }
+
+        for p in 0..n {
+            for q in (p + 1)..n {
+                let apq = a[(p, q)];
+                if apq.abs() <= f64::MIN_POSITIVE {
+                    continue;
+                }
+                let app = a[(p, p)];
+                let aqq = a[(q, q)];
+                let tau = (aqq - app) / (2.0 * apq);
+                let t = if tau >= 0.0 {
+                    1.0 / (tau + (1.0 + tau * tau).sqrt())
+                } else {
+                    -1.0 / (-tau + (1.0 + tau * tau).sqrt())
+                };
+                let c = 1.0 / (1.0 + t * t).sqrt();
+                let s = t * c;
+
+                for k in 0..n {
+                    let akp = a[(k, p)];
+                    let akq = a[(k, q)];
+                    a[(k, p)] = c * akp - s * akq;
+                    a[(k, q)] = s * akp + c * akq;
+                }
+                for k in 0..n {
+                    let apk = a[(p, k)];
+                    let aqk = a[(q, k)];
+                    a[(p, k)] = c * apk - s * aqk;
+                    a[(q, k)] = s * apk + c * aqk;
+                }
+                for k in 0..n {
+                    let vkp = eigenvectors[(k, p)];
+                    let vkq = eigenvectors[(k, q)];
+                    eigenvectors[(k, p)] = c * vkp - s * vkq;
+                    eigenvectors[(k, q)] = s * vkp + c * vkq;
+                }
+            }
+        }
+    }
+
+    let mut eigenvalues = Array1::<f64>::zeros(n);
+    for i in 0..n {
+        eigenvalues[i] = a[(i, i)];
+    }
+
+    let mut order: Vec<usize> = (0..n).collect();
+    order.sort_by(|&a_idx, &b_idx| eigenvalues[a_idx].total_cmp(&eigenvalues[b_idx]));
+
+    let mut sorted_values = Array1::<f64>::zeros(n);
+    let mut sorted_vectors = Array2::<f64>::zeros((n, n));
+    for (new_idx, &old_idx) in order.iter().enumerate() {
+        sorted_values[new_idx] = eigenvalues[old_idx];
+        for row in 0..n {
+            sorted_vectors[(row, new_idx)] = eigenvectors[(row, old_idx)];
+        }
+    }
+
+    Ok((sorted_values, sorted_vectors))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use scirs2_core::ndarray::array;
+
+    fn approx(a: f64, b: f64, tol: f64) -> bool {
+        (a - b).abs() <= tol
+    }
+
+    #[test]
+    fn test_eig_diagonal() {
+        let m = array![[3.0, 0.0], [0.0, 1.0]];
+        let (vals, _) = eig(&m).expect("eig should succeed");
+        assert!(approx(vals[0], 1.0, 1e-9));
+        assert!(approx(vals[1], 3.0, 1e-9));
+    }
+
+    #[test]
+    fn test_eig_symmetric_reconstruction() {
+        let a = array![[2.0, 1.0], [1.0, 2.0]];
+        let (vals, vecs) = eig(&a).expect("eig should succeed");
+        for r in 0..2 {
+            for c in 0..2 {
+                let mut recon = 0.0;
+                for k in 0..2 {
+                    recon += vecs[(r, k)] * vals[k] * vecs[(c, k)];
+                }
+                assert!(approx(recon, a[(r, c)], 1e-9));
+            }
+        }
+    }
+
+    #[test]
+    fn test_eig_non_square_errors() {
+        let m = array![[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]];
+        assert!(eig(&m).is_err());
+    }
 }

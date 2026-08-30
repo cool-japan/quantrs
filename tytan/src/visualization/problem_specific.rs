@@ -41,6 +41,12 @@ pub enum VisualizationType {
         n_jobs: usize,
         n_machines: usize,
         time_horizon: usize,
+        /// Per-(job, machine) task duration, indexed `durations[job][machine]`.
+        /// Real Gantt-chart rendering needs the actual task durations from
+        /// the problem encoding; without them, `extract_schedule` honestly
+        /// errors instead of fabricating a placeholder duration for every
+        /// task.
+        durations: Option<Vec<Vec<usize>>>,
     },
     /// Number Partitioning
     NumberPartition { numbers: Vec<f64> },
@@ -142,7 +148,10 @@ impl ProblemVisualizer {
                 n_jobs,
                 n_machines,
                 time_horizon,
-            } => self.visualize_job_shop(*n_jobs, *n_machines, *time_horizon)?,
+                durations,
+            } => {
+                self.visualize_job_shop(*n_jobs, *n_machines, *time_horizon, durations.as_ref())?;
+            }
             VisualizationType::NumberPartition { numbers } => {
                 self.visualize_number_partition(numbers)?;
             }
@@ -534,11 +543,13 @@ impl ProblemVisualizer {
         n_jobs: usize,
         n_machines: usize,
         time_horizon: usize,
+        durations: Option<&Vec<Vec<usize>>>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let best_sample = self.get_best_sample()?;
 
         // Extract schedule
-        let schedule = self.extract_schedule(best_sample, n_jobs, n_machines, time_horizon)?;
+        let schedule =
+            self.extract_schedule(best_sample, n_jobs, n_machines, time_horizon, durations)?;
 
         #[cfg(feature = "scirs")]
         {
@@ -580,24 +591,40 @@ impl ProblemVisualizer {
     }
 
     /// Extract schedule from solution
+    ///
+    /// Requires the real per-(job, machine) task durations via `durations`
+    /// (see [`VisualizationType::JobShop::durations`]); without them there
+    /// is no honest way to know how wide each Gantt-chart bar should be, so
+    /// this returns an error instead of fabricating a constant duration for
+    /// every task (the previous behavior hardcoded `duration = 5` for
+    /// every single task regardless of the real problem).
     fn extract_schedule(
         &self,
         sample: &SampleResult,
         n_jobs: usize,
         n_machines: usize,
         time_horizon: usize,
+        durations: Option<&Vec<Vec<usize>>>,
     ) -> Result<JobShopSchedule, Box<dyn std::error::Error>> {
+        let durations = durations.ok_or(
+            "Job Shop visualization requires VisualizationType::JobShop::durations \
+             (per-job/machine task duration) to render an accurate Gantt chart; \
+             none were provided",
+        )?;
+
         let mut schedule = Vec::new();
 
-        // This is problem-specific and would need the actual encoding scheme
-        // For now, return a placeholder
-        for j in 0..n_jobs {
+        for (j, job_durations) in durations.iter().enumerate().take(n_jobs) {
             for m in 0..n_machines {
                 for t in 0..time_horizon {
                     let var_name = format!("x_{j}_{m}_{t}");
                     if sample.assignments.get(&var_name).copied().unwrap_or(false) {
-                        // Find duration (would need problem-specific logic)
-                        let duration = 5; // Placeholder
+                        let duration = *job_durations.get(m).ok_or_else(|| {
+                            format!(
+                                "durations[{j}] has no entry for machine {m} \
+                                 (expected {n_machines} entries)"
+                            )
+                        })?;
                         schedule.push((j, m, t, duration));
                         break;
                     }
@@ -1020,4 +1047,71 @@ struct GraphColoringExport {
     node_colors: Vec<usize>,
     node_names: Option<Vec<String>>,
     n_colors_used: usize,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_with(assignments: &[(&str, bool)]) -> SampleResult {
+        SampleResult {
+            assignments: assignments
+                .iter()
+                .map(|(name, value)| ((*name).to_string(), *value))
+                .collect(),
+            energy: 0.0,
+            occurrences: 1,
+        }
+    }
+
+    #[test]
+    fn test_extract_schedule_errors_without_durations() {
+        let visualizer = ProblemVisualizer::new(
+            VisualizationType::JobShop {
+                n_jobs: 1,
+                n_machines: 1,
+                time_horizon: 2,
+                durations: None,
+            },
+            VisualizationConfig::default(),
+        );
+
+        let sample = sample_with(&[("x_0_0_0", true)]);
+        let result = visualizer.extract_schedule(&sample, 1, 1, 2, None);
+
+        // The old fabricated implementation always returned Ok(..) with a
+        // hardcoded `duration = 5` for every scheduled task regardless of
+        // the real problem; without real durations this must now be an
+        // honest error instead.
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_extract_schedule_uses_real_durations_not_fabricated_constant() {
+        let durations = vec![vec![7, 3], vec![4, 9]];
+        let visualizer = ProblemVisualizer::new(
+            VisualizationType::JobShop {
+                n_jobs: 2,
+                n_machines: 2,
+                time_horizon: 3,
+                durations: Some(durations.clone()),
+            },
+            VisualizationConfig::default(),
+        );
+
+        // Job 0 scheduled on machine 0 at t=1; Job 1 scheduled on machine 1 at t=0.
+        let sample = sample_with(&[("x_0_0_1", true), ("x_1_1_0", true)]);
+
+        let schedule = visualizer
+            .extract_schedule(&sample, 2, 2, 3, Some(&durations))
+            .expect("extract_schedule should succeed with real durations");
+
+        assert_eq!(schedule.len(), 2);
+        // (job, machine, start, duration)
+        assert!(schedule.contains(&(0, 0, 1, durations[0][0])));
+        assert!(schedule.contains(&(1, 1, 0, durations[1][1])));
+        // The old fabricated implementation always used duration=5
+        // regardless of the real per-job/machine durations.
+        assert!(schedule.iter().any(|&(_, _, _, d)| d != 5));
+    }
 }

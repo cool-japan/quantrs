@@ -4,6 +4,7 @@
 //! graph convolutional networks, graph attention networks, and message passing.
 
 use scirs2_core::ndarray::{Array1, Array2, Array3};
+use scirs2_core::random::prelude::*;
 use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -159,13 +160,31 @@ impl QuantumGCNLayer {
         let node_circuit = Self::build_node_circuit(num_qubits);
         let aggregation_circuit = Self::build_aggregation_circuit(num_qubits);
 
+        // Draw a real initial value for every named variational parameter
+        // that appears in either circuit, so `quantum_transform` has actual
+        // bound rotation angles to run the circuits with (previously this
+        // map was always left empty and the circuits were never executed).
+        let mut parameters = HashMap::new();
+        let mut rng = thread_rng();
+        for (_, _, param_names) in node_circuit
+            .gates
+            .iter()
+            .chain(aggregation_circuit.gates.iter())
+        {
+            for name in param_names {
+                parameters
+                    .entry(name.clone())
+                    .or_insert_with(|| (rng.random::<f64>() - 0.5) * 2.0 * PI);
+            }
+        }
+
         Self {
             input_dim,
             output_dim,
             num_qubits,
             node_circuit,
             aggregation_circuit,
-            parameters: HashMap::new(),
+            parameters,
             activation,
         }
     }
@@ -260,38 +279,53 @@ impl QuantumGCNLayer {
         Ok(output_features)
     }
 
-    /// Apply quantum transformation
+    /// Apply quantum transformation.
+    ///
+    /// The node and neighbor features are amplitude-encoded into two
+    /// `num_qubits`-wide quantum registers, combined into one genuine joint
+    /// state via a tensor (Kronecker) product, and evolved through the real
+    /// `aggregation_circuit` (whose `CZ` gates entangle the two registers,
+    /// mirroring quantum message passing between a node and its neighbors).
+    /// The real Pauli-Z expectation values measured on the resulting state
+    /// are then blended with the classical feature averages to form the
+    /// output, so the encoded quantum states are actually used rather than
+    /// discarded.
     fn quantum_transform(
         &self,
         node_features: &Array1<f64>,
         aggregated_features: &Array1<f64>,
     ) -> Result<Array1<f64>> {
-        // Encode features into quantum state
+        // Encode features into quantum states.
         let node_encoded = self.encode_features(node_features)?;
         let agg_encoded = self.encode_features(aggregated_features)?;
 
-        // Apply quantum circuits (simplified)
-        let mut output = Array1::zeros(self.output_dim);
+        // Combine the node and neighbor registers into one joint state and
+        // run the real aggregation circuit over it.
+        let joint_state = kronecker_product(&node_encoded, &agg_encoded);
+        let evolved_state = self.simulate_circuit(&self.aggregation_circuit, joint_state)?;
 
-        // Placeholder computation
+        // Read out real <Z> expectation values on the neighbor-register
+        // qubits (qubits 0..num_qubits of the joint state), which is where
+        // the aggregation circuit's final rotation layer acts.
+        let quantum_signal: Vec<f64> = (0..self.num_qubits.max(1))
+            .map(|q| expectation_z(&evolved_state, q))
+            .collect();
+
+        let mut output = Array1::zeros(self.output_dim);
         for i in 0..self.output_dim {
             let idx_node = i % node_features.len();
             let idx_agg = i % aggregated_features.len();
+            let idx_quantum = i % quantum_signal.len();
+
+            let classical_blend =
+                0.5 * node_features[idx_node] + 0.5 * aggregated_features[idx_agg];
+            let x = 0.5 * classical_blend + 0.5 * quantum_signal[idx_quantum];
 
             output[i] = match self.activation {
-                ActivationType::ReLU => {
-                    (0.5 * node_features[idx_node] + 0.5 * aggregated_features[idx_agg]).max(0.0)
-                }
-                ActivationType::Tanh => {
-                    (0.5 * node_features[idx_node] + 0.5 * aggregated_features[idx_agg]).tanh()
-                }
-                ActivationType::Sigmoid => {
-                    let x = 0.5 * node_features[idx_node] + 0.5 * aggregated_features[idx_agg];
-                    1.0 / (1.0 + (-x).exp())
-                }
-                ActivationType::Linear => {
-                    0.5 * node_features[idx_node] + 0.5 * aggregated_features[idx_agg]
-                }
+                ActivationType::ReLU => x.max(0.0),
+                ActivationType::Tanh => x.tanh(),
+                ActivationType::Sigmoid => 1.0 / (1.0 + (-x).exp()),
+                ActivationType::Linear => x,
             };
         }
 
@@ -316,6 +350,149 @@ impl QuantumGCNLayer {
         }
 
         Ok(quantum_state)
+    }
+
+    /// Look up this layer's bound value for a named variational parameter.
+    fn parameter_value(&self, name: &str) -> f64 {
+        *self.parameters.get(name).unwrap_or(&0.0)
+    }
+
+    /// Execute a [`VariationalCircuit`] against a statevector using this
+    /// layer's bound parameter values, returning the resulting statevector.
+    /// This is a genuine gate-by-gate statevector simulation (not a
+    /// placeholder): `RY`/`RX`/`RZ` apply the standard single-qubit rotation
+    /// matrices and `CNOT`/`CZ` apply the standard two-qubit gates.
+    fn simulate_circuit(
+        &self,
+        circuit: &VariationalCircuit,
+        mut state: Vec<Complex64>,
+    ) -> Result<Vec<Complex64>> {
+        let expected_dim = 1usize << circuit.num_qubits;
+        if state.len() != expected_dim {
+            return Err(MLError::InvalidInput(format!(
+                "quantum GCN state dimension {} does not match circuit width {} ({} qubits)",
+                state.len(),
+                expected_dim,
+                circuit.num_qubits
+            )));
+        }
+
+        for (gate_name, qubits, param_names) in &circuit.gates {
+            match gate_name.as_str() {
+                "RY" => apply_ry(&mut state, qubits[0], self.parameter_value(&param_names[0])),
+                "RX" => apply_rx(&mut state, qubits[0], self.parameter_value(&param_names[0])),
+                "RZ" => apply_rz(&mut state, qubits[0], self.parameter_value(&param_names[0])),
+                "CNOT" => apply_cnot(&mut state, qubits[0], qubits[1]),
+                "CZ" => apply_cz(&mut state, qubits[0], qubits[1]),
+                other => {
+                    return Err(MLError::InvalidConfiguration(format!(
+                        "Unsupported gate '{other}' in quantum GCN circuit"
+                    )));
+                }
+            }
+        }
+
+        Ok(state)
+    }
+}
+
+/// Tensor (Kronecker) product of two statevectors, combining two separate
+/// quantum registers into one joint state: `result[i * b.len() + j] = a[i] * b[j]`.
+fn kronecker_product(a: &[Complex64], b: &[Complex64]) -> Vec<Complex64> {
+    let mut result = Vec::with_capacity(a.len() * b.len());
+    for &amplitude_a in a {
+        for &amplitude_b in b {
+            result.push(amplitude_a * amplitude_b);
+        }
+    }
+    result
+}
+
+/// Real Pauli-Z expectation value on `qubit` of a state:
+/// `<Z> = sum_i (-1)^{bit_qubit(i)} |amplitude_i|^2`.
+fn expectation_z(state: &[Complex64], qubit: usize) -> f64 {
+    let bit = 1usize << qubit;
+    state
+        .iter()
+        .enumerate()
+        .map(|(i, amplitude)| {
+            let probability = amplitude.norm_sqr();
+            if i & bit == 0 {
+                probability
+            } else {
+                -probability
+            }
+        })
+        .sum()
+}
+
+/// Apply a single-qubit gate given by its 2x2 matrix entries to `qubit`.
+fn apply_single_qubit_gate(
+    state: &mut [Complex64],
+    qubit: usize,
+    m00: Complex64,
+    m01: Complex64,
+    m10: Complex64,
+    m11: Complex64,
+) {
+    let bit = 1usize << qubit;
+    let dim = state.len();
+    for i in 0..dim {
+        if i & bit == 0 {
+            let j = i | bit;
+            let amplitude_0 = state[i];
+            let amplitude_1 = state[j];
+            state[i] = m00 * amplitude_0 + m01 * amplitude_1;
+            state[j] = m10 * amplitude_0 + m11 * amplitude_1;
+        }
+    }
+}
+
+/// Apply the standard `RY(theta)` rotation gate to `qubit`.
+fn apply_ry(state: &mut [Complex64], qubit: usize, theta: f64) {
+    let c = Complex64::new((theta / 2.0).cos(), 0.0);
+    let s = Complex64::new((theta / 2.0).sin(), 0.0);
+    apply_single_qubit_gate(state, qubit, c, -s, s, c);
+}
+
+/// Apply the standard `RX(theta)` rotation gate to `qubit`.
+fn apply_rx(state: &mut [Complex64], qubit: usize, theta: f64) {
+    let c = Complex64::new((theta / 2.0).cos(), 0.0);
+    let neg_i_s = Complex64::new(0.0, -(theta / 2.0).sin());
+    apply_single_qubit_gate(state, qubit, c, neg_i_s, neg_i_s, c);
+}
+
+/// Apply the standard `RZ(theta)` rotation gate to `qubit`.
+fn apply_rz(state: &mut [Complex64], qubit: usize, theta: f64) {
+    let bit = 1usize << qubit;
+    let phase_0 = Complex64::from_polar(1.0, -theta / 2.0);
+    let phase_1 = Complex64::from_polar(1.0, theta / 2.0);
+    for (i, amplitude) in state.iter_mut().enumerate() {
+        *amplitude *= if i & bit == 0 { phase_0 } else { phase_1 };
+    }
+}
+
+/// Apply the standard `CNOT` gate (flip `target` when `control` is set).
+fn apply_cnot(state: &mut [Complex64], control: usize, target: usize) {
+    let control_bit = 1usize << control;
+    let target_bit = 1usize << target;
+    let dim = state.len();
+    for i in 0..dim {
+        if i & control_bit != 0 && i & target_bit == 0 {
+            let j = i | target_bit;
+            state.swap(i, j);
+        }
+    }
+}
+
+/// Apply the standard `CZ` gate (phase-flip when both qubits are set).
+fn apply_cz(state: &mut [Complex64], control: usize, target: usize) {
+    let control_bit = 1usize << control;
+    let target_bit = 1usize << target;
+    for (i, amplitude) in state.iter_mut().enumerate() {
+        if i & control_bit != 0 && i & target_bit != 0 {
+            *amplitude = -*amplitude;
+        }
     }
 }
 
@@ -1235,6 +1412,65 @@ mod tests {
         let output = gcn.forward(&graph).expect("Forward pass failed");
 
         assert_eq!(output.shape(), &[3, 8]);
+    }
+
+    /// Regression test for the `quantum_transform` fabrication bug: the
+    /// encoded node/neighbor quantum states must actually be run through a
+    /// real circuit and measured, rather than being computed and discarded
+    /// in favor of a purely classical 0.5/0.5 blend.
+    #[test]
+    fn test_quantum_gcn_layer_uses_real_quantum_circuit() {
+        let gcn_a = QuantumGCNLayer::new(4, 8, ActivationType::Linear);
+        let gcn_b = QuantumGCNLayer::new(4, 8, ActivationType::Linear);
+
+        // Real random parameter initialization: the variational parameter
+        // map must be populated (not left permanently empty), and two
+        // independently constructed layers should not draw identical
+        // parameter values.
+        assert!(!gcn_a.parameters.is_empty());
+        assert_ne!(gcn_a.parameters, gcn_b.parameters);
+
+        let graph = QuantumGraph::new(
+            3,
+            vec![(0, 1), (1, 2)],
+            Array2::from_shape_vec(
+                (3, 4),
+                vec![1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+            )
+            .expect("Failed to create node features"),
+        );
+
+        let output = gcn_a.forward(&graph).expect("Forward pass failed");
+        assert_eq!(output.shape(), &[3, 8]);
+        assert!(output.iter().all(|x| x.is_finite()));
+
+        // Node 1's pure classical blend (ignoring the quantum contribution
+        // entirely) would be exactly 0.5 * node_features + 0.5 *
+        // neighbor_average; the real quantum expectation-value term mixed
+        // in by `quantum_transform` should make at least one output entry
+        // differ from that pure-classical value.
+        let node_feat = graph.node_features.row(1).to_owned();
+        let neighbor_avg =
+            (&graph.node_features.row(0).to_owned() + &graph.node_features.row(2)) / 2.0;
+        let mut differs = false;
+        for i in 0..8 {
+            let classical_only = 0.5 * node_feat[i % 4] + 0.5 * neighbor_avg[i % 4];
+            if (output[[1, i]] - classical_only).abs() > 1e-9 {
+                differs = true;
+            }
+        }
+        assert!(
+            differs,
+            "expected the quantum expectation-value term to change the output \
+             from the pure classical blend"
+        );
+
+        // Determinism: repeated forward passes with the same (fixed)
+        // parameters must reproduce the same output.
+        let output_again = gcn_a.forward(&graph).expect("Forward pass failed");
+        for (a, b) in output.iter().zip(output_again.iter()) {
+            assert!((a - b).abs() < 1e-12);
+        }
     }
 
     #[test]

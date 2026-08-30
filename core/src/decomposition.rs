@@ -633,3 +633,70 @@ pub mod utils {
         Ok(result)
     }
 }
+
+#[cfg(test)]
+mod issue_32_decomposition_tests {
+    use super::decompose_u_gate;
+    use crate::gate::single::UGate;
+    use crate::gate::GateOp;
+    use crate::qubit::QubitId;
+    use scirs2_core::Complex64;
+    use std::f64::consts::PI;
+
+    /// 2×2 matrix product of row-major flat `[m00, m01, m10, m11]` operands.
+    fn mat_mul_2x2(a: &[Complex64], b: &[Complex64]) -> [Complex64; 4] {
+        [
+            a[0] * b[0] + a[1] * b[2],
+            a[0] * b[1] + a[1] * b[3],
+            a[2] * b[0] + a[3] * b[2],
+            a[2] * b[1] + a[3] * b[3],
+        ]
+    }
+
+    /// Regression test for GitHub issue #32.
+    ///
+    /// `decompose_u_gate` yields `[Rz(λ), Ry(θ), Rz(φ)]` applied in order, whose
+    /// combined operator is `Rz(φ)·Ry(θ)·Rz(λ)`. With the correct Rz convention
+    /// this reconstructs `U(θ, φ, λ)` up to a global phase. Before the issue #32
+    /// fix (reversed Rz) the reconstruction diverged wildly (maxdiff ≈ 1.85).
+    #[test]
+    fn test_issue_32_decompose_u_gate_reconstructs_matrix() {
+        let (theta, phi, lambda) = (PI / 3.0, PI / 4.0, PI / 5.0);
+
+        let gates = decompose_u_gate(QubitId::new(0), theta, phi, lambda);
+        assert_eq!(gates.len(), 3);
+        let m0 = gates[0].matrix().expect("Rz(lambda) matrix");
+        let m1 = gates[1].matrix().expect("Ry(theta) matrix");
+        let m2 = gates[2].matrix().expect("Rz(phi) matrix");
+
+        // Combined operator applied to a state = M2 * M1 * M0.
+        let recon = mat_mul_2x2(&m2, &mat_mul_2x2(&m1, &m0));
+
+        let u = UGate {
+            target: QubitId::new(0),
+            theta,
+            phi,
+            lambda,
+        }
+        .matrix()
+        .expect("UGate matrix");
+
+        // Compare up to a global phase: align on the largest-magnitude entry.
+        let mut k = 0;
+        for i in 1..4 {
+            if u[i].norm() > u[k].norm() {
+                k = i;
+            }
+        }
+        let ratio = recon[k] / u[k];
+        let phase = ratio / Complex64::new(ratio.norm(), 0.0);
+
+        let maxdiff = (0..4)
+            .map(|i| (recon[i] - phase * u[i]).norm())
+            .fold(0.0_f64, f64::max);
+        assert!(
+            maxdiff < 1e-9,
+            "decompose_u_gate must reconstruct UGate up to global phase, maxdiff = {maxdiff}"
+        );
+    }
+}

@@ -161,16 +161,22 @@ fn test_training_detection_pipeline() -> Result<()> {
     assert_eq!(result.feature_importance.nrows(), 20);
     assert_eq!(result.feature_importance.ncols(), 4);
 
-    // Verify metrics are reasonable
-    assert!(result.metrics.auc_roc >= 0.0 && result.metrics.auc_roc <= 1.0);
-    assert!(result.metrics.precision >= 0.0 && result.metrics.precision <= 1.0);
-    assert!(result.metrics.recall >= 0.0 && result.metrics.recall <= 1.0);
-    assert!(result.metrics.f1_score >= 0.0 && result.metrics.f1_score <= 1.0);
+    // `detect()` sees no ground-truth labels, so supervised metrics cannot honestly be
+    // computed and are reported as NaN ("not computed") rather than as the plausible-looking
+    // constants they used to be. Real values come from `evaluate()`, which takes labels.
+    assert!(result.metrics.auc_roc.is_nan());
+    assert!(result.metrics.precision.is_nan());
+    assert!(result.metrics.recall.is_nan());
+    assert!(result.metrics.f1_score.is_nan());
 
-    // Verify quantum metrics
-    assert!(result.metrics.quantum_metrics.quantum_advantage >= 1.0);
-    assert!(result.metrics.quantum_metrics.entanglement_utilization >= 0.0);
-    assert!(result.metrics.quantum_metrics.entanglement_utilization <= 1.0);
+    // Likewise, this classical implementation has no real circuit-execution statistics to
+    // back the quantum metrics.
+    assert!(result.metrics.quantum_metrics.quantum_advantage.is_nan());
+    assert!(result
+        .metrics
+        .quantum_metrics
+        .entanglement_utilization
+        .is_nan());
 
     // Verify processing stats
     assert!(result.processing_stats.total_time > 0.0);

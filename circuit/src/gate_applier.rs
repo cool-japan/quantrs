@@ -729,7 +729,8 @@ impl<const N: usize> Circuit<N> {
         self.find_gate_by_type_and_index(gate_type, index)
             .and_then(|gate| {
                 if gate.qubits().len() == 1 {
-                    Some((gate.qubits()[0].id(), 0.0))
+                    let theta = rotation_angle_of(gate)?;
+                    Some((gate.qubits()[0].id(), theta))
                 } else {
                     None
                 }
@@ -773,7 +774,8 @@ impl<const N: usize> Circuit<N> {
         self.find_gate_by_type_and_index(gate_type, index)
             .and_then(|gate| {
                 if gate.qubits().len() == 2 {
-                    Some((gate.qubits()[0].id(), gate.qubits()[1].id(), 0.0))
+                    let theta = controlled_rotation_angle_of(gate)?;
+                    Some((gate.qubits()[0].id(), gate.qubits()[1].id(), theta))
                 } else {
                     None
                 }
@@ -810,4 +812,41 @@ impl<const N: usize> Circuit<N> {
                 ))
             })
     }
+}
+
+/// Downcast a single-qubit rotation gate (RX/RY/RZ) to read its real `theta`
+/// field, mirroring the downcast pattern used by `builder::add_gate_box` and
+/// `qc_co_optimization::bind_parameters` elsewhere in this crate.
+///
+/// Returns `None` for any gate that isn't one of RX/RY/RZ, so an unexpected
+/// shape still surfaces through the caller's existing "not a rotation gate"
+/// `PyValueError` instead of silently reporting a fabricated angle.
+#[cfg(feature = "python")]
+fn rotation_angle_of(gate: &dyn GateOp) -> Option<f64> {
+    if let Some(g) = gate.as_any().downcast_ref::<RotationX>() {
+        return Some(g.theta);
+    }
+    if let Some(g) = gate.as_any().downcast_ref::<RotationY>() {
+        return Some(g.theta);
+    }
+    if let Some(g) = gate.as_any().downcast_ref::<RotationZ>() {
+        return Some(g.theta);
+    }
+    None
+}
+
+/// Downcast a controlled-rotation gate (CRX/CRY/CRZ) to read its real `theta`
+/// field. See [`rotation_angle_of`] for the single-qubit analogue.
+#[cfg(feature = "python")]
+fn controlled_rotation_angle_of(gate: &dyn GateOp) -> Option<f64> {
+    if let Some(g) = gate.as_any().downcast_ref::<CRX>() {
+        return Some(g.theta);
+    }
+    if let Some(g) = gate.as_any().downcast_ref::<CRY>() {
+        return Some(g.theta);
+    }
+    if let Some(g) = gate.as_any().downcast_ref::<CRZ>() {
+        return Some(g.theta);
+    }
+    None
 }

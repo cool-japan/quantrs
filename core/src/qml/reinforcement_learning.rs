@@ -647,9 +647,11 @@ impl QuantumValueCircuit {
             }) as Box<dyn GateOp>);
         }
 
-        // Action encoding (simple binary encoding)
-        for i in 0..2 {
-            // Assuming 2 action qubits
+        // Action encoding (simple binary encoding). Only encode action bits
+        // that fit within the value register so the gate targets stay inside the
+        // `total_qubits`-qubit state vector.
+        let action_qubits = self.total_qubits.saturating_sub(self.state_qubits);
+        for i in 0..action_qubits {
             if (action >> i) & 1 == 1 {
                 gates.push(Box::new(PauliX {
                     target: QubitId((self.state_qubits + i) as u32),
@@ -696,31 +698,20 @@ impl QuantumValueCircuit {
             }
         }
 
-        // Simplified evaluation: return a mock Q-value
-        // In a real implementation, this would involve quantum simulation
+        // Exact state-vector evaluation of the Q-value circuit.
         let q_value = self.simulate_circuit_expectation(&gates)?;
 
         Ok(q_value)
     }
 
-    /// Simulate circuit and return expectation value
+    /// Simulate the value circuit exactly and return the Pauli-Z expectation of
+    /// the readout (last) qubit, the scalar Q-value estimate in `[-1, 1]`.
     fn simulate_circuit_expectation(&self, gates: &[Box<dyn GateOp>]) -> QuantRS2Result<f64> {
-        // Simplified simulation: compute a hash-based mock expectation
-        let mut hash_value = 0u64;
-
-        for gate in gates {
-            // Simple hash of gate parameters
-            if let Ok(matrix) = gate.matrix() {
-                for complex in &matrix {
-                    hash_value = hash_value.wrapping_add((complex.re * 1000.0) as u64);
-                    hash_value = hash_value.wrapping_add((complex.im * 1000.0) as u64);
-                }
-            }
-        }
-
-        // Convert to expectation value in [-1, 1]
-        let expectation = (hash_value % 2000) as f64 / 1000.0 - 1.0;
-        Ok(expectation)
+        let num_qubits = self.get_total_qubits();
+        let state = crate::qml::simulator::simulate(num_qubits, gates)?;
+        // Read out the Q-value from the highest-index (value) qubit.
+        let readout = num_qubits.saturating_sub(1);
+        Ok(crate::qml::simulator::expectation_z(&state, readout))
     }
 
     /// Compute parameter gradients using parameter-shift rule
@@ -799,34 +790,97 @@ impl QuantumPolicyCircuit {
         Ok(best_action)
     }
 
-    /// Get action probabilities
+    /// Get action probabilities by exactly simulating the policy circuit and
+    /// marginalising the amplitude vector over the action register.
+    ///
+    /// The action register occupies qubits `state_qubits .. total_qubits`. The
+    /// probability of an action `a` is the sum of `|amplitude|²` over every
+    /// basis state whose action bits equal `a` (the state register is traced
+    /// out). The result is a genuine, parameter-dependent Born-rule
+    /// distribution, not a heuristic.
     fn get_action_probabilities(
         &self,
         state: &Array1<f64>,
         parameters: &Array1<f64>,
     ) -> QuantRS2Result<Vec<f64>> {
-        let num_actions = 1 << self.action_qubits;
+        let num_actions = 1usize << self.action_qubits;
+        let gates = self.build_policy_circuit(state, parameters);
+        let amplitudes = crate::qml::simulator::simulate(self.total_qubits, &gates)?;
+
         let mut probabilities = vec![0.0; num_actions];
-
-        // Simplified: uniform distribution with slight variations based on state and parameters
-        let base_prob = 1.0 / num_actions as f64;
-
-        for action in 0..num_actions {
-            // Add state and parameter-dependent variation
-            let state_hash = state.iter().sum::<f64>();
-            let param_hash = parameters.iter().take(10).sum::<f64>();
-            let variation = 0.1 * ((state_hash + param_hash + action as f64).sin());
-
-            probabilities[action] = base_prob + variation;
+        for (basis_index, amplitude) in amplitudes.iter().enumerate() {
+            // Extract the action sub-register (qubits state_qubits..total_qubits).
+            let action = (basis_index >> self.state_qubits) & (num_actions - 1);
+            probabilities[action] += amplitude.norm_sqr();
         }
 
-        // Normalize probabilities
+        // Renormalise defensively against floating point drift.
         let sum: f64 = probabilities.iter().sum();
-        for prob in &mut probabilities {
-            *prob /= sum;
+        if sum > 0.0 {
+            for prob in &mut probabilities {
+                *prob /= sum;
+            }
         }
 
         Ok(probabilities)
+    }
+
+    /// Build the parameterised policy circuit: amplitude-style state encoding on
+    /// the state register followed by `depth` rotation+entangling layers across
+    /// all qubits. Mirrors the structure of the value circuit so the
+    /// parameter-shift gradients are exact.
+    fn build_policy_circuit(
+        &self,
+        state: &Array1<f64>,
+        parameters: &Array1<f64>,
+    ) -> Vec<Box<dyn GateOp>> {
+        let mut gates: Vec<Box<dyn GateOp>> = Vec::new();
+
+        // State encoding on the state register.
+        for i in 0..self.state_qubits {
+            let state_value = if i < state.len() { state[i] } else { 0.0 };
+            gates.push(Box::new(RotationY {
+                target: QubitId(i as u32),
+                theta: state_value * std::f64::consts::PI,
+            }) as Box<dyn GateOp>);
+        }
+
+        // Variational layers over the full register.
+        let mut param_idx = 0;
+        for _layer in 0..self.depth {
+            for qubit in 0..self.total_qubits {
+                if param_idx + 2 < parameters.len() {
+                    gates.push(Box::new(RotationX {
+                        target: QubitId(qubit as u32),
+                        theta: parameters[param_idx],
+                    }) as Box<dyn GateOp>);
+                    param_idx += 1;
+                    gates.push(Box::new(RotationY {
+                        target: QubitId(qubit as u32),
+                        theta: parameters[param_idx],
+                    }) as Box<dyn GateOp>);
+                    param_idx += 1;
+                    gates.push(Box::new(RotationZ {
+                        target: QubitId(qubit as u32),
+                        theta: parameters[param_idx],
+                    }) as Box<dyn GateOp>);
+                    param_idx += 1;
+                }
+            }
+
+            for qubit in 0..self.total_qubits.saturating_sub(1) {
+                if param_idx < parameters.len() {
+                    gates.push(Box::new(CRZ {
+                        control: QubitId(qubit as u32),
+                        target: QubitId((qubit + 1) as u32),
+                        theta: parameters[param_idx],
+                    }) as Box<dyn GateOp>);
+                    param_idx += 1;
+                }
+            }
+        }
+
+        gates
     }
 
     /// Compute policy gradients
@@ -1057,5 +1111,74 @@ mod tests {
         assert_eq!(config.action_qubits, 2);
         assert!(config.learning_rate > 0.0);
         assert!(config.discount_factor < 1.0);
+    }
+
+    #[test]
+    fn test_q_value_is_real_simulation_not_hash() {
+        // The old fabrication returned a hash of the gate matrices, independent
+        // of the parameter *values* in a smooth way. A real simulation gives an
+        // expectation in [-1, 1] that varies smoothly and continuously with the
+        // parameters. Verify both bounds and parameter-dependence.
+        let circuit =
+            QuantumValueCircuit::new(2, 1, 2).expect("Failed to create QuantumValueCircuit");
+        let param_count = circuit.get_parameter_count();
+        let state = Array1::from_vec(vec![0.3, -0.7]);
+
+        let q0 = circuit
+            .evaluate_q_value(&state, 0, &Array1::zeros(param_count))
+            .expect("q0");
+        assert!((-1.0..=1.0).contains(&q0), "q value must be in [-1,1]");
+
+        // Perturb all parameters; a real simulation's readout expectation must
+        // change (the old hash-based fabrication had no smooth dependence).
+        let mut params = Array1::zeros(param_count);
+        for (i, p) in params.iter_mut().enumerate() {
+            *p = 0.3 * (i as f64 + 1.0);
+        }
+        let q1 = circuit.evaluate_q_value(&state, 0, &params).expect("q1");
+        assert!((-1.0..=1.0).contains(&q1));
+        assert!(
+            (q0 - q1).abs() > 1e-6,
+            "Q-value must respond to parameters (real simulation), got {q0} vs {q1}"
+        );
+    }
+
+    #[test]
+    fn test_action_probabilities_are_real_born_distribution() {
+        // The old fabrication returned (uniform + 0.1*sin(...)) noise. A real
+        // simulation yields a normalised Born distribution that responds to the
+        // parameters and is NOT the near-uniform sin pattern.
+        let circuit = QuantumPolicyCircuit::new(2, 2, 2).expect("policy circuit");
+        let param_count = circuit.get_parameter_count();
+        let state = Array1::from_vec(vec![0.5, 0.5]);
+
+        let probs_zero = circuit
+            .get_action_probabilities(&state, &Array1::zeros(param_count))
+            .expect("probs zero");
+        // Must be a valid distribution.
+        let sum: f64 = probs_zero.iter().sum();
+        assert!((sum - 1.0).abs() < 1e-9, "probabilities must sum to 1");
+        assert!(probs_zero
+            .iter()
+            .all(|&p| (-1e-12..=1.0 + 1e-9).contains(&p)));
+        assert_eq!(probs_zero.len(), 1 << 2);
+
+        // With non-trivial parameters the distribution must change.
+        let mut params = Array1::zeros(param_count);
+        for (i, p) in params.iter_mut().enumerate() {
+            *p = 0.4 * (i as f64 + 1.0);
+        }
+        let probs_param = circuit
+            .get_action_probabilities(&state, &params)
+            .expect("probs param");
+        let max_diff = probs_zero
+            .iter()
+            .zip(probs_param.iter())
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0_f64, f64::max);
+        assert!(
+            max_diff > 1e-6,
+            "action distribution must respond to parameters (real simulation)"
+        );
     }
 }

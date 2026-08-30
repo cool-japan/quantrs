@@ -572,9 +572,14 @@ impl PhotonicCircuit {
 
                 Ok(matrix)
             }
-            _ => {
-                // Simplified - return identity for complex gates
-                Ok(Array2::eye(dim))
+            other => {
+                // Honest error: the matrix for these photonic gates is not implemented
+                // (e.g. BeamSplitter, MachZehnder, ControlledZ/Not, Hong-Ou-Mandel and the
+                // measurement-type operations). Returning identity here would silently
+                // misrepresent the gate's action, so refuse instead.
+                Err(QuantRS2Error::UnsupportedOperation(format!(
+                    "photonic gate matrix not implemented for {other:?}"
+                )))
             }
         }
     }
@@ -863,5 +868,39 @@ mod tests {
             .correct_errors(&mut system)
             .expect("Failed to correct errors");
         assert!(corrections.len() <= 3);
+    }
+
+    #[test]
+    fn test_to_matrix_phase_shifter_supported() {
+        // A circuit of only phase shifters has a real diagonal matrix and must succeed.
+        let mut circuit = PhotonicCircuit::new(2, 2);
+        circuit
+            .add_gate(PhotonicGate::phase_shifter(0, std::f64::consts::PI / 3.0))
+            .expect("adding phase shifter should succeed");
+        let matrix = circuit
+            .to_matrix()
+            .expect("to_matrix for phase shifter should succeed");
+        // Dimension is (max_photons + 1) ^ num_modes = 3^2 = 9.
+        assert_eq!(matrix.shape(), &[9, 9]);
+    }
+
+    #[test]
+    fn test_to_matrix_unsupported_gate_errors_not_identity() {
+        // Beam splitter has no implemented matrix; `to_matrix` must return an honest
+        // error rather than silently substituting an identity matrix.
+        let mut circuit = PhotonicCircuit::new(2, 2);
+        circuit
+            .add_gate(PhotonicGate::beam_splitter(0, 1, 0.5))
+            .expect("adding beam splitter should succeed");
+        let result = circuit.to_matrix();
+        match result {
+            Err(QuantRS2Error::UnsupportedOperation(msg)) => {
+                assert!(
+                    msg.contains("BeamSplitter"),
+                    "error should name the unsupported gate, got: {msg}"
+                );
+            }
+            other => panic!("expected UnsupportedOperation error, got {other:?}"),
+        }
     }
 }

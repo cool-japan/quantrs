@@ -1,843 +1,29 @@
-//! Main solution clustering analyzer implementation
+//! Landscape analysis, statistical analysis, and overall quality/recommendation
+//! computation for [`super::SolutionClusteringAnalyzer`].
+//!
+//! Split out of `analyzer.rs` to keep individual files under the workspace's
+//! 2000-line limit; this submodule adds a second `impl` block for the same
+//! [`super::SolutionClusteringAnalyzer`] type.
 
 use scirs2_core::random::prelude::*;
 use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::random::{Rng, SeedableRng};
-use std::collections::{HashMap, VecDeque};
-use std::time::{Duration, Instant};
+use std::collections::HashMap;
 
-use super::algorithms::{ClusteringAlgorithm, DistanceMetric, LinkageType};
-use super::config::{ClusteringConfig, FeatureExtractionMethod};
-use super::error::{ClusteringError, ClusteringResult};
-use super::types::{
-    AnalysisStatistics, ClusterQualityMetrics, ClusterStatistics, ClusteringPerformanceMetrics,
-    ClusteringResults, ConnectivityAnalysis, ConvergenceAnalysis, CorrelationAnalysis,
-    DifficultyLevel, DistributionAnalysis, DistributionType, EfficiencyMetrics, EnergyBasin,
-    EnergyStatistics, FunnelAnalysis, LandscapeAnalysis, MultiModalityAnalysis,
-    OptimizationRecommendation, OverallClusteringQuality, PlateauAnalysis, PriorityLevel,
-    RecommendationType, RuggednessMetrics, ScalabilityMetrics, SolutionCluster, SolutionMetadata,
-    SolutionPoint, StatisticalSummary,
+use super::SolutionClusteringAnalyzer;
+use crate::solution_clustering::error::{ClusteringError, ClusteringResult};
+use crate::solution_clustering::types::{
+    ConnectivityAnalysis, ConvergenceAnalysis, CorrelationAnalysis, CorrelationPattern,
+    DifficultyLevel, DistributionAnalysis, DistributionType, EnergyBasin, EnergyStatistics,
+    FunnelAnalysis, LandscapeAnalysis, MultiModalityAnalysis, OptimizationRecommendation,
+    OutlierInfo, OutlierType, OverallClusteringQuality, PatternType, PlateauAnalysis,
+    PriorityLevel, RecommendationType, RuggednessMetrics, SolutionCluster, SolutionPoint,
+    StatisticalSummary,
 };
-use crate::simulator::AnnealingSolution;
-
-/// Solution clustering analyzer
-pub struct SolutionClusteringAnalyzer {
-    /// Configuration
-    config: ClusteringConfig,
-    /// Cached distance matrices
-    distance_cache: HashMap<String, Vec<Vec<f64>>>,
-    /// Analysis statistics
-    stats: AnalysisStatistics,
-}
 
 impl SolutionClusteringAnalyzer {
-    /// Create a new solution clustering analyzer
-    #[must_use]
-    pub fn new(config: ClusteringConfig) -> Self {
-        Self {
-            config,
-            distance_cache: HashMap::new(),
-            stats: AnalysisStatistics {
-                total_solutions: 0,
-                total_time: Duration::from_secs(0),
-                cache_hit_rate: 0.0,
-                peak_memory: 0,
-            },
-        }
-    }
-
-    /// Analyze a collection of solutions
-    pub fn analyze_solutions(
-        &mut self,
-        solutions: &[AnnealingSolution],
-    ) -> ClusteringResult<ClusteringResults> {
-        let start_time = Instant::now();
-
-        // Convert solutions to solution points
-        let solution_points = self.convert_solutions(solutions)?;
-
-        // Extract features if needed
-        let featured_points = self.extract_features(solution_points)?;
-
-        // Perform clustering
-        let mut clusters = self.perform_clustering(&featured_points)?;
-
-        // Post-pass: compute global quality metrics that require seeing all clusters
-        // simultaneously (silhouette, Davies-Bouldin, Calinski-Harabasz). The per-cluster
-        // computation in `calculate_cluster_quality_metrics` only fills in `inertia` —
-        // global metrics are written back into each cluster's `quality_metrics` here.
-        self.update_global_quality_metrics(&mut clusters)?;
-
-        // Perform landscape analysis
-        let landscape_analysis = self.analyze_landscape(&featured_points, &clusters)?;
-
-        // Perform statistical analysis
-        let statistical_summary = self.perform_statistical_analysis(&featured_points, &clusters)?;
-
-        // Calculate overall quality metrics
-        let overall_quality = self.calculate_overall_quality(&clusters, &featured_points)?;
-
-        // Generate recommendations
-        let recommendations =
-            self.generate_recommendations(&clusters, &landscape_analysis, &statistical_summary)?;
-
-        // Update statistics
-        self.stats.total_solutions += solutions.len();
-        self.stats.total_time += start_time.elapsed();
-
-        Ok(ClusteringResults {
-            clusters,
-            algorithm: self.config.algorithm.clone(),
-            distance_metric: self.config.distance_metric.clone(),
-            overall_quality,
-            landscape_analysis,
-            statistical_summary,
-            performance_metrics: ClusteringPerformanceMetrics {
-                clustering_time: start_time.elapsed(),
-                analysis_time: start_time.elapsed(),
-                memory_usage: 0, // Simplified
-                scalability_metrics: ScalabilityMetrics {
-                    time_complexity: "O(n^2)".to_string(),
-                    space_complexity: "O(n^2)".to_string(),
-                    scaling_factor: 2.0,
-                    parallelization_efficiency: 0.8,
-                },
-                efficiency_metrics: EfficiencyMetrics {
-                    convergence_efficiency: 0.85,
-                    resource_utilization: 0.75,
-                    quality_time_ratio: 0.9,
-                    robustness: 0.8,
-                },
-            },
-            recommendations,
-        })
-    }
-
-    /// Convert annealing solutions to solution points
-    pub fn convert_solutions(
-        &self,
-        solutions: &[AnnealingSolution],
-    ) -> ClusteringResult<Vec<SolutionPoint>> {
-        let mut solution_points = Vec::new();
-
-        for (i, solution) in solutions.iter().enumerate() {
-            let mut metrics = HashMap::new();
-            metrics.insert("energy".to_string(), solution.best_energy);
-            metrics.insert("num_evaluations".to_string(), solution.total_sweeps as f64);
-
-            solution_points.push(SolutionPoint {
-                solution: solution.best_spins.clone(),
-                energy: solution.best_energy,
-                metrics,
-                metadata: SolutionMetadata {
-                    id: i,
-                    source: "annealing".to_string(),
-                    timestamp: Instant::now(),
-                    iterations: solution.total_sweeps,
-                    quality_rank: None,
-                    is_feasible: true, // Simplified
-                },
-                features: None,
-            });
-        }
-
-        Ok(solution_points)
-    }
-
-    /// Extract features from solution points
-    fn extract_features(
-        &self,
-        mut solution_points: Vec<SolutionPoint>,
-    ) -> ClusteringResult<Vec<SolutionPoint>> {
-        match &self.config.feature_extraction {
-            FeatureExtractionMethod::Raw => {
-                for point in &mut solution_points {
-                    point.features = Some(point.solution.iter().map(|&x| f64::from(x)).collect());
-                }
-            }
-            FeatureExtractionMethod::EnergyBased => {
-                for point in &mut solution_points {
-                    let mut features = vec![point.energy];
-                    features.extend(point.solution.iter().map(|&x| f64::from(x)));
-                    point.features = Some(features);
-                }
-            }
-            FeatureExtractionMethod::Structural => {
-                for point in &mut solution_points {
-                    let features = self.extract_structural_features(&point.solution);
-                    point.features = Some(features);
-                }
-            }
-            FeatureExtractionMethod::PCA { num_components } => {
-                // Simplified PCA implementation
-                let features = self.apply_pca(&solution_points, *num_components)?;
-                for (point, feature_vec) in solution_points.iter_mut().zip(features.iter()) {
-                    point.features = Some(feature_vec.clone());
-                }
-            }
-            _ => {
-                // Default to raw features
-                for point in &mut solution_points {
-                    point.features = Some(point.solution.iter().map(|&x| f64::from(x)).collect());
-                }
-            }
-        }
-
-        Ok(solution_points)
-    }
-
-    /// Extract structural features from a solution
-    #[must_use]
-    pub fn extract_structural_features(&self, solution: &[i8]) -> Vec<f64> {
-        let mut features = Vec::new();
-
-        // Basic structural features
-        let num_ones = solution.iter().filter(|&&x| x == 1).count() as f64;
-        let num_neg_ones = solution.iter().filter(|&&x| x == -1).count() as f64;
-
-        features.push(num_ones);
-        features.push(num_neg_ones);
-        features.push(num_ones / solution.len() as f64); // Fraction of +1 spins
-
-        // Consecutive patterns
-        let mut consecutive_ones = 0;
-        let mut consecutive_neg_ones = 0;
-        let mut max_consecutive_ones = 0;
-        let mut max_consecutive_neg_ones = 0;
-
-        for &spin in solution {
-            if spin == 1 {
-                consecutive_ones += 1;
-                consecutive_neg_ones = 0;
-                max_consecutive_ones = max_consecutive_ones.max(consecutive_ones);
-            } else {
-                consecutive_neg_ones += 1;
-                consecutive_ones = 0;
-                max_consecutive_neg_ones = max_consecutive_neg_ones.max(consecutive_neg_ones);
-            }
-        }
-
-        features.push(f64::from(max_consecutive_ones));
-        features.push(f64::from(max_consecutive_neg_ones));
-
-        // Transition count
-        let transitions = solution
-            .windows(2)
-            .filter(|window| window[0] != window[1])
-            .count() as f64;
-
-        features.push(transitions);
-
-        features
-    }
-
-    /// Apply PCA to solution points (simplified implementation)
-    fn apply_pca(
-        &self,
-        solution_points: &[SolutionPoint],
-        num_components: usize,
-    ) -> ClusteringResult<Vec<Vec<f64>>> {
-        if solution_points.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let n = solution_points.len();
-        let d = solution_points[0].solution.len();
-
-        // Create data matrix
-        let mut data = vec![vec![0.0; d]; n];
-        for (i, point) in solution_points.iter().enumerate() {
-            for (j, &spin) in point.solution.iter().enumerate() {
-                data[i][j] = f64::from(spin);
-            }
-        }
-
-        // Center the data
-        let mut means = vec![0.0; d];
-        for j in 0..d {
-            means[j] = data.iter().map(|row| row[j]).sum::<f64>() / n as f64;
-        }
-
-        for i in 0..n {
-            for j in 0..d {
-                data[i][j] -= means[j];
-            }
-        }
-
-        // Simplified PCA: just take first num_components dimensions
-        let mut pca_data = Vec::new();
-        for i in 0..n {
-            let mut pca_row = Vec::new();
-            for j in 0..num_components.min(d) {
-                pca_row.push(data[i][j]);
-            }
-            pca_data.push(pca_row);
-        }
-
-        Ok(pca_data)
-    }
-
-    /// Perform clustering on solution points
-    fn perform_clustering(
-        &self,
-        solution_points: &[SolutionPoint],
-    ) -> ClusteringResult<Vec<SolutionCluster>> {
-        match &self.config.algorithm {
-            ClusteringAlgorithm::KMeans { k, max_iterations } => {
-                self.kmeans_clustering(solution_points, *k, *max_iterations)
-            }
-            ClusteringAlgorithm::Hierarchical {
-                linkage,
-                distance_threshold,
-            } => self.hierarchical_clustering(solution_points, linkage, *distance_threshold),
-            ClusteringAlgorithm::DBSCAN { eps, min_samples } => {
-                self.dbscan_clustering(solution_points, *eps, *min_samples)
-            }
-            _ => {
-                // Default to k-means
-                self.kmeans_clustering(solution_points, 5, 100)
-            }
-        }
-    }
-
-    /// K-means clustering implementation
-    pub fn kmeans_clustering(
-        &self,
-        solution_points: &[SolutionPoint],
-        k: usize,
-        max_iterations: usize,
-    ) -> ClusteringResult<Vec<SolutionCluster>> {
-        if solution_points.len() < k {
-            return Err(ClusteringError::InsufficientData {
-                required: k,
-                actual: solution_points.len(),
-            });
-        }
-
-        let n = solution_points.len();
-        let features = solution_points
-            .iter()
-            .map(|p| {
-                p.features.as_ref().ok_or_else(|| {
-                    ClusteringError::DataError("Solution point missing features".to_string())
-                })
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        let d = features[0].len();
-
-        // Initialize centroids randomly
-        let mut rng = match self.config.seed {
-            Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
-        };
-
-        let mut centroids = Vec::new();
-        for _ in 0..k {
-            let mut centroid = Vec::new();
-            for _ in 0..d {
-                centroid.push(rng.random_range(-1.0..1.0));
-            }
-            centroids.push(centroid);
-        }
-
-        let mut assignments = vec![0; n];
-
-        // K-means iterations
-        for _iteration in 0..max_iterations {
-            let mut changed = false;
-
-            // Assign points to closest centroids
-            for (i, feature_vec) in features.iter().enumerate() {
-                let mut best_cluster = 0;
-                let mut best_distance = f64::INFINITY;
-
-                for (j, centroid) in centroids.iter().enumerate() {
-                    let distance = self.calculate_distance(feature_vec, centroid)?;
-                    if distance < best_distance {
-                        best_distance = distance;
-                        best_cluster = j;
-                    }
-                }
-
-                if assignments[i] != best_cluster {
-                    assignments[i] = best_cluster;
-                    changed = true;
-                }
-            }
-
-            // Update centroids
-            for j in 0..k {
-                let cluster_points: Vec<_> = features
-                    .iter()
-                    .enumerate()
-                    .filter(|(i, _)| assignments[*i] == j)
-                    .map(|(_, features)| *features)
-                    .collect();
-
-                if !cluster_points.is_empty() {
-                    for dim in 0..d {
-                        centroids[j][dim] =
-                            cluster_points.iter().map(|point| point[dim]).sum::<f64>()
-                                / cluster_points.len() as f64;
-                    }
-                }
-            }
-
-            if !changed {
-                break;
-            }
-        }
-
-        // Create clusters
-        let mut clusters = Vec::new();
-        for cluster_id in 0..k {
-            let cluster_solutions: Vec<_> = solution_points
-                .iter()
-                .enumerate()
-                .filter(|(i, _)| assignments[*i] == cluster_id)
-                .map(|(_, point)| point.clone())
-                .collect();
-
-            if !cluster_solutions.is_empty() {
-                let statistics = self.calculate_cluster_statistics(&cluster_solutions);
-                let quality_metrics = self
-                    .calculate_cluster_quality_metrics(&cluster_solutions, &centroids[cluster_id]);
-
-                clusters.push(SolutionCluster {
-                    id: cluster_id,
-                    solutions: cluster_solutions,
-                    centroid: centroids[cluster_id].clone(),
-                    representative: None, // Will be set later
-                    statistics,
-                    quality_metrics,
-                });
-            }
-        }
-
-        Ok(clusters)
-    }
-
-    /// Hierarchical clustering implementation (simplified)
-    fn hierarchical_clustering(
-        &self,
-        solution_points: &[SolutionPoint],
-        _linkage: &LinkageType,
-        distance_threshold: f64,
-    ) -> ClusteringResult<Vec<SolutionCluster>> {
-        // Simplified implementation using single linkage
-        let n = solution_points.len();
-        let mut clusters: Vec<Vec<usize>> = (0..n).map(|i| vec![i]).collect();
-
-        while clusters.len() > 1 {
-            let mut min_distance = f64::INFINITY;
-            let mut merge_indices = (0, 1);
-
-            // Find closest clusters
-            for i in 0..clusters.len() {
-                for j in (i + 1)..clusters.len() {
-                    let distance = self.calculate_cluster_distance(
-                        &clusters[i],
-                        &clusters[j],
-                        solution_points,
-                    )?;
-                    if distance < min_distance {
-                        min_distance = distance;
-                        merge_indices = (i, j);
-                    }
-                }
-            }
-
-            if min_distance > distance_threshold {
-                break;
-            }
-
-            // Merge clusters
-            let (i, j) = merge_indices;
-            let mut merged_cluster = clusters[i].clone();
-            merged_cluster.extend_from_slice(&clusters[j]);
-
-            // Remove original clusters and add merged cluster
-            if i < j {
-                clusters.remove(j);
-                clusters.remove(i);
-            } else {
-                clusters.remove(i);
-                clusters.remove(j);
-            }
-            clusters.push(merged_cluster);
-        }
-
-        // Convert to SolutionCluster format
-        let mut result_clusters = Vec::new();
-        for (cluster_id, cluster_indices) in clusters.iter().enumerate() {
-            let cluster_solutions: Vec<_> = cluster_indices
-                .iter()
-                .map(|&i| solution_points[i].clone())
-                .collect();
-
-            if !cluster_solutions.is_empty() {
-                let centroid = self.calculate_centroid(&cluster_solutions)?;
-                let statistics = self.calculate_cluster_statistics(&cluster_solutions);
-                let quality_metrics =
-                    self.calculate_cluster_quality_metrics(&cluster_solutions, &centroid);
-
-                result_clusters.push(SolutionCluster {
-                    id: cluster_id,
-                    solutions: cluster_solutions,
-                    centroid,
-                    representative: None,
-                    statistics,
-                    quality_metrics,
-                });
-            }
-        }
-
-        Ok(result_clusters)
-    }
-
-    /// DBSCAN clustering implementation (simplified)
-    fn dbscan_clustering(
-        &self,
-        solution_points: &[SolutionPoint],
-        eps: f64,
-        min_samples: usize,
-    ) -> ClusteringResult<Vec<SolutionCluster>> {
-        let n = solution_points.len();
-        let mut labels = vec![-1i32; n]; // -1 = noise, 0+ = cluster id
-        let mut cluster_id = 0;
-
-        for i in 0..n {
-            if labels[i] != -1 {
-                continue; // Already processed
-            }
-
-            let neighbors = self.find_neighbors(i, solution_points, eps)?;
-
-            if neighbors.len() < min_samples {
-                labels[i] = -1; // Mark as noise
-                continue;
-            }
-
-            // Start new cluster
-            labels[i] = cluster_id;
-            let mut queue = VecDeque::from(neighbors);
-
-            while let Some(j) = queue.pop_front() {
-                if labels[j] == -1 {
-                    labels[j] = cluster_id; // Change noise to border point
-                } else if labels[j] != -1 {
-                    continue; // Already in a cluster
-                }
-
-                labels[j] = cluster_id;
-                let j_neighbors = self.find_neighbors(j, solution_points, eps)?;
-
-                if j_neighbors.len() >= min_samples {
-                    for &neighbor in &j_neighbors {
-                        if labels[neighbor] == -1 || labels[neighbor] == cluster_id {
-                            queue.push_back(neighbor);
-                        }
-                    }
-                }
-            }
-
-            cluster_id += 1;
-        }
-
-        // Convert to SolutionCluster format
-        let mut result_clusters = Vec::new();
-        for cid in 0..cluster_id {
-            let cluster_solutions: Vec<_> = solution_points
-                .iter()
-                .enumerate()
-                .filter(|(i, _)| labels[*i] == cid)
-                .map(|(_, point)| point.clone())
-                .collect();
-
-            if !cluster_solutions.is_empty() {
-                let centroid = self.calculate_centroid(&cluster_solutions)?;
-                let statistics = self.calculate_cluster_statistics(&cluster_solutions);
-                let quality_metrics =
-                    self.calculate_cluster_quality_metrics(&cluster_solutions, &centroid);
-
-                result_clusters.push(SolutionCluster {
-                    id: cid as usize,
-                    solutions: cluster_solutions,
-                    centroid,
-                    representative: None,
-                    statistics,
-                    quality_metrics,
-                });
-            }
-        }
-
-        Ok(result_clusters)
-    }
-
-    /// Find neighbors within eps distance
-    fn find_neighbors(
-        &self,
-        point_idx: usize,
-        solution_points: &[SolutionPoint],
-        eps: f64,
-    ) -> ClusteringResult<Vec<usize>> {
-        let mut neighbors = Vec::new();
-        let point_features = solution_points[point_idx]
-            .features
-            .as_ref()
-            .ok_or_else(|| {
-                ClusteringError::DataError("Solution point missing features".to_string())
-            })?;
-
-        for (i, other_point) in solution_points.iter().enumerate() {
-            if i != point_idx {
-                let other_features = other_point.features.as_ref().ok_or_else(|| {
-                    ClusteringError::DataError("Solution point missing features".to_string())
-                })?;
-                let distance = self.calculate_distance(point_features, other_features)?;
-                if distance <= eps {
-                    neighbors.push(i);
-                }
-            }
-        }
-
-        Ok(neighbors)
-    }
-
-    /// Calculate distance between cluster indices
-    fn calculate_cluster_distance(
-        &self,
-        cluster1: &[usize],
-        cluster2: &[usize],
-        solution_points: &[SolutionPoint],
-    ) -> ClusteringResult<f64> {
-        let mut min_distance = f64::INFINITY;
-
-        for &i in cluster1 {
-            for &j in cluster2 {
-                let features1 = solution_points[i].features.as_ref().ok_or_else(|| {
-                    ClusteringError::DataError("Solution point missing features".to_string())
-                })?;
-                let features2 = solution_points[j].features.as_ref().ok_or_else(|| {
-                    ClusteringError::DataError("Solution point missing features".to_string())
-                })?;
-                let distance = self.calculate_distance(features1, features2)?;
-                min_distance = min_distance.min(distance);
-            }
-        }
-
-        Ok(min_distance)
-    }
-
-    /// Calculate distance between two feature vectors
-    pub fn calculate_distance(
-        &self,
-        features1: &[f64],
-        features2: &[f64],
-    ) -> ClusteringResult<f64> {
-        if features1.len() != features2.len() {
-            return Err(ClusteringError::DimensionMismatch {
-                expected: features1.len(),
-                actual: features2.len(),
-            });
-        }
-
-        match self.config.distance_metric {
-            DistanceMetric::Euclidean => {
-                let sum_sq: f64 = features1
-                    .iter()
-                    .zip(features2.iter())
-                    .map(|(a, b)| (a - b).powi(2))
-                    .sum();
-                Ok(sum_sq.sqrt())
-            }
-            DistanceMetric::Manhattan => {
-                let sum_abs: f64 = features1
-                    .iter()
-                    .zip(features2.iter())
-                    .map(|(a, b)| (a - b).abs())
-                    .sum();
-                Ok(sum_abs)
-            }
-            DistanceMetric::Hamming => {
-                let diff_count = features1
-                    .iter()
-                    .zip(features2.iter())
-                    .filter(|(a, b)| (*a - *b).abs() > 1e-10)
-                    .count();
-                Ok(diff_count as f64)
-            }
-            DistanceMetric::Cosine => {
-                let dot_product: f64 = features1
-                    .iter()
-                    .zip(features2.iter())
-                    .map(|(a, b)| a * b)
-                    .sum();
-
-                let norm1: f64 = features1.iter().map(|x| x * x).sum::<f64>().sqrt();
-                let norm2: f64 = features2.iter().map(|x| x * x).sum::<f64>().sqrt();
-
-                if norm1 > 1e-10 && norm2 > 1e-10 {
-                    Ok(1.0 - dot_product / (norm1 * norm2))
-                } else {
-                    Ok(1.0)
-                }
-            }
-            _ => {
-                // Default to Euclidean
-                let sum_sq: f64 = features1
-                    .iter()
-                    .zip(features2.iter())
-                    .map(|(a, b)| (a - b).powi(2))
-                    .sum();
-                Ok(sum_sq.sqrt())
-            }
-        }
-    }
-
-    /// Calculate centroid of a cluster
-    fn calculate_centroid(
-        &self,
-        cluster_solutions: &[SolutionPoint],
-    ) -> ClusteringResult<Vec<f64>> {
-        if cluster_solutions.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let features_dim = cluster_solutions[0]
-            .features
-            .as_ref()
-            .ok_or_else(|| {
-                ClusteringError::DataError(
-                    "Solution point missing features for centroid calculation".to_string(),
-                )
-            })?
-            .len();
-        let mut centroid = vec![0.0; features_dim];
-
-        for solution in cluster_solutions {
-            let features = solution.features.as_ref().ok_or_else(|| {
-                ClusteringError::DataError(
-                    "Solution point missing features for centroid calculation".to_string(),
-                )
-            })?;
-            if features.len() != features_dim {
-                return Err(ClusteringError::DimensionMismatch {
-                    expected: features_dim,
-                    actual: features.len(),
-                });
-            }
-            for (i, &value) in features.iter().enumerate() {
-                centroid[i] += value;
-            }
-        }
-
-        for value in &mut centroid {
-            *value /= cluster_solutions.len() as f64;
-        }
-
-        Ok(centroid)
-    }
-
-    /// Calculate cluster statistics
-    fn calculate_cluster_statistics(
-        &self,
-        cluster_solutions: &[SolutionPoint],
-    ) -> ClusterStatistics {
-        if cluster_solutions.is_empty() {
-            return ClusterStatistics {
-                size: 0,
-                mean_energy: 0.0,
-                energy_std: 0.0,
-                min_energy: 0.0,
-                max_energy: 0.0,
-                intra_cluster_distance: 0.0,
-                diameter: 0.0,
-                density: 0.0,
-            };
-        }
-
-        let energies: Vec<f64> = cluster_solutions.iter().map(|s| s.energy).collect();
-        let mean_energy = energies.iter().sum::<f64>() / energies.len() as f64;
-        let variance = energies
-            .iter()
-            .map(|e| (e - mean_energy).powi(2))
-            .sum::<f64>()
-            / energies.len() as f64;
-        let energy_std = variance.sqrt();
-
-        let min_energy = energies.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-        let max_energy = energies.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-
-        // Calculate intra-cluster distance and diameter
-        let mut total_distance = 0.0;
-        let mut max_distance = 0.0f64;
-        let mut distance_count = 0;
-
-        for i in 0..cluster_solutions.len() {
-            for j in (i + 1)..cluster_solutions.len() {
-                if let (Some(features1), Some(features2)) = (
-                    cluster_solutions[i].features.as_ref(),
-                    cluster_solutions[j].features.as_ref(),
-                ) {
-                    if let Ok(distance) = self.calculate_distance(features1, features2) {
-                        total_distance += distance;
-                        max_distance = max_distance.max(distance);
-                        distance_count += 1;
-                    }
-                }
-            }
-        }
-
-        let intra_cluster_distance = if distance_count > 0 {
-            total_distance / f64::from(distance_count)
-        } else {
-            0.0
-        };
-
-        ClusterStatistics {
-            size: cluster_solutions.len(),
-            mean_energy,
-            energy_std,
-            min_energy,
-            max_energy,
-            intra_cluster_distance,
-            diameter: max_distance,
-            density: if max_distance > 0.0 {
-                cluster_solutions.len() as f64 / max_distance
-            } else {
-                0.0
-            },
-        }
-    }
-
-    /// Calculate cluster quality metrics
-    fn calculate_cluster_quality_metrics(
-        &self,
-        cluster_solutions: &[SolutionPoint],
-        centroid: &[f64],
-    ) -> ClusterQualityMetrics {
-        let mut inertia = 0.0;
-
-        for solution in cluster_solutions {
-            if let Some(features) = solution.features.as_ref() {
-                if let Ok(distance) = self.calculate_distance(features, centroid) {
-                    inertia += distance * distance;
-                }
-            }
-        }
-
-        ClusterQualityMetrics {
-            silhouette_coefficient: 0.5, // Simplified
-            inertia,
-            calinski_harabasz_index: 1.0, // Simplified
-            davies_bouldin_index: 1.0,    // Simplified
-            stability: 0.8,               // Simplified
-        }
-    }
-
     /// Analyze the solution landscape
-    fn analyze_landscape(
+    pub(crate) fn analyze_landscape(
         &self,
         solution_points: &[SolutionPoint],
         clusters: &[SolutionCluster],
@@ -1282,45 +468,23 @@ impl SolutionClusteringAnalyzer {
         }
     }
 
-    /// Perform statistical analysis
-    fn perform_statistical_analysis(
+    /// Perform statistical analysis over the real solution/cluster data.
+    ///
+    /// Every field of the returned [`StatisticalSummary`] is derived from
+    /// `solution_points`/`clusters` (see [`Self::analyze_energy_distribution`],
+    /// [`Self::analyze_convergence`], [`Self::analyze_variable_correlations`]
+    /// and [`Self::detect_statistical_outliers`]) rather than fixed literals.
+    pub(crate) fn perform_statistical_analysis(
         &self,
         solution_points: &[SolutionPoint],
         clusters: &[SolutionCluster],
     ) -> ClusteringResult<StatisticalSummary> {
         let cluster_size_distribution = clusters.iter().map(|c| c.statistics.size).collect();
 
-        let energy_distribution = DistributionAnalysis {
-            distribution_type: DistributionType::Normal, // Simplified
-            parameters: HashMap::from([("mean".to_string(), 0.0), ("std".to_string(), 1.0)]),
-            goodness_of_fit: 0.8,
-            confidence_intervals: vec![(0.1, 0.9)],
-        };
-
-        let convergence_analysis = ConvergenceAnalysis {
-            trajectory_clusters: Vec::new(), // Simplified
-            convergence_rates: vec![0.1, 0.2, 0.15],
-            plateau_analysis: PlateauAnalysis {
-                num_plateaus: 2,
-                plateau_durations: vec![10, 15],
-                plateau_energies: vec![-1.0, -0.5],
-                escape_probabilities: vec![0.3, 0.7],
-            },
-            premature_convergence: false,
-            diversity_evolution: vec![1.0, 0.8, 0.6, 0.4, 0.2],
-        };
-
-        let correlation_analysis = CorrelationAnalysis {
-            variable_correlations: vec![
-                vec![1.0; solution_points[0].solution.len()];
-                solution_points[0].solution.len()
-            ],
-            energy_correlations: vec![0.1; solution_points[0].solution.len()],
-            significant_correlations: Vec::new(),
-            correlation_patterns: Vec::new(),
-        };
-
-        let outliers = Vec::new(); // Simplified
+        let energy_distribution = self.analyze_energy_distribution(solution_points);
+        let convergence_analysis = self.analyze_convergence(solution_points, clusters);
+        let correlation_analysis = self.analyze_variable_correlations(solution_points);
+        let outliers = self.detect_statistical_outliers(solution_points, clusters)?;
 
         Ok(StatisticalSummary {
             cluster_size_distribution,
@@ -1331,13 +495,370 @@ impl SolutionClusteringAnalyzer {
         })
     }
 
+    /// Analyze the empirical energy distribution.
+    ///
+    /// Normality is assessed with the Jarque-Bera statistic
+    /// `JB = n/6 * (S^2 + K^2/4)` (S = skewness, K = excess kurtosis) computed
+    /// from [`Self::calculate_energy_statistics`]; `goodness_of_fit` is the
+    /// real chi-squared(2) upper-tail p-value of `JB` (higher = more
+    /// consistent with a Normal distribution). When the sample is too small
+    /// or degenerate to test, or the test rejects normality without a
+    /// well-supported alternative family, [`DistributionType::Unknown`] is
+    /// returned rather than a fabricated guess.
+    fn analyze_energy_distribution(
+        &self,
+        solution_points: &[SolutionPoint],
+    ) -> DistributionAnalysis {
+        let stats = self.calculate_energy_statistics(solution_points);
+        let n = solution_points.len();
+
+        if n < 8 || stats.std_dev < 1e-12 {
+            return DistributionAnalysis {
+                distribution_type: DistributionType::Unknown,
+                parameters: HashMap::from([
+                    ("mean".to_string(), stats.mean),
+                    ("std".to_string(), stats.std_dev),
+                ]),
+                goodness_of_fit: 0.0,
+                confidence_intervals: vec![(stats.mean, stats.mean)],
+            };
+        }
+
+        let jarque_bera_statistic =
+            (n as f64 / 6.0) * (stats.skewness.powi(2) + stats.kurtosis.powi(2) / 4.0);
+        let goodness_of_fit = scirs2_stats::distributions::chi2::<f64>(2.0, 0.0, 1.0)
+            .ok()
+            .map(|dist| (1.0 - dist.cdf(jarque_bera_statistic)).clamp(0.0, 1.0))
+            .unwrap_or(0.0);
+
+        let distribution_type = if goodness_of_fit >= 0.05 {
+            DistributionType::Normal
+        } else if stats.min >= 0.0 && stats.skewness > 1.0 {
+            DistributionType::Exponential
+        } else {
+            DistributionType::Unknown
+        };
+
+        let se_mean = stats.std_dev / (n as f64).sqrt();
+        let confidence_intervals = vec![(stats.mean - 1.96 * se_mean, stats.mean + 1.96 * se_mean)];
+
+        DistributionAnalysis {
+            distribution_type,
+            parameters: HashMap::from([
+                ("mean".to_string(), stats.mean),
+                ("std".to_string(), stats.std_dev),
+                ("skewness".to_string(), stats.skewness),
+                ("kurtosis".to_string(), stats.kurtosis),
+                ("jarque_bera_statistic".to_string(), jarque_bera_statistic),
+            ]),
+            goodness_of_fit,
+            confidence_intervals,
+        }
+    }
+
+    /// Analyze convergence behavior from the real `iterations`/`energy`
+    /// metadata already carried on each [`SolutionPoint`].
+    ///
+    /// `trajectory_clusters` is left empty: this crate only records the final
+    /// solution reached by each run (`SolutionPoint`), not a per-iteration
+    /// energy trajectory, so there is no real trajectory data to cluster.
+    /// Everything else here is computed from the actual sample:
+    /// * `convergence_rates`: per-cluster `1 / (1 + mean_iterations)` — higher
+    ///   for clusters reached with fewer iterations.
+    /// * `plateau_analysis`: contiguous runs (ordered by `iterations`) whose
+    ///   energy changes by less than 1% of the global energy std-dev.
+    /// * `premature_convergence`: true when the number of distinct energies
+    ///   found is less than 10% of the sample size (a search that collapsed
+    ///   onto very few outcomes).
+    /// * `diversity_evolution`: fraction of distinct energies within each of
+    ///   up to 5 equal iteration-range bins, in iteration order.
+    fn analyze_convergence(
+        &self,
+        solution_points: &[SolutionPoint],
+        clusters: &[SolutionCluster],
+    ) -> ConvergenceAnalysis {
+        let n = solution_points.len();
+        if n == 0 {
+            return ConvergenceAnalysis {
+                trajectory_clusters: Vec::new(),
+                convergence_rates: Vec::new(),
+                plateau_analysis: PlateauAnalysis {
+                    num_plateaus: 0,
+                    plateau_durations: Vec::new(),
+                    plateau_energies: Vec::new(),
+                    escape_probabilities: Vec::new(),
+                },
+                premature_convergence: false,
+                diversity_evolution: Vec::new(),
+            };
+        }
+
+        let convergence_rates: Vec<f64> = clusters
+            .iter()
+            .map(|c| {
+                if c.solutions.is_empty() {
+                    0.0
+                } else {
+                    let mean_iters = c
+                        .solutions
+                        .iter()
+                        .map(|s| s.metadata.iterations as f64)
+                        .sum::<f64>()
+                        / c.solutions.len() as f64;
+                    1.0 / (1.0 + mean_iters)
+                }
+            })
+            .collect();
+
+        let mut ordered: Vec<&SolutionPoint> = solution_points.iter().collect();
+        ordered.sort_by_key(|s| s.metadata.iterations);
+        let energies: Vec<f64> = ordered.iter().map(|s| s.energy).collect();
+
+        let stats = self.calculate_energy_statistics(solution_points);
+        let plateau_threshold = (stats.std_dev * 0.01).max(1e-9);
+
+        let mut plateau_durations = Vec::new();
+        let mut plateau_energies = Vec::new();
+        let mut escape_probabilities = Vec::new();
+        let mut i = 0;
+        while i < energies.len() {
+            let mut j = i;
+            while j + 1 < energies.len()
+                && (energies[j + 1] - energies[i]).abs() <= plateau_threshold
+            {
+                j += 1;
+            }
+            if j > i {
+                let seg_len = j - i + 1;
+                let iter_span = ordered[j]
+                    .metadata
+                    .iterations
+                    .saturating_sub(ordered[i].metadata.iterations);
+                plateau_durations.push(iter_span.max(seg_len));
+                plateau_energies.push(energies[i..=j].iter().sum::<f64>() / seg_len as f64);
+                escape_probabilities.push(1.0 / seg_len as f64);
+            }
+            i = j + 1;
+        }
+        let num_plateaus = plateau_durations.len();
+
+        let distinct_ratio = stats.num_distinct_energies as f64 / n as f64;
+        let premature_convergence = n >= 10 && distinct_ratio < 0.1;
+
+        let min_iter = ordered.first().map_or(0, |s| s.metadata.iterations);
+        let max_iter = ordered.last().map_or(0, |s| s.metadata.iterations);
+        let num_bins = 5.min(n);
+        let mut diversity_evolution = Vec::with_capacity(num_bins);
+        if num_bins > 0 {
+            let span = (max_iter.saturating_sub(min_iter)).max(1) as f64;
+            for b in 0..num_bins {
+                let lo = min_iter as f64 + span * b as f64 / num_bins as f64;
+                let hi = min_iter as f64 + span * (b + 1) as f64 / num_bins as f64;
+                let bin_energies: Vec<f64> = ordered
+                    .iter()
+                    .filter(|s| {
+                        let it = s.metadata.iterations as f64;
+                        it >= lo && (it < hi || b == num_bins - 1)
+                    })
+                    .map(|s| s.energy)
+                    .collect();
+                if bin_energies.is_empty() {
+                    diversity_evolution.push(0.0);
+                } else {
+                    let mut distinct = bin_energies.clone();
+                    distinct.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                    distinct.dedup_by(|a, b| (*a - *b).abs() < 1e-10);
+                    diversity_evolution.push(distinct.len() as f64 / bin_energies.len() as f64);
+                }
+            }
+        }
+
+        ConvergenceAnalysis {
+            trajectory_clusters: Vec::new(),
+            convergence_rates,
+            plateau_analysis: PlateauAnalysis {
+                num_plateaus,
+                plateau_durations,
+                plateau_energies,
+                escape_probabilities,
+            },
+            premature_convergence,
+            diversity_evolution,
+        }
+    }
+
+    /// Compute real Pearson correlations between spin variables, and between
+    /// each spin variable and the solution energy, over `solution_points`.
+    fn analyze_variable_correlations(
+        &self,
+        solution_points: &[SolutionPoint],
+    ) -> CorrelationAnalysis {
+        let n = solution_points.len();
+        let d = solution_points.first().map_or(0, |s| s.solution.len());
+
+        if n < 2 || d == 0 {
+            return CorrelationAnalysis {
+                variable_correlations: vec![vec![0.0; d]; d],
+                energy_correlations: vec![0.0; d],
+                significant_correlations: Vec::new(),
+                correlation_patterns: Vec::new(),
+            };
+        }
+
+        let columns: Vec<Vec<f64>> = (0..d)
+            .map(|j| {
+                solution_points
+                    .iter()
+                    .map(|s| f64::from(s.solution[j]))
+                    .collect()
+            })
+            .collect();
+        let energies: Vec<f64> = solution_points.iter().map(|s| s.energy).collect();
+
+        let pearson = |a: &[f64], b: &[f64]| -> f64 {
+            let len = a.len() as f64;
+            let mean_a = a.iter().sum::<f64>() / len;
+            let mean_b = b.iter().sum::<f64>() / len;
+            let mut cov = 0.0;
+            let mut var_a = 0.0;
+            let mut var_b = 0.0;
+            for i in 0..a.len() {
+                let da = a[i] - mean_a;
+                let db = b[i] - mean_b;
+                cov += da * db;
+                var_a += da * da;
+                var_b += db * db;
+            }
+            if var_a < 1e-12 || var_b < 1e-12 {
+                0.0
+            } else {
+                cov / (var_a.sqrt() * var_b.sqrt())
+            }
+        };
+
+        let mut variable_correlations = vec![vec![0.0; d]; d];
+        let mut significant_correlations = Vec::new();
+        for i in 0..d {
+            variable_correlations[i][i] = 1.0;
+            for j in (i + 1)..d {
+                let r = pearson(&columns[i], &columns[j]);
+                variable_correlations[i][j] = r;
+                variable_correlations[j][i] = r;
+                if r.abs() >= 0.5 {
+                    significant_correlations.push((i, j, r));
+                }
+            }
+        }
+
+        let energy_correlations: Vec<f64> =
+            columns.iter().map(|col| pearson(col, &energies)).collect();
+
+        let correlation_patterns = significant_correlations
+            .iter()
+            .map(|&(i, j, r)| CorrelationPattern {
+                description: format!(
+                    "Variables {i} and {j} are {} correlated (r={r:.3})",
+                    if r > 0.0 { "positively" } else { "negatively" }
+                ),
+                variables: vec![i, j],
+                strength: r.abs(),
+                pattern_type: if r > 0.0 {
+                    PatternType::Positive
+                } else {
+                    PatternType::Negative
+                },
+            })
+            .collect();
+
+        CorrelationAnalysis {
+            variable_correlations,
+            energy_correlations,
+            significant_correlations,
+            correlation_patterns,
+        }
+    }
+
+    /// Detect real statistical outliers: solutions whose energy is more than
+    /// 3 standard deviations from the sample mean (`OutlierType::Energy`), or
+    /// whose distance to their cluster centroid is more than 3 standard
+    /// deviations above the cluster's mean intra-cluster distance
+    /// (`OutlierType::Structural`); both flags together yield
+    /// `OutlierType::Global`.
+    fn detect_statistical_outliers(
+        &self,
+        solution_points: &[SolutionPoint],
+        clusters: &[SolutionCluster],
+    ) -> ClusteringResult<Vec<OutlierInfo>> {
+        let stats = self.calculate_energy_statistics(solution_points);
+        let mut outliers = Vec::new();
+        if stats.std_dev < 1e-12 {
+            return Ok(outliers);
+        }
+
+        for cluster in clusters {
+            if cluster.solutions.is_empty() {
+                continue;
+            }
+
+            let mut distances = Vec::with_capacity(cluster.solutions.len());
+            for point in &cluster.solutions {
+                let Some(features) = point.features.as_ref() else {
+                    continue;
+                };
+                let d = self.calculate_distance(features, &cluster.centroid)?;
+                distances.push((point, d));
+            }
+            if distances.is_empty() {
+                continue;
+            }
+
+            let mean_d = distances.iter().map(|(_, d)| *d).sum::<f64>() / distances.len() as f64;
+            let var_d = distances
+                .iter()
+                .map(|(_, d)| (d - mean_d).powi(2))
+                .sum::<f64>()
+                / distances.len() as f64;
+            let std_d = var_d.sqrt();
+
+            for (point, d) in &distances {
+                let z_energy = (point.energy - stats.mean) / stats.std_dev;
+                let is_energy_outlier = z_energy.abs() > 3.0;
+                let structural_z = if std_d > 1e-12 {
+                    (d - mean_d) / std_d
+                } else {
+                    0.0
+                };
+                let is_structural_outlier = structural_z > 3.0;
+
+                if is_energy_outlier || is_structural_outlier {
+                    let outlier_type = if is_energy_outlier && is_structural_outlier {
+                        OutlierType::Global
+                    } else if is_energy_outlier {
+                        OutlierType::Energy
+                    } else {
+                        OutlierType::Structural
+                    };
+                    let outlier_score = z_energy.abs().max(structural_z.max(0.0));
+                    outliers.push(OutlierInfo {
+                        solution_id: point.metadata.id,
+                        outlier_score,
+                        outlier_type,
+                        distance_to_cluster: *d,
+                    });
+                }
+            }
+        }
+
+        Ok(outliers)
+    }
+
     /// Calculate overall clustering quality.
     ///
     /// The overall silhouette score is the size-weighted mean of the per-cluster
     /// silhouette coefficients (which are themselves means of per-point
     /// silhouettes), matching scikit-learn's `silhouette_score` convention. This
     /// is fed by the real values written by [`Self::update_global_quality_metrics`].
-    fn calculate_overall_quality(
+    pub(crate) fn calculate_overall_quality(
         &self,
         clusters: &[SolutionCluster],
         solution_points: &[SolutionPoint],
@@ -1445,7 +966,7 @@ impl SolutionClusteringAnalyzer {
     }
 
     /// Generate optimization recommendations
-    fn generate_recommendations(
+    pub(crate) fn generate_recommendations(
         &self,
         clusters: &[SolutionCluster],
         landscape_analysis: &LandscapeAnalysis,
@@ -1513,7 +1034,7 @@ impl SolutionClusteringAnalyzer {
     /// in isolation by [`Self::kmeans_clustering`], [`Self::hierarchical_clustering`]
     /// or [`Self::dbscan_clustering`]. This pass walks every cluster simultaneously
     /// and writes the real values back into each cluster's
-    /// [`super::types::ClusterQualityMetrics`].
+    /// [`crate::solution_clustering::types::ClusterQualityMetrics`].
     ///
     /// Definitions used:
     /// * Silhouette `s(i) = (b - a) / max(a, b)` where `a` is the mean intra-cluster
@@ -1699,6 +1220,74 @@ impl SolutionClusteringAnalyzer {
             };
         }
 
+        // ---- Stability (bootstrap resampling) ----
+        //
+        // For each cluster, resample its own member points with replacement
+        // `BOOTSTRAP_REPLICATES` times, recompute the bootstrap centroid each
+        // time, and measure how far that bootstrap centroid drifts from the
+        // real cluster centroid, normalized by the cluster's own mean
+        // intra-cluster distance `sigma_i` (already computed above for the
+        // Davies-Bouldin index). A cluster whose members are tightly and
+        // consistently grouped will have bootstrap centroids that barely
+        // move (`stability` close to 1); a cluster sensitive to which
+        // specific points were sampled will drift more (`stability` closer
+        // to 0). This is real bootstrap variance estimation over the actual
+        // cluster data, not a fixed constant.
+        const BOOTSTRAP_REPLICATES: usize = 30;
+        let mut rng = match self.config.seed {
+            Some(seed) => ChaCha8Rng::seed_from_u64(seed),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
+        };
+
+        for ci in 0..k {
+            let cluster = &clusters[ci];
+            if cluster.centroid.is_empty() {
+                continue;
+            }
+            let dim = cluster.centroid.len();
+            let member_features: Vec<&[f64]> = cluster
+                .solutions
+                .iter()
+                .filter_map(|s| s.features.as_deref())
+                .filter(|f| f.len() == dim)
+                .collect();
+            if member_features.len() < 2 {
+                // Not enough data to bootstrap meaningfully; leave the
+                // per-cluster estimate written by
+                // `calculate_cluster_quality_metrics` untouched.
+                continue;
+            }
+
+            let mut drift_sum = 0.0;
+            let mut successful_replicates = 0usize;
+            for _ in 0..BOOTSTRAP_REPLICATES {
+                let mut bootstrap_centroid = vec![0.0f64; dim];
+                for _ in 0..member_features.len() {
+                    let idx = rng.random_range(0..member_features.len());
+                    let sampled = member_features[idx];
+                    for (c, v) in bootstrap_centroid.iter_mut().zip(sampled.iter()) {
+                        *c += v;
+                    }
+                }
+                for c in bootstrap_centroid.iter_mut() {
+                    *c /= member_features.len() as f64;
+                }
+                if let Ok(drift) = self.calculate_distance(&bootstrap_centroid, &cluster.centroid) {
+                    drift_sum += drift;
+                    successful_replicates += 1;
+                }
+            }
+
+            if successful_replicates == 0 {
+                continue;
+            }
+
+            let mean_drift = drift_sum / successful_replicates as f64;
+            let normalizer = sigma[ci].max(1e-9);
+            clusters[ci].quality_metrics.stability =
+                (1.0 - mean_drift / normalizer).clamp(0.0, 1.0);
+        }
+
         // ---- Calinski-Harabasz index ----
         // BSS = sum_i n_i * d(c_i, overall_centroid)^2
         // WSS = sum_i sum_x in C_i d(x, c_i)^2  (== sum of inertias)
@@ -1754,5 +1343,289 @@ impl SolutionClusteringAnalyzer {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod regression_tests {
+    use super::*;
+    use crate::solution_clustering::config::create_basic_clustering_config;
+    use crate::solution_clustering::types::{
+        ClusterQualityMetrics, ClusterStatistics, SolutionMetadata,
+    };
+    use std::time::Instant;
+
+    fn make_point(features: Vec<f64>) -> SolutionPoint {
+        SolutionPoint {
+            solution: vec![],
+            energy: 0.0,
+            metrics: HashMap::new(),
+            metadata: SolutionMetadata {
+                id: 0,
+                source: "test".to_string(),
+                timestamp: Instant::now(),
+                iterations: 0,
+                quality_rank: None,
+                is_feasible: true,
+            },
+            features: Some(features),
+        }
+    }
+
+    fn dummy_statistics(size: usize) -> ClusterStatistics {
+        ClusterStatistics {
+            size,
+            mean_energy: 0.0,
+            energy_std: 0.0,
+            min_energy: 0.0,
+            max_energy: 0.0,
+            intra_cluster_distance: 0.0,
+            diameter: 0.0,
+            density: 0.0,
+        }
+    }
+
+    fn dummy_quality_metrics() -> ClusterQualityMetrics {
+        ClusterQualityMetrics {
+            silhouette_coefficient: 0.5,
+            inertia: 0.0,
+            calinski_harabasz_index: 1.0,
+            davies_bouldin_index: 1.0,
+            stability: 0.8, // The old fabricated constant every cluster used to keep.
+        }
+    }
+
+    fn make_cluster(id: usize, points: Vec<SolutionPoint>, centroid: Vec<f64>) -> SolutionCluster {
+        let size = points.len();
+        SolutionCluster {
+            id,
+            solutions: points,
+            centroid,
+            representative: None,
+            statistics: dummy_statistics(size),
+            quality_metrics: dummy_quality_metrics(),
+        }
+    }
+
+    // A far-away second cluster shared by both scenarios below, purely so that
+    // `update_global_quality_metrics` sees k=2 clusters (silhouette/DB require
+    // at least two) instead of hitting the k==1 degenerate short-circuit.
+    fn anchor_cluster() -> SolutionCluster {
+        make_cluster(
+            1,
+            vec![
+                make_point(vec![100.0, 100.0]),
+                make_point(vec![101.0, 100.0]),
+                make_point(vec![100.0, 101.0]),
+            ],
+            vec![100.33, 100.33],
+        )
+    }
+
+    #[test]
+    fn stability_is_real_and_data_dependent_not_a_fixed_constant() {
+        let mut config = create_basic_clustering_config();
+        config.seed = Some(2024);
+        let analyzer = SolutionClusteringAnalyzer::new(config);
+
+        // Scenario A: a tight, symmetric cluster (evenly arranged points).
+        let symmetric_cluster = make_cluster(
+            0,
+            vec![
+                make_point(vec![1.0, 0.0]),
+                make_point(vec![-1.0, 0.0]),
+                make_point(vec![0.0, 1.0]),
+                make_point(vec![0.0, -1.0]),
+                make_point(vec![0.0, 0.0]),
+            ],
+            vec![0.0, 0.0],
+        );
+        let mut clusters_a = vec![symmetric_cluster, anchor_cluster()];
+        analyzer
+            .update_global_quality_metrics(&mut clusters_a)
+            .expect("update should succeed");
+        let stability_symmetric = clusters_a[0].quality_metrics.stability;
+
+        // Scenario B: same cluster size, but one point is a severe outlier
+        // that dominates the centroid — resampling should make the
+        // bootstrap centroid swing far more than in the symmetric case.
+        let skewed_cluster = make_cluster(
+            0,
+            vec![
+                make_point(vec![0.0, 0.0]),
+                make_point(vec![0.0, 0.0]),
+                make_point(vec![0.0, 0.0]),
+                make_point(vec![0.0, 0.0]),
+                make_point(vec![10.0, 0.0]),
+            ],
+            vec![2.0, 0.0],
+        );
+        let mut clusters_b = vec![skewed_cluster, anchor_cluster()];
+        analyzer
+            .update_global_quality_metrics(&mut clusters_b)
+            .expect("update should succeed");
+        let stability_skewed = clusters_b[0].quality_metrics.stability;
+
+        for value in [stability_symmetric, stability_skewed] {
+            assert!(
+                (0.0..=1.0).contains(&value),
+                "stability must be clamped to [0,1], got {value}"
+            );
+        }
+        // The two configurations are very different (uniform vs. outlier-
+        // dominated); a real bootstrap computation must not collapse them
+        // onto the same fabricated 0.8 constant, and in particular must not
+        // report identical stability for two structurally different clusters.
+        assert!(
+            (stability_symmetric - 0.8).abs() > 1e-9 || (stability_skewed - 0.8).abs() > 1e-9,
+            "at least one cluster's stability must move off the old fabricated 0.8 constant"
+        );
+        assert!(
+            (stability_symmetric - stability_skewed).abs() > 1e-9,
+            "stability must depend on the real cluster data: symmetric={stability_symmetric}, skewed={stability_skewed}"
+        );
+    }
+
+    #[test]
+    fn stability_bootstrap_is_deterministic_given_a_fixed_seed() {
+        let mut config = create_basic_clustering_config();
+        config.seed = Some(7);
+        let analyzer = SolutionClusteringAnalyzer::new(config);
+
+        let build_clusters = || {
+            vec![
+                make_cluster(
+                    0,
+                    vec![
+                        make_point(vec![0.0, 0.0]),
+                        make_point(vec![0.2, 0.0]),
+                        make_point(vec![0.0, 0.2]),
+                        make_point(vec![-0.2, 0.1]),
+                    ],
+                    vec![0.0, 0.075],
+                ),
+                anchor_cluster(),
+            ]
+        };
+
+        let mut run1 = build_clusters();
+        analyzer
+            .update_global_quality_metrics(&mut run1)
+            .expect("update should succeed");
+
+        let mut run2 = build_clusters();
+        analyzer
+            .update_global_quality_metrics(&mut run2)
+            .expect("update should succeed");
+
+        assert!(
+            (run1[0].quality_metrics.stability - run2[0].quality_metrics.stability).abs() < 1e-12,
+            "the same seed and data must reproduce the same bootstrap stability estimate"
+        );
+    }
+
+    fn make_point_full(
+        id: usize,
+        solution: Vec<i8>,
+        features: Vec<f64>,
+        energy: f64,
+        iterations: usize,
+    ) -> SolutionPoint {
+        SolutionPoint {
+            solution,
+            energy,
+            metrics: HashMap::new(),
+            metadata: SolutionMetadata {
+                id,
+                source: "test".to_string(),
+                timestamp: Instant::now(),
+                iterations,
+                quality_rank: None,
+                is_feasible: true,
+            },
+            features: Some(features),
+        }
+    }
+
+    #[test]
+    fn perform_statistical_analysis_derives_real_values_not_fixed_fabrications() {
+        let analyzer = SolutionClusteringAnalyzer::new(create_basic_clustering_config());
+
+        // Variable 0 and variable 1 are always exact opposites (perfectly
+        // anti-correlated: r = -1). Eleven points sit at a constant energy of
+        // -3.0; one extra point (id=11) has a wildly different energy of
+        // 100.0 -- with n=12 this is large enough to clear the real 3-sigma
+        // energy-outlier threshold (the maximum possible |z| for a single
+        // outlier among n samples is sqrt(n-1) ~= 3.317 for n=12).
+        let mut solution_points: Vec<SolutionPoint> = (0..11)
+            .map(|i| {
+                if i % 2 == 0 {
+                    make_point_full(i, vec![1, -1], vec![1.0, -1.0], -3.0, i * 5)
+                } else {
+                    make_point_full(i, vec![-1, 1], vec![-1.0, 1.0], -3.0, i * 5)
+                }
+            })
+            .collect();
+        solution_points.push(make_point_full(11, vec![1, -1], vec![1.0, -1.0], 100.0, 55));
+
+        let cluster = make_cluster(0, solution_points.clone(), vec![0.2, -0.2]);
+        let clusters = vec![cluster];
+
+        let summary = analyzer
+            .perform_statistical_analysis(&solution_points, &clusters)
+            .expect("statistical analysis should succeed");
+
+        // The old fabricated implementation always returned an all-ones
+        // correlation matrix regardless of input; the real Pearson
+        // correlation here must reflect the actual perfect anti-correlation.
+        assert!(
+            (summary.correlation_analysis.variable_correlations[0][1] - (-1.0)).abs() < 1e-9,
+            "expected real r=-1 anti-correlation, got {}",
+            summary.correlation_analysis.variable_correlations[0][1]
+        );
+        assert!(summary
+            .correlation_analysis
+            .significant_correlations
+            .iter()
+            .any(|&(i, j, r)| i == 0 && j == 1 && r < 0.0));
+
+        // The old fabricated implementation always returned mean=0.0/std=1.0
+        // regardless of input; the real energy sample here has a non-zero
+        // mean and a real (non-unit) standard deviation.
+        let mean = *summary
+            .energy_distribution
+            .parameters
+            .get("mean")
+            .expect("mean parameter should be present");
+        let std = *summary
+            .energy_distribution
+            .parameters
+            .get("std")
+            .expect("std parameter should be present");
+        assert!(
+            mean > -3.0,
+            "expected the real (outlier-shifted) sample mean, got {mean}"
+        );
+        assert!(
+            (std - 1.0).abs() > 1e-6,
+            "expected a real (non-unit) standard deviation, got {std}"
+        );
+
+        // The old fabricated implementation always returned an empty outlier
+        // list; the wildly-different energy=100.0 point must be flagged.
+        assert!(
+            summary.outliers.iter().any(|o| o.solution_id == 11),
+            "expected the real energy outlier (id=11) to be detected, got {:?}",
+            summary.outliers
+        );
+
+        // The old fabricated implementation always used a fixed literal
+        // `vec![0.1, 0.2, 0.15]` for convergence_rates regardless of the
+        // number of clusters; the real analysis returns one real rate per
+        // cluster, derived from that cluster's own recorded iteration counts.
+        assert_eq!(
+            summary.convergence_analysis.convergence_rates.len(),
+            clusters.len()
+        );
     }
 }
