@@ -8,7 +8,7 @@ QuantRS2-Py provides Python bindings for the [QuantRS2](https://github.com/cool-
 
 ## Version 0.2.1
 
-Released: 2026-08-29
+Released: 2026-08-30
 
 - **`PyStateTomography` `PyDict` conversion fix**: corrected an incorrect `downcast` to `cast` in `measurement.rs`.
 - pyo3 upgraded to v0.29.0; SciRS2 upgraded to v0.6.5.

@@ -7,7 +7,7 @@ QuantRS2-ML is the comprehensive quantum machine learning library of the [QuantR
 
 ## Version 0.2.1
 
-Released: 2026-08-29
+Released: 2026-08-30
 
 - SciRS2 upgraded to v0.6.5; picks up the Rz/CRZ sign-convention fix and QNN/QAOA-adjacent workspace dependency updates from `quantrs2-core`/`quantrs2-sim`.
 

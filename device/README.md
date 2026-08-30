@@ -6,7 +6,7 @@
 
 QuantRS2-Device is the comprehensive quantum hardware abstraction layer of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing seamless connectivity to quantum computers from major cloud providers, with advanced transpilation, optimization, and characterization capabilities for production quantum computing applications.
 
-## Version 0.2.1 (2026-08-29)
+## Version 0.2.1 (2026-08-30)
 
 - **Photonic CV gate-sequence optimization**: `optimize()` now coalesces adjacent same-mode `PhaseRotation` and `Displacement` operations, with identity removal.
 - SciRS2 upgraded to v0.6.5; `oxicuda` 0.5.5 added for GPU acceleration (pure-Rust CUDA replacement, no CUDA Toolkit needed at build time).

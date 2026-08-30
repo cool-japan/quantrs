@@ -6,7 +6,7 @@
 
 QuantRS2-Circuit is the comprehensive quantum circuit construction and optimization engine of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing advanced circuit representation, analysis, optimization, and compilation capabilities for quantum computing applications.
 
-## Version 0.2.1 (2026-08-29)
+## Version 0.2.1 (2026-08-30)
 
 - **QASM3 `const`-expression register sizes**: `qubit[n]` / `bit[n]` declarations now resolve `n` from a previously declared `const` expression (literals including `pi`/`tau`/`euler`, variable lookups, full binary/unary/function arithmetic) instead of only integer literals.
 - SciRS2 upgraded to v0.6.5.
