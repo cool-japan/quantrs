@@ -153,7 +153,7 @@ fn hep_evaluate_metrics_are_real() {
             .expect("predict_proba");
         let positive = probs[1];
         let target = if y_test[i] > 0.5 { 1.0 } else { 0.0 };
-        expected_loss += (positive - target) * (positive - target);
+        expected_loss = (positive - target).mul_add(positive - target, expected_loss);
         let pred_idx = i32::from(probs[1] > probs[0]);
         if (pred_idx == 1) == (y_test[i] > 0.5) {
             correct += 1;

@@ -233,8 +233,9 @@ impl QuantumNeuralNetwork {
     ///
     /// * `EncodingLayer`   — angle-encodes the classical `input` features onto
     ///   `RY` rotations (data re-uploading friendly).
-    /// * `VariationalLayer`— applies the trainable `parameters` as an
-    ///   alternating sequence of `RY`/`RZ` rotations.
+    /// * `VariationalLayer`— applies the trainable `parameters` as alternating
+    ///   `RY`/`RZ` sweeps across the active qubits (every qubit receives an `RY`
+    ///   before any qubit receives an `RZ`).
     /// * `EntanglementLayer`— applies a `CNOT` pattern (`linear`, `circular`,
     ///   or `full`) across the active qubits.
     /// * `MeasurementLayer`— readout is handled separately in [`Self::readout`].
@@ -262,12 +263,23 @@ impl QuantumNeuralNetwork {
                     }
                 }
                 QNNLayerType::VariationalLayer { num_params } => {
+                    // Hardware-efficient ansatz: sweep every qubit with an `RY`
+                    // rotation, then every qubit with an `RZ` rotation, and keep
+                    // alternating for as many parameters as the layer declares.
+                    //
+                    // The axis must be derived from the sweep index rather than
+                    // from `local` itself: with an even qubit count `local % 2` is
+                    // fully determined by the qubit parity, so every odd qubit
+                    // would receive `RZ` rotations only.  Those commute with the
+                    // Pauli-`Z` readout, leaving the odd qubits' expectation values
+                    // without a single trainable parameter of their own.
                     for local in 0..*num_params {
                         if param_idx >= parameters.len() {
                             break;
                         }
                         let qubit = local % num_qubits;
-                        if local % 2 == 0 {
+                        let sweep = local / num_qubits;
+                        if sweep % 2 == 0 {
                             circuit.ry(qubit, parameters[param_idx])?;
                         } else {
                             circuit.rz(qubit, parameters[param_idx])?;
