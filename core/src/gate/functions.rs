@@ -220,6 +220,11 @@ pub mod single {
         impl_clone_gate!();
     }
     /// Rotation around Z-axis
+    ///
+    /// Rz(θ) = exp(-i * θ/2 * Z) = diag(e^{-iθ/2}, e^{+iθ/2}),
+    /// following the IBM/Qiskit/OpenQASM 3 (`stdgates.inc`) convention and the
+    /// same sign as `RotationX`, `RotationY`, `RZZ` and `RZX`. Consequently
+    /// Rz(π/2) equals the S gate and Rz(λ) equals `PGate`(λ) up to a global phase.
     #[derive(Debug, Clone, Copy)]
     pub struct RotationZ {
         /// Target qubit
@@ -916,6 +921,9 @@ pub mod multi {
         impl_clone_gate!();
     }
     /// Controlled Rotation-Z gate (CRZ)
+    ///
+    /// Applies Rz(θ) = diag(e^{-iθ/2}, e^{+iθ/2}) to the target when the control
+    /// is |1⟩ (IBM/Qiskit/OpenQASM 3 `crz` convention).
     #[derive(Debug, Clone, Copy)]
     pub struct CRZ {
         /// Control qubit
@@ -1525,7 +1533,7 @@ pub mod global {
 #[cfg(test)]
 mod issue_32_rz_convention_tests {
     use super::multi::CRZ;
-    use super::single::RotationZ;
+    use super::single::{PGate, Phase, RotationZ};
     use super::GateOp;
     use crate::qubit::QubitId;
     use scirs2_core::Complex64;
@@ -1587,5 +1595,65 @@ mod issue_32_rz_convention_tests {
         assert!(m[10].im < 0.0, "m[10] must have a negative imaginary part");
         assert!((m[15] - expected_15).norm() < 1e-12, "m[15] = {:?}", m[15]);
         assert!(m[15].im > 0.0, "m[15] must have a positive imaginary part");
+    }
+
+    /// Regression test for GitHub issue #32.
+    ///
+    /// Within this gate set, Rz(π/2) must equal S = diag(1, i) up to a global
+    /// phase: the diagonal ratio m11/m00 must be +i (the reversed convention gave -i).
+    #[test]
+    fn test_issue_32_rz_half_pi_is_s_up_to_global_phase() {
+        let m = RotationZ {
+            target: QubitId::new(0),
+            theta: PI / 2.0,
+        }
+        .matrix()
+        .expect("RotationZ matrix");
+        let s = Phase {
+            target: QubitId::new(0),
+        }
+        .matrix()
+        .expect("S matrix");
+
+        let rz_ratio = m[3] / m[0];
+        let s_ratio = s[3] / s[0];
+        assert!(
+            (rz_ratio - Complex64::new(0.0, 1.0)).norm() < 1e-12,
+            "Rz(π/2) diagonal ratio must be +i, got {rz_ratio:?}"
+        );
+        assert!(
+            (rz_ratio - s_ratio).norm() < 1e-12,
+            "Rz(π/2) ratio {rz_ratio:?} must match S ratio {s_ratio:?}"
+        );
+    }
+
+    /// Regression test for GitHub issue #32.
+    ///
+    /// P(λ) = e^{iλ/2} · Rz(λ) exactly (a pure global phase), for several angles,
+    /// including the QAOA angle -3π/2 from the report.
+    #[test]
+    fn test_issue_32_p_gate_equals_rz_up_to_global_phase() {
+        for &lambda in &[PI / 2.0, -3.0 * PI / 2.0, 0.7312, -1.1] {
+            let rz = RotationZ {
+                target: QubitId::new(0),
+                theta: lambda,
+            }
+            .matrix()
+            .expect("RotationZ matrix");
+            let p = PGate {
+                target: QubitId::new(0),
+                lambda,
+            }
+            .matrix()
+            .expect("PGate matrix");
+            let global_phase = Complex64::new(0.0, lambda / 2.0).exp();
+            for (i, (pv, rv)) in p.iter().zip(rz.iter()).enumerate() {
+                let scaled = global_phase * rv;
+                assert!(
+                    (pv - scaled).norm() < 1e-12,
+                    "λ = {lambda}: entry {i} P = {pv:?}, e^(iλ/2)·Rz = {scaled:?}"
+                );
+            }
+        }
     }
 }

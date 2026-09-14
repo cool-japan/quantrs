@@ -692,6 +692,9 @@ impl ParametricGate for ParametricRotationY {
 }
 
 /// Specialized implementation of rotation gates around the Z-axis
+///
+/// Uses the same convention as [`crate::gate::single::RotationZ`]:
+/// Rz(θ) = exp(-i * θ/2 * Z) = diag(e^{-iθ/2}, e^{+iθ/2}) (IBM/Qiskit/OpenQASM 3).
 #[derive(Debug, Clone)]
 pub struct ParametricRotationZ {
     /// Target qubit
