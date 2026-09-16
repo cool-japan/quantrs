@@ -7,7 +7,7 @@ rust-version.workspace = true
 repository.workspace = true
 license.workspace = true
 keywords = ["quantum", "computing", "annealing", "optimization", "ising"]
-categories = ["science", "algorithms"]
+categories = ["science::quantum-computing", "algorithms"]
 description = "Quantum annealing support for the QuantRS2 framework"
 readme = "README.md"
 

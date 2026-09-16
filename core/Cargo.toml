@@ -7,7 +7,7 @@ rust-version.workspace = true
 repository.workspace = true
 license.workspace = true
 keywords = ["quantum", "computing", "core", "types", "traits"]
-categories = ["science", "simulation"]
+categories = ["science::quantum-computing", "simulation"]
 description = "Core types and traits for the QuantRS2 quantum computing framework"
 readme = "README.md"
 

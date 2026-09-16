@@ -106,7 +106,7 @@ rust-version = "1.86.0"
 repository = "https://github.com/cool-japan/quantrs"
 license = "Apache-2.0"
 keywords = ["quantum", "computing", "simulator", "annealing", "gate"]
-categories = ["science", "simulation"]
+categories = ["science::quantum-computing", "simulation"]
 
 [workspace.dependencies]
 # Core quantum computing dependencies

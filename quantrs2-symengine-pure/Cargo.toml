@@ -9,7 +9,7 @@ license.workspace = true
 description = "Pure Rust symbolic mathematics for quantum computing - a replacement for C++-based symengine"
 readme = "README.md"
 keywords = ["quantum", "symbolic", "algebra", "differentiation", "pure-rust"]
-categories = ["science", "mathematics", "simulation"]
+categories = ["science::quantum-computing", "mathematics", "simulation"]
 
 [dependencies]
 # E-graph optimization (MIT) - handles simplification/rewriting

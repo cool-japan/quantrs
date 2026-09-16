@@ -7,7 +7,7 @@ rust-version.workspace = true
 repository.workspace = true
 license.workspace = true
 keywords = ["quantum", "computing", "machine-learning", "ai", "data-science"]
-categories = ["science", "algorithms"]
+categories = ["science::quantum-computing", "algorithms"]
 description = "Quantum Machine Learning module for QuantRS2"
 readme = "README.md"
 

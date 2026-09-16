@@ -7,7 +7,7 @@ rust-version.workspace = true
 repository.workspace = true
 license.workspace = true
 keywords = ["quantum", "computing", "annealing", "tytan", "optimization"]
-categories = ["science", "algorithms"]
+categories = ["science::quantum-computing", "algorithms"]
 description = "High-level quantum annealing interface inspired by Tytan for the QuantRS2 framework"
 readme = "README.md"
 

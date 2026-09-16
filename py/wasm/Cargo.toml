@@ -9,7 +9,7 @@ license.workspace = true
 description = "WebAssembly bindings for the QuantRS2 quantum computing framework"
 readme = "README.md"
 keywords = ["quantum", "wasm", "webassembly", "simulation", "quantrs2"]
-categories = ["science", "wasm"]
+categories = ["science::quantum-computing", "wasm"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

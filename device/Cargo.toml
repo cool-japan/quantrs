@@ -7,7 +7,7 @@ rust-version.workspace = true
 repository.workspace = true
 license.workspace = true
 keywords = ["quantum", "computing", "device", "hardware", "connectivity"]
-categories = ["science", "simulation", "hardware-support"]
+categories = ["science::quantum-computing", "simulation", "hardware-support"]
 description = "Quantum device connectors for the QuantRS2 framework"
 readme = "README.md"
 

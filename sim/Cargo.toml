@@ -7,7 +7,7 @@ rust-version.workspace = true
 repository.workspace = true
 license.workspace = true
 keywords = ["quantum", "computing", "simulator", "state-vector", "gates"]
-categories = ["science", "simulation"]
+categories = ["science::quantum-computing", "simulation"]
 description = "Quantum circuit simulators for the QuantRS2 framework"
 readme = "README.md"
 
