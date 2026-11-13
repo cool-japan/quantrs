@@ -380,7 +380,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Licensed under Apache-2.0
 
 ### Authors
-- COOLJAPAN OU (Team Kitasan)
+- COOLJAPAN OU (Team KitaSan)
 
 ### Repository
 - <https://github.com/cool-japan/quantrs>

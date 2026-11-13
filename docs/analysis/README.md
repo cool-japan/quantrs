@@ -108,4 +108,4 @@ All reports follow a consistent structure inspired by the IBM Qiskit Compatibili
 **Generated**: 2026-01-09
 **Status**: ✅ All implementations complete (99%+ compatibility)
 **Version**: 0.1.2
-**Maintained by**: COOLJAPAN OU (Team Kitasan)
+**Maintained by**: COOLJAPAN OU (Team KitaSan)

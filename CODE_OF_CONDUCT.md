@@ -145,5 +145,5 @@ rights. This decision is final.
 
 This Code of Conduct was written for the QuantRS2 project and is informed by
 widely adopted community standards for open-source projects. It reflects the
-values of COOLJAPAN OU (Team Kitasan) in building respectful, high-quality
+values of COOLJAPAN OU (Team KitaSan) in building respectful, high-quality
 technical communities.
